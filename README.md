@@ -1,2 +1,46 @@
-# texas-oil-gas-leads
-Interactive map and dashboard of Texas oil and gas drilling, production and the companies that serve it, built from public records.
+# Texas oil & gas leads
+
+An interactive dashboard and map of Texas oil and gas drilling activity, producing operators and the companies that
+serve them, built only from public records. It is a static site (HTML, CSS and JavaScript modules, no build step, no
+external requests) plus the Python scripts that build its data files.
+
+## What is in it
+- **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
+  top producers, basin cards and plain-English talking points.
+- **Map**: county shading (permits, oil and gas production and change, well depth, oil and gas jobs and wages,
+  establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
+  basin outlines and a time-lapse of permits.
+- **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields.
+
+## Data
+All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
+Texas Comptroller (franchise taxpayers, severance-tax revenue, Property Value Study), U.S. EIA (prices, production,
+outlook, refinery capacity), BLS (QCEW, state employment), Census (county boundaries, County Business Patterns, ZIP
+centroids), EPA facility data and Baker Hughes rig counts (through Internet Archive copies of its public workbooks).
+Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
+`site/pipeline/NOTES_*.md`.
+
+## Privacy
+Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
+individuals. Operators are named only when they are corporations, LLCs or limited partnerships.
+
+## Run it
+```
+python3 -m http.server 8000 --directory site/public
+```
+Then open http://localhost:8000. Any static host works.
+
+## Rebuild the data
+The scripts in `site/pipeline/` (`d1` to `d6`) and `site/build_data.py` write the JSON files in `site/public/data/`
+(Python 3, standard library only). Some downloads are large (the RRC production dump is 3.7 GB). `build_data.py` reads
+the lead lists `leadpool.csv`, `leadpool_ranked.csv` and `rrc_operators.csv`, which `leadpool.py` and
+`rrc_operators.py` generate; they are not committed because they carry contact details from public filings.
+
+## Known limits
+- Permit dots show only permits with a recorded surface location (about 40% of the last 12 months); counts and trends
+  use every permit.
+- RRC production is complete only through January 2026 because reports lag.
+- BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
+
+Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been
+chosen yet.
