@@ -396,6 +396,7 @@ svg .hbar.on { filter: brightness(1.15); }
 .fresh-grid .ico { color: var(--muted); margin-top: 2px; }
 .fresh-grid b { display: block; font-size: var(--fs-xs); font-weight: 650; }
 .fresh-grid span { font-size: var(--fs-xs); color: var(--ink-2); }
+.fresh-cad { display: block; width: fit-content; margin-top: 3px; padding: 1px 8px; border: 1px solid var(--grid); border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); }
 
 /* tooltip */
 .tip { position: fixed; z-index: 70; pointer-events: none; max-width: 320px; background: color-mix(in srgb, var(--surface) 94%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--ink-2); border: 1px solid var(--border-2); border-radius: var(--r-sm); padding: 9px 12px; font-size: var(--fs-sm); box-shadow: var(--elev-3); }

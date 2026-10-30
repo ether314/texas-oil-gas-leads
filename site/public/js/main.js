@@ -45,22 +45,23 @@ async function fillProdNote() {
 
 function freshnessItems() {
   const { meta, raw, extra, prod, opProd } = ov; const last = (arr) => arr[lastIdx(arr)];
-  const items = [{ icon: 'pin', label: 'Permits (Railroad Commission)', value: 'Issued to ' + fmtDate(meta.sources.latest_permit) }];
+  // cadence is how often the source publishes (from the pipeline notes), not how often this static site is rebuilt
+  const items = [{ icon: 'pin', label: 'Permits (Railroad Commission)', value: 'Issued to ' + fmtDate(meta.sources.latest_permit), cadence: 'daily' }];
   const sr = raw['series-production']; const pf = prod || opProd || sr;
   if (pf) {
     const thru = pf.completeThrough || pf.months[pf.months.length - 1];
-    items.push({ icon: 'drop', label: 'Production (Railroad Commission)', value: 'Complete to ' + monthLabel(thru) + (pf.newest && pf.newest > thru ? '; newer months still filling in' : '') });
+    items.push({ icon: 'drop', label: 'Production (Railroad Commission)', value: 'Complete to ' + monthLabel(thru) + (pf.newest && pf.newest > thru ? '; newer months still filling in' : ''), cadence: 'monthly' });
   }
-  const rg = raw['series-rigs']; if (rg) items.push({ icon: 'rig', label: 'Rig counts (Baker Hughes)', value: 'Week of ' + fmtDate(rg.through) });
+  const rg = raw['series-rigs']; if (rg) items.push({ icon: 'rig', label: 'Rig counts (Baker Hughes)', value: 'Week of ' + fmtDate(rg.through), cadence: 'weekly' });
   const sm = raw['series-markets'];
-  if (sm && sm.wti) items.push({ icon: 'chart', label: 'WTI and Henry Hub (EIA)', value: 'Monthly, to ' + monthLabel(sm.months[lastIdx(sm.wti)]) });
-  if (sm && sm.txCrude) items.push({ icon: 'pipe', label: 'Texas crude estimate (EIA)', value: 'Estimates to ' + monthLabel(sm.months[lastIdx(sm.txCrude)]) });
-  const ol = raw['series-outlook']; if (ol) items.push({ icon: 'trend', label: 'Price outlook (EIA forecast)', value: 'Issued ' + monthLabel(ol.issued) + ', to ' + monthLabel(ol.months[ol.months.length - 1]) });
-  const tx = raw['series-tax']; if (tx) items.push({ icon: 'dollar', label: 'Production tax (Comptroller)', value: 'Collected to ' + monthLabel(tx.months[tx.months.length - 1]) });
-  const jb = raw['series-jobs']; if (jb) items.push({ icon: 'jobs', label: 'Oil and gas jobs (BLS)', value: 'To ' + monthLabel(jb.latest || last(jb.months)) + ', first print' });
-  if (extra.lab) items.push({ icon: 'jobs', label: 'County jobs and wages (BLS)', value: 'Annual averages, ' + extra.lab.year });
-  if (extra.cbp) items.push({ icon: 'building', label: 'Establishments (Census)', value: 'County Business Patterns ' + extra.cbp.year });
-  if (extra.min) items.push({ icon: 'gem', label: 'Mineral values (Comptroller)', value: 'Tax year ' + extra.min.year });
+  if (sm && sm.wti) items.push({ icon: 'chart', label: 'WTI and Henry Hub (EIA)', value: 'Monthly, to ' + monthLabel(sm.months[lastIdx(sm.wti)]), cadence: 'monthly' });
+  if (sm && sm.txCrude) items.push({ icon: 'pipe', label: 'Texas crude estimate (EIA)', value: 'Estimates to ' + monthLabel(sm.months[lastIdx(sm.txCrude)]), cadence: 'monthly' });
+  const ol = raw['series-outlook']; if (ol) items.push({ icon: 'trend', label: 'Price outlook (EIA forecast)', value: 'Issued ' + monthLabel(ol.issued) + ', to ' + monthLabel(ol.months[ol.months.length - 1]), cadence: 'monthly' });
+  const tx = raw['series-tax']; if (tx) items.push({ icon: 'dollar', label: 'Production tax (Comptroller)', value: 'Collected to ' + monthLabel(tx.months[tx.months.length - 1]), cadence: 'monthly' });
+  const jb = raw['series-jobs']; if (jb) items.push({ icon: 'jobs', label: 'Oil and gas jobs (BLS)', value: 'To ' + monthLabel(jb.latest || last(jb.months)) + ', first print', cadence: 'monthly' });
+  if (extra.lab) items.push({ icon: 'jobs', label: 'County jobs and wages (BLS)', value: 'Annual averages, ' + extra.lab.year, cadence: 'annually' });
+  if (extra.cbp) items.push({ icon: 'building', label: 'Establishments (Census)', value: 'County Business Patterns ' + extra.cbp.year, cadence: 'annually' });
+  if (extra.min) items.push({ icon: 'gem', label: 'Mineral values (Comptroller)', value: 'Tax year ' + extra.min.year, cadence: 'annually' });
   items.push({ icon: 'building', label: 'Company records (Comptroller)', value: 'Updated ' + fmtDate(meta.sources.comptroller) });
   return items;
 }
