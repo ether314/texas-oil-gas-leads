@@ -41,7 +41,10 @@ the lead lists `leadpool.csv`, `leadpool_ranked.csv` and `rrc_operators.csv`, wh
 
 The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard library only; no lead CSVs needed) into
 `site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night, commits the result to `main` and
-publishes the site. To fill the archive from the RRC's file history the first time: `python3 -I site/pipeline/d7_daily.py --backfill 91`.
+publishes the site. A second schedule an hour later is a backup for a run GitHub skips: it does nothing when the first one
+already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily RRC
+report, Run workflow) and give the day in the `date` box. To fill the archive from the RRC's file history the first time:
+`python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
 ## Publishing
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
