@@ -120,7 +120,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
 .card-head h2 { font-size: var(--fs-xl); }
 .card-head > div:first-child { flex: 1 1 360px; min-width: 0; }
-.card-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.card-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; max-width: 100%; } /* min-width: a flex item no wider than its parent, so a long segmented control scrolls instead of widening the page */
 .pulse-card .card-tools { flex: 1 1 100%; justify-content: space-between; margin-top: var(--sp-1); }
 .more-link { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--sp-4); font-size: var(--fs-md); font-weight: 600; text-decoration: none; }
 .more-link:hover { text-decoration: underline; text-underline-offset: 3px; }
