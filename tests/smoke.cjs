@@ -39,6 +39,8 @@ const VIEWS = [
   ['#daily?st=tx', '#daily-root .dr-hero'],
   ['#daily?st=ok', '#daily-root .dr-hero', async (page) => (await page.locator('#daily-root path.dr-county').count()) === 77 ? null : 'the Oklahoma map should have 77 counties'],
   ['#daily?st=ok&v=full', '#daily-root .dr-sec'],
+  ['#daily?st=nm', '#daily-root .dr-hero', async (page) => (await page.locator('#daily-root path.dr-county').count()) === 33 ? null : 'the New Mexico map should have 33 counties'],
+  ['#daily?st=nm&v=full', '#daily-root .dr-sec'],
   ['#oklahoma', '#daily-root .dr-hero', async (page) => (/st=ok/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open #daily?st=ok')],
   ['#about', '#view-about h1'],
 ];
@@ -102,6 +104,8 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
     page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    // New Mexico has a Daily report now; it is answered with an empty index here, so the page's handling of a state with none stays exercised (block 5 has the real one)
+    await page.route('**/data/daily-nm/index.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"generated":"x","keep":92,"days":[]}' }));
     const pressed = () => page.locator('#statebar button[aria-pressed="true"]').innerText();
     const hash = () => page.evaluate(() => location.hash);
     const eyebrow = () => page.locator('#hero-eyebrow').textContent(); // innerText would be the capitals the page's CSS makes of it
@@ -237,6 +241,36 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the Map and the states bar: ' + e.message.split('\n')[0].slice(0, 200));
     }
     check(!errs.length, 'the Map and the states bar load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 5. New Mexico's Daily report: on its own (permits and what goes with them, nothing it does not publish) and with the other two
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const eyebrow = () => page.locator('#daily-root .dr-hero .eyebrow').textContent();
+    try {
+      await page.goto(base + '#daily?st=nm', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      const kpis = await page.locator('#daily-root .dr-kpis .dr-kpi').allInnerTexts();
+      check(/Oil Conservation Division report/i.test(await eyebrow()) && kpis.length === 3 && /Horizontal wells/.test(kpis[1]) && !(await page.locator('#statebar-note').innerText()).trim(), 'New Mexico alone: its own report (three cards, the horizontal share), and the bar has nothing to say about it');
+      check((await page.locator('#daily-root .dr-rb.nm').count()) > 30 && (await page.locator('#daily-root .dr-bar.nm').count()) > 0, 'its ribbon and pace chart are drawn in its color, with its 33 counties on the map');
+      check(/fill in later/.test(await page.locator('#daily-root .dr-story').innerText()), 'the story says the layer is entered late, so the newest days run low');
+      await page.goto(base + '#daily?st=nm&v=full', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
+      const full = await page.locator('#daily-root').innerText();
+      check(/Kinds of well/.test(full) && /Direction/.test(full) && /OCD districts/.test(full) && !/Amended that day/.test(full) && !/Days to approval/.test(full) && !/Median planned depth/.test(full), 'the verbose report shows kinds of well, direction and districts, and no tile for what the Division does not publish');
+      await page.click('#statebar button[data-id="all"]');
+      await page.waitForFunction(() => /Texas, Oklahoma and New Mexico report/i.test(document.querySelector('#daily-root .dr-hero .eyebrow').textContent), null, { timeout: 25000 });
+      check((await page.locator('#daily-root .dr-dot.nm').count()) > 0 && (await page.locator('#daily-root .dr-mapwrap path.dr-county').count()) === 364 && /New Mexico: 1 of 1/.test(await page.locator('.dr-pills').innerText()), 'all three together: one map of 364 counties, New Mexico\'s files read named in the pills, its color in the legends');
+    } catch (e) {
+      check(false, 'the New Mexico Daily report: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the New Mexico Daily report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

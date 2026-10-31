@@ -23,6 +23,7 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   and `.github/scripts/publish_pages.sh`, which the nightly capture shares: run against a throwaway clone with a local bare `origin` that has
   a gh-pages branch (publishes exactly the site, never rewrites history, says so when current, refuses an incomplete copy, retries a refused
   push and gives up after four; needs git and PyYAML).
+- `test_d9_nm_daily.py`: the New Mexico Daily report's producer: a well counted once, which day a report shows, what is named and left out, the series rewritten each night, a whole run with the network faked, the validator on faults, mutants and the committed archive.
 - `test_js_data.mjs`: `states.js` (parsing and keeping the choice, county and point keys), `overview-data.js` (the permit series, county counts,
   operators and permit points of the states shown, merged; a state with no file is left out, never counted as zero) and, on the committed
   files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
@@ -31,7 +32,8 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   It also drives the states bar: choosing a state changes the Overview and the address, the Daily report and the Operators page follow (the State
   column, each state's own date, the Texas-only filters stepping aside), Companies say they are Texas only, and a view that does not follow it hides the bar.
   The Map is driven the same way: each state alone and all together (counties, legend, dot colors, the table twin, a hover and a click on a dot, the replay),
-  and a county or an operator opened by its state-prefixed key.
+  and a county or an operator opened by its state-prefixed key. The Daily report is driven for New Mexico alone (three cards, its color, its 33 counties, no tile for what
+  it does not publish) and with all three states (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
 
 Optional: `OK_REAL_FILES=<folder holding the OCC daily .xlsx files and rbdms-wells.csv>` adds two checks against the real files (the two
 workbook readers agree; no operator the naming rule refuses appears in the archive); with the master `ITD-wells-formations-base.xlsx` and

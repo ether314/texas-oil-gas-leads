@@ -125,8 +125,8 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 ## Backlog (living; edit it in the PR that changes it)
 
 1. One state choice across the whole site (Texas, Oklahoma, New Mexico). Done: the bar, the Overview, the Daily report (Texas and Oklahoma; the bar says New Mexico has
-   none yet), Operators and Companies (Companies are Texas only and say so), the Map (rebuilt for the states shown; `map.js` `prepare`/`rebuild`). To do: Sources;
-   New Mexico's Daily report: data done (`d9_nm_daily.py`, 92 days in `daily-nm/`, from the approval date of wells in status New, `NOTES_D9.md`); to do: the view (`daily.js` is built for two states) and the nightly workflow; refreshing the monthly files nightly. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
+   none yet), Operators and Companies (Companies are Texas only and say so), the Map (rebuilt for the states shown; `map.js` `prepare`/`rebuild`), the Daily report (New Mexico's is permits only: `d9_nm_daily.py`, 92 days in `daily-nm/`, `daily-nm.js`;
+   `daily.js` asks what a report holds, `HORIZ`, `PERMIT_FROM`, `SERIES`, not which state it is). To do: Sources; the nightly workflow for New Mexico's capture and for refreshing the monthly files nightly. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
    Never add New Mexico's spuds to the other states' permits (`states.js` measures: `sameMeasure`).
 2. Oklahoma in Sources (the Overview, Operators and Map are done). Data done: `d8_ok_monthly.py` writes the permit series, county counts, operators and
    permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
@@ -147,4 +147,4 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
   for New Mexico in every view too, so the state layer is built for any number of states (a new state is an entry in `states.js` plus its files).
 - 2026-10-31: Operators and Companies follow the states bar (a State column, one ranking, each state's own date; the Texas-only columns and filters step aside).
 - 2026-10-31: the Map follows the states bar (one map for any set of states: shapes, dots colored per state, per-state legend, panels and links keyed by state; the Texas-only figures stay Texas only).
-- 2026-10-31: New Mexico's Daily report data (`d9_nm_daily.py`, `daily-nm/`): permits approved by day from the OCD layer, 92 days rebuilt; the view and the nightly step follow.
+- 2026-10-31: New Mexico's Daily report data (`d9_nm_daily.py`, `daily-nm/`): permits approved by day from the OCD layer, 92 days rebuilt (PR #24). Then the view: the states bar's three states in the Daily report (Texas and Oklahoma proved identical to `main` by comparing their DOM); the nightly step is next.

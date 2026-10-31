@@ -6,9 +6,9 @@ build step, no external requests) plus the Python scripts that build its data fi
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
-- **States**: a bar above the Overview and the Daily report chooses what is shown: all the states (Texas, Oklahoma and New Mexico), or one. The choice
+- **States**: a bar above every view but Sources chooses what is shown: all the states (Texas, Oklahoma and New Mexico), or one. The choice
   is kept in the address (`st=ok`; nothing means all) and follows you between those views. A view says so when a state cannot give a figure
-  (Oklahoma and New Mexico have no company pool, rig counts, jobs, taxes or production by county here, and no New Mexico Daily report yet).
+  (Oklahoma and New Mexico have no company pool, rig counts, jobs, taxes or production by county here).
   Texas and Oklahoma count permits by approval date; New Mexico publishes no approval dates by well, so its figures are wells spudded, named as
   such wherever they show, never added to the permits, and ending two months back because spud dates arrive late (`site/pipeline/NOTES_D9.md`).
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
@@ -24,19 +24,20 @@ address keep their first name, `texas-oil-gas-leads`.)
   states shown are ranked as one list (by activity band, then new wells), each row tagged with its state, and a state's operators come from
   its own file with the columns only Texas can fill (RRC districts and registrations, production) left out. Companies are the Texas
   Comptroller's records, so they stay Texas only and say so for the other states.
-- **Daily report**: what the Railroad Commission of Texas and the Oklahoma Corporation Commission published overnight, the two states as
-  one dataset, one report a day for the last 92 days. A simple version for the daily look, and a verbose one. The permits and
-  completions of both states are added into one set of figures, one pace chart (the bars stacked by state), one county map, one
-  3-month ribbon and calendar and one plain-English summary, and also shown side by side by state wherever the two files measure
-  different things (Texas knows which wells are horizontal, Oklahoma only the planned depth). **Show** narrows the whole report to one
-  state (`#daily?st=tx` or `st=ok`); an old `#oklahoma` link opens it that way. A day one state has no report for says so and is left out
+- **Daily report**: what the Railroad Commission of Texas, the Oklahoma Corporation Commission and New Mexico's Oil Conservation Division published overnight, the
+  states as one dataset, one report a day for the last 92 days. A simple version for the daily look, and a verbose one. The permits and
+  completions of the states are added into one set of figures, one pace chart (the bars stacked by state), one county map, one
+  3-month ribbon and calendar and one plain-English summary, and also shown side by side by state wherever the files measure
+  different things (Texas and New Mexico know which wells are horizontal, Oklahoma only the planned depth). The states bar narrows the whole
+  report to some of them (`#daily?st=tx`, `st=ok`, `st=nm`); an old `#oklahoma` link opens it that way. A day one state has no report for says so and is left out
   of every total, never counted as zero. Texas alone adds the pending queue, the image packs (sizes, and for days captured live a count
   of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and a **GPS map** of each day's
   new-drill permits and directional surveys; every point opens a **page with its own URL** (`#daily?d=DAY&drill=PERMIT`) holding the
   well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and survey, which the nightly job stores as the
   files of one GitHub release a day. Oklahoma alone adds the wells that changed operator and, for days captured live, the state's well
-  inventory. The monthly figures card shows crude production for the states shown beside the WTI and Henry Hub prices. Source health
-  covers every file of both states.
+  inventory. New Mexico's report is its permits to drill, read from the Division's well layer (the Division publishes no daily file): permits by county,
+  operator, kind of well, direction and district, with no depth, filing date, completion or transfer, which it does not publish. The monthly figures card
+  shows crude production for the states shown beside the WTI and Henry Hub prices. Source health covers every file of every state.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
@@ -117,6 +118,9 @@ minutes without touching the Railroad Commission or the OCC, and the nightly cap
   inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host), no company
   list and no production by county. Its permit history (series, counties, operators, permit points) is in the Overview, the Operators
   page and the Map.
+- New Mexico's part of the Daily report is read from the Division's well layer, which is entered some days after an approval: the newest two or three days
+  run low and fill in (the pace chart is rewritten from the layer each night), a rebuilt day counts only the approvals still in status New, and the Division
+  publishes no planned depth, filing date, completion or transfer by day (`site/pipeline/NOTES_D9.md`).
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been

@@ -34,7 +34,7 @@ check(S.measurePhrase(['TX']) === 'new-drill permits' && S.measurePhrase(['NM'])
 check(S.listAnd(['Texas']) === 'Texas' && S.listAnd(['Texas', 'Oklahoma']) === 'Texas and Oklahoma' && S.listAnd(['Texas', 'Oklahoma', 'New Mexico']) === 'Texas, Oklahoma and New Mexico' && S.statesName(ids) === 'Texas, Oklahoma and New Mexico', 'listAnd and statesName: a list of states reads like English');
 check(S.measureLabel(['TX']) === 'New-drill permits' && S.measureLabel(['TX', 'OK']) === 'New-drill permits' && S.measureLabel(['NM']) === 'Wells spudded' && S.measureLabel(['TX', 'NM']) === 'Permits and spuds' && S.measureLabel(ids) === 'Permits and spuds', 'measureLabel: what a map or a table calls its counts, and "Permits and spuds" when the states differ');
 check(S.stateOf('TX').fips === '48' && S.stateOf('OK').fips === '40' && S.stateOf('NM').fips === '35', 'each state knows its FIPS code (a county\'s FIPS is the state\'s and its three digits)');
-check(S.dailyStates.map((q) => q.id).join() === 'TX,OK' && S.STATES.find((q) => q.id === 'NM').dir === null, 'only Texas and Oklahoma have a Daily report (New Mexico\'s folder is null, so nothing asks for it)');
+check(S.dailyStates.map((q) => q.id).join() === 'TX,OK,NM' && S.STATES.find((q) => q.id === 'NM').dir === 'daily-nm' && S.STATES.every((q) => !q.dir || /^daily/.test(q.dir)), 'every state has a Daily report folder (a state with none would have a null one, and nothing would ask for it)');
 {
   const heard = [];
   const off = S.onStates((x) => heard.push(x.join('+')));
@@ -124,6 +124,19 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
 }
 
 /* ---------- the Daily report's merge rules are still the same after the states moved into states.js ---------- */
+{
+  // the Daily report's permits by day: from the state's own file where it has one (Texas, New Mexico), else from the report index
+  const idx = { days: [{ d: '2026-10-27', dd: '2026-10-26', pn: 4, p: 5, pd: 3 }, { d: '2026-10-28', dd: '2026-10-27', pn: 6, p: 6, pd: 6 }, { d: '2026-10-29', dd: '2026-10-27', pn: 2, p: 2, pd: 2 }] };
+  const own = { days: ['2026-10-26', '2026-10-27', '2026-10-28'], newDrill: [9, 8, 7], total: [9, 8, 7], horizontal: [9, 7, 7] };
+  const nm = D.permitSeries('NM', idx, own);
+  check(same(nm.get('2026-10-27'), { n: 8, total: 8, h: 7 }) && nm.lo === '2026-10-26' && nm.hi === '2026-10-28' && nm.get('2026-10-29') === null && nm.get('2026-10-25') === null, 'permitSeries: a state with its own file of permits by day reads it (New Mexico\'s, rewritten each night), and a day past its last is no data, not zero');
+  const okIdx = D.permitSeries('OK', idx, null);
+  check(same(okIdx.get('2026-10-26'), { n: 4, total: 5, h: 3 }) && same(okIdx.get('2026-10-27'), { n: 6, total: 6, h: 6 }) && okIdx.get('2026-10-29') === null, 'permitSeries: with no file the days come from the index, the first report to list a permit day counting it');
+  const gap = D.permitSeries('NM', idx, { days: ['2026-10-20', '2026-10-23'], newDrill: [3, 4], total: [3, 4], horizontal: [3, 4] });
+  check(same(gap.get('2026-10-21'), { n: 0, total: 0, h: 0 }), 'permitSeries: a day inside the window with no row (a weekend or a holiday) is a zero');
+  const days = D.mergeDays({ TX: { days: [{ d: '2026-10-29', k: 'live', pFresh: true, pn: 30 }] }, OK: { days: [{ d: '2026-10-29', k: 'live', pFresh: true, pn: 7 }] }, NM: { days: [{ d: '2026-10-28', k: 'reconstructed', pFresh: true, pn: 5 }, { d: '2026-10-29', k: 'live', pFresh: true, pn: 5 }] } }, ['TX', 'OK', 'NM']);
+  check(days.length === 2 && days[1].total === 42 && !days[1].partial && days[0].partial && days[0].total === 5 && days[1].live, 'mergeDays: three states in one list of days, a day one of them has no report for is partial, and the total adds what there is');
+}
 check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '001') === 'OK:001', 'daily-data.js re-exports the states and keys the Daily report\'s counties by state, Texas too');
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
