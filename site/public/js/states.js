@@ -12,19 +12,21 @@
 const PERMITS = { id: 'permits', noun: 'new-drill permits', short: 'permits', one: 'permit', verb: 'Approved' };
 const SPUDS = { id: 'spuds', noun: 'wells spudded', short: 'spuds', one: 'spud', verb: 'Spuds counted' };
 export const STATES = [
-  { id: 'TX', name: 'Texas', dir: 'daily', agency: 'Railroad Commission', files: null, measure: PERMITS },
+  { id: 'TX', name: 'Texas', fips: '48', dir: 'daily', agency: 'Railroad Commission', files: null, measure: PERMITS },
   {
-    id: 'OK', name: 'Oklahoma', dir: 'daily-ok', agency: 'Oklahoma Corporation Commission', measure: PERMITS,
+    id: 'OK', name: 'Oklahoma', fips: '40', dir: 'daily-ok', agency: 'Oklahoma Corporation Commission', measure: PERMITS,
     files: { geo: 'counties-ok.geo', series: 'series-permits-ok', county: 'county-permits-ok', operators: 'operators-ok', points: 'permits-ok', crude: 'series-ok' },
   },
   {
-    id: 'NM', name: 'New Mexico', dir: null, agency: 'Oil Conservation Division', measure: SPUDS, // no Daily report yet (dir is where one would be)
+    id: 'NM', name: 'New Mexico', fips: '35', dir: null, agency: 'Oil Conservation Division', measure: SPUDS, // no Daily report yet (dir is where one would be)
     files: { geo: 'counties-nm.geo', series: 'series-permits-nm', county: 'county-permits-nm', operators: 'operators-nm', points: 'permits-nm', crude: 'series-nm' },
   },
 ];
 export const measureOf = (id) => stateOf(id).measure;
 // true when every state in the list counts the same thing (so their numbers can be added and ranked together)
 export const sameMeasure = (ids) => new Set(ids.map((id) => measureOf(id).id)).size <= 1;
+// what a figure of permits is labelled on a map or a table: "New-drill permits", "Wells spudded", or "Permits and spuds" when the states differ
+export const measureLabel = (ids) => (sameMeasure(ids) ? measureOf(ids[0]).noun.replace(/^./, (c) => c.toUpperCase()) : 'Permits and spuds');
 // what to call the counts of these states: "new-drill permits", or "new-drill permits (wells spudded in New Mexico)" when they differ
 export function measurePhrase(ids) {
   if (sameMeasure(ids)) return measureOf(ids[0]).noun;
@@ -59,7 +61,9 @@ const subs = new Set();
 export const activeStates = () => active.slice();
 export const hasState = (id) => active.includes(id);
 export const statesKey = (ids = active) => ids.join('+');
-export const statesName = (ids = active) => ids.map((id) => stateOf(id).name).join(' and ');
+// "Texas", "Texas and Oklahoma", "Texas, Oklahoma and New Mexico"
+export const listAnd = (items) => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1]);
+export const statesName = (ids = active) => listAnd(ids.map((id) => stateOf(id).name));
 
 // true when the selection changed; subscribers hear about it once, with the new list (unless quiet: the router sets the choice an address
 // names while it is already drawing the view, so nothing needs telling)

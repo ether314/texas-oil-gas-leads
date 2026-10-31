@@ -37,13 +37,19 @@ function projector(box) {
   };
 }
 
+// city labels on the maps: name, latitude, longitude, state, priority (low is drawn first, and kept on a phone when it is 7 or less)
 const HUBS = [
-  ['Houston', 29.7604, -95.3698], ['Dallas', 32.7767, -96.797], ['San Antonio', 29.4241, -98.4936],
-  ['El Paso', 31.7619, -106.485], ['Austin', 30.2672, -97.7431], ['Midland', 31.9973, -102.0779],
-  ['Corpus Christi', 27.8006, -97.3964], ['Fort Worth', 32.7555, -97.3308], ['Lubbock', 33.5779, -101.8552],
-  ['Amarillo', 35.222, -101.8313], ['Odessa', 31.8457, -102.3676], ['Abilene', 32.4487, -99.7331],
-  ['Laredo', 27.5306, -99.4803], ['San Angelo', 31.4638, -100.437], ['Victoria', 28.8053, -97.0036],
-  ['Wichita Falls', 33.9137, -98.4934],
+  ['Houston', 29.7604, -95.3698, 'TX', 0], ['Dallas', 32.7767, -96.797, 'TX', 1], ['San Antonio', 29.4241, -98.4936, 'TX', 2],
+  ['El Paso', 31.7619, -106.485, 'TX', 3], ['Austin', 30.2672, -97.7431, 'TX', 4], ['Midland', 31.9973, -102.0779, 'TX', 5],
+  ['Corpus Christi', 27.8006, -97.3964, 'TX', 6], ['Fort Worth', 32.7555, -97.3308, 'TX', 7], ['Lubbock', 33.5779, -101.8552, 'TX', 8],
+  ['Amarillo', 35.222, -101.8313, 'TX', 9], ['Odessa', 31.8457, -102.3676, 'TX', 10], ['Abilene', 32.4487, -99.7331, 'TX', 11],
+  ['Laredo', 27.5306, -99.4803, 'TX', 12], ['San Angelo', 31.4638, -100.437, 'TX', 13], ['Victoria', 28.8053, -97.0036, 'TX', 14],
+  ['Wichita Falls', 33.9137, -98.4934, 'TX', 15],
+  ['Oklahoma City', 35.4676, -97.5164, 'OK', 1], ['Tulsa', 36.154, -95.9928, 'OK', 4], ['Lawton', 34.6036, -98.3959, 'OK', 9],
+  ['Enid', 36.3956, -97.8784, 'OK', 10], ['Woodward', 36.4337, -99.3904, 'OK', 12],
+  ['Albuquerque', 35.0844, -106.6504, 'NM', 3], ['Santa Fe', 35.687, -105.9378, 'NM', 7], ['Hobbs', 32.7026, -103.136, 'NM', 6],
+  ['Carlsbad', 32.4207, -104.2288, 'NM', 8], ['Farmington', 36.7281, -108.2087, 'NM', 9], ['Roswell', 33.3943, -104.523, 'NM', 11],
+  ['Las Cruces', 32.3199, -106.7637, 'NM', 12],
 ];
 
 function inRing(xy, x, y) {
@@ -66,12 +72,12 @@ export function countyAt(G, x, y) {
 }
 
 // the projection is module state: a second state's shapes are built against their own box, then the Texas box is put back
-export function buildGeoIsolated(gj) {
+export function buildGeoIsolated(gj, hubStates) {
   const saved = { ...T };
-  try { return buildGeo(gj); } finally { Object.assign(T, saved); }
+  try { return buildGeo(gj, hubStates); } finally { Object.assign(T, saved); }
 }
 
-export function buildGeo(gj) {
+export function buildGeo(gj, hubStates = ['TX']) {
   const polys = gj.features.map((f) => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates));
   let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
   for (const poly of polys) for (const rings of poly) for (const ring of rings) for (const p of ring) {
@@ -145,7 +151,7 @@ export function buildGeo(gj) {
       if (lat === 23) grat.moveTo(o[0], o[1]); else grat.lineTo(o[0], o[1]);
     }
   }
-  const hubs = HUBS.map(([n, lat, lon], pri) => { project(lon, lat, o); return { n, x: o[0], y: o[1], pri }; });
+  const hubs = HUBS.filter((h) => hubStates.includes(h[3])).sort((a, b) => a[4] - b[4]).map(([n, lat, lon, , pri]) => { project(lon, lat, o); return { n, x: o[0], y: o[1], pri }; });
   return { counties, byFips, outline, border, grat, hubs, W, H, toWorld: project };
 }
 
@@ -164,7 +170,8 @@ function finishPoints(a, G) {
       l.push(i);
     }
   }
-  return { ...a, gs, gw, gh, heads, next, byOp };
+  const sts = [...new Set(a.st)].sort((p, q) => p - q); // the states' numbers present, so a map can paint each in its own color
+  return { ...a, gs, gw, gh, heads, next, byOp, sts };
 }
 export function buildPoints(pm, G) {
   const n = pm.pts.length;
@@ -275,20 +282,22 @@ async function pointsFor(states) {
 
 /* memoized loaders shared by the hero, the map and the tables. The Texas ones are the default; a set of states is built once. */
 export const getGeo = (states = TEXAS) => once(texasOnly(states) ? 'geo' : 'geo:' + statesKey(states), async () => (
-  texasOnly(states) ? buildGeo(await load('counties.geo')) : buildGeoIsolated(await shapesFor(states))));
+  texasOnly(states) ? buildGeo(await load('counties.geo')) : buildGeoIsolated(await shapesFor(states), states)));
 export const getPoints = (states = TEXAS) => once(texasOnly(states) ? 'pts' : 'pts:' + statesKey(states), async () => {
   const [pm, G] = await Promise.all([pointsFor(states), getGeo(states)]);
   return { pm, P: buildPoints(pm, G) };
 });
-export const getZips = () => once('zips', async () => {
-  const [zc, G] = await Promise.all([loadOpt('zip-companies'), getGeo()]);
+// The company ZIPs, the plants and terminals and the basins are Texas's; they sit on whatever shapes are shown (Texas's own, or the set that has Texas in it).
+const layerKey = (name, states) => (texasOnly(states) ? name : name + ':' + statesKey(states));
+export const getZips = (states = TEXAS) => once(layerKey('zips', states), async () => {
+  const [zc, G] = await Promise.all([loadOpt('zip-companies'), getGeo(states)]);
   return zc ? buildZips(zc, G) : null;
 });
-export const getInfra = () => once('infra', async () => {
-  const [inf, G] = await Promise.all([loadOpt('infra'), getGeo()]);
+export const getInfra = (states = TEXAS) => once(layerKey('infra', states), async () => {
+  const [inf, G] = await Promise.all([loadOpt('infra'), getGeo(states)]);
   return inf ? { src: inf.src, asOf: inf.asOf, layers: buildInfra(inf, G) } : null;
 });
-export const getBasins = () => once('basins', async () => {
-  const [b, G] = await Promise.all([loadOpt('basins'), getGeo()]);
+export const getBasins = (states = TEXAS) => once(layerKey('basins', states), async () => {
+  const [b, G] = await Promise.all([loadOpt('basins'), getGeo(states)]);
   return b && b.basins && b.basins.length ? buildBasins(b, G) : null;
 });

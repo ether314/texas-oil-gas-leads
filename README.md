@@ -16,7 +16,10 @@ address keep their first name, `texas-oil-gas-leads`.)
   operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green).
 - **Map**: county shading (permits, oil and gas production and change, well depth, oil and gas jobs and wages,
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
-  basin outlines and a time-lapse of permits.
+  basin outlines and a time-lapse of permits. It follows the states bar: the shapes, dots (Texas orange, Oklahoma purple, New Mexico green),
+  legend, tooltips and panels are those of the states shown, with each state's county and operator keys in a link (`county=OK:039`,
+  `op=NM:7377`). The figures only Texas has (production, jobs, establishments, companies, mineral value, plants, ZIPs, basins) are
+  Texas counties only: another state's county says "not available", never zero; New Mexico's counts are wells spudded and say so.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields. Operators follow the states bar: the
   states shown are ranked as one list (by activity band, then new wells), each row tagged with its state, and a state's operators come from
   its own file with the columns only Texas can fill (RRC districts and registrations, production) left out. Companies are the Texas
@@ -112,8 +115,8 @@ minutes without touching the Railroad Commission or the OCC, and the nightly cap
 - Oklahoma's part of the Daily report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
   image packs, planned depth instead of horizontal (the permit file does not say), transfers for about the last month and the well
   inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host), no company
-  list and no production by county. Its permit history (series, counties, operators, permit points) is in the Overview and the Operators
-  page; the Map follows.
+  list and no production by county. Its permit history (series, counties, operators, permit points) is in the Overview, the Operators
+  page and the Map.
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been

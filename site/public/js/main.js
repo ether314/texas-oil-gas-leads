@@ -9,11 +9,11 @@ import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, measurePhrase } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, measurePhrase, measureOf, sameMeasure, listAnd } from './states.js';
 
 const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the Both / Texas / Oklahoma choice; the others show what they showed before (Texas) and hide the choice
-const STATE_VIEWS = new Set(['overview', 'daily', 'operators', 'companies']);
+const STATE_VIEWS = new Set(['overview', 'map', 'daily', 'operators', 'companies']);
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -77,6 +77,7 @@ async function boot() {
     item.t.load(activeStates()).catch(() => { item.started = false; item.key = ''; item.t.ex.fail('Could not load the data. Reload the page to try again.'); });
   }
   // what the Operators and Companies pages say about the states shown. Companies are the Texas Comptroller's records, so they are Texas only.
+  const MAP_TX = 'County activity, permit locations and energy facilities across Texas. Shading and counts use every permit; dots show the ones with a recorded location.';
   const TX_WHAT = 'Active RRC registrants that are corporations, LLCs or limited partnerships, ranked by drilling permits.';
   function pageTexts() {
     const ids = activeStates();
@@ -84,6 +85,9 @@ async function boot() {
     $('#ops-what').textContent = ids.length === 1 && ids[0] === 'TX' ? TX_WHAT
       : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.';
     const tx = ids.includes('TX');
+    $('#map-lede').textContent = ids.length === 1 && tx ? MAP_TX
+      : 'County activity and permit locations across ' + listAnd(ids.map((id) => stateOf(id).name)) + '. Shading and counts use every ' + (sameMeasure(ids) ? measureOf(ids[0]).one : 'permit and every spud')
+        + '; dots show the ones with a recorded location.' + (tx ? ' Plants, company ZIPs and basins are Texas only.' : '');
     $('#co-root').hidden = !tx;
     const co = $('#co-note');
     co.hidden = tx && ids.length === 1;
@@ -170,9 +174,11 @@ async function boot() {
     bar.set(choice(), false);
     syncAddress();
     overview.stale();
+    pageTexts();
     if (shown === 'overview') overview.show(ids);
     else if (shown === 'daily') daily.setStates(ids);
-    else if (shown === 'operators' || shown === 'companies') { pageTexts(); ensure(shown); }
+    else if (shown === 'map') map.setStates();
+    else if (shown === 'operators' || shown === 'companies') ensure(shown);
     setNote();
   });
   window.addEventListener('hashchange', () => show(true));

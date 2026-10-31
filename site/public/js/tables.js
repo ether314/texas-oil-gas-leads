@@ -1,10 +1,10 @@
 // Operators and Companies: filterable, sortable tables with CSV export and deep links (ported from v1, then extended).
-import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, replaceHash, monthLabel } from './util.js';
+import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, queryText, replaceHash, monthLabel } from './util.js';
 import { spark, delta } from './charts.js';
 import { getGeo, getPoints, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
 import { stateOf, measureOf } from './states.js';
-import { stateOperatorRows } from './overview-data.js';
+import { stateOperatorRows, operatorExtras } from './overview-data.js';
 
 const BAND_ORDER = { A: 0, B: 1, C: 2, D: 3, '': 4 };
 const BAND_TITLES = {
@@ -83,7 +83,7 @@ export function explorer(cfg, meta) {
   const empty = el('p', { class: 'empty', text: 'No rows match these filters.', hidden: true });
   const more = el('button', { type: 'button', class: 'btn', hidden: true });
   const csvBtn = el('button', { type: 'button', class: 'btn', disabled: true, text: 'Download CSV' });
-  const shareBtn = shareButton(() => absoluteLink('#' + cfg.view + (serialize().toString() ? '?' + serialize().toString().replace(/%2C/g, ',') : '')));
+  const shareBtn = shareButton(() => absoluteLink('#' + cfg.view + (serialize().toString() ? '?' + queryText(serialize()) : '')));
   const table = el('table', { class: 'grid' }, el('caption', { class: 'sr-only', text: cfg.caption }), el('thead', {}, el('tr', {}, ths)), tbody);
   const wrap = el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': cfg.caption }, table);
   root.append(el('div', { class: 'filters' }, controls), status, wrap, empty, el('div', { class: 'actions' }, more, csvBtn, shareBtn));
@@ -248,8 +248,7 @@ function operatorsConfig(ctx) {
       { key: 'band', label: 'Band', hint: 'Drilling activity band', render: (r) => chip(r.band), sort: (r) => BAND_ORDER[r.band] },
       {
         key: 'name', label: 'Operator', cls: 'name', sort: (r) => r.name.toLowerCase(),
-        // the Map links are Texas's until the Map reads the other states too
-        render: (r) => el('span', { class: 'op-name' }, r.name, r.st === 'TX' && ctx.hasPts.has(r.num) ? mapLink('#map?op=' + r.num, 'Show ' + r.name + ' on the map') : null),
+        render: (r) => el('span', { class: 'op-name' }, r.name, ctx.hasPts.has(r.num) ? mapLink('#map?op=' + r.num, 'Show ' + r.name + ' on the map') : null),
       },
       { key: 'type', label: 'Type', render: (r) => TYPE_SHORT[r.type] || r.type, sort: (r) => r.type },
       { key: 'loc', label: 'Location', cls: 'loc', render: place, sort: (r) => (r.state + r.city).toLowerCase(), filled: (r) => r.city || r.state },
@@ -283,7 +282,7 @@ function operatorsConfig(ctx) {
       },
       {
         key: 'county', label: 'Top county', hint: 'County with the most of its permits in the last 24 months', cls: 'loc',
-        render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? (r.st === 'TX' ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : cname(r.x.fips)) : 'n/a'),
+        render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : 'n/a'),
         sort: (r) => (r.x ? (r.x.fips ? cname(r.x.fips).toLowerCase() : '￿') : null),
       },
       { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => fmtDate(r.last), sort: (r) => r.last },
@@ -400,7 +399,7 @@ export function createTables(meta) {
         // another state's operators fill the same cells from their own file; what only Texas has (P-5 roles and districts, production, reported spud dates) stays blank
         others.forEach((id, i) => {
           for (const r of stateOperatorRows(id, docs[i])) {
-            r.x = { prev12: r.prev12, spud12: null, depth: r.depth, fips: r.county, counties: r.counties, m24: r.m24 };
+            r.x = operatorExtras(r);
             r.h = halves(r.m24); r.p = null; r.roles = ''; r.specialties = ''; r.dist = ''; r.newP5 = 0; r.zip = '';
             // a state that counts wells spudded has no "all permits" figure: blank, not the same number again
             if (measureOf(id).id === 'spuds') { r.all12 = null; r.all24 = null; }
