@@ -62,6 +62,12 @@ public records, but they can carry the names, phone numbers and street addresses
 repository and its site are public. Completion images stay blurred and unpublished. To go back, remove `--publish-docs` from
 `.github/workflows/daily-rrc-report.yml` and delete the `daily-*` releases; details are in `site/pipeline/NOTES_D7.md`.
 
+**A gate before anything is published.** Each Daily producer's `--check` runs in the nightly before the commit: every day file is scanned for an e-mail address, a web address and a phone number (and, for Oklahoma and New Mexico, a run of ten digits, since they publish
+no API numbers), and every operator name it publishes must pass the state's rule. A night that fails is dropped, not published (`site/pipeline/privacy_check.py`, `tests/test_privacy_gate.py`, which also scans every published data file).
+
+**What the gate cannot undo.** Before the dba rule existed (fixed 2026-10-31, PR #18) two Oklahoma day files named two sole proprietors ("... DBA ..."). The current files are clean, but the two earlier versions are still readable in the git history of `main` and of `gh-pages`
+(`site/public/data/daily-ok/2026-08-26.json` and `2026-10-27.json` as first committed). Removing them needs a rewrite of history, which the rules for this repository forbid without the owner's decision, and a request to GitHub Support to purge cached views and pull-request refs.
+
 ## Run it
 ```
 python3 -m http.server 8000 --directory site/public

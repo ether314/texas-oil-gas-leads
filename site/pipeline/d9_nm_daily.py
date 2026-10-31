@@ -39,6 +39,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.dirname(HERE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path
 import d8_ok_daily as D  # noqa: E402
+import privacy_check  # noqa: E402
 
 LAYER = "https://gis.emnrd.nm.gov/arcgis/rest/services/OCDView/API_Export/MapServer/0"
 UA = "Mozilla/5.0 (research script)"
@@ -73,7 +74,7 @@ def query(params, retries=4):
         except Exception as e:  # noqa: BLE001 - network hiccups, 5xx, an ArcGIS error page
             last = e
             time.sleep(2 + 3 * i)
-    raise RuntimeError("could not read the New Mexico wells layer: %r" % last)
+    raise RuntimeError("could not read the New Mexico wells layer: %s" % D.clean_error(last))
 
 
 def fetch_approvals(since):
@@ -397,7 +398,11 @@ def validate(out_dir, keep=KEEP_DAYS):
         check(rep.get("kind") in ("live", "reconstructed"), "%s: unknown kind" % f)
         check([d.get("id") for d in rep.get("datasets", [])] == [s["id"] for s in DATASETS], "%s: the dataset list is not the two OCD datasets" % f)
         check(os.path.getsize(path) <= BUDGET_BYTES["day"], "%s is over its size budget" % f)
-        check(not re.search(r"\b\d\d-\d\d\d-\d{5}\b|@|https?://", text), "%s: holds an API number, an address or a link" % f)
+        check(not re.search(r"\b\d\d-\d\d\d-\d{5}\b", text), "%s: holds an API number" % f)
+        for why in privacy_check.scan(text, digits=True):
+            bad.append("%s holds %s" % (f, why))
+        for name in D.published_operator_names(rep):
+            check(D.nameable(name), "%s: names an operator the naming rule refuses (%s)" % (f, privacy_check.mask(name)))
         p = rep.get("permits")
         if p:
             check(0 <= p["horizontal"] + p["directional"] + p["vertical"] <= p["newDrill"] <= p["total"], "%s: permit counts do not nest" % f)
@@ -489,7 +494,7 @@ def main():
         inv = fetch_inventory()
         log("wells         ok (%d wells, %d active)" % (sum(inv["status"].values()), inv["status"].get("Active", 0)))
     except Exception as e:  # noqa: BLE001 - the permits are still a report; this makes it partial
-        inv_error = str(e)
+        inv_error = D.clean_error(e, 200)
         log("wells         SKIPPED (%s)" % e)
     reports = build_reports(dates, group_by_day(rows), kind_by_date, lk, central_digits(edit) if edit else None, inv, inv_error)
     live = reports[R]

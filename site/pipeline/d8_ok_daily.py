@@ -47,6 +47,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.dirname(HERE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path
 import ok_xlsx  # noqa: E402
+import privacy_check  # noqa: E402
 
 PAGE = "https://oklahoma.gov/occ/divisions/oil-gas/oil-gas-data.html"
 FILES = "https://oklahoma.gov/content/dam/ok/en/occ/documents/og/ogdatafiles/"
@@ -98,9 +99,7 @@ def log(msg):
     print(msg, flush=True)
 
 
-def clean_error(e, n=160):
-    """An error as short text for a report: no address (the data files and the page's text never carry a link), no line breaks."""
-    return re.sub(r"https?://\S+", "<address>", " ".join(str(e).split()))[:n]
+clean_error = privacy_check.clean_error  # one short line, no address, markup or path (shared with the Texas and New Mexico producers)
 
 
 # ------------------------------------------------------------------------------------------------ small helpers
@@ -187,6 +186,17 @@ COMMON_SHORT = {"OIL", "GAS", "AND", "THE", "OF", "FOR", "INC", "CO", "LLC", "LP
                 "FAR", "FIR", "FLY", "GOLD", "HAT", "ICE", "JET", "KEY", "LAW", "MAN", "MAP", "MUD", "NET", "OX", "PAN", "PEN", "PIN", "RAM", "RAY", "ROY",
                 "SAN", "TEN", "TIN", "TOP", "TOW", "WAR", "WAY", "WEST", "WIN", "ZIP", "OK"}
 KEEP_CASE = {"LLC": "LLC", "LP": "LP", "LLP": "LLP", "LLLP": "LLLP", "PLLC": "PLLC", "II": "II", "III": "III", "IV": "IV", "USA": "USA", "OK": "OK", "OKC": "OKC", "LTD": "Ltd"}
+
+
+def published_operator_names(rep):
+    """The operator names an Oklahoma or New Mexico day report publishes, where the sections put them: the name items of the operators, buyers and
+    sellers rows and of the wells' rows, and a top test's operator."""
+    out = []
+    for sec, key in (("permits", "operators"), ("completions", "operators"), ("transfers", "buyers"), ("transfers", "sellers"), ("wells", "operators")):
+        for r in (rep.get(sec) or {}).get(key) or []:
+            out += [x for x in (r if isinstance(r, list) else [r]) if isinstance(x, str) and re.search(r"[A-Za-z]", x) and not x.isdigit()]
+    out += [t.get("operator") for t in (rep.get("completions") or {}).get("tests") or [] if isinstance(t, dict) and t.get("operator")]
+    return out
 
 
 def pretty(name):
@@ -639,6 +649,10 @@ def validate(out_dir, keep=KEEP_DAYS):
         if not isinstance(rep, dict):
             bad.append("%s is not JSON" % f)
             continue
+        for why in privacy_check.scan(open(path, encoding="utf-8").read(), digits=True):
+            bad.append("%s holds %s" % (f, why))
+        for name in published_operator_names(rep):
+            check(nameable(name), "%s: names an operator the naming rule refuses (%s)" % (f, privacy_check.mask(name)))
         check(rep.get("v") == 1 and rep.get("date") == f[:-5] and rep.get("state") == "OK", "%s: wrong version, date or state" % f)
         check(rep.get("kind") in ("live", "reconstructed"), "%s: unknown kind" % f)
         check([d.get("id") for d in rep.get("datasets", [])] == ids, "%s: the dataset list is not the four OCC datasets" % f)

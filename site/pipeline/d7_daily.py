@@ -67,6 +67,7 @@ from rrc_share import Session, Share, ShareError, TooSlow  # noqa: E402
 import d7_packs  # noqa: E402
 import d7_locate  # noqa: E402
 import d7_release  # noqa: E402
+import privacy_check  # noqa: E402
 
 DATA_PAGE = "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/"
 UA = "Mozilla/5.0 (research script)"
@@ -212,19 +213,23 @@ def usable_day(rep):
             and isinstance(rep.get("datasets"), list) and all(isinstance(d, dict) for d in rep["datasets"]))
 
 
+def published_names(rep):
+    """The operator names a Texas day report publishes, wherever its sections put them (the operators lists, the permit and pending rows, a top test)."""
+    out = []
+    for sec in ("permits", "pending", "completions"):
+        out += [r[1] if isinstance(r, list) and len(r) > 1 else None for r in (rep.get(sec) or {}).get("operators") or []]
+    out += [r[4] if isinstance(r, list) and len(r) > 4 else None for r in (rep.get("permits") or {}).get("rows") or []]
+    out += [r[1] if isinstance(r, list) and len(r) > 1 else None for r in (rep.get("pending") or {}).get("rows") or []]
+    out += [t.get("operator") if isinstance(t, dict) else None for t in (rep.get("completions") or {}).get("topTests") or []]
+    return [n for n in out if isinstance(n, str) and n]
+
+
 def worth(rep):
     """What a day report holds, for choosing between two of one day: the datasets it read, then whether its document links are there."""
     return (sum(1 for d in rep.get("datasets", []) if not d.get("error")), 1 if rep.get("release") else 0)
 
 
-def clean_error(e, n=160):
-    """An error as one short line for a report: no web address, no server markup, no path on the machine that ran it. The data files
-    and the page never carry them; the log has the whole text."""
-    text = html.unescape(str(e))
-    text = re.sub(r"<[^>]*>", " ", text)  # a server's error page
-    text = re.sub(r"https?://[^\s\"'<>)\]]+", "<address>", text)
-    text = re.sub(r"(?<![\w<])/(?:[\w.-]+/)+[\w.-]*", "<path>", text)  # /home/runner/work/...
-    return " ".join(text.split())[:n]
+clean_error = privacy_check.clean_error  # one short line, no address, markup or path (shared with the Oklahoma and New Mexico producers)
 
 
 class Lookups:
@@ -919,12 +924,18 @@ def validate(out_dir, keep=KEEP_DAYS):
     else:
         bad.append("index.json is missing or malformed")
     ids = [d["id"] for d in DATASETS]
+    allowed = set(Lookups().operator.values())  # the corporate operators that may be named (operators.json)
     for f in names:
         path = os.path.join(out_dir, f)
         rep = read_json(path)
         if not isinstance(rep, dict):
             bad.append("%s is not JSON" % f)
             continue
+        for why in privacy_check.scan(open(path, encoding="utf-8").read()):
+            bad.append("%s holds %s" % (f, why))
+        if f in names[-3:]:  # the days a night writes: an older day may name an operator that a later rebuild of the list dropped
+            for name in published_names(rep):
+                check(name in allowed, "%s: names an operator that is not on the corporate list (%s)" % (f, privacy_check.mask(name)))
         check(rep.get("v") == 1 and rep.get("date") == f[:-5], "%s: wrong version or date" % f)
         check(rep.get("kind") in ("live", "reconstructed"), "%s: unknown kind" % f)
         check([d.get("id") for d in rep.get("datasets", [])] == ids, "%s: the dataset list is not the six nightly datasets" % f)
