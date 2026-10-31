@@ -1,17 +1,19 @@
 # Oil tracker
 
 An interactive dashboard and map of oil and gas drilling activity, producing operators and the companies that serve
-them, for Texas and Oklahoma, built only from public records. It is a static site (HTML, CSS and JavaScript modules, no
+them, for Texas, Oklahoma and New Mexico, built only from public records. It is a static site (HTML, CSS and JavaScript modules, no
 build step, no external requests) plus the Python scripts that build its data files. (The repository and the live
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
-- **States**: a bar above the Overview and the Daily report chooses what is shown: all the states (Texas and Oklahoma now), or one. The choice
-  is kept in the address (`st=ok`; nothing means all) and follows you between those views. A view says so when one state cannot give a figure
-  (Oklahoma has no company pool, rig counts, jobs, taxes or production by county here).
+- **States**: a bar above the Overview and the Daily report chooses what is shown: all the states (Texas, Oklahoma and New Mexico), or one. The choice
+  is kept in the address (`st=ok`; nothing means all) and follows you between those views. A view says so when a state cannot give a figure
+  (Oklahoma and New Mexico have no company pool, rig counts, jobs, taxes or production by county here, and no New Mexico Daily report yet).
+  Texas and Oklahoma count permits by approval date; New Mexico publishes no approval dates by well, so its figures are wells spudded, named as
+  such wherever they show, never added to the permits, and ending two months back because spud dates arrive late (`site/pipeline/NOTES_D9.md`).
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
   top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
-  operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple).
+  operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green).
 - **Map**: county shading (permits, oil and gas production and change, well depth, oil and gas jobs and wages,
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
   basin outlines and a time-lapse of permits.

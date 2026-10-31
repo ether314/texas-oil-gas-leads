@@ -28,6 +28,10 @@ check(same(S.parseStates('tx,ok'), ['TX', 'OK']) && same(S.parseStates('ok, tx')
 check(S.stateParam(ids) === null && S.stateParam(['OK']) === 'ok' && S.stateParam(['TX']) === 'tx', 'stateParam: nothing for all of them, the lowercase id for one');
 check(S.countyKey('TX', '001') === '001' && S.countyKey('OK', '001') === 'OK:001' && S.countyState('001') === 'TX' && S.countyState('OK:001') === 'OK' && S.countyCode('OK:001') === '001' && S.countyCode('001') === '001', 'county keys: Texas plain, every other state prefixed, and back again');
 check(S.pointCountyKey(48) === '048' && S.pointCountyKey(S.POINT_BLOCK * S.stateIndex('OK') + 129) === 'OK:129' && S.pointState(S.POINT_BLOCK + 1) === 'OK', 'permit point counties: the state number times 1000 plus the code');
+check(S.pointCountyKey(S.POINT_BLOCK * S.stateIndex('NM') + 45) === 'NM:045' && S.pointState(2 * S.POINT_BLOCK) === 'NM' && same(S.parseStates('nm'), ['NM']) && same(S.parseStates('tx,nm'), ['TX', 'NM']) && S.stateParam(['TX', 'NM']) === 'tx,nm', 'New Mexico: its point counties, its place in an address and in a list');
+check(S.measureOf('TX').id === 'permits' && S.measureOf('OK').id === 'permits' && S.measureOf('NM').id === 'spuds' && S.sameMeasure(['TX', 'OK']) && !S.sameMeasure(['OK', 'NM']) && S.sameMeasure(['NM']), 'measures: Texas and Oklahoma count permits, New Mexico wells spudded, and only like is added to like');
+check(S.measurePhrase(['TX']) === 'new-drill permits' && S.measurePhrase(['NM']) === 'wells spudded' && S.measurePhrase(['TX', 'OK']) === 'new-drill permits' && S.measurePhrase(['TX', 'OK', 'NM']) === 'new-drill permits (wells spudded in New Mexico)' && S.measurePhrase(['NM', 'TX']) === 'new-drill permits (wells spudded in New Mexico)', 'measurePhrase names what a mixed set counts');
+check(S.dailyStates.map((q) => q.id).join() === 'TX,OK' && S.STATES.find((q) => q.id === 'NM').dir === null, 'only Texas and Oklahoma have a Daily report (New Mexico\'s folder is null, so nothing asks for it)');
 {
   const heard = [];
   const off = S.onStates((x) => heard.push(x.join('+')));
@@ -48,6 +52,14 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   const sp = O.permitSeries(['TX', 'OK'], { TX: tx, OK: ok });
   check(same(sp.months, ['2025-01', '2025-02']) && same(sp.permits, [110, 121]) && same(sp.by.TX, [100, 110]) && same(sp.by.OK, [10, 11]) && same(sp.ids, ['TX', 'OK']), 'permitSeries: the months every state has (a lagging file ends the series, a missing month is not counted as zero), summed, and each state\'s own');
   check(same(O.permitSeries(['TX'], { TX: tx, OK: ok }).permits, [100, 110, 120]) && O.permitSeries(['OK'], { TX: tx }) === null && same(O.permitSeries(['TX', 'OK'], { TX: tx }).ids, ['TX']), 'permitSeries: one state is its own series; a state with no file is left out, none at all is null');
+  const nm = { months: ['2025-01', '2025-02', '2025-03', '2025-04'], permits: [1, 2, 3, 4], asOf: '2026-08-31', through: '2026-08-31', counties: { '025': { p12: 9, p12prev: 8, m: [], depth: null, ops: [['EOG INC', '7377', 9]] } } };
+  const spn = O.permitSeries(['TX', 'OK', 'NM'], { TX: tx, OK: ok, NM: nm });
+  check(same(spn.summed, ['TX', 'OK']) && same(spn.permits, [110, 121]) && same(spn.ids, ['TX', 'OK', 'NM']) && same(spn.own.NM.permits, [1, 2, 3, 4]) && same(spn.own.TX.months, tx.months), 'permitSeries: New Mexico counts something else, so it is not added in (the sum is Texas and Oklahoma on their common months) and keeps its own series on its own months');
+  const only = O.permitSeries(['NM'], { NM: nm });
+  check(same(only.summed, ['NM']) && same(only.permits, [1, 2, 3, 4]), 'permitSeries: with only New Mexico shown, its own spuds are the series');
+  check(O.ownTotals(spn, 'NM').to === '2025-04' || O.ownTotals({ own: { NM: { months: Array.from({ length: 24 }, (_, i) => 'm' + i), permits: Array(24).fill(2) } } }, 'NM').last === 24, 'ownTotals reads a state\'s own last 12 months');
+  const cpn = O.countyPermits(['TX', 'OK', 'NM'], { TX: tx, OK: ok, NM: nm });
+  check(same(Object.keys(cpn.counties), ['003', 'OK:003', 'NM:025']) && cpn.counties['NM:025'].ops[0][1] === 'NM:7377', 'countyPermits: New Mexico\'s counties and operators are keyed NM:');
   const t = O.permitTotals({ months: Array.from({ length: 24 }, (_, i) => 'm' + i), permits: [...Array(12).fill(1), ...Array(12).fill(3)] });
   check(t.last === 36 && t.prior === 12 && t.from === 'm12' && t.to === 'm23', 'permitTotals: the last 12 months and the 12 before');
   const cp = O.countyPermits(['TX', 'OK'], { TX: tx, OK: ok });
@@ -92,7 +104,7 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   const docs = (kind) => Object.fromEntries(S.STATES.map((s) => [s.id, files[s.id][kind]]));
   const sp = O.permitSeries(ids, docs('series'));
   const total = sp.permits.reduce((a, b) => a + b, 0);
-  check(sp.months.length >= 24 && total === ids.reduce((t, id) => t + sp.by[id].reduce((a, b) => a + b, 0), 0), 'the committed series merge into one of at least 24 months that adds up: ' + sp.months[0] + ' to ' + sp.months[sp.months.length - 1]);
+  check(sp.months.length >= 24 && total === sp.summed.reduce((t, id) => t + sp.by[id].reduce((a, b) => a + b, 0), 0) && sp.ids.length === ids.length && ids.every((id) => sp.own[id].months.length >= 24), 'the committed series merge into one of at least 24 months that adds up (' + sp.summed.join(' + ') + '): ' + sp.months[0] + ' to ' + sp.months[sp.months.length - 1]);
   const cp = O.countyPermits(ids, docs('county'));
   const geoKeys = new Set(S.STATES.flatMap((s) => files[s.id].geo.features.map((f) => S.countyKey(s.id, f.properties.f))));
   check(Object.keys(cp.counties).every((k) => geoKeys.has(k)), 'every county with permits (' + Object.keys(cp.counties).length + ') is a county on the map');

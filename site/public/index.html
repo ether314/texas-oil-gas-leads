@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
-<meta name="description" content="Oil tracker: where oil is being drilled right now. New-drill permits, the operators filing them and the companies that serve them, for Texas and Oklahoma, from public records.">
+<meta name="description" content="Oil tracker: where oil is being drilled right now. New-drill permits, the operators filing them and the companies that serve them, for Texas, Oklahoma and New Mexico, from public records.">
 <meta name="color-scheme" content="light dark">
 <title>Oil tracker</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -22,7 +22,7 @@
       <img class="brand-mark" src="favicon.svg" alt="" width="30" height="30">
       <span class="brand-text">
         <span class="brand-name">Oil tracker</span>
-        <span class="brand-sub">Texas and Oklahoma, from public records</span>
+        <span class="brand-sub">Texas, Oklahoma and New Mexico, from public records</span>
       </span>
     </a>
     <nav class="nav" aria-label="Sections">
@@ -302,6 +302,13 @@
         <li><a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" rel="noopener noreferrer">U.S. Census Bureau, cartographic boundary files</a>. The 77 Oklahoma county outlines (2025, 1:5,000,000), for the Oklahoma map.</li>
       </ul>
 
+      <h3>New Mexico</h3>
+      <ul class="plain">
+        <li><small class="fresh-cad src-cad">Publishes daily</small> <a href="https://ocd-hub-nm-emnrd.hub.arcgis.com/" rel="noopener noreferrer">New Mexico Oil Conservation Division, Oil and Gas Wells</a>, the well layer of the Division's Geospatial Hub (about 142,000 wells, refreshed daily). Read for the <a href="#overview?st=nm">Overview</a> as <strong>wells spudded</strong> by month since 2019, by county for the last 12 months and the 12 before, the operators that spudded a well in the last 24 months (named by the same corporate rule as the other states) and one point per well at its surface location, rounded to about 100 meters. <strong>It counts spuds, not permits</strong>: the Division publishes no permit approval date by well, and the layer's history cannot say which wells were added. Spud dates are reported about two months late, so the figures end 60 days back (August 31, 2026). The layer has a depth for 3% of new wells, so no depth is shown, and no office city or state.</li>
+        <li><small class="fresh-cad src-cad">Publishes monthly</small> <a href="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&amp;s=MCRFPNM1&amp;f=M" rel="noopener noreferrer">U.S. Energy Information Administration, New Mexico field production of crude oil</a> (thousand barrels a month, series MCRFPNM1, through August 2026). The newest months are EIA estimates that get revised. The Division's own monthly total for August agrees within 3%.</li>
+        <li><a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" rel="noopener noreferrer">U.S. Census Bureau, cartographic boundary files</a>. The 33 New Mexico county outlines (2025, 1:5,000,000).</li>
+      </ul>
+
       <h2>Method</h2>
       <ul class="plain">
         <li>Operators: all <span data-fill="registered"></span> active P-5 registrants, narrowed to the <span data-fill="opsShown"></span> that are corporations, LLCs or limited partnerships.</li>
@@ -322,6 +329,7 @@
         <li><strong>Series end on different dates.</strong> Permits run to October 7, 2026, rig counts to August 28, EIA Texas crude to July, tax receipts to August, jobs and prices to September, and the EIA outlook is a forecast to December 2027. Read each chip and chart against its own date.</li>
         <li>About 80% of Comptroller entities have no NAICS code. Service companies with generic names, no code and no RRC registration are not in the pool.</li>
         <li>Permits measure activity, not budget or need.</li>
+        <li><strong>New Mexico counts something else.</strong> Texas and Oklahoma publish permits by approval date; New Mexico does not, so its figures are wells spudded, which come about two months after the permit and arrive late. The Overview adds permits only to permits, names New Mexico's spuds wherever it shows them, and ends New Mexico's series two months back. It has no depth, rig counts, jobs, taxes, companies or production by county here.</li>
         <li><strong>Oklahoma is small beside Texas.</strong> The Commission approves about 3 new-drill permits a business day (Texas about 31), so single days swing: read the 20-day average. Its permit file does not say which wells are horizontal, it has no pending queue or image packs, its transfer file reaches back only about a month, and the well inventory is counted only on days captured live. Oklahoma jobs and rig counts are not shown: their sources could not be reached when the site was built. Beside the permits, its Overview has operators, active wells and crude production, and no company pool, taxes or production by county.</li>
         <li><strong>Permit dots are a located subset.</strong> The RRC publishes a surface location for 70% of new-drill permits in the last 24 months but only 40% of the last 12, and the gaps are uneven: January 2026 and April to October 2026 are thin, and the busiest counties (Midland, Reeves, Upton, Martin) have almost no dots. Do not read dot density, or the replay, as activity; read the shading and the counts.</li>
         <li>Seven offshore permits are in the statewide totals but not in any county or dot.</li>
