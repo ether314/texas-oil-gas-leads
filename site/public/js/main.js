@@ -10,10 +10,11 @@ import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
 import { createMapView } from './map.js';
 import { createTables } from './tables.js';
+import { createDailyView } from './daily.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator } from './ui.js';
 
-const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', about: 'Sources & method' };
+const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 
 function startHero() {
   const canvas = $('#hero-canvas'); const host = $('#hero');
@@ -26,7 +27,7 @@ function startHero() {
   }).catch(() => { $('#hero-note').textContent = 'The map backdrop could not be loaded.'; });
 }
 
-const ov = { meta: null, raw: null, markets: null, ops: null, cp: null, ex: null, G: null, B: null, prod: null, opProd: null, extra: {}, lazy: false };
+const ov = { meta: null, raw: null, markets: null, ops: null, cp: null, ex: null, G: null, B: null, prod: null, opProd: null, extra: {}, lazy: false, daily: null };
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -46,7 +47,9 @@ async function fillProdNote() {
 function freshnessItems() {
   const { meta, raw, extra, prod, opProd } = ov; const last = (arr) => arr[lastIdx(arr)];
   // cadence is how often the source publishes (from the pipeline notes), not how often this static site is rebuilt
-  const items = [{ icon: 'pin', label: 'Permits (Railroad Commission)', value: 'Issued to ' + fmtDate(meta.sources.latest_permit), cadence: 'daily' }];
+  const items = [{ icon: 'pin', label: 'Permits, monthly master (Railroad Commission)', value: 'Issued to ' + fmtDate(meta.sources.latest_permit), cadence: 'monthly' }];
+  const dl = ov.daily && ov.daily.days[ov.daily.days.length - 1];
+  if (dl && dl.dd) items.push({ icon: 'pin', label: 'Permits, nightly file (Daily report)', value: 'Issued to ' + fmtDate(dl.dd), cadence: 'nightly' });
   const sr = raw['series-production']; const pf = prod || opProd || sr;
   if (pf) {
     const thru = pf.completeThrough || pf.months[pf.months.length - 1];
@@ -70,9 +73,9 @@ async function loadOverview(meta) {
   ov.meta = meta;
   const sp = await loadOpt('series-permits');
   renderKpis(meta, sp);
-  const [raw, ops, cp, ex, G, B] = await Promise.all([loadMarketData(), loadOpt('operators'), loadOpt('county-permits'), loadOpt('operator-extras'),
-    getGeo().catch(() => null), getBasins().catch(() => null)]);
-  Object.assign(ov, { raw, ops, cp, ex, G, B });
+  const [raw, ops, cp, ex, G, B, daily] = await Promise.all([loadMarketData(), loadOpt('operators'), loadOpt('county-permits'), loadOpt('operator-extras'),
+    getGeo().catch(() => null), getBasins().catch(() => null), loadOpt('daily/index')]);
+  Object.assign(ov, { raw, ops, cp, ex, G, B, daily });
   const ticker = $('#ticker');
   const markets = initMarkets({ ticker, card: $('#pulse-card'), raw });
   ticker.setAttribute('aria-busy', 'false');
@@ -145,6 +148,7 @@ async function boot() {
 
   const tables = createTables(meta);
   const map = createMapView({ root: $('#map-root'), meta });
+  const daily = createDailyView({ root: $('#daily-root') });
   const lazy = { operators: { t: tables.operators, started: false }, companies: { t: tables.companies, started: false } };
   function ensure(name) {
     const item = lazy[name];
@@ -169,6 +173,7 @@ async function boot() {
     if (hasQuery && lazy[id]) lazy[id].t.ex.apply(params);
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
     ensure(id);
+    if (id === 'daily') daily.activate(params);
     if (id === 'about') fillProdNote();
     if (moveFocus) {
       if (shown !== id || hasQuery) window.scrollTo(0, 0);
