@@ -138,10 +138,10 @@ export function explorer(cfg, meta) {
   let timer = 0;
   search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { state.q = search.value; refresh(); }, 150); });
   more.addEventListener('click', () => { state.limit += 100; render(); });
-  // a name that starts with = + - or @ would run as a formula in a spreadsheet, so defuse it
+  // a name that starts with = + - or @ would run as a formula in a spreadsheet, so defuse it (a number cannot be a formula: a fall of -14.4 stays a number)
   const csvCell = (v) => {
     let s = v == null ? '' : String(v);
-    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (!(typeof v === 'number' && Number.isFinite(v)) && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   csvBtn.addEventListener('click', () => {

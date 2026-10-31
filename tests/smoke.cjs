@@ -334,6 +334,41 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 8. the Operators CSV for all three states: a column that says which state, figures a state does not publish left blank (never zero), and a fall stays a number
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#operators', { waitUntil: 'load' });
+      await page.waitForFunction(() => { const b = [...document.querySelectorAll('#ops-root button')].find((x) => /Download CSV/.test(x.textContent)); return b && !b.disabled; }, null, { timeout: 25000 });
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#ops-root button', { hasText: 'Download CSV' }).click()]);
+      const text = fs.readFileSync(await dl.path(), 'utf8').replace(/^\uFEFF/, '');
+      // a small reader for quoted fields (a name can hold a comma)
+      const table = [];
+      { let row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (q) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
+          else if (ch === '"') q = true;
+          else if (ch === ',') { row.push(cell); cell = ''; }
+          else if (ch === '\n') { row.push(cell.replace(/\r$/, '')); table.push(row); row = []; cell = ''; }
+          else cell += ch;
+        }
+        if (cell || row.length) { row.push(cell); table.push(row); } }
+      const head = table[0];
+      const col = (name) => head.indexOf(name);
+      const states = new Set(table.slice(1).map((r) => r[0]));
+      check(head[0] === 'data_state' && ['TX', 'OK', 'NM'].every((x) => states.has(x)), 'the CSV says which state each row is, and holds all three: ' + [...states].sort().join(','));
+      // New Mexico publishes no all-kinds permit count: the cell is empty, not 0
+      const nm = table.slice(1).filter((r) => r[0] === 'NM');
+      check(nm.length > 0 && nm.every((r) => r.length === head.length && r[col('all_permits_12m')] === '' && r[col('all_permits_24m')] === ''), 'a figure New Mexico does not publish is blank in its rows, not zero (' + nm.length + ' rows)');
+      check(!/(^|,)'-?\d/.test(text), 'no number was turned into text by the spreadsheet guard (a fall such as -14.4 has no apostrophe)');
+    } catch (e) {
+      check(false, 'the Operators CSV: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));
