@@ -28,6 +28,9 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   against five faults, whole runs of the producer on local copies of the files (a good file written and a second run changing nothing; a truncated file, spud dates that are not dates, swapped coordinates, a company file
   with none of the operators, total-depth dates before the spuds, an address in a name and a damaged areas file each refused with the committed files left as they were; a few odd rows tolerated), a year's wells agreeing across
   the series, the areas and the operators, ten mutants and the committed files, and the EIA's offshore crude series (`series-fo.json`: its plausible range, units, the page parser refusing Texas's, the Pacific offshore's and a per-day page); with `FO_REAL_FILES` set to a folder holding BSEE's three zips it reads the real ones.
+- `test_d11_nat.py`: the national report's data layer (`d11_nat_common.py`, `d11_nat_build.py`): a permit falls in exactly one band (amendments first, then reworks, re-entries, service wells), the fluid words, dates in the shapes
+  agencies use and the placeholders they put in, complete months only and the lag a spud-counting state needs, only corporations, LLCs and partnerships named, a band a source cannot tell published as null and never zero, the validator against 22 deliberate
+  faults, a refused write leaving the committed file alone, the merge keeping measures apart (a state that ends earlier is padded with null) and never adding the BLM into the states, four mutants, and the committed `national.json` and `nat/*.json`.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, a year's wells agreeing across the series, the counties and the operators,
   the validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,
@@ -46,6 +49,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   inside a sentence, "1 spud", a well dot against a permit dot, what a sidetrack is, the least an area needs to be ranked on its change), `overview-data.js` (the permit series, county counts,
   operators and permit points of the states shown, merged; a state with no file is left out, never counted as zero) and, on the committed
   files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
+- `test_js_data.mjs` also covers `national-data.js` (totals within a measure and never the BLM's, size classes, the stack and where its axis ends, the mix, the tile map covering every jurisdiction in the committed file).
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
   preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs them all on every pull request and push to `main`.
   It also drives the states bar: choosing a state changes the Overview and the address, the Daily report and the Operators page follow (the State
@@ -64,6 +68,8 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   Under print media it checks that a dark page prints light and that the header, states bar, controls and buttons stay off the paper.
   With the browser's clock set (Playwright's `page.clock`), it checks that the Daily report warns when its newest report is days behind today and not otherwise.
   With Texas's pending and completion files stubbed as unread it checks that the Daily cards say "could not be read" (and for which state) rather than "no pending set recorded" or "no completion filings".
+  The National report is driven too: the panel opens on the biggest state, a tile opens its panel and the address, a producing state with no data says "Not read yet" and never a figure, the count toggle changes the stack and the address,
+  a ranking row selects its tile, and the view shows no NaN, undefined, null or Infinity.
   It checks that every button draws its words as one piece (a label split into two flex items gets the icon's gap between its words, which read as a double space).
   It downloads the Operators CSV (a State column, blank not zero where a state publishes no figure, no number turned into text) and walks the archive's days (the newest, the oldest, every tenth and each day with an empty Texas queue) for rendered NaN, undefined, null or Infinity.
 - `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to

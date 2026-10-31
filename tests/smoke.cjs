@@ -47,6 +47,8 @@ const VIEWS = [
   ['#daily?st=nm&v=full', '#daily-root .dr-sec'],
   ['#oklahoma', '#daily-root .dr-hero', async (page) => (/st=ok/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open #daily?st=ok')],
   ['#about', '#view-about h1'],
+  ['#national', '#national-root button.nat-tile', async (page) => ((await page.locator('#national-root button.nat-tile').count()) === 35 ? null : 'the national tile map should have one button for each of the 35 jurisdictions')],
+  ['#national?s=NM&m=spuds', '#national-root .nat-panel h3', async (page) => (/New Mexico/.test(await page.locator('#national-root .nat-panel h3').first().innerText()) ? null : 'an address naming New Mexico should open its panel')],
 ];
 const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
 
@@ -761,6 +763,52 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the federal offshore: ' + e.message.split('\n')[0].slice(0, 200));
     }
     check(!errs.length, 'the federal offshore pages load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // the National report: the tile map, its panel, the count toggle and the ranking, with no NaN anywhere
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    try {
+      await page.goto(base + '#national', { waitUntil: 'load' });
+      await page.waitForSelector('#national-root button.nat-tile', { timeout: 25000 });
+      check(/Texas/.test(await page.locator('#national-root .nat-panel h3').first().innerText()), 'the national panel opens on the biggest state counting permits (Texas)');
+      await page.click('#national-root button.nat-tile[data-id="OK"]');
+      check(/Oklahoma/.test(await page.locator('#national-root .nat-panel h3').first().innerText()) && /s=OK/.test(await page.evaluate(() => location.hash)), 'a tile opens its panel and puts the state in the address');
+      check((await page.locator('#national-root button.nat-tile[aria-pressed="true"]').count()) === 1, 'exactly one tile is pressed');
+      await page.click('#national-root button.nat-tile[data-id="NM"]');
+      check(/not permits|spud/i.test(await page.locator('#national-root .nat-panel').innerText()), 'New Mexico\'s panel says it counts wells spudded');
+      // a producing state that has no data yet says so, and never shows a figure
+      const gapId = await page.evaluate(() => { const t = document.querySelector('#national-root button.nat-tile.t0'); return t ? t.dataset.id : null; });
+      if (gapId) {
+        await page.click('#national-root button.nat-tile[data-id="' + gapId + '"]');
+        const txt = await page.locator('#national-root .nat-panel').innerText();
+        check(/Not read yet/.test(txt) && /never as zero|not available/i.test(txt), 'a state with no data says "Not read yet" and that it is not available, never zero');
+      }
+      await page.click('#natm-spuds');
+      await page.waitForTimeout(300);
+      const keys = await page.locator('#national-root .nat-chart-keys').innerText();
+      check(/New Mexico/.test(keys) && !/Texas/.test(keys), 'the Wells spudded chart stacks only the states that count spuds: ' + keys.replace(/\s+/g, ' '));
+      check(/m=spuds/.test(await page.evaluate(() => location.hash)), 'the count toggle is kept in the address');
+      const rows = await page.locator('#national-root .nat-row').count();
+      check(rows >= 4, 'the ranking has a row for every state with data (' + rows + ')');
+      await page.click('#national-root .nat-row >> nth=0');
+      check((await page.locator('#national-root button.nat-tile[aria-pressed="true"]').count()) === 1, 'a ranking row selects its tile');
+      const text = await page.locator('#view-national').innerText();
+      check(!/NaN|undefined|Infinity|\bnull\b/.test(text), 'the national view shows no NaN, undefined, null or Infinity');
+      await page.goto(base + '#national?s=ZZ', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#national-root button.nat-tile', { timeout: 25000 });
+      check((await page.locator('#national-root .nat-panel h3').count()) >= 1, 'an unknown state in the address falls back to a panel');
+    } catch (e) {
+      check(false, 'the national report: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the national report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 
