@@ -1,7 +1,8 @@
 // Daily report visuals: inline-SVG charts built from the design tokens. Text nodes only; styles go through the CSSOM
 // (the page's Content-Security-Policy has no 'unsafe-inline'), so every dynamic value is a custom property.
-import { el, svg, fmt, reduced } from './util.js';
+import { el, svg, fmt, reduced, clamp } from './util.js';
 import { showTip, hideTip, tipRow } from './tip.js';
+import { toWorld } from './geo.js';
 
 /* ---------- dates (all UTC noon so a day never slips) ---------- */
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,9 +23,12 @@ const nice = (v) => (v <= 10 ? 10 : v <= 60 ? Math.ceil(v / 10) * 10 : Math.ceil
 const rise = (node, i) => { node.style.setProperty('--i', String(i)); return node; };
 
 /* ---------- permits per business day: stacked bars (horizontal / other), average line, the selected day lit ---------- */
-export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill permits' }) {
+// avgText names the average line (default: the average rounded to a whole number). A top of 12 or less is rounded up to a
+// multiple of 4 so every axis tick is a whole number (the Oklahoma counts are that small).
+export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill permits', sub = 'horizontal', avgText = null }) {
   const W = 640; const H = 236; const L = 34; const R = 8; const T = 24; const B = 30;
-  const n = days.length; const max = nice(Math.max(1, ...total, avg || 0));
+  const top = Math.max(1, ...total, avg || 0);
+  const n = days.length; const max = top <= 12 ? Math.ceil(top / 4) * 4 : nice(top);
   const cw = (W - L - R) / n; const bw = Math.max(3, cw * 0.68);
   const x = (i) => L + cw * i + (cw - bw) / 2; const y = (v) => T + (H - T - B) * (1 - v / max);
   const root = svg('svg', { class: 'dr-chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': label });
@@ -39,14 +43,14 @@ export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill pe
     g.append(rise(svg('rect', { class: 'dr-bar rest', x: x(i), y: y(t), width: bw, height: Math.max(0, y(0) - y(t)), rx: Math.min(3, bw / 3) }), i));
     if (h) g.append(rise(svg('rect', { class: 'dr-bar horiz', x: x(i), y: y(h), width: bw, height: Math.max(0, y(0) - y(h)), rx: Math.min(3, bw / 3) }), i));
     const hit = svg('rect', { class: 'dr-hit', x: L + cw * i, y: T, width: cw, height: H - T - B });
-    hit.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(fmt.format(t), unit), h ? tipRow(fmt.format(h), 'horizontal') : null], e.clientX, e.clientY));
+    hit.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(fmt.format(t), unit), h ? tipRow(fmt.format(h), sub) : null], e.clientX, e.clientY));
     hit.addEventListener('pointerleave', hideTip);
     g.append(hit);
     root.append(g);
   });
   if (avg) {
     root.append(svg('line', { class: 'dr-avg', x1: L, x2: W - R, y1: y(avg), y2: y(avg) }),
-      svg('text', { class: 'dr-ax avg', x: L + 5, y: y(avg) - 6, 'text-anchor': 'start', text: '20-day average ' + Math.round(avg) }));
+      svg('text', { class: 'dr-ax avg', x: L + 5, y: y(avg) - 6, 'text-anchor': 'start', text: '20-day average ' + (avgText || Math.round(avg)) }));
   }
   root.append(svg('text', { class: 'dr-val', x: x(last) + bw / 2, y: y(total[last]) - 6, 'text-anchor': 'middle', text: fmt.format(total[last]) }));
   const marks = [0, Math.floor(last / 2), last];
@@ -66,7 +70,8 @@ function countyPath(c) {
   }
   return dCache.get(c);
 }
-export function countyMap(G, layers, first) {
+export function countyMap(G, layers, first, opts = {}) {
+  const place = opts.state || 'Texas';
   const root = svg('svg', { class: 'dr-map', viewBox: '0 0 ' + G.W + ' ' + Math.ceil(G.H), role: 'img', 'aria-label': '' });
   const base = svg('g', { class: 'dr-counties' });
   const paths = new Map();
@@ -77,7 +82,7 @@ export function countyMap(G, layers, first) {
   const bub = svg('g', { class: 'dr-bubbles' });
   root.append(base, bub);
   let cur = null;
-  const unit = { permits: 'new-drill permits issued', pending: 'applications waiting', completions: 'completions approved' };
+  const unit = opts.unit || { permits: 'new-drill permits issued', pending: 'applications waiting', completions: 'completions approved' };
   function set(id) {
     cur = id;
     const L = layers[id] || { map: new Map(), label: '' };
@@ -92,9 +97,9 @@ export function countyMap(G, layers, first) {
       const r = 6 + 17 * Math.sqrt(v / max);
       if (i === 0 && !reduced()) bub.append(svg('circle', { class: 'dr-pulse', cx: c.lx, cy: c.ly, r }));
       bub.append(rise(svg('circle', { class: 'dr-bubble', cx: c.lx, cy: c.ly, r }), i));
-      if (i < 3) bub.append(svg('text', { class: 'dr-maplabel', x: c.lx, y: c.ly - r - 5, 'text-anchor': 'middle', text: c.n + ' · ' + v }));
+      if (i < 3) bub.append(svg('text', { class: 'dr-maplabel', x: c.lx, y: c.ly - r - 5, 'text-anchor': 'middle', text: c.n + ' · ' + fmt.format(v) }));
     });
-    root.setAttribute('aria-label', ranked.length ? 'Map of Texas counties. ' + ranked.slice(0, 3).map(([f, v]) => G.byFips.get(f).n + ' ' + v).join(', ') + ' ' + unit[id] + '.' : 'Map of Texas counties. No data for this layer.');
+    root.setAttribute('aria-label', ranked.length ? 'Map of ' + place + ' counties. ' + ranked.slice(0, 3).map(([f, v]) => G.byFips.get(f).n + ' ' + fmt.format(v)).join(', ') + ' ' + unit[id] + '.' : 'Map of ' + place + ' counties. No data for this layer.');
   }
   root.addEventListener('pointermove', (e) => {
     const f = e.target.dataset && e.target.dataset.f;
@@ -108,8 +113,139 @@ export function countyMap(G, layers, first) {
   return { el: root, set };
 }
 
+/* ---------- GPS map: one day's wells as points on the county map, with pan and zoom ----------
+   pts: [{ key, layer, f (county FIPS), lat, lon, aria, tip: [[strong, rest], ...] }]. Layers: 'permits' (dots) and 'surveys' (diamonds).
+   Wheel zoom needs Ctrl or Cmd (a trackpad pinch sends that), so the page still scrolls; the buttons and + / - do the same. */
+const GPS_AR = 3 / 2; // frame width over height; the CSS gives the frame aspect-ratio 3 / 2, so the viewBox never letterboxes
+export function gpsMap(G, pts, { onPick }) {
+  const W = G.W; const H = Math.ceil(G.H);
+  const full = { cx: W / 2, cy: H / 2, w: Math.max(W, H * GPS_AR) * 1.02 };
+  const view = { ...full };
+  const root = svg('svg', { class: 'dr-map dr-gps', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet', role: 'group', 'aria-label': 'Map of Texas counties with the day\'s wells as points. Each point is also listed in the table below the map.' });
+  const base = svg('g', { class: 'dr-counties' });
+  for (const c of G.counties) base.append(svg('path', { class: 'dr-county', d: countyPath(c), 'data-f': c.f }));
+  const labels = svg('g', { class: 'dr-gps-labels', 'aria-hidden': 'true' });
+  const counties = new Set(pts.map((p) => p.f));
+  for (const c of G.counties) if (counties.has(c.f)) labels.append(svg('text', { class: 'cl', x: c.lx, y: c.ly, 'text-anchor': 'middle', text: c.n }));
+  const ring = svg('circle', { class: 'dr-ring', r: 0, cx: -50, cy: -50 });
+  const dots = svg('g', { class: 'dr-pts' });
+  root.append(base, labels, dots, ring);
+
+  const nodes = pts.map((p) => {
+    const [x, y] = toWorld(p.lon, p.lat);
+    const diamond = p.layer === 'surveys';
+    const node = svg(diamond ? 'rect' : 'circle', { class: 'dr-pt ' + p.layer, tabindex: '-1', role: 'button', 'data-k': p.key, 'aria-label': p.aria });
+    if (diamond) node.setAttribute('transform', 'rotate(45 ' + x.toFixed(2) + ' ' + y.toFixed(2) + ')');
+    return { p, x, y, node, diamond, on: true };
+  });
+  nodes.sort((a, b) => (a.diamond ? 1 : 0) - (b.diamond ? 1 : 0)); // diamonds sit on top of dots
+  nodes.forEach((n) => dots.append(n.node));
+  const byKey = new Map(nodes.map((n) => [n.p.key, n]));
+  let selKey = null;
+
+  const clampView = () => { view.w = clamp(view.w, 12, full.w); view.cx = clamp(view.cx, 0, W); view.cy = clamp(view.cy, 0, H); };
+  function size(n, r) {
+    if (n.diamond) { const a = r * 0.88; n.node.setAttribute('x', (n.x - a).toFixed(2)); n.node.setAttribute('y', (n.y - a).toFixed(2)); n.node.setAttribute('width', (2 * a).toFixed(2)); n.node.setAttribute('height', (2 * a).toFixed(2)); } else { n.node.setAttribute('cx', n.x.toFixed(2)); n.node.setAttribute('cy', n.y.toFixed(2)); n.node.setAttribute('r', r.toFixed(2)); }
+  }
+  function apply() {
+    const h = view.w / GPS_AR;
+    root.setAttribute('viewBox', [view.cx - view.w / 2, view.cy - h / 2, view.w, h].map((v) => v.toFixed(2)).join(' '));
+    const px = root.getBoundingClientRect().width || 640;
+    const k = px / view.w; // screen pixels per world unit: points and labels keep their screen size at every zoom
+    root.style.setProperty('--lf', (12 / k).toFixed(3) + 'px');
+    nodes.forEach((n) => size(n, (n.p.key === selKey ? 8 : 5.6) / k));
+    const s = byKey.get(selKey);
+    if (s) { ring.setAttribute('cx', s.x.toFixed(2)); ring.setAttribute('cy', s.y.toFixed(2)); ring.setAttribute('r', (15 / k).toFixed(2)); } else ring.setAttribute('r', '0');
+    labels.style.display = view.w < 420 ? '' : 'none';
+    root.classList.toggle('zoomed', view.w < full.w * 0.9); // CSS: a zoomed map takes one-finger drags, an unzoomed one lets the page scroll
+  }
+  function fit() {
+    const v = nodes.filter((n) => n.on);
+    if (!v.length) Object.assign(view, full);
+    else {
+      const xs = v.map((n) => n.x); const ys = v.map((n) => n.y);
+      const x0 = Math.min(...xs); const x1 = Math.max(...xs); const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+      view.cx = (x0 + x1) / 2; view.cy = (y0 + y1) / 2;
+      view.w = Math.max((x1 - x0) * 1.3, (y1 - y0) * 1.3 * GPS_AR, 80);
+    }
+    clampView(); apply();
+  }
+  function zoomBy(f, cxp, cyp) {
+    const r = root.getBoundingClientRect();
+    const fx = cxp == null ? 0.5 : (cxp - r.left) / r.width; const fy = cyp == null ? 0.5 : (cyp - r.top) / r.height;
+    const nw = clamp(view.w / f, 12, full.w);
+    const wx = view.cx + (fx - 0.5) * view.w; const wy = view.cy + (fy - 0.5) * view.w / GPS_AR;
+    view.cx = wx - (fx - 0.5) * nw; view.cy = wy - (fy - 0.5) * nw / GPS_AR; view.w = nw;
+    clampView(); apply();
+  }
+  function setTab(n) { nodes.forEach((x) => x.node.setAttribute('tabindex', x === n ? '0' : '-1')); }
+  const tipFor = (n, x, y) => showTip(n.p.tip.map(([a, b]) => tipRow(a, b)), x, y);
+
+  /* pan, tooltip, pick */
+  let drag = null;
+  root.addEventListener('pointerdown', (e) => {
+    if (e.button > 0 || (e.target.closest && e.target.closest('.dr-pt'))) return;
+    drag = { x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy, id: e.pointerId };
+    try { root.setPointerCapture(e.pointerId); } catch (err) { /* a synthetic pointer */ }
+    hideTip();
+  });
+  root.addEventListener('pointermove', (e) => {
+    if (drag && e.pointerId === drag.id) {
+      const k = view.w / root.getBoundingClientRect().width;
+      view.cx = drag.cx - (e.clientX - drag.x) * k; view.cy = drag.cy - (e.clientY - drag.y) * k;
+      clampView(); apply(); return;
+    }
+    const t = e.target.closest && e.target.closest('.dr-pt');
+    if (t && byKey.has(t.dataset.k)) tipFor(byKey.get(t.dataset.k), e.clientX, e.clientY); else hideTip();
+  });
+  const endDrag = (e) => { if (drag && e.pointerId === drag.id) drag = null; };
+  root.addEventListener('pointerup', endDrag); root.addEventListener('pointercancel', endDrag);
+  root.addEventListener('pointerleave', hideTip);
+  root.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.dr-pt'); if (t) onPick(t.dataset.k); });
+  root.addEventListener('wheel', (e) => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); zoomBy(Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0022)), e.clientX, e.clientY); }, { passive: false });
+  root.addEventListener('focusin', (e) => { const t = e.target.closest && e.target.closest('.dr-pt'); if (t && byKey.has(t.dataset.k)) { const r = t.getBoundingClientRect(); tipFor(byKey.get(t.dataset.k), r.left + r.width / 2, r.bottom); } });
+  root.addEventListener('focusout', hideTip);
+  root.addEventListener('keydown', (e) => {
+    const t = e.target.closest && e.target.closest('.dr-pt');
+    if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onPick(t.dataset.k); return; }
+    if (t && ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault();
+      const v = nodes.filter((n) => n.on); const i = v.indexOf(byKey.get(t.dataset.k));
+      const j = e.key === 'Home' ? 0 : e.key === 'End' ? v.length - 1 : (i + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1) + v.length) % v.length;
+      setTab(v[j]); v[j].node.focus({ preventScroll: true }); return;
+    }
+    if (e.key === '+' || e.key === '=') zoomBy(1.5); else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.5); else if (e.key === '0') fit();
+  });
+
+  const wrap = el('div', { class: 'dr-gpswrap' }, root);
+  if ('ResizeObserver' in window) new ResizeObserver(() => apply()).observe(wrap);
+  fit();
+  const first = nodes[0];
+  if (first) setTab(first);
+
+  return {
+    el: wrap, fit, zoomIn: () => zoomBy(1.5), zoomOut: () => zoomBy(1 / 1.5),
+    all: () => { Object.assign(view, full); apply(); },
+    mark(key) {
+      selKey = byKey.has(key) ? key : null;
+      nodes.forEach((n) => n.node.classList.toggle('sel', n.p.key === selKey));
+      const s = byKey.get(selKey);
+      if (s) { dots.append(s.node); setTab(s); ring.classList.add('pulse'); }
+      apply();
+    },
+    // w: world units across, about a county and its neighbors (a county is 25-45 units wide)
+    focusOn(key, w = 110) { const n = byKey.get(key); if (!n) return; view.cx = n.x; view.cy = n.y; view.w = w; clampView(); apply(); },
+    setLayer(id, on) {
+      nodes.forEach((n) => { if (n.p.layer === id) { n.on = on; n.node.classList.toggle('off', !on); } });
+      const v = nodes.find((n) => n.on); if (v) setTab(v);
+    },
+  };
+}
+
 /* ---------- the 92-day ribbon: one bar per report day, the selected day lit; arrow keys move a day ---------- */
-export function ribbon({ days, selected, onPick }) {
+// words names the three figures in the tooltip; the Texas wording is the default
+const TX_WORDS = { permits: 'new-drill permits issued', queue: 'waiting for approval', completions: 'completions approved' };
+export function ribbon({ days, selected, onPick, words = TX_WORDS }) {
   const n = days.length; const bw = 9; const gap = 3; const W = n * (bw + gap) + 6; const H = 84; const T = 8; const B = 18;
   const vals = days.map((r) => (r.pFresh ? r.pn || 0 : 0));
   const max = Math.max(10, ...vals);
@@ -137,8 +273,9 @@ export function ribbon({ days, selected, onPick }) {
     const i = e.target.dataset && e.target.dataset.i;
     if (i == null) { hideTip(); return; }
     const r = days[+i];
-    showTip([tipRow(fmtDow(r.d), r.k === 'live' ? 'captured live' : 'reconstructed'), r.pFresh && r.pn != null ? tipRow(fmt.format(r.pn), 'new-drill permits issued ' + fmtMd(r.dd)) : null,
-      r.q != null ? tipRow(fmt.format(r.q), 'waiting for approval') : null, r.c != null ? tipRow(fmt.format(r.c), 'completions approved') : null], e.clientX, e.clientY);
+    showTip([tipRow(fmtDow(r.d), r.k === 'live' ? 'captured live' : 'reconstructed'), r.pFresh && r.pn != null ? tipRow(fmt.format(r.pn), words.permits + ' ' + fmtMd(r.dd)) : null,
+      r.q != null && words.queue ? tipRow(fmt.format(r.q), words.queue) : null, r.c != null ? tipRow(fmt.format(r.c), words.completions) : null,
+      r.t != null && words.transfers ? tipRow(fmt.format(r.t), words.transfers) : null], e.clientX, e.clientY);
   });
   root.addEventListener('pointerleave', hideTip);
   wrap.addEventListener('keydown', (e) => {
@@ -235,7 +372,7 @@ export function rankList(items, { color = 'var(--s2)', max, empty = 'Nothing to 
   if (!items.length) return el('p', { class: 'fine', text: empty });
   const top = max || Math.max(1, ...items.map((i) => i.value));
   items.forEach((it) => {
-    const bar = el('span', { class: 'bar' });
+    const bar = el('span', { class: 'bar' + (it.value > 0 ? '' : ' zero') });
     bar.style.setProperty('--p', String(it.value / top));
     const label = it.href ? el('a', { class: 'bar-label', href: it.href, text: it.label, title: it.label }) : el('span', { class: 'bar-label', text: it.label, title: it.label });
     ul.append(el('li', {}, el('div', { class: 'bar-row dr-rr' }, label, el('span', { class: 'bar-track' }, bar, el('span', { class: 'bar-value', text: it.valueText || fmt.format(it.value) })))));

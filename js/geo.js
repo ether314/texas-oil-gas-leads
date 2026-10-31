@@ -51,6 +51,12 @@ export function countyAt(G, x, y) {
   return -1;
 }
 
+// the projection is module state: a second state's shapes are built against their own box, then the Texas box is put back
+export function buildGeoIsolated(gj) {
+  const saved = { ...T };
+  try { return buildGeo(gj); } finally { Object.assign(T, saved); }
+}
+
 export function buildGeo(gj) {
   const polys = gj.features.map((f) => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates));
   let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
