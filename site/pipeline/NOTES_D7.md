@@ -342,6 +342,24 @@ What it found, and what the producer does now:
   backfill window, built again; `permits-series.json` of another shape is started again from what the permit files cover.
 - **A failure's text is published as one short line** (`clean_error`): no web address, no server markup (an error page), no path on the
   runner. The log keeps the whole text.
+- **A name or a date that is not a day cannot fail a dataset** (`named_date`, `oracle_date`, `pending_sets`): a stray `13-45-2026.zip`, a
+  pending set named for hour 99 or one submit date of "31-NOV" is skipped. **A zip named for a day after the one it landed on is not used**
+  (`landed_on`): a stray `11-05-2026.zip` listed on Oct 31 used to win, and the report showed its data under a status of ok.
+- **A file that is delivered but is not the file is a failed dataset, not a quiet zero** (the page then says "not available", the status is
+  partial and the backup run goes ahead): a Daily Permit File with no permit record (empty, or an error page), a pending export without its
+  columns (a UTF-8 byte-order mark is read through), a completions zip that holds files but no packet this script can read. The share client
+  also refuses a table with no files, a listing in which no time can be read, and one that did not come back newest first (the sort did not
+  apply, so its first rows are not the newest). Not refused: an empty completions zip (a day with no completions) and a Daily Permit File
+  with a few records (the first days of a month are mostly stragglers).
+- **A repair reaches back as far as the day it repairs.** The listings were sized by the number of report days in the run, so repairing one day
+  more than three days old (`--date`, backfill 7 finds the other days already there) read a listing that did not reach it and wrote the day
+  without its pending queue and image packs, status ok. They are sized from the oldest report day of the run to today (`ctx["span"]`).
+- **The capture has a time limit** (`--time-limit`, 19 minutes): after it no share request is started (`rrc_share.DEADLINE`), a pack download is
+  cut off at it, the uploads get 3 minutes more (`d7_release.DEADLINE`), and the report is written with what was read, inside the workflow's
+  25-minute step limit (a request already running can still take its own timeout). Before this a server that accepted and never answered
+  could hold the night for 37 minutes and the step was killed with nothing written.
+- Known and left alone: a cron start after Central midnight (more than 1 h 45 min late) writes the next day's report and does not refresh the
+  evening of the day before; the 04:20 backup is meant to cover a late start.
 
 ### Repairing a day
 

@@ -613,7 +613,230 @@ def s_errors(check):
           and ce("application/json is fine") == "application/json is fine", "clean_error: one line, cut to length, no address, no path, a media type left alone")
 
 
-SCENARIOS = {"healthy": s_healthy, "locator": s_locator, "sameday": s_sameday, "links": s_links, "rebuilt": s_rebuilt, "damaged": s_damaged, "errors": s_errors}
+def s_names(check):
+    def night_with(label, edit, expect_ok=True):
+        W = healthy_world()
+        edit(W)
+        out = fresh("names-" + str(abs(hash(label)) % 100000))
+        code, text, _ = run_night(W, out, ARGS)
+        rep = report(out, "2026-10-31") or {}
+        return code, rep, text
+
+    z = completions_zip()
+    stray = [("completions: a stray 13-45-2026.zip", lambda W: W.shares[G["completions"]].append(row("13-45-2026.zip", "2026-10-31T02:16:00", len(z), z))),
+             ("completions: a day-first 31-10-2026.zip", lambda W: W.shares[G["completions"]].append(row("31-10-2026.zip", "2026-10-31T02:16:00", len(z), z))),
+             ("w1images: subscriptions_2026-13-45.zip", lambda W: W.shares[G["w1images"]].append(row("subscriptions_2026-13-45.zip", "2026-10-31T10:18:07", 1000, b"PK"))),
+             ("dirsurveys: a stray 00-00-0000.zip", lambda W: W.shares[G["dirsurveys"]].append(row("00-00-0000.zip", "2026-10-31T07:55:00", 1000, b"PK"))),
+             ("pending: a set named ..._20261345120000", lambda W: W.shares[G["pending"]].append(row("dp_drilling_permit_pending_20261345120000.txt", "2026-10-31T10:00:00", 10, b""))),
+             ("pending: a set with the hour 99", lambda W: W.shares[G["pending"]].append(row("dp_wellbore_pending_20261030990000.txt", "2026-10-31T10:00:00", 10, b"")))]
+    for label, edit in stray:
+        code, rep, _ = night_with(label, edit)
+        check(code == 0 and rep.get("status") == "ok" and n_read(rep) == 6 and (rep.get("completions") or {}).get("approved") == 4 and "pending" in rep,
+              "%s: skipped, and the dataset is read as on any other night (exit %s, status %s, %d read)" % (label, code, rep.get("status"), n_read(rep)))
+
+    def bad_submit(W):  # one application whose submit date is a day that does not exist
+        for r_ in W.shares[G["pending"]]:
+            if r_["name"].startswith("dp_drilling_permit_pending_20261030"):
+                stamp = r_["name"][-18:-4]
+                r_["content"] = pending_pair(stamp, submit="31-NOV-26 10.44.57.000000 AM")[0]
+    code, rep, _ = night_with("a bad submit date", bad_submit)
+    check(code == 0 and rep.get("status") == "ok" and "pending" in rep, "a pending row whose submit date is not a day is read without it (exit %s, status %s)" % (code, rep.get("status")))
+
+    def future_zip(W):  # a zip named for a day that has not come, listed on Oct 31 at the same time as the real one
+        W.shares[G["completions"]].append(row("11-05-2026.zip", "2026-10-31T02:17:00", len(z), completions_zip(n_approved=9)))
+    code, rep, _ = night_with("a future-named zip", future_zip)
+    comp = rep.get("completions") or {}
+    check(code == 0 and comp.get("approved") == 4 and comp.get("day") == "2026-10-30" and dataset(rep, "completions").get("dataDay") == "2026-10-30",
+          "a zip named for a day after the one it landed on does not win: the report shows the real zip's day %s with %s approved" % (comp.get("day"), comp.get("approved")))
+    check(d7.landed_on({D(2026, 11, 5): row("x", "2026-10-31T02:17:00"), D(2026, 10, 30): row("y", "2026-10-31T02:16:00")}, D(2026, 10, 31)) == D(2026, 10, 30)
+          and d7.landed_on({D(2026, 10, 31): row("x", "2026-10-31T02:17:00")}, D(2026, 10, 31)) == D(2026, 10, 31), "landed_on: names after the day are skipped, the day's own is not")
+    check(d7.oracle_date("31-NOV-26 10.44.57.1 AM") is None and d7.oracle_date("30-OCT-26 10.44.57.128000 AM") == datetime(2026, 10, 30, 10, 44, 57) and d7.named_date("2026", "13", "45") is None
+          and d7.named_date("2026", "10", "30") == D(2026, 10, 30), "oracle_date and named_date: a day that does not exist is None, a real one is read")
+
+
+def s_unusable(check):
+    def case(label, edit, dataset_id, words):
+        W = healthy_world()
+        edit(W)
+        out = fresh("unusable-" + str(abs(hash(label)) % 100000))
+        code, text, _ = run_night(W, out, ARGS)
+        rep = report(out, "2026-10-31") or {}
+        err = (dataset(rep, dataset_id)["error"] or "") if rep else ""
+        check(code == 0 and rep.get("status") == "partial" and words in err and n_read(rep) == 5 and d7.captured_for_the_night(out, D(2026, 10, 31)) is None,
+              "%s is a failed dataset (partial, the other five read, the backup run goes ahead): %r" % (label, err[:90]))
+
+    def set_content(guid, match, content):
+        def edit(W):
+            for r_ in W.shares[G[guid]]:
+                if match(r_["name"]):
+                    r_["content"] = content(r_) if callable(content) else content
+        return edit
+
+    daf = lambda n: n == "daf420.dat"  # noqa: E731
+    case("a Daily Permit File that is empty", set_content("permits", daf, b""), "permits", "no permit records")
+    case("a Daily Permit File that is an HTML page", set_content("permits", daf, b"<html><body>Service unavailable</body></html>"), "permits", "no permit records")
+    pend = lambda n: n.startswith("dp_") and n.endswith(".txt") and "pending" in n and "filler" not in n  # noqa: E731
+    case("pending files that are empty", set_content("pending", pend, b""), "pending", "column")
+    case("pending files that are an HTML page", set_content("pending", pend, b"<html>503</html>"), "pending", "column")
+
+    def renamed(r_):
+        return r_["content"].replace(b"UNIVERSAL_DOC_NO", b"DOC_NO") if r_["content"] else r_["content"]
+    case("pending files with UNIVERSAL_DOC_NO renamed", set_content("pending", pend, renamed), "pending", "UNIVERSAL_DOC_NO")
+
+    def junk_zip():
+        bio = io.BytesIO()
+        with zipfile.ZipFile(bio, "w") as z:
+            z.writestr("readme/notes.txt", b"the layout changed")
+            z.writestr("08/other.dat", b"x")
+        return bio.getvalue()
+    case("a completions zip whose members are not packets", set_content("completions", lambda n: n.endswith(".zip"), junk_zip()), "completions", "not one completion packet")
+
+    # what must NOT be refused: a byte-order mark is read through, and a zip with nothing in it is a day with no completions
+    W = healthy_world()
+    set_content("pending", pend, lambda r_: b"\xef\xbb\xbf" + r_["content"] if r_["content"] else r_["content"])(W)
+    out = fresh("unusable-bom")
+    code, _, _ = run_night(W, out, ARGS)
+    rep = report(out, "2026-10-31") or {}
+    check(code == 0 and rep.get("status") == "ok" and (rep.get("pending") or {}).get("total", 0) > 0, "pending files that start with a UTF-8 byte-order mark are read (exit %s, status %s, %s queued)" % (code, rep.get("status"), (rep.get("pending") or {}).get("total")))
+    empty = io.BytesIO()
+    with zipfile.ZipFile(empty, "w"):
+        pass
+    W = healthy_world()
+    set_content("completions", lambda n: n.endswith(".zip"), empty.getvalue())(W)
+    out = fresh("unusable-emptyzip")
+    code, _, _ = run_night(W, out, ARGS)
+    rep = report(out, "2026-10-31") or {}
+    check(code == 0 and rep.get("status") == "ok" and (rep.get("completions") or {}).get("approved") == 0, "a completions zip with nothing in it is a day with no completions, not a failure (%s)" % (rep.get("completions") or {}).get("approved"))
+    # a Daily Permit File with a few records and nothing else is still a file (the first days of a month are mostly stragglers)
+    W = healthy_world(daf=daf_bytes([{"n": 1000, "county": "317", "issued": "20261029", "received": "20261026"}]))
+    out = fresh("unusable-fewpermits")
+    code, _, _ = run_night(W, out, ARGS)
+    check(code == 0 and (report(out, "2026-10-31") or {}).get("status") == "ok", "a Daily Permit File with a single record is read as it is")
+
+
+def s_listing(check):
+    """The real share client against a fake connection: a listing that is not a listing is an error."""
+    def page(rows, count=None):
+        trs = "".join('<tr data-ri="%d"><td class="NameColumn"><a id="fileTable:%d:j_id_2f" href="#">%s</a></td><td class="ModifiedOnColumn">%s</td><td class="SizeColumn">1 KB</td></tr>'
+                      % (i, i, n, m) for i, (n, m) in enumerate(rows))
+        return ('<form id="fileList" action="/link/x;jsessionid=AB"><input type="hidden" name="javax.faces.ViewState" value="vs1"/><table>%s</table>rowCount:%d</form>'
+                % (trs, len(rows) if count is None else count)).encode()
+
+    def ajax(rows):
+        body = "".join('<tr data-ri="%d"><td class="NameColumn"><a id="fileTable:%d:j_id_2f" href="#">%s</a></td><td class="ModifiedOnColumn">%s</td><td class="SizeColumn">1 KB</td></tr>'
+                       % (i, i, n, m) for i, (n, m) in enumerate(rows))
+        return ('<?xml version="1.0"?><partial-response><changes><update id="fileList"><![CDATA[%s]]></update></changes></partial-response>' % body).encode()
+
+    class Conn:
+        host = "mft.rrc.texas.gov"
+
+        def __init__(self, rows, count=None):
+            self.rows, self.count = rows, count
+            self.retries, self.attempts, self.timeout, self.deadline = 0, 18, 120, None
+
+        def request(self, method, path, data=None, headers=None, sink=None):
+            return (200, {}, page(self.rows, self.count) if method == "GET" else ajax(self.rows))
+
+    guid = G["permits"]
+
+    def listed(rows, count=None):
+        sh = rrc_share.Share(guid, Conn(rows, count))
+        sh.open()
+        return sh.newest(10)
+
+    good = [("a.zip", "10/30/26 9:45:28 AM"), ("b.zip", "10/29/26 9:45:28 AM")]
+    check([r["name"] for r in listed(good)] == ["a.zip", "b.zip"], "the real share client reads a proper listing, newest first")
+    try:
+        listed([], 0)
+        check(False, "a share that lists no files should be an error")
+    except rrc_share.ShareError as e:
+        check("lists no files" in str(e), "a table with no files is an error, not a share that has nothing: %s" % e)
+    try:
+        listed([("a.zip", "2026-10-30 09:45"), ("b.zip", "2026-10-29 09:45")])
+        check(False, "a listing whose times cannot be read should be an error")
+    except rrc_share.ShareError as e:
+        check("time this script can read" in str(e), "a listing in which no time can be read is an error: %s" % e)
+    try:
+        listed(list(reversed(good)))
+        check(False, "a listing that came back oldest first should be an error")
+    except rrc_share.ShareError as e:
+        check("newest first" in str(e), "a listing that came back oldest first is an error, not the newest files: %s" % e)
+    check(len(listed([("a.zip", "10/30/26 9:45:28 AM"), ("b.zip", "n/a"), ("c.zip", "10/29/26 9:45:28 AM")])) == 3, "one row with no readable time among readable ones is kept (it is skipped where days are picked)")
+
+
+def s_repair(check):
+    BIG = dict(since=D(2026, 10, 1), pend_since=D(2026, 10, 1))
+    base = fresh("repair-base")
+    code, text, _ = run_night(healthy_world(**BIG), base, ["--backfill", "30"])
+    sections = lambda r: tuple(k for k in ("permits", "pending", "completions", "w1images", "dirsurveys", "complimages") if k in r or (r.get("images") or {}).get(k))  # noqa: E731
+    check(code == 0 and len([f for f in os.listdir(base) if f[:2] == "20" and len(f) == 15]) >= 31, "the repair test starts from an archive of a month of days")
+    for back in (4, 5, 10):
+        day = D(2026, 10, 31) - timedelta(days=back)
+        out = fresh("repair-%d" % back)
+        shutil.rmtree(out)
+        shutil.copytree(base, out)
+        before = sections(report(out, day.isoformat()) or {})
+        code, text, _ = run_night(healthy_world(**BIG), out, ["--date", day.isoformat(), "--backfill", "7"])
+        after = report(out, day.isoformat()) or {}
+        check(code == 0 and len(before) >= 5 and sections(after) == before and after.get("kind") == "live" and after.get("status") == "ok",
+              "repairing a day %d days back keeps everything it had (%d sections before, %d after)" % (back, len(before), len(sections(after))))
+
+
+def s_budget(check):
+    import time as _time
+    saved = (rrc_share.DEADLINE, d7_release.DEADLINE)
+    try:
+        run_night(healthy_world(), fresh("budget"), ["--backfill", "0", "--time-limit", "7"])
+        now = _time.time()
+        check(rrc_share.DEADLINE is not None and abs(rrc_share.DEADLINE - (now + 7 * 60)) < 120 and d7_release.DEADLINE is not None and abs(d7_release.DEADLINE - (now + 10 * 60)) < 120,
+              "a capture sets a time limit for the share requests (7 minutes here) and gives the uploads 3 minutes more")
+        calls = []
+        sess = rrc_share.Session(attempts=3)
+        sess._once = lambda *a, **k: calls.append(1) or (_ for _ in ()).throw(OSError("never answers"))
+        rrc_share.DEADLINE = _time.time() - 1
+        try:
+            sess.request("GET", "/link/x")
+            check(False, "a request after the deadline should fail")
+        except rrc_share.ShareError as e:
+            check(not calls and "ran out of time" in str(e), "after the time limit no share request is started: %s" % e)
+        rrc_share.DEADLINE = _time.time() + 600
+        saved_sleep = rrc_share.time.sleep
+        rrc_share.time.sleep = lambda s_: None
+        try:
+            sess.request("GET", "/link/x")
+        except rrc_share.ShareError as e:
+            check(len(calls) == 3 and "failed after 3 tries" in str(e), "before the time limit a request still has all its tries (%d)" % len(calls))
+        finally:
+            rrc_share.time.sleep = saved_sleep
+        # a pack download is cut off at the capture's time limit when that comes before its own 8 minutes
+        seen = []
+        fake = types.SimpleNamespace(s=types.SimpleNamespace(attempts=0, timeout=0, deadline=None))
+
+        def fake_download(name, dest):
+            seen.append(fake.s.deadline)
+            raise rrc_share.TooSlow("went past its time budget")
+        fake.download = fake_download
+        rrc_share.DEADLINE = _time.time() + 120
+        d7.pack_preview(fake, {"dl": fresh("budget-pack"), "R": D(2026, 10, 31), "img_out": fresh("budget-img")}, "w1images", "x.zip")
+        check(len(seen) == 1 and seen[0] is not None and seen[0] <= rrc_share.DEADLINE + 0.001 and fake.s.deadline is None,
+              "a pack download is cut off at the capture's time limit when that is sooner than its own 8 minutes (%.0f s left of 120)" % (seen[0] - _time.time() if seen else -1))
+        d7_release.DEADLINE = _time.time() - 1
+        ran = []
+        saved_run = d7_release.subprocess.run
+        d7_release.subprocess.run = lambda *a, **k: ran.append(1)
+        try:
+            d7_release._gh(["release", "view", "x"])
+            check(False, "a gh call after the deadline should fail")
+        except d7_release.ReleaseError as e:
+            check(not ran and "ran out of time" in str(e), "after the time limit no upload is started: %s" % e)
+        finally:
+            d7_release.subprocess.run = saved_run
+    finally:
+        rrc_share.DEADLINE, d7_release.DEADLINE = saved
+
+
+SCENARIOS = {"healthy": s_healthy, "locator": s_locator, "sameday": s_sameday, "links": s_links, "rebuilt": s_rebuilt, "damaged": s_damaged, "errors": s_errors,
+             "names": s_names, "unusable": s_unusable, "listing": s_listing, "repair": s_repair, "budget": s_budget}
 
 
 def run_scenarios(names=None, quiet=False):
@@ -645,29 +868,34 @@ def mutants():
         exec(compile(src, path, "exec"), mod.__dict__)
         return mod
 
-    def mutant(name, scenario, daily=(), locate=()):
-        global d7
-        saved_d7, saved_loc, saved_mod = d7, d7_locate, sys.modules.get("d7_locate")
-        try:
-            loc = load(os.path.join(PIPE, "d7_locate.py"), "d7_locate", locate) if locate else d7_locate
-            mod = load(os.path.join(PIPE, "d7_daily.py"), "d7mut", daily) if daily else d7
-            if loc is None or mod is None:
+    FILES = {"daily": ("d7_daily.py", "d7mut"), "locate": ("d7_locate.py", "d7_locate"), "share": ("rrc_share.py", "rrc_share"), "release": ("d7_release.py", "d7_release")}
+
+    def mutant(name, scenario, **edits):
+        """edits: daily=, locate=, share= or release= is a list of (old text, new text) for that file; the scenario runs against the changed code."""
+        global d7, d7_locate, d7_release, rrc_share
+        saved = (d7, d7_locate, d7_release, rrc_share, {k: sys.modules.get(k) for k in ("d7_locate", "d7_release", "rrc_share")}, (d7.d7_locate, d7.d7_release, d7.rrc_share))
+        mods = {}
+        for key, patch in edits.items():
+            mods[key] = load(os.path.join(PIPE, FILES[key][0]), FILES[key][1], patch)
+            if mods[key] is None:
                 print("FAIL mutant cannot be made, the producer's text changed: %s" % name)
                 fails.append("mutant not made: " + name)
                 return
-            if locate:
-                sys.modules["d7_locate"] = loc
-                mod.d7_locate = loc
-            if daily:
-                mod.d7_locate = loc
-            d7 = mod
+        try:
+            loc, rel, shr, mod = mods.get("locate", d7_locate), mods.get("release", d7_release), mods.get("share", rrc_share), mods.get("daily", d7)
+            sys.modules["d7_locate"], sys.modules["d7_release"], sys.modules["rrc_share"] = loc, rel, shr
+            mod.d7_locate, mod.d7_release, mod.rrc_share = loc, rel, shr
+            d7, d7_locate, d7_release, rrc_share = mod, loc, rel, shr
             try:
                 got = run_scenarios({scenario}, quiet=True)
             except Exception as e:  # noqa: BLE001
                 got = ["crashed: %s" % e]
         finally:
-            d7 = saved_d7
-            sys.modules["d7_locate"] = saved_mod if saved_mod is not None else saved_loc
+            d7, d7_locate, d7_release, rrc_share = saved[:4]
+            for k, v in saved[4].items():
+                if v is not None:
+                    sys.modules[k] = v
+            d7.d7_locate, d7.d7_release, d7.rrc_share = saved[5]
         print(("ok   " if got else "FAIL ") + "mutant caught: %s (%d checks failed)" % (name, len(got)))
         if not got:
             fails.append("mutant survived: " + name)
@@ -684,6 +912,28 @@ def mutants():
     mutant("a series file of another shape is trusted", "damaged", daily=[("    if not (isinstance(old, dict) and all(isinstance(old.get(k), list)", "    if False and not (isinstance(old, dict) and all(isinstance(old.get(k), list)")])
     mutant("the previous report is trusted when it has no dataset list", "damaged", daily=[("if usable_day(prev) and prev.get(\"kind\") == \"live\" else None", "if prev and prev.get(\"kind\") == \"live\" else None")])
     mutant("an error is published as it came", "errors", daily=[("entry.update({\"error\": clean_error(job, 200) if job else \"not captured\", \"file\": None})", "entry.update({\"error\": str(job)[:200] if job else \"not captured\", \"file\": None})")])
+    mutant("a stray completions zip name fails the dataset", "names", daily=[("        d = named_date(m.group(3), m.group(1), m.group(2)) if m else None\n        if d:\n            zips[d] = r",
+                                                                                "        d = date(int(m.group(3)), int(m.group(1)), int(m.group(2))) if m else None\n        if d:\n            zips[d] = r")])
+    mutant("a stray image pack name fails the dataset", "names", daily=[("d, dist = named_date(m.group(1), m.group(2), m.group(3)), m.group(4)", "d, dist = date(int(m.group(1)), int(m.group(2)), int(m.group(3))), m.group(4)")])
+    mutant("a stray pending name fails the dataset", "names", daily=[("        try:\n            stamp = datetime.strptime(m.group(2), \"%Y%m%d%H%M%S\")\n        except ValueError:\n            continue  # a name with a day or a time that does not exist: skipped, not a reason to fail the dataset\n",
+                                                                     "        stamp = datetime.strptime(m.group(2), \"%Y%m%d%H%M%S\")\n")])
+    mutant("a submit date that does not exist fails the dataset", "names", daily=[("    try:\n        return datetime(2000 + int(m.group(3)), MONTHS[m.group(2)], int(m.group(1)), h, int(m.group(5)), int(m.group(6)))\n    except ValueError:\n        return None",
+                                                                                "    return datetime(2000 + int(m.group(3)), MONTHS[m.group(2)], int(m.group(1)), h, int(m.group(5)), int(m.group(6)))")])
+    mutant("a zip named for a later day wins", "names", daily=[(" and d <= day), default=None)", "), default=None)")])
+    mutant("an empty Daily Permit File is read as no permits", "unusable", daily=[("    if not out:  # an empty file", "    if False:  # an empty file")])
+    mutant("a pending export without its columns is read as an empty queue", "unusable", daily=[("    if missing:\n        raise ValueError(\"%s has no %s column", "    if False:\n        raise ValueError(\"%s has no %s column")])
+    mutant("a zip of files that are not packets is read as no completions", "unusable", daily=[("    if members and not packets:", "    if False:")])
+    mutant("a share table of nothing is a share with nothing", "listing", share=[("        if self.total == 0 and not rows:", "        if False:")])
+    mutant("a listing with no readable time is accepted", "listing", share=[("        if rows and not times:", "        if False:")])
+    mutant("a listing that is not newest first is accepted", "listing", share=[("        if len(times) >= 2 and times[0] < times[-1]:", "        if False:")])
+    mutant("a repair reaches back only as far as the number of days in the run", "repair", daily=[
+        ("24 * (ctx.get(\"span\", len(ctx[\"dates\"])) + 2)", "24 * (len(ctx[\"dates\"]) + 2)"),
+        ("sh.newest(ctx.get(\"span\", len(ctx[\"dates\"])) + 8)", "sh.newest(len(ctx[\"dates\"]) + 8)"),
+        ("* (ctx.get(\"span\", len(ctx[\"dates\"])) + 4)", "* (len(ctx[\"dates\"]) + 4)")])
+    mutant("the capture sets no time limit", "budget", daily=[("    rrc_share.DEADLINE = started + a.time_limit * 60\n", "    pass\n")])
+    mutant("a pack download may run past the capture's time limit", "budget", daily=[("        limit = min(limit, rrc_share.DEADLINE)  # never past", "        limit = limit  # never past")])
+    mutant("a share request is started after the time limit", "budget", share=[("                if DEADLINE is not None and time.time() > DEADLINE:", "                if False:")])
+    mutant("an upload is started after the time limit", "budget", release=[("        if left is not None and left < 20:", "        if False:")])
     return fails
 
 

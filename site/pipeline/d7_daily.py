@@ -62,6 +62,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.dirname(HERE)
 ROOT = os.path.dirname(SITE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path; rrc_share.py sits next to this file
+import rrc_share  # noqa: E402
 from rrc_share import Session, Share, ShareError, TooSlow  # noqa: E402
 import d7_packs  # noqa: E402
 import d7_locate  # noqa: E402
@@ -70,6 +71,7 @@ import d7_release  # noqa: E402
 DATA_PAGE = "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/"
 UA = "Mozilla/5.0 (research script)"
 KEEP_DAYS = 92
+TIME_LIMIT_MIN = 19  # after this no share request is started; the uploads get 3 minutes more; the workflow kills the step at 25
 PACK_SECONDS = 480  # a pack download gets this long (and 3 tries): the nightly capture waits for every dataset, so a stall must not hold it up
 EOM_GUID = "f5dfea9c-bb39-4a5e-a44e-fb522e088cba"  # Drilling Permit Master and Trailer, End of Month files
 DEFAULT_OUT = os.path.join(SITE, "public", "data", "daily")
@@ -153,12 +155,23 @@ def mdy(text):
 
 
 def oracle_date(text):
-    """'30-OCT-26 10.44.57.128000 AM' -> datetime or None."""
+    """'30-OCT-26 10.44.57.128000 AM' -> datetime or None (also for a day or a time that does not exist)."""
     m = re.match(r"(\d\d)-([A-Z]{3})-(\d\d) (\d\d)\.(\d\d)\.(\d\d)", text.strip())
     if not m or m.group(2) not in MONTHS:
         return None
     h = int(m.group(4)) % 12 + (12 if text.strip().upper().endswith("PM") else 0)
-    return datetime(2000 + int(m.group(3)), MONTHS[m.group(2)], int(m.group(1)), h, int(m.group(5)), int(m.group(6)))
+    try:
+        return datetime(2000 + int(m.group(3)), MONTHS[m.group(2)], int(m.group(1)), h, int(m.group(5)), int(m.group(6)))
+    except ValueError:
+        return None
+
+
+def named_date(year, month, day):
+    """date(year, month, day) from the digits of a file name, or None when they are not a day: a stray name on a share must not fail a whole dataset."""
+    try:
+        return date(int(year), int(month), int(day))
+    except ValueError:
+        return None
 
 
 def top(counter, n):
@@ -172,8 +185,9 @@ def listed_day(row):
 
 def landed_on(rows_by_day, day):
     """Of the dated files {named day: row} a share lists, the named day of the newest one that landed on `day`, or None.
-    A zip named for a day lands the next morning, so this is how a report finds the one that belongs to it."""
-    return max((d for d, r in rows_by_day.items() if listed_day(r) == day.isoformat()), default=None)
+    A zip named for a day lands the next morning, so this is how a report finds the one that belongs to it. A zip named for a day
+    after the one it landed on is not one of them (a stray file named 11-05-2026 listed on Oct 31 used to win, and the report showed its data)."""
+    return max((d for d, r in rows_by_day.items() if listed_day(r) == day.isoformat() and d <= day), default=None)  # a name later than the day it landed on is a typo, not a newer file
 
 
 def write_json(path, obj):
@@ -335,6 +349,8 @@ def read_daf(path):
             if m and LON_MIN <= float(m.group(1)) <= LON_MAX and LAT_MIN <= float(m.group(2)) <= LAT_MAX:
                 out[cur]["located"] = True
                 out[cur]["xy"] = (round(float(m.group(2)), 5), round(float(m.group(1)), 5))  # (lat, lon): the record is "longitude latitude"
+    if not out:  # an empty file, an error page and a changed layout all end here: the report says the file was not read, not that no permits were issued
+        raise ValueError("%s holds no permit records (%d bytes): it is not the Daily File this script reads" % (os.path.basename(path), len(data)))
     return out
 
 
@@ -457,17 +473,28 @@ def permits_job(ctx):
 
 # ------------------------------------------------------------------------------------------------ pending
 
-def read_delimited(path, delim):
+PENDING_COLS = ("UNIVERSAL_DOC_NO", "OPERATOR_NUMBER", "DISTRICT", "SUBMIT_DATE")  # without these a file is not the pending export (an empty queue still has its header)
+WELLBORE_COLS = ("UNIVERSAL_DOC_NO", "COUNTY_CODE")
+
+
+def read_delimited(path, delim, need=()):
     """Rows (dicts) of an RRC `}`-delimited export. The header may wrap mid-word at 750 characters; it ends at a blank
     line or at the first line that starts with a quote (data rows do). A data row is complete once it holds as many
-    delimiters as the header."""
+    delimiters as the header. A UTF-8 byte-order mark is skipped. When `need` names columns the header must have them: an error
+    page, an empty file or a renamed column raises ValueError instead of reading as a queue of nothing."""
     with open(path, "rb") as f:
-        lines = f.read().decode("latin-1").split("\n")
+        raw = f.read()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    lines = raw.decode("latin-1").split("\n")
     i, header = 0, ""
     while i < len(lines) and lines[i].strip() and not lines[i].startswith('"'):
         header += lines[i].rstrip("\r")
         i += 1
     cols = [c.strip() for c in header.rstrip(delim).split(delim)]
+    missing = [c for c in need if c not in cols]
+    if missing:
+        raise ValueError("%s has no %s column: it is not the export this script reads" % (os.path.basename(path), ", ".join(missing)))
     rows, buf = [], ""
     for line in lines[i:]:
         buf += line.rstrip("\r")
@@ -481,9 +508,14 @@ def pending_sets(rows):
     """Group a share listing into report sets: {(date, 'am'|'pm'): {kind: row}}. The time in the name is Central."""
     sets = collections.defaultdict(dict)
     for r in rows:
-        m = re.fullmatch(r"dp_(drilling_permit|wellbore)_pending_(\d{8})(\d{2})\d{4}\.txt", r["name"])
-        if m:
-            sets[(datetime.strptime(m.group(2), "%Y%m%d").date(), "am" if int(m.group(3)) < 14 else "pm")][m.group(1)] = r
+        m = re.fullmatch(r"dp_(drilling_permit|wellbore)_pending_(\d{14})\.txt", r["name"])
+        if not m:
+            continue
+        try:
+            stamp = datetime.strptime(m.group(2), "%Y%m%d%H%M%S")
+        except ValueError:
+            continue  # a name with a day or a time that does not exist: skipped, not a reason to fail the dataset
+        sets[(stamp.date(), "am" if stamp.hour < 14 else "pm")][m.group(1)] = r
     return sets
 
 
@@ -532,7 +564,7 @@ def pending_ready(listing):
     out = []
     for (named, half), files in sorted(pending_sets(listing).items()):
         stamps = [f["modified"] for f in files.values()]
-        if len(files) == 2 and all(stamps):
+        if len(files) == 2 and all(stamps) and named.isoformat() <= max(stamps)[:10]:  # a set named for a day after the one it landed on is a typo
             out.append((max(stamps)[:10], named, half, files))
     return out
 
@@ -541,7 +573,7 @@ def pending_job(ctx):
     sess = Session()
     sh = Share(ctx["guid"]["pending"], sess)
     sh.open()
-    listing = sh.newest(24 * (len(ctx["dates"]) + 2))
+    listing = sh.newest(24 * (ctx.get("span", len(ctx["dates"])) + 2))  # reach back as far as the oldest day this run reports on (a repair of an older day too)
     ready = pending_ready(listing)
     out, picked = {}, {}
     for day in ctx["dates"]:
@@ -550,8 +582,8 @@ def pending_job(ctx):
         for _, named, half, files in sets:
             stamp = files["drilling_permit"]["name"][-18:-4]
             dest = os.path.join(ctx["dl"], "pending-%s" % stamp)
-            prm = read_delimited(sh.download(files["drilling_permit"]["name"], dest), "}")
-            wb = read_delimited(sh.download(files["wellbore"]["name"], dest), "}")
+            prm = read_delimited(sh.download(files["drilling_permit"]["name"], dest), "}", need=PENDING_COLS)
+            wb = read_delimited(sh.download(files["wellbore"]["name"], dest), "}", need=WELLBORE_COLS)
             parts.append(("11 AM" if half == "am" else "5 PM", datetime.strptime(stamp, "%Y%m%d%H%M%S").isoformat(), prm, wb))
         if parts:
             out[day] = pending_section(max(s[1] for s in sets), parts, ctx["lk"])
@@ -580,15 +612,18 @@ def parse_packet(text, district, state):
 
 
 def read_completions(path):
-    packets = []
+    packets, members = [], 0
     with zipfile.ZipFile(path) as z:
         for info in z.infolist():
+            members += not info.is_dir()
             m = re.fullmatch(r"([0-9A-Za-z]+)/trackingNo_\d+/packetData_\d+_(Approved|Submitted)\.dat", info.filename)
             if not m or info.file_size > 5_000_000:
                 continue
             p = parse_packet(z.read(info).decode("latin-1"), m.group(1), m.group(2))
             if p:
                 packets.append(p)
+    if members and not packets:  # files, and not one packet this script can read: the layout has changed (an empty zip is a day with no completions)
+        raise ValueError("%s holds %d files but not one completion packet this script can read" % (os.path.basename(path), members))
     return packets
 
 
@@ -618,12 +653,13 @@ def completions_job(ctx):
     sess = Session()
     sh = Share(ctx["guid"]["completions"], sess)
     sh.open()
-    listing = sh.newest(len(ctx["dates"]) + 8)
+    listing = sh.newest(ctx.get("span", len(ctx["dates"])) + 8)
     zips = {}
     for r in listing:
         m = re.fullmatch(r"(\d\d)-(\d\d)-(\d{4})\.zip", r["name"])
-        if m:
-            zips[date(int(m.group(3)), int(m.group(1)), int(m.group(2)))] = r
+        d = named_date(m.group(3), m.group(1), m.group(2)) if m else None
+        if d:
+            zips[d] = r
     out, picked, read = {}, {}, {}
     for day in ctx["dates"]:
         use = landed_on(zips, day)  # the zip named for the day before lands at about 2:20 AM, so that is the one a day shows
@@ -641,17 +677,19 @@ def images_job(ctx, ds):
     sess = Session()
     sh = Share(ctx["guid"][ds], sess)
     sh.open()
-    listing = sh.newest((14 if ds == "w1images" else 1) * (len(ctx["dates"]) + 4))
+    listing = sh.newest((14 if ds == "w1images" else 1) * (ctx.get("span", len(ctx["dates"])) + 4))
     days = collections.defaultdict(lambda: {"name": None, "bytes": 0, "districts": {}, "modified": None})
     for r in listing:
         m = re.fullmatch(r"subscriptions_(\d{4})-(\d\d)-(\d\d)(?:_district(\w+))?\.zip", r["name"]) if ds == "w1images" else None
         if m:
-            d, dist = date(int(m.group(1)), int(m.group(2)), int(m.group(3))), m.group(4)
+            d, dist = named_date(m.group(1), m.group(2), m.group(3)), m.group(4)
         else:
             m = re.fullmatch(r"(\d\d)-(\d\d)-(\d{4})\.zip", r["name"])
             if not m:
                 continue
-            d, dist = date(int(m.group(3)), int(m.group(1)), int(m.group(2))), None
+            d, dist = named_date(m.group(3), m.group(1), m.group(2)), None
+        if d is None:
+            continue  # a stray name with a day that does not exist
         if dist:
             days[d]["districts"][dist] = r["bytes"] or 0
         else:
@@ -675,7 +713,10 @@ def pack_preview(sh, ctx, ds, name):
     {'docs': ..., 'sheet': ...} and the staged part is {'permits': ...} or {'surveys': ...}; either is None when it cannot be
     done. A pack that cannot be read never costs the dataset."""
     path, preview, staged = None, None, None
-    sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, time.time() + PACK_SECONDS
+    limit = time.time() + PACK_SECONDS
+    if rrc_share.DEADLINE is not None:
+        limit = min(limit, rrc_share.DEADLINE)  # never past the capture's own time limit, whatever is left of the pack's 8 minutes
+    sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, limit
     try:
         path = sh.download(name, os.path.join(ctx["dl"], "pack-%s-%s" % (ds, ctx["R"].isoformat())))
         try:
@@ -959,6 +1000,8 @@ def main():
                     "READABLE and unmodified, as the files of one GitHub release, and link each drill's page to its own (implies --packs; "
                     "needs the gh CLI and GH_TOKEN; the README's privacy section explains why this is an explicit choice)")
     ap.add_argument("--repo", help="owner/name of the repository whose release gets the files (default: GITHUB_REPOSITORY, else the origin remote)")
+    ap.add_argument("--time-limit", type=float, default=TIME_LIMIT_MIN, help="minutes after which no request is started and the report is written with what was read "
+                    "(default %(default)s; the workflow's step limit is 25)")
     a = ap.parse_args()
     if a.publish_docs:
         a.packs = True
@@ -978,6 +1021,9 @@ def main():
     if R > today:
         sys.exit("--date cannot be a day that has not started yet in Central time (today is %s)" % today)
     os.makedirs(a.out, exist_ok=True)
+    started = time.time()
+    rrc_share.DEADLINE = started + a.time_limit * 60
+    d7_release.DEADLINE = started + (a.time_limit + 3) * 60
     if a.skip_if_captured:
         when = captured_for_the_night(a.out, R)
         if when:
@@ -1020,7 +1066,7 @@ def main():
     stage = os.path.join(a.dl, "release", d7_release.tag_for(R)) if a.publish_docs else None
     if stage:
         shutil.rmtree(stage, ignore_errors=True)  # a leftover from an earlier run of this day must never be uploaded
-    ctx = {"R": R, "today": today, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img"), "stage": stage}
+    ctx = {"R": R, "today": today, "dates": dates, "span": (today - dates[0]).days + 1, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img"), "stage": stage}
     work = {"permits": permits_job, "pending": pending_job, "completions": completions_job,
             "w1images": lambda c: images_job(c, "w1images"), "dirsurveys": lambda c: images_job(c, "dirsurveys"),
             "complimages": lambda c: images_job(c, "complimages")}
