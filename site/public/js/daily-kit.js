@@ -22,7 +22,8 @@ export const table = (cols, rows, { cap = 'dr-table' } = {}) => el('div', { clas
     el('tbody', {}, rows.map((r) => el('tr', {}, r.map((v, i) => el('td', { class: cols[i].num ? 'num' : null }, v == null ? '—' : v)))))));
 export const chip = (cls, text) => el('span', { class: 'dr-pill ' + cls }, el('i', { class: 'dr-led' }), text);
 
-export function kpi({ ic, label, value, note, extra, vals, color, hero: big, gauge }) {
+// format turns the number into text (default: thousands separators), also while it counts up
+export function kpi({ ic, label, value, note, extra, vals, color, hero: big, gauge, format }) {
   const n = el('strong', { class: 'dr-kpi-num' });
   const c = el('div', { class: 'dr-kpi' + (big ? ' lead' : '') },
     el('div', { class: 'dr-kpi-top' }, icon(ic, 16), el('span', { text: label })),
@@ -31,6 +32,6 @@ export function kpi({ ic, label, value, note, extra, vals, color, hero: big, gau
     extra ? el('div', { class: 'dr-kpi-extra' }, extra) : null,
     vals && vals.length > 3 ? el('div', { class: 'dr-kpi-spark' }, spark(vals, { w: 160, h: 34, color, label: label + ', recent days' })) : null);
   c.style.setProperty('--kc', color);
-  if (value == null) n.textContent = '—'; else countUp(n, value);
+  if (value == null) n.textContent = '—'; else countUp(n, value, format);
   return c;
 }

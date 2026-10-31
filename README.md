@@ -25,8 +25,9 @@ centroids), EPA facility data and Baker Hughes rig counts (through Internet Arch
 Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
 `site/pipeline/NOTES_*.md`. The Daily report reads the six datasets the RRC lists as nightly or twice daily (permits, pending
 applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`. The Oklahoma report reads four files from the
-Oklahoma Corporation Commission (intents to drill, completions and well transfers daily; the well inventory nightly) and the
-Census outlines of Oklahoma's 77 counties; see `site/pipeline/NOTES_D8.md`.
+Oklahoma Corporation Commission (intents to drill, completions and well transfers daily; the well inventory nightly), the
+Census outlines of Oklahoma's 77 counties and, for its monthly card, EIA's Oklahoma crude oil production beside the oil and gas
+prices above; see `site/pipeline/NOTES_D8.md`.
 
 ## Privacy
 Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
@@ -55,7 +56,7 @@ The Oklahoma report is built the same way by `site/pipeline/d8_ok_daily.py` into
 workflow run, after the Texas capture. Its steps cannot stop the run: if the Oklahoma capture or its check fails, its changes are
 dropped before the commit and the Texas report is committed and published as usual. To fill its archive from the OCC's master
 files (230 MB, about 2 minutes): `python3 -I site/pipeline/d8_ok_daily.py --history`, or tick `oklahoma_history` when running the
-workflow by hand.
+workflow by hand. Its monthly card (Oklahoma crude production) is refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py`.
 
 ## Publishing
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
@@ -71,7 +72,8 @@ the two leading folders), add `.nojekyll`, commit and push.
   two can show permits through different dates. The report's source-health section says when a monthly rebuild is due.
 - The Oklahoma report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
   image packs, planned depth instead of horizontal (the permit file does not say), transfers for about the last month and the well
-  inventory only for days captured live. It does not rebuild the monthly tables, operator pages or company lists for Oklahoma.
+  inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host) and does
+  not rebuild the monthly tables, operator pages or company lists for Oklahoma.
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been

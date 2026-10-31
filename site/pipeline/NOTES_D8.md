@@ -1,12 +1,12 @@
 # NOTES_D8: the daily Oklahoma Corporation Commission report (producer D8)
 
-Scripts: `site/pipeline/d8_ok_daily.py` (the producer) and `site/pipeline/ok_xlsx.py` (a small .xlsx reader), both standard library
-only; run with `python3 -I`. A live capture takes about 10 s (most of it the 121 MB well file); rebuilding all 92 days from the
+Scripts: `site/pipeline/d8_ok_daily.py` (the producer), `site/pipeline/ok_xlsx.py` (a small .xlsx reader) and
+`site/pipeline/d8_ok_context.py` (one monthly series for the card under the map), all standard library only; run with `python3 -I`. A live capture takes about 10 s (most of it the 121 MB well file); rebuilding all 92 days from the
 master files takes about 2 minutes (2026-10-31). Page: `#oklahoma` (`js/ok-daily.js`, with `js/daily-viz.js` and `js/daily-kit.js`, which the
 Texas report shares). County shapes: `site/public/data/counties-ok.geo.json` (77 counties).
 
 Files in `site/public/data/daily-ok/`: `YYYY-MM-DD.json` (3-6 KB each, 92 kept) and `index.json` (one row per day, 14 KB). Budgets
-60 / 40 KB, enforced by `--check`.
+60 / 40 KB, enforced by `--check`. `site/public/data/series-ok.json` (2 KB) holds the monthly series.
 
 ## Read this first
 
@@ -86,6 +86,26 @@ when not, `first` when the previous report was rebuilt (nothing to compare), `er
 - **County**: digits 3-5 of the API number, which are the county's FIPS code (001 to 153, odd). 77 counties.
 - **Named share**: the share of the day's new-drill permits (or completions) that went to named operators.
 
+## The monthly figures card (`d8_ok_context.py`)
+
+Under the map and story the page shows three monthly figures with a year-on-year change and a three-year sparkline: **Oklahoma crude
+oil production** (EIA series MCRFPOK1, thousand barrels a month; 11,977 for August 2026, 1.7% below a year earlier) and the **WTI** and
+**Henry Hub** prices, which the page reads from `series-markets.json` (the Texas pages' file) instead of repeating. They are not for
+the report's day and change once a month, so each tile says which month it is. The card hides what is missing: without
+`series-ok.json` it keeps the two prices, without both files it is gone and the rest of the page is unchanged.
+
+`d8_ok_context.py` fetches the EIA page with the same code the Texas market series use (`d3_markets_infra.py`: the series title must
+match, so another series or the per-day one is refused; values must be 5,000 to 30,000), and writes `series-ok.json` (months from
+2019-01 to the newest month with a value, `okCrude`, units, source line with EIA's release date). It is run by hand when EIA
+publishes (about the end of the month: the 2026-10-30 release carried August); `--check` revalidates the file. The newest months
+are estimates that EIA revises.
+
+**Not included: Oklahoma oil and gas jobs and rig counts.** BLS State and Area Employment (series `SMU40000001021100001`, NAICS 211)
+is reachable through its keyless API (25 requests a day per address, the build host's allowance was used up) or its bulk files (which
+refuse a request with no contact in the User-Agent); Baker Hughes blocks scripts and its workbook copies are on the Internet Archive,
+which the build host could not reach (the connection is cut during the handshake). FRED was unreachable too. Both can be added from a
+host with access, the jobs by the same call `d5_federal.py` makes for Texas with the Oklahoma ids.
+
 ## Rebuilt days
 
 `--history` downloads the two master files, keeps the rows from ten days before the oldest day wanted, adds those the daily files
@@ -113,7 +133,10 @@ files hold only 7 days and an older day would be rebuilt from too little; older 
 5. Privacy: no API number, e-mail, link or street address anywhere in the archive; no field name outside the schema; all 165
    operators it names pass the naming rule; 2,965 operator names in the real files fail the rule and none of them (nor its
    display form) appears in any report.
-6. The page, in a real browser: tooltips, every map layer, ribbon click and arrow keys, the calendar, the verbose report, deep
+6. `series-ok.json`: `--check` accepts the committed file and reports each of eleven deliberate faults (a gap in the months, a value in
+   per-day units, series of different lengths, a newest month with no value and others); the EIA page parser reads thousands
+   separators, blanks and the release date and refuses the Texas series' page and the per-day page.
+7. The page, in a real browser: tooltips, every map layer, ribbon click and arrow keys, the calendar, the verbose report, deep
    links (an unknown day falls back to the latest), phone width without sideways scroll (390 px), light and dark, and no
    console or CSP error. The Texas Daily page renders byte-identical DOM before and after the shared building blocks moved to
    `daily-kit.js`, and the Texas Map draws identically after Oklahoma has been opened. These scripts were scratch work and are
@@ -129,6 +152,7 @@ python3 -I site/pipeline/d8_ok_daily.py --date 2026-10-30   # capture that repor
 python3 -I site/pipeline/d8_ok_daily.py --skip-if-captured  # exit quietly when the night's capture is already done
 python3 -I site/pipeline/d8_ok_daily.py --check          # only validate
 python3 -I site/pipeline/d8_ok_daily.py --counties       # rebuild counties-ok.geo.json from the Census county file
+python3 -I site/pipeline/d8_ok_context.py                # refresh series-ok.json from EIA (by hand, about the end of each month)
 ```
 `.github/workflows/daily-rrc-report.yml` runs it in the same job as the Texas capture, after it, at 03:15 and 04:20 UTC (the files
 are made at about 00:41 UTC in daylight time, so both runs are after). The Oklahoma steps cannot stop the job: the capture and its
@@ -137,6 +161,6 @@ committed, so a bad Oklahoma capture never reaches `main` and the Texas report i
 `oklahoma_history` input (a checkbox) refills the whole archive from the master files; `date` repairs a day for both states.
 Raw downloads go to `dl/daily-ok/` (gitignored with the rest of `dl/`).
 
-Known limits: counts are small; permits carry depth but not direction; completion formations are mostly blank; transfers reach back
+Known limits: no Oklahoma jobs or rig counts (above); counts are small; permits carry depth but not direction; completion formations are mostly blank; transfers reach back
 a month; rebuilt days have no inventory, catalog check or file states; the OCC does not publish a schedule, so the file times above
 were seen on one night (2026-10-30) and the 03:00 UTC cutoff leaves room for a later one.

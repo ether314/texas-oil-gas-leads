@@ -1,7 +1,7 @@
 // Oklahoma daily report: what the Oklahoma Corporation Commission's daily files held, one report per day for the last 92 days.
 // The same shape as the Texas report (daily.js): a simple version for the daily look and a verbose one with everything.
 // Each block hides itself if its data is missing. Operators are named only when the file says they are corporations, LLCs or partnerships.
-import { el, load, loadOpt, reduced } from './util.js';
+import { el, load, loadOpt, reduced, monthLabel } from './util.js';
 import { buildGeoIsolated } from './geo.js';
 import { icon } from './icons.js';
 import { segmented, shareButton, absoluteLink } from './ui.js';
@@ -29,7 +29,7 @@ const METRICS = {
 };
 
 export function createOkDailyView({ root }) {
-  const S = { index: null, ps: null, G: null, rep: null, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, rb: null };
+  const S = { index: null, ps: null, G: null, sok: null, mk: null, rep: null, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, rb: null };
   const h1 = el('h1', { id: 'ok-h1', class: 'dr-title', tabindex: '-1' });
   root.replaceChildren(h1, el('p', { class: 'empty', text: 'Loading the Oklahoma report…' }));
 
@@ -41,6 +41,7 @@ export function createOkDailyView({ root }) {
     S.ps = permitSeries(idx.days);
     // the shapes are built against their own box, so the Texas map (hero, Map view) keeps its projection
     S.G = await loadOpt('counties-ok.geo').then((gj) => (gj ? buildGeoIsolated(gj) : null)).catch(() => null);
+    [S.sok, S.mk] = await Promise.all([loadOpt('series-ok'), loadOpt('series-markets')]); // the monthly card hides itself if they are missing
     S.ready = true;
   }
 
@@ -188,6 +189,28 @@ export function createOkDailyView({ root }) {
     const seg = segmented({ label: 'Map layer', options: defs, value: S.layer, tabs: false, prefix: 'okm', onChange: (id) => { S.layer = id; if (map) map.set(id); paint(); } });
     paint();
     return card('dr-mapcard', head('pin', 'Where', 'Oklahoma, by county', 'Bubbles grow with the count; hover a county for its number.'), el('div', { class: 'dr-maptools tight' }, seg.el), wrap, list);
+  }
+
+  // monthly figures: Oklahoma crude production (series-ok.json) and the two prices the Texas pages already carry (series-markets.json).
+  // They change once a month and are not for the report's day, so each one says which month it is
+  function contextCard() {
+    const tiles = [];
+    const add = ({ ic, label, months, vals, color, format, unit }) => {
+      if (!months || !vals) return;
+      let i = vals.length - 1;
+      while (i >= 0 && vals[i] == null) i--;
+      if (i < 12 || vals[i - 12] == null) return; // a year behind is the comparison
+      tiles.push(kpi({ ic, label, value: vals[i], format, color, vals: vals.slice(Math.max(0, i - 35), i + 1).filter((v) => v != null),
+        note: unit + ' in ' + monthLabel(months[i]) + ' · EIA', extra: [delta(vals[i] / vals[i - 12] - 1), ' vs ' + monthLabel(months[i - 12])] }));
+    };
+    const ok = S.sok; const mk = S.mk;
+    if (ok) add({ ic: 'drop', label: 'Oklahoma crude oil production', months: ok.months, vals: ok.okCrude, color: 'var(--s3)', format: (v) => (v / 1000).toFixed(1) + ' million bbl', unit: 'a month' });
+    if (mk) {
+      add({ ic: 'dollar', label: 'WTI crude oil price', months: mk.months, vals: mk.wti, color: 'var(--s2)', format: (v) => '$' + v.toFixed(2), unit: 'a barrel' });
+      add({ ic: 'flame', label: 'Henry Hub natural gas price', months: mk.months, vals: mk.henryHub, color: 'var(--s1)', format: (v) => '$' + v.toFixed(2), unit: 'per MMBtu' });
+    }
+    if (!tiles.length) return null;
+    return card('dr-ctx-card', head('chart', 'Monthly figures', 'Oil and gas around the state', 'The latest monthly figures EIA has published. They are not for the day above, and they change once a month.'), el('div', { class: 'dr-ctx' }, tiles));
   }
 
   /* ---------- what changed: plain-English bullets ---------- */
@@ -381,7 +404,7 @@ export function createOkDailyView({ root }) {
     const rep = S.rep;
     const ae = document.activeElement;
     const keep = ae && root.contains(ae) ? (ae.id || (ae.dataset && ae.dataset.act) || null) : null;
-    const kids = [hero(rep), ribbonCard(), kpiRow(rep), el('div', { class: 'dr-grid2' }, el('div', { class: 'dr-col' }, trendCard(rep), storyCard(rep)), mapCard(rep)), statusStrip(rep)];
+    const kids = [hero(rep), ribbonCard(), kpiRow(rep), el('div', { class: 'dr-grid2' }, el('div', { class: 'dr-col' }, trendCard(rep), storyCard(rep)), mapCard(rep)), contextCard(), statusStrip(rep)];
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {

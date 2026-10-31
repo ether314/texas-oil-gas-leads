@@ -693,6 +693,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-rb.sel { fill: var(--s2); stroke: var(--ink); stroke-width: 1.6px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--s2) 75%, transparent)); }
 
 .dr-kpis { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.dr-ctx { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
 .dr-kpi { position: relative; display: grid; align-content: start; gap: 4px; padding: 18px 18px 16px; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--kc) 8%, var(--surface)), var(--surface) 72%); box-shadow: var(--elev-1); }
 .dr-kpi::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--kc), transparent 72%); }
 .dr-kpi-top { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 620; color: var(--ink-2); }
