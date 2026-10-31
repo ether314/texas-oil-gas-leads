@@ -956,6 +956,23 @@ ul.plain li { margin-bottom: var(--sp-2); }
   .dr-rr { grid-template-columns: 1fr; }
 }
 
+/* ---------- print: a day's report saved as a PDF or put on paper ---------- */
+@media print {
+  :root, :root[data-theme="dark"] { color-scheme: light; }
+  @page { margin: 0.55in; }
+  body { background: #fff; }
+  body::before, .dr-radar { display: none; }
+  /* what only works on a screen: the header, the states bar, the controls, the buttons and the segmented switches */
+  .top, .statebar, .skip, .toast, .dr-controls, .dr-more, .btn, .ibtn, .seg, .filters, .map-bar, .map-zoom, .theme { display: none !important; }
+  .wrap { max-width: none; padding-inline: 0; }
+  .js .reveal, .reveal { opacity: 1 !important; transform: none !important; }
+  .card, .dr-hero, .dr-kpi, .dr-sec, .tchip, .bcard, .psec, .dr-ribbon-card { break-inside: avoid; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  h1, h2, h3 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .table-wrap { overflow: visible; }
+  table.grid { font-size: 10px; }
+}
+
 /* ---------- motion and contrast preferences ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }

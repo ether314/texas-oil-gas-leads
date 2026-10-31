@@ -468,6 +468,28 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 12. printing (or saving as a PDF) the Daily report: light even when the page is dark, none of the screen-only parts, cards kept whole
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', colorScheme: 'dark' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpis .dr-kpi', { timeout: 25000 });
+      await page.click('[data-theme-set="dark"]');
+      const screen = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      await page.emulateMedia({ media: 'print' });
+      const printed = await page.evaluate(() => {
+        const gone = (sel) => [...document.querySelectorAll(sel)].every((e) => getComputedStyle(e).display === 'none');
+        return { bg: getComputedStyle(document.body).backgroundColor, ink: getComputedStyle(document.body).color, header: gone('header.top'), bar: gone('#statebar'), controls: gone('#daily-root .dr-controls'), buttons: gone('#daily-root .btn'), keep: getComputedStyle(document.querySelector('#daily-root .dr-kpi')).breakInside };
+      });
+      check(screen !== 'rgb(255, 255, 255)' && printed.bg === 'rgb(255, 255, 255)' && printed.ink !== 'rgb(255, 255, 255)', 'a dark page prints light: the screen is ' + screen + ', the paper ' + printed.bg + ' with ' + printed.ink + ' ink');
+      check(printed.header && printed.bar && printed.controls && printed.buttons && printed.keep === 'avoid', 'the header, the states bar, the controls and the buttons stay off the paper, and a card is not split across pages: ' + JSON.stringify(printed));
+    } catch (e) {
+      check(false, 'printing the Daily report: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

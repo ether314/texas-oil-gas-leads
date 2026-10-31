@@ -37,7 +37,7 @@ address keep their first name, `texas-oil-gas-leads`.)
   files of one GitHub release a day. Oklahoma alone adds the wells that changed operator and, for days captured live, the state's well
   inventory. New Mexico's report is its permits to drill, read from the Division's well layer (the Division publishes no daily file): permits by county,
   operator, kind of well, direction and district, and, for days captured live, the state's well inventory (counted by the server, never listed), with no depth,
-  filing date, completion or transfer, which it does not publish. The monthly figures card
+  filing date, completion or transfer, which it does not publish. A day's report prints (or saves as a PDF) on its own: light, without the header, the controls or the buttons, each card kept whole. The monthly figures card
   shows crude production for the states shown beside the WTI and Henry Hub prices. Source health covers every file of every state.
 
 ## Data
