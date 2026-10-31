@@ -231,7 +231,7 @@ export function createDailyView({ root }) {
   function transfersKpi() {
     const t = S.reps.OK && S.reps.OK.transfers;
     return kpi({ ic: 'building', label: 'Wells changing operator', value: t && t.wells, color: 'var(--s1)', vals: hist((e) => (e.r.OK ? e.r.OK.t : null)),
-      note: t ? t.buyerCount + (t.buyerCount === 1 ? ' buyer' : ' buyers') + ' · ' + fmtDow(t.day) : 'No transfers on file for this day' });
+      note: t ? t.buyerCount + (t.buyerCount === 1 ? ' buyer' : ' buyers') + ' · ' + fmtDow(t.day) : unread('OK', 'transfers') ? 'The transfer file could not be read for this day' : 'No transfers on file for this day' });
   }
   function wellsKpi(id = 'OK') {
     const w = S.reps[id] && S.reps[id].wells;
