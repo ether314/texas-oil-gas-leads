@@ -80,6 +80,14 @@ def attrs():
     return out
 
 
+INV = {
+    "status": {"Active": 100, "Plugged (site released)": 40, "Plugged (not released)": 10, "New": 25, "Cancelled": 20, "Temporary Abandonment": 3, "Never Drilled": 2},
+    "types": {"Oil": 60, "Gas": 30, "Injection": 6, "Salt Water Disposal": 4},
+    "counties": [(25, "Lea", 70), (15, "Eddy", 20), (45, "San Juan", 10)],
+    "ops": [(7377, "EOG RESOURCES INC", 50), (14744, "MEWBOURNE OIL CO", 30), (55555, "JOHN Q PUBLIC", 12), (66666, "SMITH DBA SMITH OIL CO", 5), (None, "", 3)],
+}
+
+
 def run_checks(quiet=False):
     fails = []
 
@@ -162,6 +170,33 @@ def run_checks(quiet=False):
     doc3 = N.update_series(sdir, by2, date(2026, 10, 29), date(2026, 10, 28), 92)
     chk(doc3["days"][-1] == "2026-10-28", "a day past the layer's last edit is absent, not zero")
 
+    # ---- the inventory: counts, never a list
+    w = N.wells_section(INV, "2026-10-29", lk)
+    chk((w["total"], w["active"], w["plugged"]) == (200, 100, 50), "the inventory: 200 wells, 100 active, 50 plugged (both kinds of plugged): %s" % {k: w[k] for k in ("total", "active", "plugged")})
+    chk(w["status"] == [["Active", 100], ["Plugged (site released)", 40], ["New", 25], ["Cancelled", 20], ["Plugged (not released)", 10], ["Other", 5]] and sum(n for _, n in w["status"]) == w["total"],
+        "the status mix keeps the five largest and adds the rest as Other, so it adds up to the total: %s" % w["status"])
+    chk(w["activeTypes"] == [["Oil", 60], ["Gas", 30], ["Injection, disposal and other", 10]], "kinds of active well: oil, gas, and the rest together: %s" % w["activeTypes"])
+    chk(w["counties"] == [["025", "Lea", 70], ["015", "Eddy", 20], ["045", "San Juan", 10]] and w["countyCount"] == 3, "active wells by county code, named from the shapes: %s" % w["counties"])
+    chk(w["operators"] == [["EOG Resources Inc", 50], ["Mewbourne Oil Co", 30]] and w["operatorCount"] == 4 and w["unnamed"] == 17 and w["unassigned"] == 3,
+        "named operators only (an individual and a person's dba are counted apart, wells with no operator too): %s unnamed %s unassigned %s" % (w["operators"], w["unnamed"], w["unassigned"]))
+    rep = N.build_reports([date(2026, 10, 31), date(2026, 10, 30)], by, {date(2026, 10, 31): "live", date(2026, 10, 30): "reconstructed"}, lk, "2026-10-29T11:31:51", INV)
+    chk("wells" in rep[date(2026, 10, 31)] and "wells" not in rep[date(2026, 10, 30)], "a live report holds the inventory; a rebuilt one cannot (the layer holds only the current one)")
+    chk([x["id"] for x in rep[date(2026, 10, 31)]["datasets"]] == ["permits", "wells"] and rep[date(2026, 10, 30)]["datasets"][1].get("absent") is True and rep[date(2026, 10, 30)]["datasets"][1]["file"] is None,
+        "both datasets are listed; the rebuilt day's inventory is marked absent, not an error")
+    miss = N.build_reports([date(2026, 10, 31)], by, {date(2026, 10, 31): "live"}, lk, "2026-10-29T11:31:51", None, "timeout")[date(2026, 10, 31)]
+    chk("wells" not in miss and miss["datasets"][1]["error"] == "timeout" and miss["datasets"][0]["error"] is None, "when the inventory could not be read the permits are still a report and the dataset says why")
+    chk(N.headline(rep[date(2026, 10, 31)])["w"] == 100 and N.headline(rep[date(2026, 10, 30)])["w"] is None, "the index row carries the active wells, none for a rebuilt day")
+    cdir = os.path.join(TMP, "change")
+    shutil.rmtree(cdir, ignore_errors=True)
+    os.makedirs(cdir)
+    prev = copy.deepcopy(rep[date(2026, 10, 31)])
+    prev["date"] = "2026-10-29"
+    prev["wells"]["active"], prev["wells"]["plugged"], prev["wells"]["total"] = 95, 48, 190
+    D.write_json(os.path.join(cdir, "2026-10-29.json"), prev)
+    nowrep = copy.deepcopy(rep[date(2026, 10, 31)])
+    N.add_wells_change(nowrep, cdir)
+    chk(nowrep["wells"]["change"] == {"since": "2026-10-29", "active": 5, "plugged": 2, "total": 10}, "the change since the previous report that had an inventory: %s" % nowrep["wells"].get("change"))
+
     # ---- planning
     have = {"2026-10-29"}
     dts, capped = N.plan_dates(date(2026, 10, 31), 92, 3, False, have)
@@ -175,11 +210,12 @@ def run_checks(quiet=False):
 
 # ---- a whole run with the network faked ------------------------------------------------------------------------------------------------
 
-def run_main(out, argv, records, edit=None, fail=False):
+def run_main(out, argv, records, edit=None, fail=False, no_inventory=False):
     """Drive main() against a scratch folder, with the two requests answered from `records` (or failing); returns (exit code, log text)."""
-    saved = (N.fetch_approvals, N.fetch_layer_edit, N.D.central_now, sys.argv)
+    saved = (N.fetch_approvals, N.fetch_layer_edit, N.fetch_inventory, N.D.central_now, sys.argv)
     N.fetch_approvals = lambda since: list(records)
     N.fetch_layer_edit = lambda: edit
+    N.fetch_inventory = (lambda: (_ for _ in ()).throw(RuntimeError("the layer returned no wells"))) if no_inventory else (lambda: INV)
     if fail:
         def boom(since):
             raise RuntimeError("could not read the New Mexico wells layer: timeout")
@@ -195,7 +231,7 @@ def run_main(out, argv, records, edit=None, fail=False):
             except SystemExit as e:
                 code = e.code if isinstance(e.code, int) else 1
     finally:
-        N.fetch_approvals, N.fetch_layer_edit, N.D.central_now, sys.argv = saved
+        N.fetch_approvals, N.fetch_layer_edit, N.fetch_inventory, N.D.central_now, sys.argv = saved
     return code, buf.getvalue()
 
 
@@ -213,6 +249,7 @@ def whole_run():
     live = D.read_json(os.path.join(out, "2026-10-30.json"))
     check(live["status"] == "ok" and live["capturedAt"].endswith("Z") and live["datasets"][0]["state"] == "first" and live["datasets"][0]["file"]["modified"] == "2026-10-29T11:31:51",
           "the live report: ok, a capture time, the first live capture, the layer's edit time in Central digits")
+    check(live["wells"]["active"] == 100 and live["datasets"][1]["state"] == "first" and D.read_json(os.path.join(out, "2026-10-29.json")).get("wells") is None, "the live report holds the inventory (first capture); the rebuilt days do not")
     ser = D.read_json(os.path.join(out, "permits-series.json"))
     check(ser["asOf"] == "2026-10-29" and ser["days"][-1] == "2026-10-29", "the series ends on the day of the layer's last edit (Oct 29), not the day before the report (Oct 30)")
     all_text = "".join(open(os.path.join(out, f), encoding="utf-8").read() for f in os.listdir(out))
@@ -223,7 +260,8 @@ def whole_run():
     after = {f: open(os.path.join(out, f), "rb").read() for f in before}
     check(code == 0 and before == after and os.path.exists(os.path.join(out, "2026-10-31.json")), "the next night adds its own day: the earlier reports are byte for byte as they were")
     live2 = D.read_json(os.path.join(out, "2026-10-31.json"))
-    check(live2["datasets"][0]["state"] == "same", "and says the layer has not changed since the last live report")
+    check(live2["datasets"][0]["state"] == "same" and live2["datasets"][1]["state"] == "same" and live2["wells"]["change"]["since"] == "2026-10-30" and live2["wells"]["change"]["active"] == 0,
+          "and says the layer has not changed since the last live report, with the inventory's change since it")
     code, text = run_main(out, ["--date", "2026-10-31"], recs, datetime(2026, 10, 30, 20, 0, tzinfo=timezone.utc))
     check(code == 0 and D.read_json(os.path.join(out, "2026-10-31.json"))["datasets"][0]["state"] == "new", "a layer edited since the last live report is 'new'")
 
@@ -238,6 +276,12 @@ def whole_run():
     code, text = run_main(out, ["--date", "2026-10-31", "--skip-if-captured"], recs, edit)
     check(code == 0 and "nothing to do" in text, "--skip-if-captured does skip a day already captured live at or after 03:00 UTC the next day")
 
+    part = os.path.join(TMP, "partial")
+    shutil.rmtree(part, ignore_errors=True)
+    code, text = run_main(part, [], recs, edit, no_inventory=True)
+    pr = D.read_json(os.path.join(part, "2026-10-31.json"))
+    check(code == 0 and pr["status"] == "partial" and "wells" not in pr and pr["permits"] and pr["datasets"][1]["error"], "an inventory that cannot be read leaves the permits as a partial report (the backup run will try again); exit %s" % code)
+    check(N.captured_for_the_night(part, date(2026, 10, 31)) is None, "and a partial report does not count as captured for the night")
     quiet = os.path.join(TMP, "quiet")
     shutil.rmtree(quiet, ignore_errors=True)
     code, text = run_main(quiet, [], recs, edit, fail=True)
@@ -267,6 +311,14 @@ def whole_run():
     fault("a county that is not in the state", lambda d: edit_day(d, lambda r: r["permits"].__setitem__("counties", [["999", "Nowhere", 1]])), "one of the 33")
     fault("permits from the report day itself", lambda d: edit_day(d, lambda r: r["permits"].__setitem__("day", "2026-10-31")), "not from before")
     fault("an index that misses a day", lambda d: D.write_json(os.path.join(d, "index.json"), {"keep": 12, "days": D.read_json(os.path.join(d, "index.json"))["days"][1:]}), "exactly the day files")
+    fault("an inventory that does not add up", lambda d: edit_day(d, lambda r: r["wells"]["status"].append(["Active", 7])), "does not add up")
+    def inventory_on_rebuilt_day(d):
+        wells = D.read_json(os.path.join(d, "2026-10-30.json"))["wells"]
+        path = os.path.join(d, "2026-10-29.json")
+        rep = D.read_json(path)
+        rep["wells"] = wells
+        D.write_json(path, rep)
+    fault("an inventory on a rebuilt day", inventory_on_rebuilt_day, "rebuilt day cannot hold")
     fault("a missing series", lambda d: os.remove(os.path.join(d, "permits-series.json")), "permits-series.json")
     fault("a series with lists of different lengths", lambda d: D.write_json(os.path.join(d, "permits-series.json"), {"days": ["2026-10-20"], "newDrill": [], "total": [], "horizontal": []}), "differ in length")
     fault("a day file that is not JSON", lambda d: open(os.path.join(d, "2026-10-29.json"), "w").write("{"), "not JSON")

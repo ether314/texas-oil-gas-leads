@@ -212,8 +212,8 @@ export function createDailyView({ root }) {
     return kpi({ ic: 'building', label: 'Wells changing operator', value: t && t.wells, color: 'var(--s1)', vals: hist((e) => (e.r.OK ? e.r.OK.t : null)),
       note: t ? t.buyerCount + (t.buyerCount === 1 ? ' buyer' : ' buyers') + ' · ' + fmtDow(t.day) : 'No transfers on file for this day' });
   }
-  function wellsKpi() {
-    const w = S.reps.OK && S.reps.OK.wells;
+  function wellsKpi(id = 'OK') {
+    const w = S.reps[id] && S.reps[id].wells;
     return kpi({ ic: 'rig', label: 'Active wells in the state', value: w && w.active, color: 'var(--accent)',
       note: w ? (w.change ? signed(w.change.active) + ' since ' + fmtMd(w.change.since) : 'As of ' + fmtMd(w.asOf)) : 'The inventory is counted on the night of each live capture' });
   }
@@ -225,7 +225,7 @@ export function createDailyView({ root }) {
   }
   function kpiRow() {
     const o = only();
-    const cards = o === 'OK' ? [permitKpi(), completionsKpi(), transfersKpi(), wellsKpi()] : o === 'NM' ? [permitKpi(), horizontalKpi(), filesKpi()]
+    const cards = o === 'OK' ? [permitKpi(), completionsKpi(), transfersKpi(), wellsKpi()] : o === 'NM' ? [permitKpi(), horizontalKpi(), wellsKpi('NM'), filesKpi()]
       : [permitKpi(), S.states.includes('TX') ? waitingKpi() : null, completionsKpi(), filesKpi()].filter(Boolean);
     return el('div', { class: 'dr-kpis' + (cards.length === 3 ? ' three' : '') }, cards);
   }
@@ -256,21 +256,23 @@ export function createDailyView({ root }) {
 
   function mapCard() {
     const layers = {}; const defs = []; const names = {};
-    const lay = (id, label, parts, st) => {
+    const lay = (id, label, parts) => {
       const ps = parts.filter((x) => x && x.rows && x.rows.length);
       if (!ps.length) return;
       const map = new Map(); const nm = new Map();
       for (const { id: s, rows } of ps) for (const [f, name, n] of rows) { map.set(ck(s, f), n); nm.set(ck(s, f), clabel(s, name)); }
       layers[id] = { map }; names[id] = nm;
-      defs.push({ id, label: label + (st && multi() ? ' · ' + st : '') });
+      // when only some of the states shown have the layer, the tab says which ("Waiting · TX", "Active wells · OK and NM")
+      const has = ps.map((x) => x.id);
+      defs.push({ id, label: label + (multi() && has.length < S.states.length ? ' · ' + has.join(' and ') : '') });
     };
     const txR = S.reps.TX; const okR = S.reps.OK; const nmR = S.reps.NM;
     const txCounties = (m) => [...m.entries()].map(([f, n]) => [f, cname('TX', f), n]);
     lay('permits', 'Permits', [txR && txR.permits && { id: 'TX', rows: txCounties(tally(txR.permits.rows, 1)) }, okR && okR.permits && { id: 'OK', rows: okR.permits.counties }, nmR && nmR.permits && { id: 'NM', rows: nmR.permits.counties }]);
-    lay('pending', 'Waiting', [txR && txR.pending && { id: 'TX', rows: txCounties(tally(txR.pending.rows, 2)) }], 'TX');
+    lay('pending', 'Waiting', [txR && txR.pending && { id: 'TX', rows: txCounties(tally(txR.pending.rows, 2)) }]);
     lay('completions', 'Completions', [txR && txR.completions && { id: 'TX', rows: txR.completions.counties }, okR && okR.completions && { id: 'OK', rows: okR.completions.counties }]);
-    lay('transfers', 'Transfers', [okR && okR.transfers && { id: 'OK', rows: okR.transfers.counties }], 'OK');
-    lay('wells', 'Active wells', [okR && okR.wells && { id: 'OK', rows: okR.wells.counties }], 'OK');
+    lay('transfers', 'Transfers', [okR && okR.transfers && { id: 'OK', rows: okR.transfers.counties }]);
+    lay('wells', 'Active wells', [okR && okR.wells && { id: 'OK', rows: okR.wells.counties }, nmR && nmR.wells && { id: 'NM', rows: nmR.wells.counties }]);
     if (!defs.length) return null;
     if (!layers[S.layer]) S.layer = defs[0].id;
     const colors = { permits: 'var(--s2)', pending: 'var(--s1)', completions: 'var(--s3)', transfers: 'var(--s1)', wells: 'var(--s7)' };
@@ -385,8 +387,10 @@ export function createDailyView({ root }) {
       add('building', 'var(--s1)', ...pre('OK'), strong(num(t.wells)), t.wells === 1 ? ' well changed operator on ' : ' wells changed operator on ', strong(fmtDow(t.day)),
         b ? [': ', strong(b[1]), ' took ' + num(b[2])] : '', ' (' + sb(t.sellerCount, 'seller') + ', ' + sb(t.buyerCount, 'buyer') + ').');
     }
-    const w = R().OK && R().OK.wells;
-    if (w) add('rig', 'var(--accent)', ...pre('OK'), strong(num(w.active)), ' active wells in the state inventory', w.change ? [' (', strong(signed(w.change.active)), ' since ' + fmtMd(w.change.since) + ')'] : '', ', ', num(w.plugged) + ' plugged, of ' + num(w.total) + ' records.');
+    for (const id of ['OK', 'NM']) {
+      const w = R()[id] && R()[id].wells;
+      if (w) add('rig', 'var(--accent)', ...pre(id), strong(num(w.active)), ' active wells in the state inventory', w.change ? [' (', strong(signed(w.change.active)), ' since ' + fmtMd(w.change.since) + ')'] : '', ', ', num(w.plugged) + ' plugged, of ' + num(w.total) + ' records.');
+    }
     for (const id of S.states) {
       const rep = R()[id];
       if (!rep || rep.kind !== 'live') continue;
@@ -628,6 +632,7 @@ export function createDailyView({ root }) {
     }
     if (N) {
       items.push(li(strong('New Mexico permits. '), 'A permit to drill is a well in status New in the Oil Conservation Division\'s well layer, counted once on the day it was approved (the layer\'s effective date); every one is for a new well. The Division publishes no filing date, planned depth, amendment, completion or transfer by day, so the report shows none of them rather than a zero. The layer is entered some days after an approval: the newest two or three days run low (against 17 to 22 a business day in the weeks before) and fill in, which is why the pace chart is rewritten from the layer each night. A well leaves status New when it is cancelled or moves on, so a rebuilt day can have lost a few.'));
+      items.push(li(strong('New Mexico well inventory. '), 'The Division\'s well layer has a record for every well, about 142,000, most of them plugged, cancelled or never drilled. The server counts them by status and, for the wells with status Active, by kind, county and operator; nothing is listed. Only days captured live have it: the layer holds the current inventory only.'));
     }
     if (O) {
       items.push(li(strong('Oklahoma permits. '), 'New-drill means application type DR with an approval date; rejected and deleted applications are left out. Times in the files are UTC and are turned into Central days. The file does not say which permits are horizontal, so the report shows planned depth instead and calls a well planned to 12,000 feet or more deep (about three in four of the new-drill permits in this archive). Oklahoma approves far fewer permits a day than Texas (about 3 against 31), so single days swing a lot; read the averages.'));
@@ -650,7 +655,7 @@ export function createDailyView({ root }) {
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {
-      kids.push(permitsSection(), rtx ? tx.pendingSection(rtx) : null, completionsSection(), S.reps.OK ? transfersSection(S.reps.OK) : null, S.reps.OK ? wellsSection(S.reps.OK) : null,
+      kids.push(permitsSection(), rtx ? tx.pendingSection(rtx) : null, completionsSection(), S.reps.OK ? transfersSection(S.reps.OK) : null, S.reps.OK ? wellsSection(S.reps.OK) : null, S.reps.NM ? wellsSection(S.reps.NM) : null,
         rtx ? tx.imagesSection(rtx) : null, rtx ? tx.packPagesSection(rtx) : null, healthSection(), archiveSection(), notesSection());
     }
     const nodes = kids.filter(Boolean);

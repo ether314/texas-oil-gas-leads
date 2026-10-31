@@ -36,7 +36,8 @@ address keep their first name, `texas-oil-gas-leads`.)
   well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and survey, which the nightly job stores as the
   files of one GitHub release a day. Oklahoma alone adds the wells that changed operator and, for days captured live, the state's well
   inventory. New Mexico's report is its permits to drill, read from the Division's well layer (the Division publishes no daily file): permits by county,
-  operator, kind of well, direction and district, with no depth, filing date, completion or transfer, which it does not publish. The monthly figures card
+  operator, kind of well, direction and district, and, for days captured live, the state's well inventory (counted by the server, never listed), with no depth,
+  filing date, completion or transfer, which it does not publish. The monthly figures card
   shows crude production for the states shown beside the WTI and Henry Hub prices. Source health covers every file of every state.
 
 ## Data
