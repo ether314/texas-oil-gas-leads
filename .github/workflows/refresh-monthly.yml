@@ -1,0 +1,94 @@
+# Refreshes the permit history that the Overview, the Map and the Operators page read for Oklahoma and New Mexico (the files
+# site/public/data/{series-permits,county-permits,operators,permits}-{ok,nm}.json), commits what changed and publishes the site.
+# Once a week is enough: Oklahoma's files end on its newest approval day and its source is a 154 MB workbook, so a nightly
+# download would be a lot to ask of a public server for little; New Mexico's end on the last month that ended two months ago, so
+# they change when a month enters or a late spud date arrives. The two refreshes are isolated from each other, and from the
+# nightly captures (a separate workflow, run one at a time with them), so a failure here cannot touch the daily reports: the failed
+# one's files are put back as committed, the other is still committed and published, and the run ends red after the publish.
+# The EIA crude series are not refreshed here (they change once a month; see the NOTES files).
+name: Monthly files (Oklahoma OCC and New Mexico OCD)
+
+on:
+  schedule:
+    # Mondays 05:40 UTC: well after the nightly capture (03:15) and its backup (04:20), which are done by then
+    - cron: "40 5 * * 1"
+  workflow_dispatch:
+
+# the same group as the nightly capture: the two never run at once, so their commits and their publishes cannot collide
+concurrency:
+  group: daily-rrc-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # three requests to the Division's well layer, about four seconds
+      - name: Refresh New Mexico's permit history
+        id: nm_refresh
+        continue-on-error: true
+        timeout-minutes: 8
+        run: python3 -I site/pipeline/d9_nm_monthly.py
+
+      # downloads the Commission's intent-to-drill master workbook (about 154 MB) and its daily file, and reads 400,000 rows
+      - name: Refresh Oklahoma's permit history
+        id: ok_refresh
+        continue-on-error: true
+        timeout-minutes: 25
+        run: python3 -I site/pipeline/d8_ok_monthly.py
+
+      - name: Check New Mexico's files
+        id: nm_check
+        continue-on-error: true
+        run: python3 -I site/pipeline/d9_nm_monthly.py --check
+
+      - name: Check Oklahoma's files
+        id: ok_check
+        continue-on-error: true
+        run: python3 -I site/pipeline/d8_ok_monthly.py --check
+
+      # a failed refresh or a failed check must not put data on main: put the four files back as they were committed
+      - name: Drop the New Mexico files if the refresh or its check failed
+        if: ${{ steps.nm_refresh.outcome == 'failure' || steps.nm_check.outcome == 'failure' }}
+        run: |
+          echo "::warning title=New Mexico files::the refresh or its check failed; the files are left as committed. Oklahoma's go ahead."
+          git checkout -- site/public/data/series-permits-nm.json site/public/data/county-permits-nm.json site/public/data/operators-nm.json site/public/data/permits-nm.json
+
+      - name: Drop the Oklahoma files if the refresh or its check failed
+        if: ${{ steps.ok_refresh.outcome == 'failure' || steps.ok_check.outcome == 'failure' }}
+        run: |
+          echo "::warning title=Oklahoma files::the refresh or its check failed; the files are left as committed. New Mexico's go ahead."
+          git checkout -- site/public/data/series-permits-ok.json site/public/data/county-permits-ok.json site/public/data/operators-ok.json site/public/data/permits-ok.json
+
+      - name: Commit the new files
+        run: |
+          git config user.name "refresh-monthly"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/data/series-permits-nm.json site/public/data/county-permits-nm.json site/public/data/operators-nm.json site/public/data/permits-nm.json \
+                  site/public/data/series-permits-ok.json site/public/data/county-permits-ok.json site/public/data/operators-ok.json site/public/data/permits-ok.json
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "Monthly Oklahoma and New Mexico files $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # a commit made with the workflow's own token starts neither CI nor the publish after a merge, so this publishes itself
+      - name: Publish the site to GitHub Pages
+        run: bash .github/scripts/publish_pages.sh
+
+      - name: Fail the run if a refresh or a check failed
+        if: ${{ !cancelled() && (steps.nm_refresh.outcome == 'failure' || steps.nm_check.outcome == 'failure' || steps.ok_refresh.outcome == 'failure' || steps.ok_check.outcome == 'failure') }}
+        run: |
+          echo "::error title=Monthly files::New Mexico refresh ${{ steps.nm_refresh.outcome }}, New Mexico check ${{ steps.nm_check.outcome }}, Oklahoma refresh ${{ steps.ok_refresh.outcome }}, Oklahoma check ${{ steps.ok_check.outcome }}. What succeeded was committed and published; what failed was left as committed."
+          exit 1

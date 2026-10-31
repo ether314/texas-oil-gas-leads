@@ -16,9 +16,11 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,
   the windows, the naming rule, rounded locations, the validator against deliberate faults, mutants, and the committed files.
-- `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the two captures, the `if:` conditions for every
-  combination of outcomes, and the workflow's own `run:` scripts executed against a throwaway clone with a local bare `origin`
+- `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the three captures, the `if:` conditions for every
+  combination of outcomes (64), and the workflow's own `run:` scripts executed against a throwaway clone with a local bare `origin`
   (needs git and PyYAML).
+- `test_workflow_monthly.py`: `.github/workflows/refresh-monthly.yml` the same way (isolation, the 16 outcome combinations, the drop, commit and last
+  steps run against a clone; only the eight files it names are ever committed, and it shares the nightly's concurrency group).
 - `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it cannot reach the agencies)
   and `.github/scripts/publish_pages.sh`, which the nightly capture shares: run against a throwaway clone with a local bare `origin` that has
   a gh-pages branch (publishes exactly the site, never rewrites history, says so when current, refuses an incomplete copy, retries a refused

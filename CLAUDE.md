@@ -95,8 +95,10 @@ for Texas and Oklahoma, built only from public records (README has the full desc
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`
   the monthly EIA series, also for New Mexico with `--state NM`), `d9_*` New Mexico (OCD: `d9_nm_monthly.py` the permit history as wells spudded, `d9_nm_daily.py` the Daily report from approvals) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
-- `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
-  `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
+- `.github/workflows/daily-rrc-report.yml`: captures the three states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
+  `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the others are committed and published and the run ends red.
+- `.github/workflows/refresh-monthly.yml`: weekly (Mondays 05:40 UTC) refresh of Oklahoma's and New Mexico's permit history files, isolated the same way,
+  in the nightly's concurrency group; it commits and publishes by itself.
 - `.github/workflows/publish.yml` and `.github/scripts/publish_pages.sh`: the publish after a green merge (and, by the same script, the
   nightly's publish); it never contacts the RRC or the OCC.
 - Time: RRC listing times are Central; times inside OCC files are UTC and are turned into Central days; a report shows only whole days.
@@ -126,7 +128,7 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 
 1. One state choice across the whole site (Texas, Oklahoma, New Mexico). Done: the bar, the Overview, the Daily report (Texas and Oklahoma; the bar says New Mexico has
    none yet), Operators and Companies (Companies are Texas only and say so), the Map (rebuilt for the states shown; `map.js` `prepare`/`rebuild`), the Daily report (New Mexico's is permits only: `d9_nm_daily.py`, 92 days in `daily-nm/`, `daily-nm.js`;
-   `daily.js` asks what a report holds, `HORIZ`, `PERMIT_FROM`, `SERIES`, not which state it is). To do: Sources; the nightly workflow for New Mexico's capture and for refreshing the monthly files nightly. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
+   `daily.js` asks what a report holds, `HORIZ`, `PERMIT_FROM`, `SERIES`, not which state it is). To do: Sources; watch the first nightly run with New Mexico's capture and the first weekly refresh. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
    Never add New Mexico's spuds to the other states' permits (`states.js` measures: `sameMeasure`).
 2. Oklahoma in Sources (the Overview, Operators and Map are done). Data done: `d8_ok_monthly.py` writes the permit series, county counts, operators and
    permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
@@ -148,3 +150,4 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: Operators and Companies follow the states bar (a State column, one ranking, each state's own date; the Texas-only columns and filters step aside).
 - 2026-10-31: the Map follows the states bar (one map for any set of states: shapes, dots colored per state, per-state legend, panels and links keyed by state; the Texas-only figures stay Texas only).
 - 2026-10-31: New Mexico's Daily report data (`d9_nm_daily.py`, `daily-nm/`): permits approved by day from the OCD layer, 92 days rebuilt (PR #24). Then the view: the states bar's three states in the Daily report (Texas and Oklahoma proved identical to `main` by comparing their DOM); the nightly step is next.
+- 2026-10-31: the nightly workflow captures New Mexico's report too (isolated like the others, 64 outcome combinations tested), and `refresh-monthly.yml` refreshes Oklahoma's and New Mexico's permit history weekly. The first runs of both are the ones to watch.
