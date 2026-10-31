@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
-<meta name="description" content="Where Texas is drilling right now: a map of new-drill permits, the operators filing them and a pool of oil and gas companies from public records.">
+<meta name="description" content="Oil tracker: where oil is being drilled right now. New-drill permits, the operators filing them and the companies that serve them, for Texas and Oklahoma, from public records.">
 <meta name="color-scheme" content="light dark">
-<title>Texas Oil &amp; Gas Leads</title>
+<title>Oil tracker</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="app.css">
 <script src="js/boot.js"></script>
@@ -21,8 +21,8 @@
     <a class="brand" href="#overview">
       <img class="brand-mark" src="favicon.svg" alt="" width="30" height="30">
       <span class="brand-text">
-        <span class="brand-name">Texas oil &amp; gas leads</span>
-        <span class="brand-sub">Public Railroad Commission and Comptroller records</span>
+        <span class="brand-name">Oil tracker</span>
+        <span class="brand-sub">Texas and Oklahoma, from public records</span>
       </span>
     </a>
     <nav class="nav" aria-label="Sections">
@@ -55,8 +55,8 @@
       <canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas>
       <div class="hero-in">
         <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span>Railroad Commission permits through <span data-fill="latest_permit"></span></span></p>
-        <h1>Where Texas is drilling right now</h1>
-        <p class="hero-lede">New-drill permits from the Permian to the Eagle Ford, the operators filing them and the companies that serve them. Public records only, built <span data-fill="built"></span>.</p>
+        <h1>Where oil is being drilled right now</h1>
+        <p class="hero-lede">New-drill permits from the Permian to the Eagle Ford and the Anadarko, the operators filing them and the companies that serve them. Public records only, built <span data-fill="built"></span>.</p>
         <div class="cta">
           <a class="btn primary lg" href="#map">Explore the map <span aria-hidden="true">&rarr;</span></a>
           <a class="btn lg" href="#operators?band=ab">See the operators</a>
@@ -288,7 +288,7 @@
 
       <h3>Daily report: Oklahoma</h3>
       <ul class="plain">
-        <li><small class="fresh-cad src-cad">Publishes daily</small> <a href="https://oklahoma.gov/occ/divisions/oil-gas/oil-gas-data.html" rel="noopener noreferrer">Oklahoma Corporation Commission, Oil &amp; Gas Data</a>: <code>ITD-wells-formations-daily.xlsx</code> (intents to drill approved in the last 7 complete days), <code>completions-wells-formations-daily.xlsx</code> (completion filings, Form 1002A) and <code>well-transfers-daily.xlsx</code> (wells that changed operator, about a month of them). The <a href="#daily?st=ok">Daily report</a> shows what each held, one day at a time, beside Texas (or on its own with Show set to Oklahoma): counts by county, kind, planned depth and operator. The Commission makes these files at about 7:40 PM Central, and a report shows only whole days, so Monday's shows Friday's.</li>
+        <li><small class="fresh-cad src-cad">Publishes daily</small> <a href="https://oklahoma.gov/occ/divisions/oil-gas/oil-gas-data.html" rel="noopener noreferrer">Oklahoma Corporation Commission, Oil &amp; Gas Data</a>: <code>ITD-wells-formations-daily.xlsx</code> (intents to drill approved in the last 7 complete days), <code>completions-wells-formations-daily.xlsx</code> (completion filings, Form 1002A) and <code>well-transfers-daily.xlsx</code> (wells that changed operator, about a month of them). The <a href="#daily?st=ok">Daily report</a> shows what each held, one day at a time, beside Texas (or on its own with Show set to Oklahoma): counts by county, kind, planned depth and operator. The Commission makes these files at about 7:40 PM Central and they end the day before, so a report shows only whole days (Monday's shows Friday's) and fills any gap from the Commission's master files.</li>
         <li><small class="fresh-cad src-cad">Publishes nightly</small> The same page's well file <code>rbdms-wells.csv</code> (about 457,000 well records, 121 MB): counted by status, kind, county and operator and never listed, on the days a report was captured live.</li>
         <li>The master files <code>ITD-wells-formations-base.xlsx</code> (since 1999) and <code>completions-wells-formations-base.xlsx</code> (since 2010) rebuilt the days before the first capture, which are marked as reconstructed; the report keeps 92 days. The permit file does not say which permits are horizontal, so planned depth of 12,000 feet or more stands in. Operators are named only when they are corporations, LLCs or limited partnerships. Lease and well names, well and API numbers, and the operator, purchaser and plugger contact lists the Commission also publishes are never used.</li>
         <li><small class="fresh-cad src-cad">Publishes monthly</small> <a href="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&amp;s=MCRFPOK1&amp;f=M" rel="noopener noreferrer">U.S. Energy Information Administration, Oklahoma field production of crude oil</a> (thousand barrels a month, series MCRFPOK1, through August 2026), beside the WTI and Henry Hub prices listed above, in the Daily report's monthly figures. The newest months are EIA estimates that get revised. That card is not for the report's day.</li>
@@ -339,7 +339,7 @@
 </main>
 
 <footer class="wrap foot">
-  <p>Built from public records. Not affiliated with the Railroad Commission of Texas or the Texas Comptroller. This page is unlisted and asks search engines not to index it.</p>
+  <p>Built from public records. Not affiliated with the Railroad Commission of Texas, the Oklahoma Corporation Commission, the Texas Comptroller or any other agency. This page is unlisted and asks search engines not to index it.</p>
 </footer>
 
 <div id="tip" class="tip" role="tooltip" hidden></div>

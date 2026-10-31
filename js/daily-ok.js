@@ -8,7 +8,7 @@ import { num, card, head, tiles, pctOf, signed } from './daily-kit.js';
 export const OK_TITLES = { itd: 'Intent to drill', completions: 'Well completions', transfers: 'Well transfers', wells: 'Well inventory' };
 export const OK_ICONS = { itd: 'pin', completions: 'drop', transfers: 'building', wells: 'rig' };
 export const OK_WHAT = {
-  itd: 'Intents to drill the Commission approved: the 7 complete days before the file is made, about 7:40 PM Central (ITD-wells-formations-daily.xlsx).',
+  itd: 'Intents to drill the Commission approved: the 7 complete days before the day the file is made, which is about 7:40 PM Central (ITD-wells-formations-daily.xlsx).',
   completions: 'Completion filings (Form 1002A), one row per casing string or test in the file, folded here to one filing per well and day (completions-wells-formations-daily.xlsx).',
   transfers: 'Wells that changed operator, about a month of them (well-transfers-daily.xlsx).',
   wells: 'Every well in the state, from the nightly well file (about 457,000 records). Counted here, never listed.',
