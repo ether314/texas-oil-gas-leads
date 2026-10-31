@@ -4,7 +4,7 @@ import { el, fmt, halves, signed, monthLabel, lastIdx, toObjects, fmtDate } from
 import { icon } from './icons.js';
 import { opsLink } from './overview.js';
 import { countyLabel } from './overview-data.js';
-import { stateOf, countyState } from './states.js';
+import { stateOf, countyState, measureOf, sameMeasure } from './states.js';
 
 const a = (text, href) => el('a', { href, text });
 const btn = (text, fn) => el('button', { type: 'button', class: 'link', onclick: fn, text });
@@ -24,8 +24,8 @@ export function renderInsights(card, { cp, G, B, ops, extras, meta, prod, R, sel
       .filter((r) => r.h.b >= 40 && r.h.f !== Infinity && r.h.f > 0).sort((x, y) => y.h.f - x.h.f).slice(0, 3);
     if (rows.length === 3) {
       const link = (r) => { const c = G.byFips.get(r.f); return [a(countyLabel(c.n, countyState(r.f), multi), '#map?county=' + r.f), ' (', a(signed(r.h.f), '#map?metric=chg&county=' + r.f), ')']; };
-      push('trend', 'var(--s2)', 'Permits are growing fastest in ', ...link(rows[0]), ', ', ...link(rows[1]), ' and ', ...link(rows[2]),
-        ': the last 12 full months against the 12 before, among counties with at least 40 permits in the earlier period.');
+      push('trend', 'var(--s2)', (!sameMeasure(states) ? 'New wells are' : measureOf(states[0]).id === 'spuds' ? 'Wells spudded are' : 'Permits are') + ' growing fastest in ', ...link(rows[0]), ', ', ...link(rows[1]), ' and ', ...link(rows[2]),
+        ': the last 12 full months against the 12 before, among counties with at least 40 ' + (sameMeasure(states) ? measureOf(states[0]).short : 'permits or spuds') + ' in the earlier period.');
     }
   }
   // 2. the Permian's share of permits (and of oil, when production is loaded)
@@ -54,8 +54,9 @@ export function renderInsights(card, { cp, G, B, ops, extras, meta, prod, R, sel
       .sort((p, q) => (q.h.a - q.h.b) - (p.h.a - p.h.b)).slice(0, 3);
     if (rows.length === 3) {
       const parts = [];
-      rows.forEach((x, i) => { parts.push(i ? (i === 2 ? ' and ' : ', ') : '', a(x.name, opsLink(x.name)), ' (+' + (x.h.a - x.h.b) + ' permits, ' + x.h.b + ' to ' + x.h.a + ')'); });
-      push('rig', 'var(--s3)', 'Operators ramping up the most: ', ...parts, '. Permits in the last 12 full months against the 12 before.');
+      const unit = (x) => (x.r.st && measureOf(x.r.st).id === 'spuds' ? 'wells spudded' : 'permits');
+      rows.forEach((x, i) => { parts.push(i ? (i === 2 ? ' and ' : ', ') : '', a(x.name, opsLink(x.name)), ' (+' + (x.h.a - x.h.b) + ' ' + unit(x) + ', ' + x.h.b + ' to ' + x.h.a + ')'); });
+      push('rig', 'var(--s3)', 'Operators ramping up the most: ', ...parts, '. The last 12 full months against the 12 before.');
     }
   }
   // 4. new entities (the Texas Comptroller's pool)
@@ -72,6 +73,16 @@ export function renderInsights(card, { cp, G, B, ops, extras, meta, prod, R, sel
       push('chart', 'var(--s1)', 'WTI averaged ', btn('$' + R.wti.v[i].toFixed(2), () => selectGroup('prices')), ' in ' + monthLabel(ymOf(R.wti.t[i])) + ', '
         + (Math.abs(f) < 0.005 ? 'level with' : f > 0 ? 'up ' + Math.round(f * 100) + '% from' : 'down ' + Math.round(-f * 100) + '% from') + ' a year earlier'
         + (fc && fm ? '; the EIA outlook issued in ' + monthLabel(fm.issued) + ' puts it at $' + fc.v[fc.v.length - 1].toFixed(0) + ' by ' + monthLabel(fm.end) + '. That is a forecast, not data.' : '.'));
+    }
+  }
+  // 6a. where a state's drilling is concentrated, when two counties hold most of it
+  for (const id of others) {
+    const mine = Object.entries(cp ? cp.counties : {}).filter(([f]) => countyState(f) === id).map(([f, c]) => ({ f, p: c.p12 })).sort((x, y) => y.p - x.p);
+    const total = mine.reduce((t, x) => t + x.p, 0);
+    if (mine.length >= 2 && total >= 100 && (mine[0].p + mine[1].p) / total >= 0.6 && G) {
+      const q = stateOf(id); const c0 = G.byFips.get(mine[0].f); const c1 = G.byFips.get(mine[1].f);
+      if (c0 && c1) push('layers', 'var(--st-' + id.toLowerCase() + ')', 'In ' + q.name + ', ', a(c0.n, '#map?county=' + mine[0].f), ' and ', a(c1.n, '#map?county=' + mine[1].f), ' hold ',
+        a(Math.round(((mine[0].p + mine[1].p) / total) * 100) + '%', '#map?county=' + mine[0].f), ' of the ' + measureOf(id).noun + ' in the last 12 months (' + fmt.format(mine[0].p + mine[1].p) + ' of ' + fmt.format(total) + ').');
     }
   }
   // 6. each other state's crude and well inventory, which are what those states have beside the permits

@@ -27,7 +27,7 @@ const DEEP = 'Deep, 12,000 ft or more';
 
 export function createDailyView({ root }) {
   const S = {
-    idx: { TX: null, OK: null }, series: { TX: null, OK: null }, avail: [], states: STATES.map((s) => s.id), days: [], G: null, gTx: null, sok: null, mk: null,
+    idx: { TX: null, OK: null }, series: { TX: null, OK: null }, avail: [], states: STATES.filter((s) => s.dir).map((s) => s.id), days: [], G: null, gTx: null, sok: null, mk: null,
     reps: {}, miss: {}, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, sel: null, open: null, gpsEl: null, rb: null,
   };
   const h1 = el('h1', { id: 'dr-h1', class: 'dr-title', tabindex: '-1' });
@@ -52,10 +52,11 @@ export function createDailyView({ root }) {
 
   /* ---------- data ---------- */
   async function boot() {
-    const raw = await Promise.all(STATES.map((s) => loadOpt(s.dir + '/index')));
-    S.avail = STATES.map((s) => s.id).filter((id, i) => raw[i] && raw[i].days && raw[i].days.length);
+    const have = STATES.filter((s) => s.dir); // a state with no Daily report is not asked for one
+    const raw = await Promise.all(have.map((s) => loadOpt(s.dir + '/index')));
+    S.avail = have.map((s) => s.id).filter((id, i) => raw[i] && raw[i].days && raw[i].days.length);
     if (!S.avail.length) throw new Error('no daily data');
-    S.avail.forEach((id) => { S.idx[id] = prepIndex(raw[STATES.findIndex((s) => s.id === id)]); });
+    S.avail.forEach((id) => { S.idx[id] = prepIndex(raw[have.findIndex((s) => s.id === id)]); });
     const [txSeries, gTx, gjTx, gjOk, sok, mk] = await Promise.all([loadOpt('daily/permits-series'), getGeo().catch(() => null), loadOpt('counties.geo'), loadOpt('counties-ok.geo'), loadOpt('series-ok'), loadOpt('series-markets')]);
     S.series.TX = S.idx.TX ? permitSeries('TX', S.idx.TX, txSeries) : null;
     S.series.OK = S.idx.OK ? permitSeries('OK', S.idx.OK, null) : null;
@@ -79,7 +80,7 @@ export function createDailyView({ root }) {
     const q = new URLSearchParams();
     if (day !== latest()) q.set('d', day);
     if (mode === 'full') q.set('v', 'full');
-    const sp = stateParam(S.states);
+    const sp = stateParam(activeStates()); // the site-wide choice, whichever of its states have a report
     if (sp) q.set('st', sp);
     if (sel) q.set(sel.t === 'p' ? 'drill' : 'survey', sel.id);
     return '#daily' + (q.toString() ? '?' + q : '');
@@ -649,6 +650,7 @@ export function createDailyView({ root }) {
 
   return {
     setStates: applyStates,
+    available: () => S.avail.slice(), // the states that have a Daily report
     async activate(params) {
       if (!S.ready) {
         try { await boot(); } catch (e) {
@@ -660,8 +662,9 @@ export function createDailyView({ root }) {
       const dr = params.get('drill'); const sv = params.get('survey');
       S.sel = dr && /^\d{7}$/.test(dr) ? { t: 'p', id: dr } : sv && /^\d{1,12}$/.test(sv) ? { t: 's', id: sv } : null;
       let want = activeStates().filter((id) => S.avail.includes(id)); // the router has set the choice from the address
-      if (!want.length || (S.sel && S.avail.includes('TX') && !want.includes('TX'))) { // a well is a Texas one: show Texas with it
-        want = S.avail.slice(); setGlobalStates(want, true);
+      if (!want.length) want = S.avail.slice(); // none of the states chosen has a Daily report: show those that have (the bar says so)
+      else if (S.sel && S.avail.includes('TX') && !want.includes('TX')) { // a well is a Texas one: show Texas with it
+        want = S.avail.slice(); setGlobalStates(activeStates().includes('NM') ? STATES.map((x) => x.id) : want, true);
       }
       S.states = want; setDays();
       const d = params.get('d');

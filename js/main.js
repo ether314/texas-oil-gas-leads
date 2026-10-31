@@ -91,6 +91,22 @@ async function boot() {
     replaceHash(view, params);
   }
 
+  // what the bar says about the view on screen: the Daily report only has some states
+  const note = $('#statebar-note');
+  function setNote() {
+    let text = '';
+    if (shown === 'daily') {
+      const have = daily.available();
+      const missing = activeStates().filter((id) => have.length && !have.includes(id));
+      if (missing.length) {
+        const names = (ids) => ids.map((id) => STATES.find((x) => x.id === id).name).join(' and ');
+        const shownIds = activeStates().filter((id) => have.includes(id));
+        text = names(missing) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report yet; ' + (shownIds.length ? 'it shows ' + names(shownIds) + '.' : 'it shows ' + names(have) + ' instead.');
+      }
+    }
+    note.textContent = text;
+  }
+
   let shown = '';
   function show(moveFocus) {
     let { view, params, hasQuery } = parseHash();
@@ -121,7 +137,7 @@ async function boot() {
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
     ensure(id);
     if (id === 'overview') overview.show(activeStates());
-    if (id === 'daily') daily.activate(params).then(() => bar.set(choice(), false));
+    if (id === 'daily') daily.activate(params).then(() => { bar.set(choice(), false); setNote(); });
     if (id === 'about') fillProdNote();
     if (moveFocus) {
       if (shown !== id || hasQuery) window.scrollTo(0, 0);
@@ -130,6 +146,7 @@ async function boot() {
       h.focus({ preventScroll: true });
     }
     shown = id;
+    setNote();
   }
   // the choice changed on the page (the bar): the address follows, and the view on screen is drawn again
   onStates((ids) => {
@@ -138,6 +155,7 @@ async function boot() {
     overview.stale();
     if (shown === 'overview') overview.show(ids);
     else if (shown === 'daily') daily.setStates(ids);
+    setNote();
   });
   window.addEventListener('hashchange', () => show(true));
   show(false);

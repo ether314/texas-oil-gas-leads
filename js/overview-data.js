@@ -3,7 +3,7 @@
 //
 // Texas's files are keyed by plain county codes and P-5 operator numbers; Oklahoma's by codes that repeat Texas's and by the OCC's own
 // operator numbers, so Oklahoma's counties are keyed OK:001 and its operators OK:123 (states.js).
-import { countyKey, stateIndex, POINT_BLOCK } from './states.js';
+import { countyKey, stateIndex, POINT_BLOCK, measureOf } from './states.js';
 
 const sum = (a, from = 0, to = a.length) => { let s = 0; for (let i = from; i < to; i++) s += a[i] || 0; return s; };
 
@@ -11,22 +11,29 @@ const sum = (a, from = 0, to = a.length) => { let s = 0; for (let i = from; i < 
 // figures say so by covering fewer states rather than counting it as zero.
 const usable = (states, docs) => states.filter((id) => docs && docs[id]).map((id) => ({ id, f: docs[id] }));
 
-// Monthly new-drill permits for the states shown: one series on the months every state shown has (they end on the same last
-// complete month; if one file lags, the series stops where all have data rather than counting the missing month as zero).
+// Monthly counts for the states shown. `permits` adds up the states that count the same thing (the permit states, or, with no permit state shown,
+// the states shown), on the months all of them have (they end on the same last complete month; if one file lags, the series stops where
+// all have data rather than counting the missing month as zero). A state that counts something else (New Mexico's spuds) is not added in: it
+// is in `own[id]`, a series on its own months, as every state is. `ids` are the states with a file, `summed` the ones added up.
 export function permitSeries(states, docs) {
   const use = usable(states, docs);
   if (!use.length) return null;
-  const maps = use.map((u) => new Map(u.f.months.map((m, i) => [m, u.f.permits[i]])));
-  const months = use[0].f.months.filter((m) => maps.every((mp) => mp.has(m)));
+  const permit = use.filter((u) => measureOf(u.id).id === 'permits');
+  const base = permit.length ? permit : use;
+  const maps = base.map((u) => new Map(u.f.months.map((m, i) => [m, u.f.permits[i]])));
+  const months = base[0].f.months.filter((m) => maps.every((mp) => mp.has(m)));
   const by = {};
-  use.forEach((u, k) => { by[u.id] = months.map((m) => maps[k].get(m)); });
-  return { months, permits: months.map((_, i) => use.reduce((t, u) => t + by[u.id][i], 0)), by, ids: use.map((u) => u.id) };
+  base.forEach((u, k) => { by[u.id] = months.map((m) => maps[k].get(m)); });
+  const own = Object.fromEntries(use.map((u) => [u.id, { months: u.f.months, permits: u.f.permits }]));
+  return { months, permits: months.map((_, i) => base.reduce((t, u) => t + by[u.id][i], 0)), by, own, ids: use.map((u) => u.id), summed: base.map((u) => u.id) };
 }
 // last 12 and the 12 before, in complete months
 export function permitTotals(sp) {
   const n = sp.permits.length;
   return { last: sum(sp.permits, n - 12, n), prior: sum(sp.permits, n - 24, n - 12), from: sp.months[n - 12], to: sp.months[n - 1] };
 }
+// the same for one state's own series (a state not added into the total keeps its own)
+export const ownTotals = (sp, id) => permitTotals(sp.own[id]);
 
 // County permit counts for the states shown, every state but Texas keyed OK:001 and its operators OK:123. asOf is the latest file's last day.
 export function countyPermits(states, docs) {
