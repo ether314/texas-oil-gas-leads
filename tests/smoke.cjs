@@ -490,6 +490,25 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 13. a dropped connection is tried once more (a phone between towers): the Map's first request for its permit file fails and it still draws; a missing file is not retried
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    let permitAsks = 0; let missingAsks = 0;
+    await ctx.route('**/data/permits.json', (route) => { permitAsks++; if (permitAsks === 1) route.abort(); else route.continue(); });
+    await ctx.route('**/data/daily-nm/1999-01-01.json', (route) => { missingAsks++; route.fulfill({ status: 404, body: 'not found' }); });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#map', { waitUntil: 'load' });
+      await page.waitForSelector('#map-root canvas', { timeout: 25000 });
+      check(permitAsks === 2, 'the Map draws although its first request for the permit file was dropped (it asked ' + permitAsks + ' times)');
+      const miss = await page.evaluate(async () => { const m = await import('./js/util.js'); const t0 = performance.now(); const r = await m.loadOpt('daily-nm/1999-01-01'); return { r, ms: Math.round(performance.now() - t0) }; });
+      check(miss.r === null && missingAsks === 1 && miss.ms < 600, 'a missing file is asked for once and answered at once, not retried: ' + missingAsks + ' ask, ' + miss.ms + ' ms');
+    } catch (e) {
+      check(false, 'the retry of a dropped request: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

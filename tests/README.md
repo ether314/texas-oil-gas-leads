@@ -39,6 +39,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   it does not publish) and with all three states (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
   On a phone it also checks the tabs' edge fade, the browser bar's color in each theme and, in the Daily report with three states, one pill per state, notes and sparklines that fit their cards and no card alone in half a row.
   It sweeps every map metric under New Mexico, Oklahoma and all three states for a NaN in the legend or panel, and says so when no county has a figure (New Mexico's depth).
+  It drops the first request for a data file and checks the page still draws (one retry), and that a missing file is asked for once.
   Under print media it checks that a dark page prints light and that the header, states bar, controls and buttons stay off the paper.
   With the browser's clock set (Playwright's `page.clock`), it checks that the Daily report warns when its newest report is days behind today and not otherwise.
   It downloads the Operators CSV (a State column, blank not zero where a state publishes no figure, no number turned into text) and walks the archive's days (the newest, the oldest, every tenth and each day with an empty Texas queue) for rendered NaN, undefined, null or Infinity.
