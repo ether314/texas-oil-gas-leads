@@ -583,6 +583,39 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 16. a file the report could not read is said to be unread: "no pending set recorded" and "no completion filings" are claims about the commission, not about a failed download
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      const txDays = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily', 'index.json'), 'utf8')).days.map((r) => r.d).sort();
+      const day = txDays[txDays.length - 1];
+      const real = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily', day + '.json'), 'utf8'));
+      const broken = JSON.parse(JSON.stringify(real));
+      for (const d of broken.datasets) if (d.id === 'pending' || d.id === 'completions') { d.error = 'could not be read'; d.file = null; d.dataDay = null; d.state = 'error'; }
+      delete broken.pending; delete broken.completions; broken.status = 'partial';
+      const notes = () => page.evaluate(() => [...document.querySelectorAll('#daily-root .dr-kpi')].map((k) => k.querySelector('.dr-kpi-top').textContent.trim() + ' | ' + ((k.querySelector('.dr-kpi-note') || {}).textContent || '')).join(' || '));
+      await page.goto(base + '#daily?d=' + day + '&st=tx', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpi', { timeout: 25000 });
+      const control = await notes();
+      check(!/could not be read/.test(control), 'a day on which every file was read says nothing about unread files: ' + control.slice(0, 90));
+      await page.route('**/data/daily/' + day + '.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(broken) }));
+      await page.goto(base + '#daily?d=' + day + '&st=tx', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpi', { timeout: 25000 });
+      const tx = await notes();
+      check(/Waiting for approval \| The pending files could not be read/.test(tx) && !/No pending set recorded/.test(tx), 'Texas with its pending files unread says so, not "no pending set recorded": ' + tx.slice(0, 160));
+      check(/Completions[^|]* \| Texas: the completion files could not be read/.test(tx) && !/No completion filings/.test(tx), 'and so for its completion files');
+      await page.click('#statebar-seg button:has-text("All")'); // the bar keeps the last choice, so an address with no state is still Texas alone here
+      await page.waitForFunction(() => document.querySelector('#daily-root .dr-kpi-top') && [...document.querySelectorAll('#daily-root .dr-kpi-top')].some((k) => /^Completions$/.test(k.textContent.trim())), null, { timeout: 25000 });
+      const all = await notes();
+      check(/Completions \|[^|]*Texas could not be read/.test(all), 'with all three states the completions card says which state could not be read: ' + all.slice(0, 200));
+    } catch (e) {
+      check(false, 'unread files: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

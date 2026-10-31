@@ -50,6 +50,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   It drops the first request for a data file and checks the page still draws (one retry), and that a missing file is asked for once.
   Under print media it checks that a dark page prints light and that the header, states bar, controls and buttons stay off the paper.
   With the browser's clock set (Playwright's `page.clock`), it checks that the Daily report warns when its newest report is days behind today and not otherwise.
+  With Texas's pending and completion files stubbed as unread it checks that the Daily cards say "could not be read" (and for which state) rather than "no pending set recorded" or "no completion filings".
   It checks that every button draws its words as one piece (a label split into two flex items gets the icon's gap between its words, which read as a double space).
   It downloads the Operators CSV (a State column, blank not zero where a state publishes no figure, no number turned into text) and walks the archive's days (the newest, the oldest, every tenth and each day with an empty Texas queue) for rendered NaN, undefined, null or Infinity.
 - `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to
