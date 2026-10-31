@@ -1,10 +1,12 @@
 # NOTES_D7: the daily Railroad Commission report (producer D7)
 
-Scripts: `site/pipeline/d7_daily.py` and its share client `site/pipeline/rrc_share.py` (stdlib only; run with `python3 -I`).
+Scripts: `site/pipeline/d7_daily.py`, its share client `site/pipeline/rrc_share.py` and `site/pipeline/d7_packs.py`, which opens the image
+packs (standard library; Pillow and `pdftoppm` only to draw the contact sheets). Run with `python3 -I`.
 About 20 s for one day; rebuilding all 92 days took 88 s (2026-10-31). Page: `#daily` (`js/daily.js`, `js/daily-viz.js`).
 
 Files in `site/public/data/daily/`: `YYYY-MM-DD.json` (3-13 KB each, 92 kept), `index.json` (one row per day, 13 KB),
-`permits-series.json` (permits issued per calendar day, 2 KB). Budgets 60 / 40 / 20 KB, enforced by `--check`.
+`permits-series.json` (permits issued per calendar day, 2 KB), and with `--packs` `img/<day>-<pack>.jpg` (contact sheets, 22-29 KB).
+Budgets 60 / 40 / 20 / 150 KB, enforced by `--check`.
 
 ## Read this first
 
@@ -30,7 +32,7 @@ from the page; the constants in `DATASETS` are the fallback. A new nightly datas
 | permits | Drilling Permit Master and Trailer - Daily File | `daf420.dat`, the current month, parsed (below). Rebuilt days also read the End of Month files (`f5dfea9c-...`) |
 | pending | Drilling Permits Pending Approval | the sets that landed that day: `dp_drilling_permit_pending_*` and `dp_wellbore_pending_*` |
 | completions | Completion Information in Data Format | the newest `<MM-DD-YYYY>.zip` listed, one `packetData_<n>_(Approved\|Submitted).dat` per packet, by district |
-| w1images, dirsurveys, complimages | the three image packs | the share listing only (size, time); the zips are hundreds of MB and are never downloaded |
+| w1images, dirsurveys, complimages | the three image packs | the share listing every day (size, time); with `--packs` the live day's zips are also downloaded and opened (see "Inside the image packs") |
 
 Not daily, so not read: Digital Map Data (twice a week) and everything weekly or monthly.
 
@@ -63,6 +65,39 @@ Seen on 2026-10-24 to 10-31 (pending sets: since August). This is why the rule a
 | completions zip and completion images zip for day D | about 02:20 on D+1 (late once: day 10-26 was listed at 10:24 on 10-27) |
 | directional surveys zip for day D | about 07:55 on D+1 |
 | W-1 images `subscriptions_<D>_*.zip` | about 10:18 on D+1 |
+
+## Inside the image packs (`d7_packs.py`, `--packs`)
+
+The three packs are zips of scanned filings (PDF and TIFF). The listing gives a size for every day, which was all the report
+showed. With `--packs` the **live** day's three packs (the ones that landed that day) are also downloaded, opened and deleted;
+rebuilt days get no previews (92 packs a rebuild, 30-450 MB each). The RRC server ignores byte ranges (checked: a `Range`
+request returns the whole file with status 200), so a pack can only be read whole. What the packs of 2026-10-29 held:
+
+| pack | contents | kinds counted (by name pattern) |
+|---|---|---|
+| W-1 images (31 MB) | 168 files: the approved W-1 letter and the plats, `<permit>_W1_...` and `<permit>_Plat_...` | approved W-1 74, permit plat 94 |
+| directional surveys (28 MB) | 57 PDFs `dir_survey_<id>.pdf` and one CSV | directional survey 57 |
+| completion images (306 MB) | 908 files in 123 `<district>/trackingNo_<n>_Images_Submitted/` folders: the forms the system makes (`cmpl_<Form>Form_PID_<n>.pdf`) and whatever the operator attached | W-2 87, P-4 71, L-1 63, G-1 36, other forms 43; well logs 87, W-15 cementing reports 89, plats 49, P-16 43, surveys 60, other attachments 274 |
+
+**What is published, and what is not.** `images[<pack>].docs` is the document count, the counts by kind (`types`, largest
+first, `Other` last, adding up to `n`) and, for completions, the number of packets. `images[<pack>].sheet` names one JPEG,
+`img/<day>-<pack>.jpg`: page one of up to 16 documents, one kind after another (chosen by a hash of the name, so the same
+whatever the zip's order), each tile **112 px wide and blurred (Gaussian radius 1.2)**, 22-29 KB, 1-3 s to draw. The layout
+shows (forms, plats, logs, logos), the text does not read. The blur is not decoration: at 128 px without it the largest print
+on a cover page (an operator, a county) could still be read after a zoom, which a look at the first sheets showed, and a
+blur makes that impossible whatever the page holds. **No page is published legibly and no file name leaves the module**: the
+filings carry lease names, well numbers and the names, phone numbers and addresses of individuals, which the README's privacy
+rule excludes, and the file names alone carry lease and well names. Showing readable pages would be a decision about that
+rule, not a setting. Pillow and `pdftoppm` (poppler-utils) draw the sheet; without them the counts still come and the sheet
+is skipped with a log line. A pack that cannot be downloaded or opened is skipped the same way and never costs the dataset.
+
+Safety: the pack is untrusted. Members are read one at a time, over 12 MB are never opened, `pdftoppm` runs under a 25 s
+timeout, a sheet gets 100 s in all, Pillow refuses a TIFF past 120 million pixels, and the zip is deleted afterwards.
+
+Cost: the three packs are 360-510 MB a night (306 MB took 39 s through the agent proxy here; a whole run with the packs took
+under two minutes). The workflow installs poppler-utils and Pillow first (about 15 s, `continue-on-error`). Three sheets are
+about 80 KB a day, committed to `main` with the day file and again to `gh-pages`: about 30 MB a year of history on each, and
+92 days (7 MB) in the tree, because `prune_images` deletes the sheets no day file refers to.
 
 ## Layouts
 
@@ -179,6 +214,18 @@ the previous month's file too (one extra 2.4 MB download).
    depth). The page was opened in a browser at desktop and phone width on a weekday with two pending sets, a Sunday and
    the Monday after a skipped zip day: no horizontal overflow, no console errors.
 
+10. Image packs. `d7_packs.py` on the three real packs of 2026-10-29: 168, 57 and 908 documents, kinds adding up, sheets of 29,
+    22 and 28 KB in about 2 s each (112 px tiles, blurred). With synthetic packs built with Pillow (40 checks): kinds counted by pattern (a text
+    file and a CSV are not documents), kinds beyond the limit fold into Other and still add up, the pick is the same
+    whatever the order in the zip and shows every kind before repeating, a broken scan and a member over the size cap are
+    skipped, the sheet is a JPEG of the stated size with no metadata, an empty pack has no sheet, a missing pdftoppm or
+    Pillow gives counts and no sheet and says why, a file that is not a zip raises and is caught by `pack_preview`, and
+    **no file name, lease name or permit number appears in the counts, the sheet record or the log**. `images_job` with
+    `--packs` opens only the live day and deletes the zip; a failed download skips the preview and keeps the dataset;
+    `validate` reports a missing or oversized sheet and kinds that do not add up; `prune_images` deletes unreferenced
+    sheets. A real run (`--date 2026-10-30 --packs`, 365 MB of packs, 6 connection resets absorbed) wrote the three sheets and
+    passed `--check`; the verbose page showed them at desktop and phone width with no overflow and no console errors.
+
 ## Run and schedule
 
 ```
@@ -186,6 +233,7 @@ python3 -I site/pipeline/d7_daily.py                  # today (Central), writes 
 python3 -I site/pipeline/d7_daily.py --backfill 91    # also rebuild every missing day of the last 91 (the whole archive: about 90 s)
 python3 -I site/pipeline/d7_daily.py --date 2026-10-30   # capture that report day live (replaces its file if there is one)
 python3 -I site/pipeline/d7_daily.py --skip-if-captured  # exit quietly when today's report was already captured live that night
+python3 -I site/pipeline/d7_daily.py --packs             # also open the live day's image packs: counts and a contact sheet (needs Pillow, pdftoppm)
 python3 -I site/pipeline/d7_daily.py --check          # only validate
 ```
 `.github/workflows/daily-rrc-report.yml` runs it at 03:15 UTC (10:15 PM CDT / 9:15 PM CST, after the last file the RRC posts
@@ -217,5 +265,5 @@ It then commits and publishes like a night's run. Good to know:
 - The date is checked twice, as a shape in the workflow and as a real day that is not in the future in the script.
 
 Known limits: a rebuilt day has no catalog check, file states or monthly watch; the pending queue is only as old as the
-share keeps it; image packs are measured by size only; permit coordinates are ignored here (only part of recent permits have
+share keeps it; rebuilt days show image pack sizes only (the previews are for days captured live); permit coordinates are ignored here (only part of recent permits have
 them).

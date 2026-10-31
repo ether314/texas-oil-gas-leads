@@ -15,7 +15,9 @@ Inputs are public RRC files, only parsed, never executed (run with `python3 -I`)
                record 02 per permit, layout manual OGA049M. Month-end files (End of Month share) rebuild earlier days.
   pending      Drilling Permits Pending Approval: dp_*_pending_<yyyymmddhhmmss>.txt, `}`-delimited, two sets a day.
   completions  Completion Information in Data Format: <MM-DD-YYYY>.zip of packetData_*.dat, `{`-delimited.
-  images       W-1 images, directional surveys, completion images: only the share listing is read (names, sizes).
+  images       W-1 images, directional surveys, completion images: the share listing is read (names, sizes). With --packs the
+               live day's three packs are also opened (d7_packs.py): documents counted by kind, and a contact sheet of
+               first pages shrunk and blurred so nothing reads (img/<day>-<pack>.jpg), because the filings carry names this site leaves out.
 
 One rule for every report, live, rebuilt or repaired: a day shows what landed on each share that day, judged by the
 file's Last Modified time (the share prints Central time). Completions and the three image packs: the dated zip that was
@@ -54,13 +56,14 @@ SITE = os.path.dirname(HERE)
 ROOT = os.path.dirname(SITE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path; rrc_share.py sits next to this file
 from rrc_share import Session, Share, ShareError  # noqa: E402
+import d7_packs  # noqa: E402
 
 DATA_PAGE = "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/"
 UA = "Mozilla/5.0 (research script)"
 KEEP_DAYS = 92
 EOM_GUID = "f5dfea9c-bb39-4a5e-a44e-fb522e088cba"  # Drilling Permit Master and Trailer, End of Month files
 DEFAULT_OUT = os.path.join(SITE, "public", "data", "daily")
-BUDGET_BYTES = {"index.json": 40_000, "permits-series.json": 20_000, "day": 60_000}
+BUDGET_BYTES = {"index.json": 40_000, "permits-series.json": 20_000, "day": 60_000, "sheet": 150_000}
 
 # the six datasets the RRC page lists as nightly or twice daily (matched by description, GUID read from the page)
 DATASETS = [
@@ -618,7 +621,26 @@ def images_job(ctx, ds):
         use = landed_on(days, day)
         if use is not None:
             picked[day] = {"name": days[use]["name"], "modified": days[use]["modified"], "bytes": days[use]["bytes"]}
-    return {"days": dict(days), "picked": picked, "files": sh.total, "retries": sess.retries}
+    out = {"days": dict(days), "picked": picked, "files": sh.total, "retries": sess.retries}
+    if ctx.get("packs") and ctx["R"] in picked:  # only the live day: a pack is 30-450 MB, and rebuilt days would mean 92 of them
+        out["docs"] = {ctx["R"]: pack_preview(sh, ctx, ds, picked[ctx["R"]]["name"])}
+    return out
+
+
+def pack_preview(sh, ctx, ds, name):
+    """Download the pack that landed on the live day, count its documents and draw its contact sheet (d7_packs). Returns
+    {'docs': ..., 'sheet': ...} or None when it cannot be done: a pack that cannot be read never costs the dataset."""
+    path = None
+    try:
+        path = sh.download(name, os.path.join(ctx["dl"], "pack-%s-%s" % (ds, ctx["R"].isoformat())))
+        docs, sheet = d7_packs.inspect_pack(path, ds, os.path.join(ctx["img_out"], "%s-%s.jpg" % (ctx["R"].isoformat(), ds)), log)
+        return dict({"docs": docs}, **({"sheet": sheet} if sheet else {}))
+    except Exception as e:  # noqa: BLE001 - a bad zip, a failed download, a full disk
+        log("%-12s pack preview SKIPPED (%s)" % (ds, e))
+        return None
+    finally:
+        if path and os.path.exists(path):
+            os.remove(path)
 
 
 def image_section(days, use):
@@ -672,7 +694,14 @@ def build_reports(ctx, jobs, cat, kind_by_date):
         for did in ("pending", "completions"):
             if did in ok and ok[did]["sections"].get(day):
                 rep[did] = ok[did]["sections"][day]
-        rep["images"] = {did: image_section(ok[did]["days"], landed_on(ok[did]["days"], day)) for did in IMAGE_PACKS if did in ok}
+        rep["images"] = {}
+        for did in IMAGE_PACKS:
+            if did in ok:
+                block = image_section(ok[did]["days"], landed_on(ok[did]["days"], day))
+                extra = (ok[did].get("docs") or {}).get(day)
+                if block and extra:
+                    block.update(extra)  # docs and sheet, for the live day when --packs was given
+                rep["images"][did] = block
         entries = []
         for spec in DATASETS:
             did = spec["id"]
@@ -719,6 +748,24 @@ def update_states(live, out_dir):
             d["state"] = "new"
 
 
+def prune_images(out_dir):
+    """Delete the contact sheets that no day file refers to any more (a pruned day, or a repair made without --packs)."""
+    img = os.path.join(out_dir, "img")
+    if not os.path.isdir(img):
+        return
+    used = set()
+    for f in os.listdir(out_dir):
+        if DAY_FILE.fullmatch(f):
+            for block in ((read_json(os.path.join(out_dir, f)) or {}).get("images") or {}).values():
+                if block and block.get("sheet"):
+                    used.add(block["sheet"]["file"])
+    for f in os.listdir(img):
+        if f not in used:
+            os.remove(os.path.join(img, f))
+    if not os.listdir(img):
+        os.rmdir(img)
+
+
 def validate(out_dir, keep=KEEP_DAYS):
     """Reload everything this producer writes and check it. Returns the problems found (empty when all is well)."""
     bad = []
@@ -756,6 +803,12 @@ def validate(out_dir, keep=KEEP_DAYS):
             check(q["total"] == sum(x["n"] for x in q["sets"]), "%s: pending total is not the sum of its sets" % f)
         if c:
             check(0 <= c["initial"] <= c["approved"], "%s: completion counts do not nest" % f)
+        for did, block in (rep.get("images") or {}).items():
+            if block and block.get("docs"):
+                check(sum(n for _, n in block["docs"]["types"]) == block["docs"]["n"], "%s: %s document kinds do not add up" % (f, did))
+            if block and block.get("sheet"):
+                sheet = os.path.join(out_dir, "img", block["sheet"]["file"])
+                check(os.path.isfile(sheet) and os.path.getsize(sheet) <= BUDGET_BYTES["sheet"], "%s: %s sheet is missing or over its size budget" % (f, did))
     ser = read_json(os.path.join(out_dir, "permits-series.json"))
     if isinstance(ser, dict):
         n = len(ser.get("days", []))
@@ -790,6 +843,8 @@ def main():
     ap.add_argument("--keep", type=int, default=KEEP_DAYS)
     ap.add_argument("--only", help="testing: comma list of datasets to read (needs --out somewhere else)")
     ap.add_argument("--check", action="store_true", help="only reload and check the files already in --out")
+    ap.add_argument("--packs", action="store_true", help="also open the live day's image packs (30-450 MB each; sheets need Pillow and "
+                    "pdftoppm): count the documents by kind and draw a contact sheet of first pages, shrunk and blurred so nothing reads")
     ap.add_argument("--skip-if-captured", action="store_true", help="do nothing when the report day was already captured live, "
                     "reading every dataset, at or after 03:00 UTC the next day (for a backup schedule)")
     a = ap.parse_args()
@@ -837,7 +892,7 @@ def main():
     for u in unknown:
         log("catalog: the RRC page lists a nightly dataset this script does not read: %s" % u)
 
-    ctx = {"R": R, "today": today, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid}
+    ctx = {"R": R, "today": today, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img")}
     work = {"permits": permits_job, "pending": pending_job, "completions": completions_job,
             "w1images": lambda c: images_job(c, "w1images"), "dirsurveys": lambda c: images_job(c, "dirsurveys"),
             "complimages": lambda c: images_job(c, "complimages")}
@@ -895,6 +950,7 @@ def main():
     for f in os.listdir(a.out):  # prune, then rebuild the index from the files that remain
         if DAY_FILE.fullmatch(f) and f[:-5] < keep_from.isoformat():
             os.remove(os.path.join(a.out, f))
+    prune_images(a.out)
     rows = [headline(read_json(os.path.join(a.out, f))) for f in sorted(os.listdir(a.out)) if DAY_FILE.fullmatch(f)]
     write_json(os.path.join(a.out, "index.json"), {"generated": live["capturedAt"], "keep": a.keep, "days": rows})
     log("report %s: %s | %d of %d datasets | %d day files | %d connection resets absorbed" % (R, live["status"], got, len(DATASETS), len(rows), retries))

@@ -14,9 +14,9 @@ const WHAT = {
   permits: 'New permits issued, from the nightly Drilling Permit Master and Trailer file (daf420.dat).',
   pending: 'W-1 applications submitted and not yet approved, from the twice-daily pending set.',
   completions: 'Completion forms (W-2, G-1, P-4 and others) submitted or approved that day.',
-  w1images: 'Zipped images of every W-1 approved that day, by RRC district. Only the size is captured.',
-  dirsurveys: 'Zipped directional survey images submitted that day. Only the size is captured.',
-  complimages: 'Zipped completion form images. Only the size is captured.',
+  w1images: 'Zipped images of every W-1 approved that day, by RRC district. The size is captured; live days also count the documents.',
+  dirsurveys: 'Zipped directional survey images submitted that day. The size is captured; live days also count the documents.',
+  complimages: 'Zipped completion form images. The size is captured; live days also count the documents.',
 };
 const KIND = { H: 'Horizontal', D: 'Directional', V: 'Vertical' };
 const PERMIT_TYPE = { '01': 'New drill', '05': 'Other', '07': 'Re-entry', '09': 'Field transfer', '14': 'Recompletion', '15': 'Reclass' };
@@ -337,7 +337,29 @@ export function createDailyView({ root }) {
         hist.length > 3 ? spark(hist, { w: 220, h: 40, color, label: title + ' size, last 30 days' }) : null, w1);
       return box;
     });
-    return card('dr-sec', head('layers', 'Image packs', 'The three image packs', 'The RRC publishes these as zips of PDF and TIFF images. Only their size is read, so volume stands in for filing activity.'), el('div', { class: 'dr-imgs' }, cards));
+    return card('dr-sec', head('layers', 'Image packs', 'The three image packs', 'The RRC publishes these as zips of PDF and TIFF images. The size of each is read for every day, so volume stands in for filing activity; days captured live also open the zip (next section).'), el('div', { class: 'dr-imgs' }, cards));
+  }
+
+  // what the packs held that day: documents by kind and a sheet of first pages shrunk and blurred so nothing reads (live days since previews began)
+  function packPagesSection(rep) {
+    const im = rep.images || {};
+    const defs = [['w1images', 'W-1 permit images', 'var(--s2)'], ['dirsurveys', 'Directional surveys', 'var(--s7)'], ['complimages', 'Completion images', 'var(--s3)']];
+    const rows = defs.filter(([id]) => im[id] && im[id].docs && im[id].docs.n).map(([id, title, color]) => {
+      const s = im[id]; const d = s.docs;
+      const info = el('div', { class: 'dr-pack-info' }, el('p', { class: 'eyebrow' }, icon(ICONS[id], 15), title),
+        el('b', { class: 'dr-img-num', text: num(d.n) + (d.n === 1 ? ' document' : ' documents') }),
+        el('small', { text: 'Pack for ' + fmtDow(s.day) + (d.packets ? ' · from ' + num(d.packets) + ' completion packets' : '') }),
+        rankList(d.types.map(([k, n]) => ({ label: k, value: n })), { color }));
+      const ok = s.sheet && /^[\w.-]+\.jpg$/.test(s.sheet.file);
+      const fig = ok ? el('figure', { class: 'dr-pack-fig' },
+        el('img', { class: 'dr-sheet', src: 'data/daily/img/' + s.sheet.file, width: s.sheet.w, height: s.sheet.h, loading: 'lazy', decoding: 'async',
+          alt: 'Contact sheet: blurred page one of ' + s.sheet.tiles + ' documents from the ' + title + ' pack, too small to read.' }),
+        el('figcaption', { text: 'Page one of ' + s.sheet.tiles + ' of the ' + num(d.n) + ' documents, one kind after another, shrunk to ' + s.sheet.px + ' pixels wide' + (s.sheet.blur ? ' and blurred' : '') + '.' }))
+        : el('p', { class: 'fine', text: 'No page preview could be drawn for this pack.' });
+      return el('div', { class: 'dr-pack' }, info, fig);
+    });
+    if (!rows.length) return null;
+    return card('dr-sec', head('layers', 'Inside the packs', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. The pages are shrunk and blurred on purpose so that nothing can be read: the filings carry lease names, well numbers and the names of individuals, which this site leaves out. Days before previews began show sizes only.'), ...rows);
   }
 
   function healthSection(rep) {
@@ -402,7 +424,7 @@ export function createDailyView({ root }) {
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {
-      kids.push(permitsSection(rep), pendingSection(rep), completionsSection(rep), imagesSection(rep), healthSection(rep), archiveSection(), notesSection(rep));
+      kids.push(permitsSection(rep), pendingSection(rep), completionsSection(rep), imagesSection(rep), packPagesSection(rep), healthSection(rep), archiveSection(), notesSection(rep));
     }
     const nodes = kids.filter(Boolean);
     nodes.forEach((n, i) => n.style.setProperty('--d', String(Math.min(i, 9))));
