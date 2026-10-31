@@ -40,7 +40,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   a gh-pages branch (publishes exactly the site, never rewrites history, says so when current, refuses an incomplete copy, retries a refused
   push and gives up after four; needs git and PyYAML).
 - `test_d9_nm_daily.py`: the New Mexico Daily report's producer: a well counted once, which day a report shows, what is named and left out, the series rewritten each night, a whole run with the network faked, the validator on faults, mutants and the committed archive.
-- `test_js_data.mjs`: `states.js` (parsing and keeping the choice, county and point keys), `overview-data.js` (the permit series, county counts,
+- `test_js_data.mjs`: `states.js` (parsing and keeping the choice, county and point keys, the federal offshore's place in them, how a sentence names the states that count spuds, counties and areas), `overview-data.js` (the permit series, county counts,
   operators and permit points of the states shown, merged; a state with no file is left out, never counted as zero) and, on the committed
   files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
@@ -49,7 +49,9 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   column, each state's own date, the Texas-only filters stepping aside), Companies say they are Texas only, and a view that does not follow it hides the bar.
   The Map is driven the same way: each state alone and all together (counties, legend, dot colors, the table twin, a hover and a click on a dot, the replay),
   and a county or an operator opened by its state-prefixed key. The Daily report is driven for New Mexico alone (three cards, its color, its 33 counties, no tile for what
-  it does not publish) and with all three states (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
+  it does not publish) and with all three states that have one (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
+  The federal offshore has its own block: the bar's five choices fit a 360 px phone (TX, OK, NM, Offshore) and keep their full names for a screen reader, the Map names its 63 areas as areas (no FIPS code),
+  the Daily report says it has none and why, Companies says there is nothing to list, and Operators shows its 16 operators with a "Top area" column.
   On a phone it also checks the tabs' edge fade, the browser bar's color in each theme and, in the Daily report with three states, one pill per state, notes and sparklines that fit their cards and no card alone in half a row.
   It checks that what a state does not publish is never a 0 (the Daily map's tooltips, New Mexico's "other filings", the amended-permits figure naming the states it adds), that an address naming two states lights no segment of the bar and says which are shown, that the Overview's chips name New Mexico's different measure, and that a Map operator panel never shows more dots than the operator has.
   It sweeps every map metric under New Mexico, Oklahoma and all three states for a NaN in the legend or panel, and says so when no county has a figure (New Mexico's depth).

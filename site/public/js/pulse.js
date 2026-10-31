@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 import { segmented } from './ui.js';
 import { hideTip } from './tip.js';
 import { permitSeries } from './overview-data.js';
-import { otherStates, stateOf, measureOf, sameMeasure } from './states.js';
+import { otherStates, stateOf, measureOf, sameMeasure, spudStates, spudsNote, listAnd } from './states.js';
 
 // Texas's own files, and each other state's permit series and (where it has one) the EIA's crude oil production for it
 const FILES = ['series-permits', 'series-markets', 'series-rigs', 'series-jobs', 'series-tax', 'series-outlook', 'series-production',
@@ -101,10 +101,10 @@ function chipDefs(R, raw) {
     note: R.rigPermianAll ? fmt.format(R.rigPermianAll.v[lastIdx(R.rigPermianAll.v)]) + ' basin-wide, incl. New Mexico' : '',
   });
   const ids = R.summedIds || [];
-  const AGENCY = { TX: 'RRC', OK: 'OCC', NM: 'OCD' };
+  const AGENCY = { TX: 'RRC', OK: 'OCC', NM: 'OCD', FO: 'BSEE' };
   const spud = ids.length === 1 && measureOf(ids[0]).id === 'spuds';
   add({ id: 'permits', group: 'activity', icon: 'pin', color: ids.length === 1 ? stColor(ids[0]) : 'var(--st-tx)', label: spud ? 'Wells spudded' : 'New permits', ser: R.permits, fmt: (v) => fmt.format(v),
-    unit: (spud ? 'in the month' : 'new-drill, in the month') + (ids.length > 1 ? ', ' + ids.map(stName).join(' and ') : spud ? ', ' + stName(ids[0]) : ''), src: ids.map((id) => AGENCY[id]).join(' and ') });
+    unit: (spud ? 'in the month' : 'new-drill, in the month') + (ids.length > 1 ? ', ' + listAnd(ids.map(stName)) : spud ? ', ' + stName(ids[0]) : ''), src: listAnd(ids.map((id) => AGENCY[id])) });
   // a state that counts something else than the others' permits (New Mexico's spuds) gets its own chip rather than a place in their sum
   for (const id of (R.permitIds || []).filter((x) => !ids.includes(x))) {
     const ser = R.permitsBy && R.permitsBy[id];
@@ -191,7 +191,7 @@ function makeGroups(R, raw) {
       notes: [(R.rigTx ? 'Rig counts are Baker Hughes weekly counts through ' + fmtDate(R.rigAsOf) + ' (the workbooks come from Internet Archive copies of Baker Hughes’ public files). "Permian, Texas counties" is the Texas part of Baker Hughes’ Permian basin; the basin-wide count also includes southeastern New Mexico.' : '')
         + (R.permits ? (ids.includes('TX') ? ' Texas permits are Railroad Commission new-drill permits by issue month.' : '')
           + (ids.includes('OK') ? ' Oklahoma permits are Oklahoma Corporation Commission new-drill permits by approval month, one per well and day.' : '')
-          + (ids.includes('NM') ? ' New Mexico’s are wells spudded, by the month of the spud date: its regulator publishes no approval dates by well, and spud dates are reported about two months late, so its line ends two months before the others.' : '') : '')],
+          + (spudStates(ids).length ? ' ' + spudsNote(ids) + ', by the month of the spud date; spud dates are reported about two months late, so ' + (spudStates(ids).length > 1 ? 'their lines end' : 'its line ends') + ' two months ' + (spudStates(ids).length < ids.length ? 'before the others.' : 'back.') : '') : '')],
     });
   }
 
@@ -228,7 +228,7 @@ function makeGroups(R, raw) {
     const first = Math.min(...panels.flatMap((p) => p.series.map((s) => s.t[0])));
     groups.push({
       id: 'production', label: 'Production', icon: 'drop',
-      spec: () => ({ label: R.states.map(stName).join(' and ') + ' production', domain: [first, Math.max(...ends)], panels }),
+      spec: () => ({ label: listAnd([...(R.prodOil || R.eia ? ['TX'] : []), ...Object.keys(R.crude)].map(stName)) + ' production', domain: [first, Math.max(...ends)], panels }),
       notes: [(R.prodOil || R.eia ? (R.prodOil ? 'Statewide totals from the Railroad Commission’s production reports (oil is crude plus condensate; gas is gas-well plus casinghead gas), shown through ' + monthLabel(R.prodMeta.through) + ', the newest month that is complete. '
         + (R.prodMeta.partial.length ? 'Reports for ' + monthLabel(R.prodMeta.partial[0]) + ' to ' + monthLabel(R.prodMeta.partial[R.prodMeta.partial.length - 1]) + ' are still being filled in and run below the EIA estimate, so they are left out. ' : '')
         + (cross ? 'Cross-check against the EIA’s own estimate, ' + cross : '')
@@ -303,8 +303,8 @@ export function initMarkets({ ticker, card, raw, states = ['TX'] }) {
   live = { tabs, cleanup: () => toggle.removeEventListener('click', flip) };
   show(groups[0].id);
   src.textContent = 'Each group has its own latest date; see "Data freshness" below and Sources and method for what each series is.'
-    + (!states.includes('TX') ? ' ' + states.map(stName).join(' and ') + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here (see Sources and method).'
-      : states.length > 1 ? ' Rigs, jobs and taxes are Texas’s: ' + states.filter((id) => id !== 'TX').map(stName).join(' and ') + ' ' + (states.length > 2 ? 'have' : 'has') + ' none of them here.' : '');
+    + (!states.includes('TX') ? ' ' + listAnd(states.map(stName)) + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here (see Sources and method).'
+      : states.length > 1 ? ' Rigs, jobs and taxes are Texas’s: ' + listAnd(states.filter((id) => id !== 'TX').map(stName)) + ' ' + (states.length > 2 ? 'have' : 'has') + ' none of them here.' : '');
   api = {
     select(id, scroll) {
       if (!groups.some((g) => g.id === id)) return;

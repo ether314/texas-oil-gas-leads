@@ -1,25 +1,27 @@
 # Oil tracker
 
 An interactive dashboard and map of oil and gas drilling activity, producing operators and the companies that serve
-them, for Texas, Oklahoma and New Mexico, built only from public records. It is a static site (HTML, CSS and JavaScript modules, no
+them, for Texas, Oklahoma, New Mexico and the federal offshore (the Gulf of America), built only from public records. It is a static site (HTML, CSS and JavaScript modules, no
 build step, no external requests) plus the Python scripts that build its data files. (The repository and the live
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
-- **States**: a bar above every view but Sources chooses what is shown: all the states (Texas, Oklahoma and New Mexico), or one. The choice
-  is kept in the address (`st=ok`; nothing means all) and follows you between those views. A view says so when a state cannot give a figure
-  (Oklahoma and New Mexico have no company pool, rig counts, jobs, taxes or production by county here).
-  Texas and Oklahoma count permits by approval date; New Mexico publishes no approval dates by well, so its figures are wells spudded, named as
-  such wherever they show, never added to the permits, and ending two months back because spud dates arrive late (`site/pipeline/NOTES_D9.md`).
+- **States**: a bar above every view but Sources chooses what is shown: all the states (Texas, Oklahoma, New Mexico and the federal offshore), or one
+  (on a narrow phone the bar reads TX, OK, NM, Offshore). The choice is kept in the address (`st=ok`; nothing means all) and follows you between those
+  views. A view says so when a state cannot give a figure (the others have no company pool, rig counts, jobs, taxes or production by county here).
+  Texas and Oklahoma count permits by approval date; New Mexico and the federal offshore publish no approval dates by well, so their figures are wells spudded, named as
+  such wherever they show, never added to the permits, and ending two months back because spud dates arrive late (`site/pipeline/NOTES_D9.md`, `NOTES_D10.md`).
+  The federal offshore (BSEE, the Gulf's federal waters) is small (about 45 wells a year from 16 operators), is divided into 63 protraction areas where the others have
+  counties, publishes no depth, and has no Daily report because its file is weekly.
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
   top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
-  operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green).
+  operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green, the federal offshore rose).
 - **Map**: county shading (permits, oil and gas production and change, well depth, oil and gas jobs and wages,
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
-  basin outlines and a time-lapse of permits. It follows the states bar: the shapes, dots (Texas orange, Oklahoma purple, New Mexico green),
+  basin outlines and a time-lapse of permits. It follows the states bar: the shapes, dots (Texas orange, Oklahoma purple, New Mexico green, the offshore rose),
   legend, tooltips and panels are those of the states shown, with each state's county and operator keys in a link (`county=OK:039`,
   `op=NM:7377`). The figures only Texas has (production, jobs, establishments, companies, mineral value, plants, ZIPs, basins) are
-  Texas counties only: another state's county says "not available", never zero; New Mexico's counts are wells spudded and say so.
+  Texas counties only: another state's county (or an offshore area) says "not available", never zero; New Mexico's and the offshore's counts are wells spudded and say so.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields. Operators follow the states bar: the
   states shown are ranked as one list (by activity band, then new wells), each row tagged with its state, and a state's operators come from
   its own file with the columns only Texas can fill (RRC districts and registrations, production) left out. Companies are the Texas
@@ -142,6 +144,10 @@ minutes without touching the Railroad Commission or the OCC (it steps aside when
 - New Mexico's part of the Daily report is read from the Division's well layer, which is entered some days after an approval: the newest two or three days
   run low and fill in (the pace chart is rewritten from the layer each night and the earlier reports' permits are recounted), a rebuilt day counts only the approvals still in status New, and the Division
   publishes no planned depth, filing date, completion or transfer by day (`site/pipeline/NOTES_D9.md`).
+- The federal offshore is read from BSEE's weekly borehole file: wells spudded (BSEE publishes approvals to drill only as an online query), about 45 a year from 16 operators, so a
+  month holds about four wells and the pages lean on the 12-month counts. The series ends 60 days back, a cautious guess: there are no earlier copies of the file to measure how late BSEE's spud
+  dates arrive (compare the weekly builds and shorten it if a month keeps growing). It publishes no depth (a total depth exists for a handful of wells), has no Daily report, and its
+  areas are BSEE protraction areas, not counties (`site/pipeline/NOTES_D10.md`).
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been

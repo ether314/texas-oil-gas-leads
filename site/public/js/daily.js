@@ -745,7 +745,7 @@ export function createDailyView({ root }) {
       let want = activeStates().filter((id) => S.avail.includes(id)); // the router has set the choice from the address
       if (!want.length) want = S.avail.slice(); // none of the states chosen has a Daily report: show those that have (the bar says so)
       else if (S.sel && S.avail.includes('TX') && !want.includes('TX')) { // a well is a Texas one: show Texas with it
-        want = S.avail.slice(); setGlobalStates(activeStates().includes('NM') ? STATES.map((x) => x.id) : want, true);
+        want = S.avail.slice(); setGlobalStates(STATES.map((x) => x.id), true); // every state is shown again: the report shows those that have one (the bar says which)
       }
       S.states = want; setDays(); useShapes();
       const d = params.get('d');

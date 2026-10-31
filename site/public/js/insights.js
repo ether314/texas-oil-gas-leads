@@ -4,7 +4,7 @@ import { el, fmt, halves, signed, monthLabel, lastIdx, toObjects, fmtDate } from
 import { icon } from './icons.js';
 import { opsLink } from './overview.js';
 import { countyLabel } from './overview-data.js';
-import { stateOf, countyState, measureOf, sameMeasure } from './states.js';
+import { stateOf, countyState, measureOf, sameMeasure, inName, placesWord } from './states.js';
 
 const a = (text, href) => el('a', { href, text });
 const btn = (text, fn) => el('button', { type: 'button', class: 'link', onclick: fn, text });
@@ -25,7 +25,7 @@ export function renderInsights(card, { cp, G, B, ops, extras, meta, prod, R, sel
     if (rows.length === 3) {
       const link = (r) => { const c = G.byFips.get(r.f); return [a(countyLabel(c.n, countyState(r.f), multi), '#map?county=' + r.f), ' (', a(signed(r.h.f), '#map?metric=chg&county=' + r.f), ')']; };
       push('trend', 'var(--s2)', (!sameMeasure(states) ? 'New wells are' : measureOf(states[0]).id === 'spuds' ? 'Wells spudded are' : 'Permits are') + ' growing fastest in ', ...link(rows[0]), ', ', ...link(rows[1]), ' and ', ...link(rows[2]),
-        ': the last 12 full months against the 12 before, among counties with at least 40 ' + (sameMeasure(states) ? measureOf(states[0]).short : 'permits or spuds') + ' in the earlier period.');
+        ': the last 12 full months against the 12 before, among ' + placesWord(states) + ' with at least 40 ' + (sameMeasure(states) ? measureOf(states[0]).short : 'permits or spuds') + ' in the earlier period.');
     }
   }
   // 2. the Permian's share of permits (and of oil, when production is loaded)
@@ -81,7 +81,7 @@ export function renderInsights(card, { cp, G, B, ops, extras, meta, prod, R, sel
     const total = mine.reduce((t, x) => t + x.p, 0);
     if (mine.length >= 2 && total >= 100 && (mine[0].p + mine[1].p) / total >= 0.6 && G) {
       const q = stateOf(id); const c0 = G.byFips.get(mine[0].f); const c1 = G.byFips.get(mine[1].f);
-      if (c0 && c1) push('layers', 'var(--st-' + id.toLowerCase() + ')', 'In ' + q.name + ', ', a(c0.n, '#map?county=' + mine[0].f), ' and ', a(c1.n, '#map?county=' + mine[1].f), ' hold ',
+      if (c0 && c1) push('layers', 'var(--st-' + id.toLowerCase() + ')', 'In ' + inName(id) + ', ', a(c0.n, '#map?county=' + mine[0].f), ' and ', a(c1.n, '#map?county=' + mine[1].f), ' hold ',
         a(Math.round(((mine[0].p + mine[1].p) / total) * 100) + '%', '#map?county=' + mine[0].f), ' of the ' + measureOf(id).noun + ' in the last 12 months (' + fmt.format(mine[0].p + mine[1].p) + ' of ' + fmt.format(total) + ').');
     }
   }

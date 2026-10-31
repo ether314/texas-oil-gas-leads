@@ -9,7 +9,10 @@ export function segmented({ label, options, value, onChange, tabs = true, prefix
   const btns = options.map((o) => el('button', {
     type: 'button', 'data-id': o.id, id: prefix + '-' + o.id, role: tabs ? 'tab' : null,
     'aria-selected': tabs ? 'false' : null, 'aria-pressed': tabs ? null : 'false', 'aria-controls': o.controls || null, tabindex: tabs ? '-1' : null,
-  }, o.icon ? icon(o.icon, 15) : null, o.dot ? el('i', { class: 'seg-dot ' + o.dot, 'aria-hidden': 'true' }) : null, el('span', { text: o.label })));
+    title: o.title || null, 'aria-label': o.title || null, // a short label that stands for a longer name ("Offshore": the federal offshore) says it in full to a screen reader
+  }, o.icon ? icon(o.icon, 15) : null, o.dot ? el('i', { class: 'seg-dot ' + o.dot, 'aria-hidden': 'true' }) : null,
+  // a label with a short form (a phone shows "OK" for Oklahoma, so every state fits the bar): the long one is hidden there, and the button's name stays the full one
+  el('span', { class: o.abbr ? 'seg-l has-abbr' : null, text: o.label }), o.abbr ? el('span', { class: 'seg-a', 'aria-hidden': 'true', text: o.abbr }) : null));
   const root = el('div', { class: 'seg', role: tabs ? 'tablist' : 'group', 'aria-label': label }, thumb, btns);
   let cur = null;
   const place = () => {

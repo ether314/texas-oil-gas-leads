@@ -9,10 +9,10 @@ import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesName, measurePhrase, measureOf, sameMeasure, listAnd } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesName, statesIn, inName, shortName, placesOne, measurePhrase, measureOf, sameMeasure, listAnd, listOr } from './states.js';
 
 const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
-// the views that follow the Both / Texas / Oklahoma choice; the others show what they showed before (Texas) and hide the choice
+// the views that follow the states bar; the others (Sources) hide it
 const STATE_VIEWS = new Set(['overview', 'map', 'daily', 'operators', 'companies']);
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
@@ -86,14 +86,14 @@ async function boot() {
       : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.';
     const tx = ids.includes('TX');
     $('#map-lede').textContent = ids.length === 1 && tx ? MAP_TX
-      : 'County activity and permit locations across ' + listAnd(ids.map((id) => stateOf(id).name)) + '. Shading and counts use every ' + (sameMeasure(ids) ? measureOf(ids[0]).one : 'permit and every spud')
+      : placesOne(ids).replace(/^./, (c) => c.toUpperCase()) + ' activity and permit locations across ' + statesIn(ids) + '. Shading and counts use every ' + (sameMeasure(ids) ? measureOf(ids[0]).one : 'permit and every spud')
         + '; dots show the ones with a recorded location.' + (tx ? ' Plants, company ZIPs and basins are Texas only.' : '');
     $('#co-root').hidden = !tx;
     const co = $('#co-note');
     co.hidden = tx && ids.length === 1;
     // with Texas among several states the note is a line under the heading; with none of them it is the page's empty state
     co.className = tx ? 'fine' : 'empty';
-    co.textContent = !tx ? 'Companies come from the Texas Comptroller’s franchise-tax records, so there is nothing to list for ' + ids.map((id) => stateOf(id).name).join(' or ')
+    co.textContent = !tx ? 'Companies come from the Texas Comptroller’s franchise-tax records, so there is nothing to list for ' + listOr(ids.map(inName))
       + ': no public bulk list like it exists there. Choose All or Texas to browse the Texas pool.' : ids.length > 1 ? 'The company pool is the Texas Comptroller’s, so this list is Texas only.' : '';
   }
 
@@ -102,7 +102,9 @@ async function boot() {
   const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : null);
   const bar = segmented({
     label: 'States shown', tabs: false, prefix: 'sb', value: choice(),
-    options: [{ id: 'all', label: 'All', dot: 'st-all' }, ...STATES.map((x) => ({ id: x.id, label: x.name, dot: 'st-' + x.id.toLowerCase() }))],
+    options: [{ id: 'all', label: 'All', dot: 'st-all' },
+      // the name a screen reader says holds the visible label ("Texas (TX)", "Federal offshore" for "Offshore"); a phone shows TX, OK, NM
+      ...STATES.map((x) => ({ id: x.id, label: shortName(x.id), abbr: x.short ? null : x.id, title: x.short ? x.name : x.name + ' (' + x.id + ')', dot: 'st-' + x.id.toLowerCase() }))],
     onChange: (id) => setStates(id === 'all' ? STATES.map((x) => x.id) : [id]),
   });
   $('#statebar-seg').append(bar.el);
@@ -122,9 +124,11 @@ async function boot() {
       const have = daily.available();
       const missing = activeStates().filter((id) => have.length && !have.includes(id));
       if (missing.length) {
-        const names = (ids) => ids.map((id) => STATES.find((x) => x.id === id).name).join(' and ');
+        const names = (ids) => listAnd(ids.map((id) => stateOf(id).name));
         const shownIds = activeStates().filter((id) => have.includes(id));
-        text = (text ? text + ' ' : '') + names(missing) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report yet; ' + (shownIds.length ? 'it shows ' + names(shownIds) + '.' : 'it shows ' + names(have) + ' instead.');
+        // a state that can never have a report says why (the federal offshore's file is weekly); one that may get a report says "yet"
+        const why = missing.length === 1 && stateOf(missing[0]).noDaily;
+        text = (text ? text + ' ' : '') + names(missing) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report' + (why ? ' (' + why + ')' : ' yet') + '; ' + (shownIds.length ? 'it shows ' + names(shownIds) + '.' : 'it shows ' + names(have) + ' instead.');
       }
     }
     note.textContent = text;

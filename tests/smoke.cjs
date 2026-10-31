@@ -32,6 +32,10 @@ const VIEWS = [
   ['#map?st=tx', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) ? null : 'Texas alone should keep its own legend')],
   ['#map?st=ok', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) && (await page.locator('.lg-states').count()) === 0 ? null : 'the Oklahoma map should say permits and need no state legend')],
   ['#map?st=nm', '#map-root canvas', async (page) => (/^Wells spudded, /.test(await page.locator('.lg-title').innerText()) ? null : 'the New Mexico map should say wells spudded')],
+  ['#overview?st=fo', '#kpis > *', async (page) => (/^BSEE spud reports through/.test(await page.locator('#hero-eyebrow').textContent()) ? null : 'the offshore\'s Overview should name BSEE')],
+  ['#map?st=fo', '#map-root canvas', async (page) => (/^Wells spudded, /.test(await page.locator('.lg-title').innerText()) ? null : 'the offshore map should say wells spudded')],
+  ['#operators?st=fo', '#ops-root table'],
+  ['#daily?st=fo', '#daily-root .dr-hero'],
   ['#operators', '#ops-root table'],
   ['#companies', '#co-root table'],
   ['#daily', '#daily-root .dr-hero'],
@@ -116,9 +120,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForSelector('#hot-bars li', { timeout: 25000 });
       await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
       check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Overview and starts on All');
-      check((await page.locator('#statebar .seg-dot').count()) === 4 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1, 'each state wears its color in the bar (All the three together)');
-      check(/^Permits through Oct \d+ \(Texas\), Oct \d+ \(Oklahoma\) and Aug \d+ \(New Mexico\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'the hero names each state\'s last day once, with the year once');
-      check(/\(Texas\).*\(Oklahoma\).*\(New Mexico\)/.test(await eyebrow()) && (await page.locator('#hot-bars .bars-h').count()) === 3, 'all states: the hero names each state\'s last day and the lists have a heading per state');
+      check((await page.locator('#statebar .seg-dot').count()) === 5 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1 && (await page.locator('#statebar .seg-dot.st-fo').count()) === 1, 'each state wears its color in the bar (All the four together)');
+      check(/^Permits through Oct \d+ \(Texas\), Oct \d+ \(Oklahoma\), Aug \d+ \(New Mexico\) and Aug \d+ \(Offshore\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'the hero names each state\'s last day once, with the year once');
+      check(/\(Texas\).*\(Oklahoma\).*\(New Mexico\).*\(Offshore\)/.test(await eyebrow()) && (await page.locator('#hot-bars .bars-h').count()) === 4 && (await page.locator('#hot-h').textContent()) === 'Hot counties and areas', 'all states: the hero names each state\'s last day, the lists have a heading per state and the card says counties and areas');
+      check(/New Mexico and the federal offshore count wells spudded, not permits \(their regulators publish no approval dates by well\)/.test(await page.locator('#hero-note').textContent()), 'and the note under the map says which states count wells spudded, once');
       await page.click('#statebar button[data-id="OK"]');
       await waitEyebrow(/Corporation Commission approvals through/);
       check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma', 'choosing Oklahoma puts st=ok in the address');
@@ -126,6 +131,9 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.click('#statebar button[data-id="NM"]');
       await waitEyebrow(/Oil Conservation Division spud reports through/);
       check(/st=nm/.test(await hash()) && (await page.locator('#kpis').innerText()).includes('Wells spudded, last 12 months'), 'New Mexico alone: its wells spudded, its own date, st=nm in the address');
+      await page.click('#statebar button[data-id="FO"]');
+      await waitEyebrow(/^BSEE spud reports through/);
+      check(/st=fo/.test(await hash()) && (await page.locator('#kpis').innerText()).includes('Wells spudded, last 12 months') && !(await page.locator('#seg-chart').isVisible()) && (await page.locator('#hot-h').textContent()) === 'Hot areas', 'the federal offshore alone: its wells spudded, its own date, st=fo in the address, "Hot areas", and the cards only Texas can fill step aside');
       await page.click('#statebar button[data-id="TX"]');
       await waitEyebrow(/^Railroad Commission permits through/);
       check(/st=tx/.test(await hash()) && (await page.locator('#seg-chart').isVisible()) && (await page.locator('#hot-bars .bars-h').count()) === 0, 'Texas alone: the original Overview, st=tx in the address');
@@ -201,12 +209,12 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     try {
       await page.goto(base + '?debug#map', { waitUntil: 'load' });
       await page.waitForSelector('.lg-states', { timeout: 25000 });
-      check((await counties()) === 254 + 77 + 33 && (await page.locator('.lg-st').count()) === 3 && /Permits and spuds/.test(await legend()), 'all states: 364 counties on one map, the legend names the three dot colors and says permits and spuds');
-      check(/Texas, Oklahoma and New Mexico/.test(await page.locator('#map-lede').innerText()), 'and the page says which states it covers');
+      check((await counties()) === 254 + 77 + 33 + 63 && (await page.locator('.lg-st').count()) === 4 && /Permits and spuds/.test(await legend()), 'all states: 427 counties and areas on one map, the legend names the four dot colors and says permits and spuds');
+      check(/Texas, Oklahoma, New Mexico and the federal offshore/.test(await page.locator('#map-lede').innerText()) && /^County and area activity/.test(await page.locator('#map-lede').innerText()), 'and the page says which states it covers, and that it has counties and areas');
       await page.click('#map-root button:has-text("Table view")');
       await page.waitForSelector('.map-table tbody tr', { timeout: 10000 });
       const th = await page.locator('.map-table thead th').allInnerTexts();
-      check((await page.locator('.map-table tbody tr').count()) === 364 && th[1].trim() === 'State', 'the table twin lists every county of the states shown, with a State column');
+      check((await page.locator('.map-table tbody tr').count()) === 427 && th[0].trim() === 'County or area' && th[1].trim() === 'State', 'the table twin lists every county and area of the states shown, with a State column');
       await page.click('#map-root button:has-text("Map view")');
       await mapFor('OK', /^New-drill permits, /);
       check(/across Oklahoma\./.test(await page.locator('#map-lede').innerText()), 'choosing a state on the Map changes the page\'s own sentence too');
@@ -226,8 +234,16 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.mouse.click(box.x + pt.sx, box.y + pt.sy);
       await page.waitForFunction(() => /Well spudded/.test(document.querySelector('.map-panel .panel-body').textContent), null, { timeout: 5000 });
       check(/FIPS 35\d{3}/.test(await panel()) && /Texas figures: not available for New Mexico/.test(await panel()), 'its page and its county say so, and name what New Mexico has no figure for');
+      // the federal offshore: protraction areas where the others have counties, wells spudded, no FIPS code, nothing of Texas's records
+      await mapFor('FO', /^Wells spudded, /);
+      check((await counties()) === 63 && /st=fo/.test(await page.evaluate(() => location.hash)) && (await page.locator('.map-actions').innerText()).includes('the Gulf drill') && /^Area activity/.test(await page.locator('#map-lede').innerText())
+        && (await page.locator('.lchip-body', { hasText: 'Wells spudded' }).count()) === 1 && /top areas/i.test(await panel()), 'the federal offshore alone: 63 areas, the dots and the replay say wells spudded, "Watch the Gulf drill", "Top areas"');
+      await page.goto(base + '?debug#map?st=fo&county=FO:024', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Green Canyon area/.test(document.querySelector('.map-panel .panel-body')?.textContent || ''), null, { timeout: 25000 });
+      check(/Green Canyon area Protraction area/.test(await panel()) && !/FIPS/.test(await panel()) && /Zoom to area/.test(await panel()) && /not available for the federal offshore/.test(await panel()), 'an offshore area opens by its key (county=FO:024) as "Green Canyon area", with no FIPS code, and names what the offshore has no figure for: ' + (await panel()).slice(0, 120));
+      await page.goto(base + '?debug#map', { waitUntil: 'load' });
       await mapFor('all', /^Permits and spuds, /);
-      check(/Texas, Oklahoma and New Mexico/.test(await page.locator('#map-lede').innerText()) && (await page.locator('.lg-st').count()) === 3, 'back to All: the sentence and the legend name the three states again');
+      check(/Texas, Oklahoma, New Mexico and the federal offshore/.test(await page.locator('#map-lede').innerText()) && (await page.locator('.lg-st').count()) === 4, 'back to All: the sentence and the legend name the four states again');
       await mapFor('TX', /^New-drill permits, /);
       check((await counties()) === 254 && (await page.locator('.lg-states').count()) === 0 && (await page.locator('.lchip').count()) === 5, 'Texas alone: its 254 counties and all five layers, no state legend');
       await page.goto(base + '?debug#map?st=ok&county=OK:039', { waitUntil: 'load' });
@@ -625,6 +641,58 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     } catch (e) {
       check(false, 'unread files: ' + e.message.split('\n')[0].slice(0, 200));
     }
+    await ctx.close();
+  }
+
+  // 17. the federal offshore: the bar's five choices fit a 360 px phone (TX, OK, NM, Offshore) and keep their full names for a screen reader; the pages that
+  // follow the bar say areas where it has areas and give its reason for having no Daily report; its operators are named by the same rule
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const bar = () => page.evaluate(() => { const seg = document.querySelector('#statebar .seg'); const bs = [...seg.querySelectorAll('button')]; return { room: seg.scrollWidth - seg.clientWidth, shown: bs.map((b) => b.innerText.trim()), names: bs.map((b) => b.getAttribute('aria-label') || b.innerText.trim()) }; });
+    try {
+      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.waitForSelector('#statebar .seg button', { timeout: 25000 });
+      const phone = await bar();
+      check(phone.room <= 1 && phone.shown.join() === 'All,TX,OK,NM,Offshore', 'on a 360 px phone all five choices of the states bar are in view with no sideways scrolling (' + phone.shown.join(' ') + ', ' + phone.room + ' px to spare)');
+      check(phone.names.join() === 'All,Texas (TX),Oklahoma (OK),New Mexico (NM),Federal offshore', 'each keeps its full name for a screen reader, which holds the visible label: ' + phone.names.join(' | '));
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForTimeout(300);
+      const wide = await bar();
+      check(wide.shown.join() === 'All,Texas,Oklahoma,New Mexico,Offshore', 'on a wide screen the full names show again: ' + wide.shown.join(' '));
+      // the Daily report: no report for the offshore, and it says why (its file is weekly)
+      await page.goto(base + '#daily?st=fo', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      await page.waitForTimeout(300);
+      const note = await page.locator('#statebar-note').innerText();
+      check(/^Federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico instead\./.test(note), 'the Daily report for the offshore alone says it has none and why, and shows the three that have one: ' + note);
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      await page.click('#statebar button[data-id="all"]');
+      await page.waitForTimeout(400);
+      check(/^Federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico\.$/.test(await page.locator('#statebar-note').innerText()), 'with all four chosen the Daily report shows the three and names the one with none');
+      // Companies are the Texas Comptroller's: with the offshore alone the page says so in a sentence
+      await page.goto(base + '#companies?st=fo', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#co-note', { state: 'visible', timeout: 25000 });
+      check(/nothing to list for the federal offshore:/.test(await page.locator('#co-note').innerText()), 'Companies with the offshore alone says there is nothing to list for the federal offshore');
+      // Operators: sixteen named corporations, a Top area column, no State column, no address, no permit counts
+      await page.goto(base + '#operators?st=fo&band=all', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#ops-root table tbody tr', { timeout: 25000 });
+      const heads = (await page.locator('#ops-root thead th:visible').allInnerTexts()).map((t) => t.trim());
+      const rows = await page.locator('#ops-root tbody tr').count();
+      check(rows === 16 && heads.includes('Top area') && !heads.includes('State') && !heads.includes('Top county') && !heads.includes('Location') && !heads.includes('Avg depth (ft)'), 'Operators with the offshore alone: 16 rows, "Top area", no State, Location or depth column: ' + rows + ' rows, ' + heads.join(' | '));
+      check(/wells spudded/.test(await page.locator('#ops-what').innerText()) && /Aug \d+, \d{4}/.test(await page.locator('#ops-through').innerText()), 'and its lede says what is ranked and where the offshore\'s own data ends');
+    } catch (e) {
+      check(false, 'the federal offshore: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the federal offshore pages load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

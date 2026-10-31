@@ -8,7 +8,7 @@ import { areaChart, spark, delta, histChart } from './charts.js';
 import { icon } from './icons.js';
 import { shareButton, absoluteLink } from './ui.js';
 import { createTimelapse } from './timelapse.js';
-import { stateOf, measureOf, sameMeasure, measureLabel, listAnd, activeStates, statesKey, countyState, countyCode, pointState, pointCountyKey } from './states.js';
+import { stateOf, measureOf, sameMeasure, measureLabel, listAnd, activeStates, statesKey, countyState, countyCode, pointState, pointCountyKey, inName, placeOf, placeTitle, placesWord, placesOr, spudsNote } from './states.js';
 import { countyPermits, stateOperatorRows, operatorExtras } from './overview-data.js';
 
 const NO_BLS = 'No data (suppressed by BLS)';
@@ -33,6 +33,8 @@ const FAC_NAME = { refinery: 'Refinery', gasplant: 'Gas processing plant', lng: 
 const TEXAS_ONLY = new Set(['oil12', 'gas12', 'prodchg', 'oemp', 'semp', 'owage', 'e213', 'e211', 'co', 'mineral']);
 const NOT_TEXAS = 'Not available: this figure is Texas only';
 const opsLink = (name) => '#operators?' + new URLSearchParams({ q: name, band: 'all' });
+const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+const an = (x) => (/^[aeiou]/i.test(x) ? 'an ' : 'a ') + x; // "a county", "an area"
 
 function mixHex(a, b, t) {
   const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -50,10 +52,13 @@ const SKINS = {
       tlGlow: [[0, 'rgba(226,218,255,0.95)'], [0.22, 'rgba(150,132,245,0.55)'], [1, 'rgba(110,90,226,0)']], tlHot: 'rgba(244,240,255,0.98)', tlRing: 'rgba(190,176,255,0.9)' },
     { glow: [[0, 'rgba(110,232,180,0.9)'], [0.3, 'rgba(30,178,126,0.36)'], [1, 'rgba(25,158,112,0)']], dotNew: 'rgba(120,232,186,1)', dotOld: 'rgba(40,196,140,0.62)',
       tlGlow: [[0, 'rgba(206,252,230,0.95)'], [0.22, 'rgba(60,200,150,0.55)'], [1, 'rgba(25,158,112,0)']], tlHot: 'rgba(238,255,247,0.98)', tlRing: 'rgba(130,236,192,0.9)' },
+    { glow: [[0, 'rgba(250,150,210,0.9)'], [0.3, 'rgba(214,72,150,0.36)'], [1, 'rgba(201,59,143,0)']], dotNew: 'rgba(248,152,208,1)', dotOld: 'rgba(224,90,166,0.62)',
+      tlGlow: [[0, 'rgba(255,226,242,0.95)'], [0.22, 'rgba(232,110,180,0.55)'], [1, 'rgba(201,59,143,0)']], tlHot: 'rgba(255,240,248,0.98)', tlRing: 'rgba(246,150,206,0.9)' },
   ],
   light: [null,
     { glow: null, dotNew: 'rgba(98,80,214,1)', dotOld: 'rgba(98,80,214,0.62)', tlGlow: [[0, 'rgba(98,80,214,0.55)'], [0.3, 'rgba(98,80,214,0.24)'], [1, 'rgba(98,80,214,0)']], tlHot: 'rgba(255,255,255,0.95)', tlRing: 'rgba(98,80,214,0.85)' },
     { glow: null, dotNew: 'rgba(22,150,104,1)', dotOld: 'rgba(27,175,122,0.62)', tlGlow: [[0, 'rgba(27,175,122,0.55)'], [0.3, 'rgba(27,175,122,0.24)'], [1, 'rgba(27,175,122,0)']], tlHot: 'rgba(255,255,255,0.95)', tlRing: 'rgba(22,150,104,0.85)' },
+    { glow: null, dotNew: 'rgba(201,59,143,1)', dotOld: 'rgba(201,59,143,0.62)', tlGlow: [[0, 'rgba(201,59,143,0.55)'], [0.3, 'rgba(201,59,143,0.24)'], [1, 'rgba(201,59,143,0)']], tlHot: 'rgba(255,255,255,0.95)', tlRing: 'rgba(201,59,143,0.85)' },
   ],
 };
 function engineTheme() {
@@ -241,8 +246,8 @@ export function createMapView({ root, meta }) {
 
   /* ---------- text helpers ---------- */
   const countyName = (f) => { const c = S.G.byFips.get(f); return c ? c.n : ''; };
-  // "Harmon County", and the state's letters after it when several states are shown (two states have a Harmon or a Jackson)
-  const countyTitle = (f) => countyName(f) + ' County' + (S.multi ? ', ' + countyState(f) : '');
+  // "Harmon County" ("Green Canyon area" offshore), and the state's letters after it when several states are shown (two states have a Harmon or a Jackson)
+  const countyTitle = (f) => placeTitle(countyState(f), countyName(f)) + (S.multi ? ', ' + countyState(f) : '');
   function metricText(m, i) {
     const v = m.vals[i]; const cst = countyState(S.G.counties[i].f); const w = measureOf(cst).short;
     if (v == null) return m.tx && cst !== 'TX' ? NOT_TEXAS : m.nodata;
@@ -265,7 +270,7 @@ export function createMapView({ root, meta }) {
     const m = current.m; let rows;
     if (hit.type === 'county') {
       const c = S.G.counties[hit.i]; const cst = countyState(c.f);
-      rows = [tipRow(c.n + ' County' + (S.multi ? ', ' + cst : '')), tipRow(metricText(m, hit.i), m.id === 'p12' ? '' : m.label)];
+      rows = [tipRow(placeTitle(cst, c.n) + (S.multi ? ', ' + cst : '')), tipRow(metricText(m, hit.i), m.id === 'p12' ? '' : m.label)];
       if (['oil12', 'gas12', 'prodchg'].includes(m.id)) rows.push(el('div', { class: 'tip-head', text: S.prodWin + '. RRC allocation of multi-county leases (an estimate)' }));
       if (m.id !== 'p12') rows.push(tipRow(fmt.format(S.metrics[0].vals[hit.i]), measureOf(cst).noun + ', 12 mo to ' + S.endOf(cst)));
     } else if (hit.type === 'pt') {
@@ -346,7 +351,7 @@ export function createMapView({ root, meta }) {
   function selectCounty(f, { fit = false } = {}) {
     state.county = f; state.detail = null; state.zip = null; setSel(); afterChange();
     if (f) {
-      announce(countyName(f) + ' County selected. ' + metricText(current.m, S.G.byFips.get(f).i));
+      announce(placeTitle(countyState(f), countyName(f)) + ' selected. ' + metricText(current.m, S.G.byFips.get(f).i));
       if (fit) { fitCounty(S.G.byFips.get(f).i); scrollSoon(); }
     }
   }
@@ -419,13 +424,13 @@ export function createMapView({ root, meta }) {
       return el('div', { class: 'row' }, el('span', { class: 'kpi-label', text: label + ': ' + fmt.format(e.estab) + (e.estab === 1 ? ' establishment' : ' establishments') }),
         histChart(e.sz, S.cbp.sizeClasses, { w: 300, h: 78, color: 'var(--s1)', what: label + ' by employees' }));
     };
-    const fips = stateOf(cst).fips + countyCode(c.f);
+    const code = placeOf(cst).code || 'FIPS ' + stateOf(cst).fips + countyCode(c.f); // the federal offshore's areas have no FIPS code
     return el('section', { class: 'psec' },
-      secHead(c.n + ' County', (S.multi ? stateOf(cst).name + ' · ' : '') + 'FIPS ' + fips, state.county ? clearAll : null),
+      secHead(placeTitle(cst, c.n), (S.multi ? stateOf(cst).name + ' · ' : '') + code, state.county ? clearAll : null),
       basin ? el('p', { class: 'psec-sub' }, el('button', { type: 'button', class: 'basin-chip', title: 'Outline this basin on the map', onclick: () => setBasin(basin.id) }, icon('layers', 14), basin.name)) : null,
       el('div', { class: 'kpis2' }, kp),
       own && S.lab && (!lb || !lb.o || !lb.s) ? el('p', { class: 'fine', text: 'Dashes mean the BLS withholds that county figure to protect individual employers.' }) : null,
-      !own ? el('p', { class: 'fine', text: 'Production, jobs, establishments, companies and mineral value are Texas figures: not available for ' + stateOf(cst).name + '.' }) : null,
+      !own ? el('p', { class: 'fine', text: 'Production, jobs, establishments, companies and mineral value are Texas figures: not available for ' + inName(cst) + '.' }) : null,
       el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Monthly ' + (meas.id === 'spuds' ? 'wells spudded' : 'permits') + ', ' + monthLabel(months[0]) + ' to ' + monthLabel(months[35]) }),
         areaChart(m, months, { w: 300, h: 92 })),
       own && S.cpr ? el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Production, ' + monthLabel(S.cpr.months[0]) + ' to ' + monthLabel(S.cpr.months[S.cpr.months.length - 1]) }),
@@ -439,9 +444,9 @@ export function createMapView({ root, meta }) {
           el('a', { class: 'plist-name', href: opsLink(name), text: name, title: name }),
           el('span', { class: 'plist-n', text: fmt.format(n) }),
           S.opIdx.has(num) ? el('a', { class: 'pill-link', href: '#map?op=' + num, 'aria-label': 'Show ' + name + ' on the map', text: 'Map' }) : null)))) : null,
-      el('p', { class: 'fine', text: dots ? fmt.format(dots) + ' located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots in this county over 24 months. Counts above include every ' + meas.one + '.'
+      el('p', { class: 'fine', text: dots ? fmt.format(dots) + ' located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots in this ' + placeOf(cst).one + ' over 24 months. Counts above include every ' + meas.one + '.'
         : 'No located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots here: ' + (own ? 'the RRC published no surface location for these permits.' : 'the ' + stateOf(cst).agency + ' published no location for these ' + meas.short + '.') }),
-      el('div', { class: 'psec-actions' }, own ? el('a', { class: 'btn sm primary', href: '#companies?county=' + c.f, text: 'List companies' }) : null, btn('Zoom to county', () => fitCounty(i))));
+      el('div', { class: 'psec-actions' }, own ? el('a', { class: 'btn sm primary', href: '#companies?county=' + c.f, text: 'List companies' }) : null, btn('Zoom to ' + placeOf(cst).one, () => fitCounty(i))));
   }
 
   function operatorSection(num) {
@@ -460,7 +465,7 @@ export function createMapView({ root, meta }) {
       kpi('Trend', trendText(h), 'last 12 full months vs prior'),
       x.spud12 != null ? kpi('Spud, 12 mo', fmt.format(x.spud12), 'permits with a spud date') : null,
       kpi('Average depth', x.depth ? fmt.format(x.depth) + ' ft' : noData('Depth not reported')),
-      kpi('Top county', tc ? el('a', { href: '#map?county=' + tc.f, text: tc.n }) : 'n/a', x.counties ? fmt.format(x.counties) + ' counties in 24 months' : null),
+      kpi('Top ' + placeOf(ost).one, tc ? el('a', { href: '#map?county=' + tc.f, text: tc.n }) : 'n/a', x.counties ? fmt.format(x.counties) + ' ' + (x.counties === 1 ? placeOf(ost).one : placeOf(ost).many) + ' in 24 months' : null),
     ].filter(Boolean) : [kpi(spuds ? 'Wells spudded, 12 mo' : 'New wells, 12 mo', o ? fmt.format(o.new12) : noData('No data'))];
     if (pr) kp.push(kpi('Oil, 12 mo to ' + S.prodEnd, compactFmt.format(pr.o12) + ' bbl', pr.o12p > 0 ? [delta(pr.o12 / pr.o12p - 1), ' vs the 12 before'] : pr.o12 > 0 ? 'none in the 12 before' : null),
       kpi('Gas, 12 mo to ' + S.prodEnd, bcf(pr.g12), pr.g12p > 0 ? [delta(pr.g12 / pr.g12p - 1), ' vs the 12 before'] : null),
@@ -472,7 +477,7 @@ export function createMapView({ root, meta }) {
       pr ? el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Monthly oil, ' + monthLabel(S.opProd.months[0]) + ' to ' + monthLabel(S.opProd.months[S.opProd.months.length - 1]) }),
         areaChart(pr.mo, S.opProd.months, { w: 300, h: 80, color: 'var(--s3)', unit: 'barrels of oil', fmtVal: (v) => compactFmt.format(v), what: 'Monthly oil' })) : null,
       own && !pr && S.opProd ? el('p', { class: 'fine', text: 'No production figure for this operator in the RRC reports, so those cells are blank rather than zero.' }) : null,
-      !own ? el('p', { class: 'fine', text: 'Oil and gas production by operator is a Texas record: not available for ' + stateOf(ost).name + '.' }) : null,
+      !own ? el('p', { class: 'fine', text: 'Oil and gas production by operator is a Texas record: not available for ' + inName(ost) + '.' }) : null,
       el('p', { class: 'fine', text: located
         ? 'Showing ' + fmt.format(located) + (total && located <= total ? ' of ' + fmt.format(total) + ' in 24 months' : '') + ' ' + what + ' that have a recorded ' + (own ? 'surface ' : '') + 'location. Other layers stay as set.'
         : 'None of this operator’s ' + what + ' has a recorded ' + (own ? 'surface ' : '') + 'location, so there is nothing to draw.' }),
@@ -484,7 +489,7 @@ export function createMapView({ root, meta }) {
     if (d.type === 'pt') {
       const i = d.i; const o = S.P.op[i]; const f = pointCountyKey(S.P.fips[i]); const spud = measureOf(pointState(S.P.fips[i])).id === 'spuds';
       return el('section', { class: 'psec' }, secHead(spud ? 'Well spudded' : 'Drilling permit', permitDate(i), () => { state.detail = null; state.zip = null; setSel(); afterChange(); }),
-        el('div', { class: 'kpis2' }, kpi('Operator', o >= 0 ? S.pm.ops[o] : 'Not listed'), kpi('County', countyName(f) + (S.multi ? ', ' + countyState(f) : '')),
+        el('div', { class: 'kpis2' }, kpi('Operator', o >= 0 ? S.pm.ops[o] : 'Not listed'), kpi(cap(placeOf(countyState(f)).one), countyName(f) + (S.multi ? ', ' + countyState(f) : '')),
           kpi('Total depth', S.P.depth[i] ? fmt.format(S.P.depth[i] * 100) + ' ft' : noData('Depth not reported')), kpi('Type', spud ? 'New well, spudded' : 'New drill')),
         el('div', { class: 'psec-actions' }, o >= 0 ? btn('Show this operator', () => setOp(S.pm.opNums[o]), 'btn sm primary') : null));
     }
@@ -507,9 +512,9 @@ export function createMapView({ root, meta }) {
       && (m.id !== 'prodchg' || (q[0] < 9 && S.prodHalves[q[1]].a >= 1e6))).sort((a, b) => b[0] - a[0]).slice(0, 8);
     const max = order.length ? Math.max(1, order[0][0]) : 1;
     const where = listAnd(S.states.map((id) => stateOf(id).name));
-    return el('section', { class: 'psec' }, secHead(bs ? bs.name + ' at a glance' : where + ' at a glance', bs ? bs.fips.length + ' counties, outlined on the map. Click one for details.' : 'Click a county, a permit dot' + (S.tx ? ', a plant or a ZIP bubble' : '') + ' for details.'),
+    return el('section', { class: 'psec' }, secHead(bs ? bs.name + ' at a glance' : where + ' at a glance', bs ? bs.fips.length + ' counties, outlined on the map. Click one for details.' : 'Click ' + an(placesOr(S.states)) + ', a permit dot' + (S.tx ? ', a plant or a ZIP bubble' : '') + ' for details.'),
       bs ? el('div', { class: 'psec-actions' }, btn(S.multi ? 'Show every state' : 'Show all of Texas', () => setBasin(null))) : null,
-      el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Top counties' + (bs ? ' in the basin' : '') + ': ' + m.label.toLowerCase() + (m.id === 'chg' ? ' (20+ permits)' : m.id === 'prodchg' ? ' (1M+ barrels)' : '') }),
+      el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Top ' + placesWord(S.states) + (bs ? ' in the basin' : '') + ': ' + m.label.toLowerCase() + (m.id === 'chg' ? ' (20+ permits)' : m.id === 'prodchg' ? ' (1M+ barrels)' : '') }),
         el('ol', { class: 'mini-bars' }, order.map(([v, i]) => {
           const bar = el('span', { class: 'bar' }); bar.style.setProperty('--p', String(m.kind === 'seq' ? v / max : 0.001));
           return el('li', {}, el('button', { type: 'button', class: 'mini-row', onclick: () => selectCounty(S.G.counties[i].f, { fit: true }) },
@@ -518,7 +523,7 @@ export function createMapView({ root, meta }) {
             el('span', { class: 'bar-value', text: m.kind === 'div' ? signed(v) : m.fmt(v) })));
         })),
         // nothing to rank because no county has the figure at all (New Mexico publishes no depth): say so, not an empty list
-        m.vals.every((v) => v == null) ? el('p', { class: 'fine', text: 'No county has a figure for this: ' + m.nodata.charAt(0).toLowerCase() + m.nodata.slice(1) + '.' }) : null),
+        m.vals.every((v) => v == null) ? el('p', { class: 'fine', text: 'No ' + placesOr(S.states) + ' has a figure for this: ' + m.nodata.charAt(0).toLowerCase() + m.nodata.slice(1) + '.' }) : null),
       el('p', { class: 'fine', text: 'Drag to pan, scroll or pinch to zoom, double-click to zoom in. Keyboard: focus the map, then use the arrow keys, plus, minus and 0.' }));
   }
   function renderPanel() {
@@ -550,13 +555,13 @@ export function createMapView({ root, meta }) {
     ];
     // what each state counts, and how far its data runs (they end on different days)
     if (S.multi || ids.some((id) => measureOf(id).id === 'spuds')) {
-      const spud = ids.filter((id) => measureOf(id).id === 'spuds').map((id) => stateOf(id).name);
+      const spud = spudsNote(ids);
       items.push(el('p', { class: 'map-note' }, el('strong', { text: 'What is counted. ' }),
-        (spud.length ? listAnd(spud) + ' publishes no approval dates by well, so its figures are wells spudded, reported about two months late' + (S.multi ? '; they are never added to permits' : '') + '. ' : '')
+        (spud ? spud + '; spud dates are reported about two months late' + (S.multi ? ', and these counts are never added to permits' : '') + '. ' : '')
         + (S.multi ? 'Data runs to ' + listAnd(ids.map((id) => fmtDate(S.through[id]) + ' (' + stateOf(id).name + ')')) + '.' : '')));
     }
     const mTx = S.byId.get(state.metric);
-    if (S.multi && mTx && mTx.tx) items.push(el('p', { class: 'map-note', text: 'This figure comes from Texas records, so the other states’ counties are shown as not available, not as zero.' }));
+    if (S.multi && mTx && mTx.tx) items.push(el('p', { class: 'map-note', text: 'This figure comes from Texas records, so the other states’ ' + placesWord(ids.filter((id) => id !== 'TX')) + ' are shown as not available, not as zero.' }));
     if (l.has('zips')) items.push(el('p', { class: 'map-note', text: 'Companies by ZIP: bubble area is the number of companies. 239 ZIPs with no Census center (PO boxes and the like) sit at their city’s center, so several ZIPs of one city can share a point.' }));
     const mid = state.metric;
     if (['oil12', 'gas12', 'prodchg'].includes(mid) && S.cpr) items.push(el('p', { class: 'map-note' }, el('strong', { text: 'Production. ' }),
@@ -599,8 +604,8 @@ export function createMapView({ root, meta }) {
       p12: S.multi ? S.mLabel + ' (12 mo)' : S.word.replace(/^./, (ch) => ch.toUpperCase()) + ' (12 mo to ' + S.permitEnd + ')', chg: 'Change', depth: 'Avg depth', oil12: 'Oil (12 mo to ' + S.prodEnd + ')', gas12: 'Gas (12 mo to ' + S.prodEnd + ')', prodchg: 'Oil change to ' + S.prodEnd, oemp: 'Oil & gas jobs', semp: 'Services jobs',
       owage: 'O&G weekly wage', e213: 'Service estabs', e211: 'Extraction estabs', co: 'Companies', mineral: 'Mineral value',
     };
-    const table = el('table', { class: 'grid' }, el('caption', { class: 'sr-only', text: listAnd(S.states.map((id) => stateOf(id).name)) + ' counties with the map metrics. Sorted by ' + (mSort ? mSort.label : 'county name') + '.' }),
-      el('thead', {}, el('tr', {}, th('name', 'County', false), S.multi ? el('th', { scope: 'col', text: 'State' }) : null, ms.map((m) => th(m.id, short[m.id] || m.label, true)))),
+    const table = el('table', { class: 'grid' }, el('caption', { class: 'sr-only', text: listAnd(S.states.map((id) => stateOf(id).name)) + ' ' + placesWord(S.states) + ' with the map metrics. Sorted by ' + (mSort ? mSort.label : placesOr(S.states) + ' name') + '.' }),
+      el('thead', {}, el('tr', {}, th('name', cap(placesOr(S.states)), false), S.multi ? el('th', { scope: 'col', text: 'State' }) : null, ms.map((m) => th(m.id, short[m.id] || m.label, true)))),
       el('tbody', {}, rows.map((i) => el('tr', {},
         el('th', { scope: 'row' }, el('button', { type: 'button', class: 'link', text: cs[i].n, onclick: () => { setTable(false); selectCounty(cs[i].f, { fit: true }); } })),
         S.multi ? el('td', { text: countyState(cs[i].f) }) : null,
@@ -657,7 +662,7 @@ export function createMapView({ root, meta }) {
   const layerAvailable = (id) => (id === 'permits' ? true : id === 'zips' ? Boolean(S.zips) : Boolean(S.infra && S.infra.layers.some((l) => l.id === id)));
   // what the dots are called, and the words for the replay
   const dotsLabel = () => (S.states.length === 1 && measureOf(S.states[0]).id === 'spuds' ? 'Wells spudded' : sameMeasure(S.states) ? 'Permits' : 'Permits and spuds');
-  const drillLabel = () => (S.states.length === 1 ? stateOf(S.states[0]).name + ' drill' : 'drilling');
+  const drillLabel = () => (S.states.length === 1 ? stateOf(S.states[0]).drill || stateOf(S.states[0]).name + ' drill' : 'drilling');
 
   /* ---------- build ---------- */
   function buildUI() {
@@ -684,7 +689,7 @@ export function createMapView({ root, meta }) {
     ui.tlBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', title: 'Replay two years of located ' + S.word + ' by ' + (S.states.every((id) => measureOf(id).id === 'spuds') ? 'spud' : 'issue') + ' date' }, icon('play', 15), el('span', null, 'Watch', el('span', { class: 'hide-sm', text: ' ' + drillLabel() })));
     ui.tlBtn.addEventListener('click', () => toggleReplay());
     const bar = el('div', { class: 'map-bar' },
-      el('label', { class: 'field' }, el('span', { class: 'field-label', text: 'Shade counties by' }), ui.metricSel),
+      el('label', { class: 'field' }, el('span', { class: 'field-label', text: 'Shade ' + placesWord(S.states) + ' by' }), ui.metricSel),
       ui.basinSel ? el('label', { class: 'field basin' }, el('span', { class: 'field-label', text: 'Basin' }), ui.basinSel) : null,
       el('div', { class: 'lchips', role: 'group', 'aria-label': 'Map layers' }, el('span', { class: 'field-label', 'aria-hidden': 'true', text: 'Layers' }), el('div', { class: 'lchips-row' }, chips)),
       el('div', { class: 'map-actions' }, ui.tlBtn, shareButton(shareUrl), ui.tableBtn));
@@ -700,9 +705,9 @@ export function createMapView({ root, meta }) {
       el('button', { type: 'button', class: 'ibtn sheet-close', 'aria-label': 'Close details', onclick: clearAll }, '✕'), ui.panelBody);
     ui.stage = el('div', {
       class: 'map-stage', tabindex: '0', role: 'group', 'aria-roledescription': 'map',
-      'aria-label': 'Map of ' + listAnd(S.states.map((id) => stateOf(id).name)) + ' counties, ' + (S.tx ? 'permits and facilities' : S.word) + '. Arrow keys pan, plus and minus zoom, zero resets the view. Use Table view for a text version.',
+      'aria-label': 'Map of ' + listAnd(S.states.map((id) => stateOf(id).name)) + ' ' + placesWord(S.states) + ', ' + (S.tx ? 'permits and facilities' : S.word) + '. Arrow keys pan, plus and minus zoom, zero resets the view. Use Table view for a text version.',
     }, ui.canvas, el('div', { class: 'map-zoom' }, ui.zin, ui.zout, ui.zhome), ui.legend, ui.live);
-    ui.tableWrap = el('div', { class: 'table-wrap map-table', hidden: true, tabindex: '0', role: 'region', 'aria-label': 'County table, the text version of the map' });
+    ui.tableWrap = el('div', { class: 'table-wrap map-table', hidden: true, tabindex: '0', role: 'region', 'aria-label': cap(placesOr(S.states)) + ' table, the text version of the map' });
     ui.notes = el('div', { class: 'map-notes' });
     ui.mainCard = el('div', { class: 'map-main card' }, ui.stage, ui.tableWrap, ui.notes);
     ui.shell = el('div', { class: 'map-shell' }, ui.mainCard);

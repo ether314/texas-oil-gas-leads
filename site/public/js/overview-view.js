@@ -8,17 +8,23 @@ import { renderKpis, renderHot, renderTopOps, renderProducers, renderFreshness }
 import { loadMarketData, initMarkets } from './pulse.js';
 import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
-import { STATES, otherStates, stateOf, statesKey, measureOf, sameMeasure, listAnd } from './states.js';
+import { STATES, otherStates, stateOf, statesKey, spudStates, spudsNote, measureOf, sameMeasure, listAnd, inName, shortName } from './states.js';
 import { permitSeries, countyPermits, operatorRows, activeWells } from './overview-data.js';
 
 const LEDE = {
   TX: 'New-drill permits from the Permian to the Eagle Ford, the operators filing them and the companies that serve them.',
   OK: 'New-drill permits across Oklahoma, from the Anadarko Basin to the rest of the state, and the operators filing them.',
   NM: 'Wells spudded across New Mexico, from the Delaware Basin to the San Juan Basin, and the operators drilling them.',
+  FO: 'Wells spudded in the federal waters of the Gulf of America, from the shelf to the deepwater, and the operators drilling them.',
   MANY: 'New-drill permits from the Permian to the Anadarko Basin, the operators filing them and, for Texas, the companies that serve them.',
 };
+// several states: the federal offshore, when it is one of them, adds the Gulf and says that some of the counts are wells spudded
+const ledeFor = (ids) => (ids.length === 1 ? LEDE[ids[0]] : ids.includes('FO')
+  ? 'Drilling on land and in the Gulf of America’s federal waters: permits and wells spudded, the operators behind them' + (ids.includes('TX') ? ' and, for Texas, the companies that serve them.' : '.')
+  : LEDE.MANY);
+
 // what each state's permit window is called in the hero's eyebrow
-const SOURCE = { TX: 'Railroad Commission permits', OK: 'Corporation Commission approvals', NM: 'Oil Conservation Division spud reports' };
+const SOURCE = { TX: 'Railroad Commission permits', OK: 'Corporation Commission approvals', NM: 'Oil Conservation Division spud reports', FO: 'BSEE spud reports' };
 
 const pct = (x) => (x >= 1 ? '100%' : Math.min(99, Math.round(x * 100)) + '%'); // 99.6% is not 100%
 
@@ -32,7 +38,7 @@ export function createOverview(meta) {
 
   /* ---------- text that depends on the states ---------- */
   // each state's own last day: "Oct 7 (Texas), Oct 30 (Oklahoma) and Aug 31 (New Mexico), 2026", the year once when it is the same for all
-  const datesPhrase = (all, tag = (id) => '(' + stateOf(id).name + ')') => {
+  const datesPhrase = (all, tag = (id) => '(' + shortName(id) + ')') => {
     const ids = all.filter((id) => id === 'TX' || ov.docs.series[id]); // a state whose permit series did not load has no date of its own to name (nor figures in the headline)
     const years = new Set(ids.map((id) => through(id).slice(0, 4)));
     const day = (id) => (years.size > 1 ? fmtDate(through(id)) : fmtDate(through(id)).replace(/, \d{4}$/, ''));
@@ -43,7 +49,7 @@ export function createOverview(meta) {
     $('#hero-eyebrow').textContent = many
       ? 'Permits through ' + datesPhrase(states)
       : SOURCE[states[0]] + ' through ' + fmtDate(through(states[0]));
-    $('#hero-lede').textContent = (many ? LEDE.MANY : LEDE[states[0]]) + ' Public records only, built ' + fmtDate(meta.built) + '.';
+    $('#hero-lede').textContent = ledeFor(states) + ' Public records only, built ' + fmtDate(meta.built) + '.';
     $('#view-overview').dataset.states = statesKey(states);
     // the cards only Texas's records can fill
     $('#seg-chart').hidden = !has('TX');
@@ -62,7 +68,8 @@ export function createOverview(meta) {
       if (hero) hero.update(G, P); else hero = createHero(canvas, host, G, P);
       const cov = (id) => (pm.coverageBy ? pm.coverageBy[id] : pm.coverage);
       const share = (id) => { const c = cov(id); return pct(c.share24) + ' of the last 24 months, ' + pct(c.share12) + ' of the last 12'; };
-      const nm = states.some((id) => measureOf(id).id === 'spuds') ? ' New Mexico counts wells spudded, not permits (its regulator publishes no approval dates), and ends two months back because spud dates arrive late.' : '';
+      const sp = spudStates(states);
+      const nm = sp.length ? ' ' + spudsNote(states) + ', and ' + (sp.length > 1 ? 'end' : 'ends') + ' two months back because spud dates arrive late.' : '';
       note.textContent = states.length > 1
         ? 'Dots show the ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded location (share of the last 12 months: ' + states.map((id) => stateOf(id).name + ' ' + pct(cov(id).share12)).join(', ')
           + '). Brighter dots are the last 12 months; counts and trends use every one.' + nm
@@ -117,7 +124,7 @@ export function createOverview(meta) {
     ov.markets = initMarkets({ ticker, card: $('#pulse-card'), raw: ov.raw, states });
     ticker.setAttribute('aria-busy', 'false');
     const from = cp ? dayLabel(Date.parse(cp.asOf + 'T00:00:00Z') - 365 * 864e5) : '';
-    const win = !cp ? '' : states.length > 1 ? 'the last 12 months (to ' + datesPhrase(states, (id) => 'in ' + stateOf(id).name) + ')'
+    const win = !cp ? '' : states.length > 1 ? 'the last 12 months (to ' + datesPhrase(states, (id) => 'in ' + inName(id)) + ')'
       : from + ' to ' + fmtDate(through(states[0]));
     renderHot(cp, G, win, states);
     renderTopOps(rows, states);
@@ -179,7 +186,7 @@ export function createOverview(meta) {
     }
     for (const id of others()) {
       const s = ov.docs.series[id]; const q = stateOf(id);
-      if (s) items.push({ icon: 'pin', label: (measureOf(id).id === 'spuds' ? 'Wells spudded' : 'Permits') + ' (' + q.agency + ')', value: measureOf(id).verb + ' to ' + fmtDate(s.through), cadence: s.cadence || 'daily' });
+      if (s) items.push({ icon: 'pin', label: (measureOf(id).id === 'spuds' ? 'Wells spudded' : 'Permits') + ' (' + q.agency + ')', value: measureOf(id).verb + ' to ' + fmtDate(s.through), cadence: s.cadence || q.cadence || 'daily' });
       if (ov.wells[id]) items.push({ icon: 'rig', label: 'Well inventory (' + q.agency + ')', value: 'Counted ' + fmtDate(ov.wells[id].day), cadence: 'nightly' });
     }
     const sr = raw['series-production']; const pf = prod || opProd || sr;
