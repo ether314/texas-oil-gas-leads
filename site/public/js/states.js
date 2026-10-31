@@ -18,7 +18,7 @@ export const STATES = [
     files: { geo: 'counties-ok.geo', series: 'series-permits-ok', county: 'county-permits-ok', operators: 'operators-ok', points: 'permits-ok', crude: 'series-ok' },
   },
   {
-    id: 'NM', name: 'New Mexico', fips: '35', dir: null, agency: 'Oil Conservation Division', measure: SPUDS, // no Daily report yet (dir is where one would be)
+    id: 'NM', name: 'New Mexico', fips: '35', dir: 'daily-nm', agency: 'Oil Conservation Division', measure: SPUDS, // its Daily report counts permits approved; the other files count wells spudded
     files: { geo: 'counties-nm.geo', series: 'series-permits-nm', county: 'county-permits-nm', operators: 'operators-nm', points: 'permits-nm', crude: 'series-nm' },
   },
 ];
