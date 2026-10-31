@@ -78,10 +78,12 @@ def clean(text):
     return " ".join((text or "").split())
 
 
-def collect(rows):
+def collect(rows, today=None):
     """Fold rows into permits. Returns {'permits': {(api10, kind, day): record}, 'first_dr': {operator: first drilling day ever},
-    'stats': Counter}. A record is a dict of api, kind, day, op, name, city, state, depth, lat, lon (the first non-blank of each)."""
+    'stats': Counter}. A record is a dict of api, kind, day, op, name, city, state, depth, lat, lon (the first non-blank of each).
+    An approval dated after `today` (Central; default: today) is a typo in the file, not a permit: it would move every window."""
     permits, first_dr, st = {}, {}, collections.Counter()
+    today = today or D.central_now().date()
     for r in rows:
         st["rows"] += 1
         approved = D.when(r["Approval_Date"])
@@ -97,6 +99,9 @@ def collect(rows):
             continue
         kind = clean(r["Application_Type"])
         day = D.central_day(approved)
+        if day > today:
+            st["dated in the future"] += 1
+            continue
         op = clean(r["Operator_Number"])
         if kind == "DR" and op:
             if op not in first_dr or day < first_dr[op]:
@@ -306,8 +311,8 @@ def validate(out, county_names=None, spec=None):
             continue
         if size > BUDGET[OK_SPEC["names"][NAMES.index(name)]]:
             bad.append("%s is over its budget: %d bytes" % (name, size))
-        if re.search(r"\d{10,}|@|https?:", text):
-            bad.append("%s holds something like an API number, an e-mail address or a link" % name)
+        if re.search(r"\d{10,}|@|https?:|\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b", text):
+            bad.append("%s holds something like an API number, an e-mail address, a link or a phone number" % name)
     if len(docs) < len(NAMES):
         return bad
     series, cp, ops, pts = (docs[n] for n in NAMES)
@@ -383,6 +388,8 @@ def validate(out, county_names=None, spec=None):
             ok = ok and r["new12"] + r["prev12"] <= r["all24"] and r["new12"] <= r["all12"] <= r["all24"]
             ok = ok and isinstance(r["m24"], list) and len(r["m24"]) == 24 and sum(r["m24"]) <= r["new12"] + r["prev12"]
             ok = ok and re.fullmatch(r"\d{4}-\d\d-\d\d", r["last"] or "") and (r["county"] == "" or r["county"] in valid)
+            # the office city and state come straight from the file: a city is a place name and a state two letters, never an address, a phone number or a person
+            ok = ok and re.fullmatch(r"([A-Z][A-Z .'&-]{1,29})?", r["city"] or "") and re.fullmatch(r"([A-Z]{2})?", r["state"] or "")
             key = (-r["new12"], -r["all24"], r["num"])
             ok = ok and (prev_key is None or key >= prev_key)
             prev_key = key

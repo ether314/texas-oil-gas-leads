@@ -91,11 +91,16 @@ PLUGGED = {"PA", "PAFF", "PASF", "PASUR", "PASURSF"}
 CORPORATE = re.compile(r"(?<![A-Z0-9])(INC|INCORPORATED|CORP|CORPORATION|LLC|L\.L\.C|LP|L\.P|LLP|LLLP|LTD|LIMITED|PLLC|PARTNERS|PARTNERSHIP)\.?(?![A-Z0-9])")
 COMPANY = re.compile(r"(?<![A-Z0-9])(CO|COMPANY)\.?(?![A-Z0-9])")
 BUSINESS_WORDS = re.compile(r"\b(OIL|GAS|ENERGY|PETROLEUM|RESOURCES|OPERATING|PRODUCTION|EXPLORATION|DRILLING|MINERALS|ROYALTY|MIDSTREAM|PARTNERS)\b")
-NOT_BUSINESS = re.compile(r"\b(TRUST|ESTATE|REVOCABLE|FAMILY|HEIRS|ET AL|DBA|D/B/A|D\.B\.A|A/K/A)\b", re.I)  # a "dba" is a person trading under a name
+NOT_BUSINESS = re.compile(r"\b(TRUST|ESTATE|REVOCABLE|FAMILY|HEIRS|ET AL|DBA|D/B/A|D\.B\.A|D B A|DB/A|DOING BUSINESS AS|TRADING AS|T/A|AKA|A/K/A|A K A|ALSO KNOWN AS)\b", re.I)  # a "dba" is a person trading under a name
 
 
 def log(msg):
     print(msg, flush=True)
+
+
+def clean_error(e, n=160):
+    """An error as short text for a report: no address (the data files and the page's text never carry a link), no line breaks."""
+    return re.sub(r"https?://\S+", "<address>", " ".join(str(e).split()))[:n]
 
 
 # ------------------------------------------------------------------------------------------------ small helpers
@@ -133,7 +138,10 @@ def when(value):
     d = ok_xlsx.excel_date(value)
     if d is None and isinstance(value, str) and re.match(r"\d{4}-\d\d-\d\d", value):
         try:
-            d = datetime.strptime(value[:10], "%Y-%m-%d")
+            if re.match(r"\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d", value):
+                d = datetime.strptime(value[:10] + " " + value[11:19], "%Y-%m-%d %H:%M:%S")  # the files' times are UTC: keep the time of day
+            else:
+                d = datetime.strptime(value[:10], "%Y-%m-%d") + timedelta(hours=12)  # a date with no time: noon UTC is the same Central day
         except ValueError:
             return None
     return d if d and d.year >= 1990 else None
@@ -144,7 +152,7 @@ def number(value):
         f = float(value)
     except (TypeError, ValueError):
         return None
-    return f if f == f else None
+    return f if f == f and f not in (float("inf"), float("-inf")) else None
 
 
 def top(counter, n):
@@ -258,7 +266,7 @@ def fetch(url, dest):
         except Exception as e:  # noqa: BLE001 - network hiccups, 5xx
             last = e
             time.sleep(2 + 3 * i)
-    raise RuntimeError("could not read %s: %r" % (url, last))
+    raise RuntimeError("could not read %s: %s" % (url.rsplit("/", 1)[-1], clean_error(last)))
 
 
 def read_catalog():
@@ -279,13 +287,17 @@ def read_catalog():
 
 def read_itd(path):
     """Approved intents to drill: [{api, county, op, opname, cls, app, depth, submitted, approved (UTC)}]."""
-    out = []
+    out, seen = [], set()
     for r in ok_xlsx.rows(path, want=("API_Number", "Operator_Number", "Entity_Name", "Well_Class", "Application_Type", "Permit_Status", "Total_Depth", "Depth",
                                        "Submit_Date", "Approval_Date")):
         approved = when(r["Approval_Date"])
         if not approved or r["Permit_Status"] in ("REJ", "DEL"):
             continue
         api = (r["API_Number"] or "").strip()
+        key = (api, approved, (r["Application_Type"] or "").strip())
+        if api and key in seen:  # the file has a row per formation: a permit is counted once (the monthly file does the same)
+            continue
+        seen.add(key)
         depth = number(r["Total_Depth"]) or number(r["Depth"]) or 0
         out.append({"api": api, "county": api_county(api), "op": (r["Operator_Number"] or "").strip(), "opname": (r["Entity_Name"] or "").strip(),
                     "cls": (r["Well_Class"] or "").strip(), "app": (r["Application_Type"] or "").strip(), "depth": int(depth),
@@ -293,15 +305,16 @@ def read_itd(path):
     return out
 
 
-COMP_COLS = ("API_Number", "Operator_Number", "Operator_Name", "Well_Type", "Location_Type_Sub", "Drill_Type", "Amended", "Spud", "First_Prod", "Create_Date",
-             "Test_Date", "Oil_BBL_Per_Day", "Gas_MCF_Per_Day", "Formation_Name", "Review_Status")
+COMP_COLS = ("API_Number", "Create_Date", "Review_Status")  # a filing without these has no day or no well: the file is not the one expected
+COMP_OPTIONAL = ("Operator_Number", "Operator_Name", "Well_Type", "Location_Type_Sub", "Drill_Type", "Amended", "Spud", "First_Prod", "Oil_BBL_Per_Day", "Gas_MCF_Per_Day",
+                 "Formation_Name")  # a renamed one costs its figure, not the whole file
 
 
 def read_completions(path):
     """Completion filings, one event per well and filing day: [{api, county, op, opname, type, horizontal, new, day (Central),
     created (UTC), spud, first_prod, oil, gas, formation}]. The file has a row per casing string or test, so rows are folded."""
     ev = {}
-    for r in ok_xlsx.rows(path, want=COMP_COLS):
+    for r in ok_xlsx.rows(path, want=COMP_COLS, optional=COMP_OPTIONAL):
         created = when(r["Create_Date"])
         api = (r["API_Number"] or "").strip()
         if not created or not api or r["Review_Status"] in ("REJECTED",):
@@ -343,7 +356,12 @@ def read_wells(path):
     names = {}
     total = 0
     with open(path, encoding="iso-8859-1", newline="") as f:
-        for row in csv.DictReader(f):
+        reader = csv.DictReader(f)
+        # a UTF-8 byte-order mark read as ISO-8859-1 is three characters glued to the first name, which would make that column vanish
+        reader.fieldnames = [(h or "").replace("\xef\xbb\xbf", "").replace("\ufeff", "").strip() for h in (reader.fieldnames or [])]
+        if not {"WELLSTATUS", "API"} <= set(reader.fieldnames):  # an error page, an empty export or a renamed column is not the inventory
+            raise ValueError("the well file has no WELLSTATUS and API columns: it is not the inventory")
+        for row in reader:
             total += 1
             s = (row.get("WELLSTATUS") or "").strip()
             status[s] += 1
@@ -357,7 +375,21 @@ def read_wells(path):
                 if op:
                     ops[op] += 1
                 active_type[(row.get("WELLTYPE") or "").strip()] += 1
+    if not total:
+        raise ValueError("the well file holds no wells")
     return {"total": total, "status": status, "type": wtype, "county": county, "operators": ops, "active_type": active_type}
+
+
+WELLS_FLOOR = 0.9  # a night's inventory under 90% of the last capture's is a cut-short download, not fewer wells
+
+
+def previous_wells_total(out_dir, before):
+    """The well total of the newest report before `before` that holds an inventory; None when there is none."""
+    for f in sorted((f for f in os.listdir(out_dir) if DAY_FILE.fullmatch(f) and f[:-5] < before.isoformat()), reverse=True):
+        w = (read_json(os.path.join(out_dir, f)) or {}).get("wells")
+        if w and w.get("total"):
+            return w["total"]
+    return None
 
 
 # ------------------------------------------------------------------------------------------------ sections
@@ -379,7 +411,9 @@ def named_ops(counter_by_op, names, lk, n=12):
 
 
 def tally_counties(counter, lk):
-    return [[f, lk.county_name(f), n] for f, n in sorted(counter.items(), key=lambda kv: (-kv[1], kv[0])) if f]
+    """[[fips, name, n]] largest first; a record whose API number gives no county is counted in the totals, never placed in one (and never sorted: None
+    does not compare with a code)."""
+    return [[f, lk.county_name(f), n] for f, n in sorted(((f, n) for f, n in counter.items() if f), key=lambda kv: (-kv[1], kv[0]))]
 
 
 def permits_section(day, rows, lk):
@@ -534,7 +568,7 @@ def build_reports(ctx, jobs, cat, kind_by_date):
             if not live and did == "wells":
                 entry.update({"error": None, "file": None, "absent": True})  # the OCC keeps only today's inventory
             elif job is None or isinstance(job, Exception):
-                entry.update({"error": str(job)[:200] if job else "not captured", "file": None})
+                entry.update({"error": clean_error(job, 200) if job else "not captured", "file": None})
             else:
                 entry.update({"error": None, "file": file_info(job["file"]) if live else None})
             entries.append(entry)
@@ -713,6 +747,8 @@ def main():
     ap.add_argument("--skip-if-captured", action="store_true", help="do nothing when the report day was already captured live, reading every dataset, at or after 03:00 UTC the next day")
     ap.add_argument("--counties", action="store_true", help="rebuild counties-ok.geo.json from the Census county file")
     ap.add_argument("--only", help="testing: comma list of datasets to read (needs --out somewhere else)")
+    ap.add_argument("--wells-floor", type=float, default=WELLS_FLOOR, help="refuse a well inventory under this share of the last capture's total as cut short "
+                    "(default %(default)s; 0 accepts any, for a by-hand run after the OCC really did shrink its inventory)")
     a = ap.parse_args()
     if a.counties:
         zp = os.path.join(a.dl, "cb_2025_us_county_5m.zip")
@@ -745,7 +781,14 @@ def main():
     lk = Lookups()
     if not lk.county:
         sys.exit("counties-ok.geo.json is missing: run with --counties first")
-    have = {f[:-5] for f in os.listdir(a.out) if DAY_FILE.fullmatch(f)}
+    have = set()
+    for f in os.listdir(a.out):
+        if DAY_FILE.fullmatch(f):
+            old = read_json(os.path.join(a.out, f)) or {}
+            # a rebuilt day written while a file could not be read stays missing its figures for good unless it is built again; a live report is never rebuilt
+            if old.get("kind") == "reconstructed" and old.get("status") != "ok":
+                continue
+            have.add(f[:-5])
     dates, capped = plan_dates(R, a.keep, a.backfill, a.history, have)
     if capped:
         log("backfill: the daily files hold 7 days, so only the last %d missed days are rebuilt (older days need --history)" % SAFE_BACKFILL)
@@ -755,7 +798,7 @@ def main():
     try:
         cat_rows = read_catalog()
     except Exception as e:  # noqa: BLE001
-        log("catalog: SKIPPED (%s)" % e)
+        log("catalog: SKIPPED (%s)" % clean_error(e))
     cat = {s["file"]: cat_rows.get(s["file"]) or {} for s in DATASETS}
     unknown = sorted(f for f, r in cat_rows.items() if re.search(r"daily|nightly", r["updated"], re.I) and f not in {s["file"] for s in DATASETS} and f not in NOT_READ)
     for u in unknown:
@@ -769,6 +812,10 @@ def main():
         dest = os.path.join(a.dl, spec["file"])
         info = fetch(FILES + spec["file"], dest)
         parsed = readers[spec["id"]](dest)
+        if spec["id"] == "wells":
+            prev = previous_wells_total(a.out, R)
+            if prev and parsed["total"] < prev * a.wells_floor:
+                raise RuntimeError("the well file holds %d wells, under %d%% of the %d the last capture counted: refused as cut short" % (parsed["total"], round(a.wells_floor * 100), prev))
         return ({"inventory": parsed} if spec["id"] == "wells" else {"rows": parsed}) | {"file": info}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
@@ -784,6 +831,7 @@ def main():
 
     # the master files hold the days before the first capture (--history) and the days after a daily file's last one; the daily files'
     # rows are merged in on top
+    history_failed = []
     since = masters_to_read(R, dates, a.history, jobs, chosen)
     for ds, lo in since.items():
         if not a.history:
@@ -804,13 +852,16 @@ def main():
                 log("%-12s history: %d rows from the master since %s" % (ds, len(keep_rows), lo))
                 os.remove(dest)
             except Exception as e:  # noqa: BLE001
-                log("%-12s history SKIPPED (%s)" % (ds, e))
+                history_failed.append(ds)
+                log("%-12s history SKIPPED (%s)" % (ds, clean_error(e)))
 
     ctx = {"R": R, "dates": dates, "lk": lk}
     reports = build_reports(ctx, jobs, cat, kind_by_date)
     live = reports[R]
     got = sum(1 for d in live["datasets"] if not d.get("error"))
-    live["status"] = "ok" if got == len(DATASETS) else "partial" if got else "failed"
+    # a master file that could not be read leaves the days after a daily file's last one out: the report is stale though every file was read, so it
+    # is partial and the backup run tries again
+    live["status"] = ("ok" if got == len(DATASETS) and not history_failed else "partial") if got else "failed"
     live["capturedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     live["catalog"] = {"nightly": [{"file": f, "desc": r["desc"], "updated": r["updated"]} for f, r in sorted(cat_rows.items()) if re.search(r"daily|nightly", r["updated"], re.I)],
                        "unknown": unknown} if cat_rows else None
@@ -819,8 +870,13 @@ def main():
             rep["status"] = "ok" if all(not x.get("error") for x in rep["datasets"]) else "partial"
     update_states(live, a.out)
     add_wells_change(live, a.out)
-    if live["status"] == "failed" and os.path.exists(os.path.join(a.out, R.isoformat() + ".json")):
+    earlier = read_json(os.path.join(a.out, R.isoformat() + ".json"))
+    if live["status"] == "failed" and isinstance(earlier, dict):
         log("nothing captured; keeping the existing report for %s" % R)
+        del reports[R]
+    elif isinstance(earlier, dict) and earlier.get("kind") == "live" and sum(1 for d in earlier.get("datasets", []) if not d.get("error")) > got:
+        # a later capture of the same day that read fewer files (the 121 MB inventory refused) must not replace a report that read more
+        log("this run read %d of %d datasets, the existing report for %s read more: keeping it" % (got, len(DATASETS), R))
         del reports[R]
 
     keep_from = R - timedelta(days=a.keep - 1)

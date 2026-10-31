@@ -67,6 +67,16 @@ try:
     check(False, "a missing wanted column should raise")
 except ValueError as e:
     check("Nope" in str(e), "a missing wanted column names itself: %s" % e)
+# an optional column that is not in the sheet is None in every row (a renamed figure then costs that figure, not the file); a wanted one is still an error
+opt = list(X.rows(path, want=("API",), optional=("X", "Gone", "AlsoGone")))
+check(len(opt) == 4 and all(set(r) == {"API", "X", "Gone", "AlsoGone"} for r in opt) and all(r["Gone"] is None and r["AlsoGone"] is None for r in opt) and opt[0]["X"] == "Tom & Jerry",
+      "optional= reads the columns that are there and gives None for the ones that are not: %r" % opt[0])
+try:
+    list(X.rows(path, want=("API", "Nope"), optional=("X", "Gone")))
+    check(False, "a missing wanted column should still raise when optional ones are given")
+except ValueError as e:
+    check("Nope" in str(e) and "Gone" not in str(e), "a missing wanted column still raises, naming only itself: %s" % e)
+check(list(X.rows(path, want=("API",))) == [{"API": r["API"]} for r in opt], "without optional= nothing else is read: want= keeps its meaning")
 check(X.col_number("A") == 1 and X.col_number("Z") == 26 and X.col_number("AA") == 27 and X.col_number("AZ") == 52 and X.col_number("ZZ") == 702, "col_number")
 check(X.excel_date("46323.84444444445").isoformat().startswith("2026-10-28T20:16"), "excel_date: %s" % X.excel_date("46323.84444444445"))
 check(X.excel_date("1") is None and X.excel_date("") is None and X.excel_date(None) is None and X.excel_date("abc") is None and X.excel_date("90000") is None, "excel_date refuses placeholders and junk")

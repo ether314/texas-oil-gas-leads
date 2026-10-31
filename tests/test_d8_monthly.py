@@ -94,6 +94,14 @@ def run_checks(M, quiet=False):
     series, cp, ops, pts = (docs[n] for n in M.NAMES)
     check(rep["asof"] == date(2026, 10, 30) and series["through"] == "2026-10-30", "the newest approval is the end of the windows, and 03:00 UTC on Oct 31 is still Oct 30: %s" % rep["asof"])
 
+    # ---- an approval dated after today is a typo in the file: it must not move the windows (it would end every window at that day)
+    future = row(api("017", 80), "100", "ACME OIL LLC", date(2026, 12, 1))
+    cf = M.collect(rows() + [future], today=date(2026, 10, 31))
+    check(cf["stats"]["dated in the future"] == 1 and M.build(cf, COUNTIES)[1]["asof"] == date(2026, 10, 30),
+          "an approval dated after today is skipped and counted, and the windows still end on the newest real day: %s" % dict(cf["stats"]))
+    check(M.build(M.collect(rows() + [future], today=date(2027, 1, 1)), COUNTIES)[1]["asof"] == date(2026, 12, 1) and "dated in the future" not in M.collect(rows() + [future], today=date(2027, 1, 1))["stats"],
+          "the same row is a permit once its day has come (the rule is about today, not about the row)")
+
     # ---- the series: complete months only, one count per API number and approval day
     got = dict(zip(series["months"], series["permits"]))
     want = {"2025-02": 1, "2025-03": 2, "2025-10": 1, "2026-01": 12, "2026-02": 3, "2026-03": 3}
@@ -166,6 +174,14 @@ def run_checks(M, quiet=False):
     fault("a point at full precision", lambda cur, d: cur["permits-ok.json"]["pts"][0].__setitem__(0, cur["permits-ok.json"]["pts"][0][0] + 3), "points are malformed")
     fault("a wrong band", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(0, "A"), "operator 200")
     fault("an unnamed operator row", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(2, "JOHN Q PUBLIC"), "operator 200")
+    # the office city and state come straight from the file and are published: a place name and two letters, nothing else
+    col = lambda cur, c: cur["operators-ok.json"]["cols"].index(c)  # noqa: E731
+    fault("a street address in an operator's city", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(col(cur, "city"), "123 MAIN STREET"), "operator 200")
+    fault("a phone number in an operator's city", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(col(cur, "city"), "TULSA 918 555 0100"), "operator 200")
+    fault("an e-mail address in an operator's city", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(col(cur, "city"), "JOE@X.COM"), "operator 200")
+    fault("a long text in an operator's state", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(col(cur, "state"), "OKLAHOMA"), "operator 200")
+    fault("a phone number anywhere in a file", lambda cur, d: cur["series-permits-ok.json"].update(src="call 918-555-0100 for the list"), "phone number")
+    fault("a phone number in brackets anywhere in a file", lambda cur, d: cur["series-permits-ok.json"].update(src="call (918) 555 0100"), "phone number")
     fault("county months that do not add up", lambda cur, d: cur["county-permits-ok.json"]["counties"]["017"]["m"].__setitem__(5, 4), "add up")
     fault("one file with another asOf", lambda cur, d: cur["operators-ok.json"].update(asOf="2026-10-29"), "asOf")
     fault("an oversize file", lambda cur, d: cur["series-permits-ok.json"].update(src="x" * 5000), "budget")
@@ -176,7 +192,7 @@ def run_checks(M, quiet=False):
 
 def mutants():
     fails = []
-    real = {"nameable": M.D.nameable, "central_day": M.D.central_day, "window_of": M.window_of, "collect": M.collect}
+    real = {"nameable": M.D.nameable, "central_day": M.D.central_day, "window_of": M.window_of, "collect": M.collect, "validate": M.validate}
 
     def run(name, patch):
         patch()
@@ -185,7 +201,7 @@ def mutants():
         except Exception as e:  # noqa: BLE001 - a mutant may break the build outright: that is noticed too
             got = ["raised %r" % e]
         finally:
-            M.D.nameable, M.D.central_day, M.window_of, M.collect = real["nameable"], real["central_day"], real["window_of"], real["collect"]
+            M.D.nameable, M.D.central_day, M.window_of, M.collect, M.validate = real["nameable"], real["central_day"], real["window_of"], real["collect"], real["validate"]
         ok = bool(got)
         print(("ok   " if ok else "FAIL ") + "mutant caught: %s (%d checks failed)" % (name, len(got)))
         if not ok:
@@ -197,19 +213,19 @@ def mutants():
     run("the last 12 months start a month too early", lambda: setattr(M, "window_of", lambda asof: dict(real["window_of"](asof), cut12=real["window_of"](asof)["cut12"] - 31)))
 
     def formations_count():  # every formation row is a permit of its own
-        def collect(rows_):
+        def collect(rows_, today=None):
             n = [0]
 
             def spread(rs):
                 for r in rs:
                     n[0] += 1
                     yield dict(r, API_Number=r["API_Number"][:5] + "%05d" % n[0] + r["API_Number"][10:])
-            return real["collect"](spread(rows_))
+            return real["collect"](spread(rows_), today)
         M.collect = collect
     run("formation rows each count as a permit", formations_count)
 
     def once_per_api():  # a well approved a second time is not counted again
-        def collect(rows_):
+        def collect(rows_, today=None):
             seen, kept = set(), []
             for r in rows_:
                 k = (r["API_Number"][:10], r["Application_Type"])
@@ -217,9 +233,14 @@ def mutants():
                     continue
                 seen.add(k)
                 kept.append(r)
-            return real["collect"](kept)
+            return real["collect"](kept, today)
         M.collect = collect
     run("a well approved twice is counted once", once_per_api)
+    run("an approval dated in the future is a permit", lambda: setattr(M, "collect", lambda rows_, today=None: real["collect"](rows_, date(2100, 1, 1))))
+
+    def lax_validate(out, county_names=None, spec=None):  # the validator before: no phone numbers, no shape for a city or a state
+        return [p for p in real["validate"](out, county_names, spec) if "phone number" not in p and not (p.startswith("operator ") and p.endswith("is malformed"))]
+    run("the validator does not look at a city, a state or a phone number", lambda: setattr(M, "validate", lax_validate))
     return fails
 
 

@@ -13,13 +13,16 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   on the shares that day), month-safe permit coverage, pack previews, download deadlines. The pack test needs Pillow and `pdftoppm`.
 - `test_d8.py`, `test_d8_context.py`, `test_ok_xlsx.py`: the Oklahoma producer, its monthly series and its workbook reader: rules,
   Central-time days across both clock changes, validation of the committed archive (with deliberate faults), privacy checks.
+- `test_d8_nights.py`: whole nights of the Oklahoma producer with the network faked: a permit with no county, an inventory that is an error page, empty,
+  header-only, renamed, cut short or starts with a byte-order mark, a backup run that read less than the report it would replace, a master file that
+  cannot be read, a rebuilt day left partial, no web address in a failure's text, and eleven mutants that put the old behavior back.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, the
   validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,
   the windows, the naming rule, rounded locations, the validator against deliberate faults, mutants, and the committed files.
 - `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the three captures, the `if:` conditions for every
-  combination of outcomes (64), and the workflow's own `run:` scripts executed against a throwaway clone with a local bare `origin`
-  (needs git and PyYAML).
+  combination of outcomes (64), a time limit on each capture that leaves the job room to commit and publish, and the workflow's own `run:` scripts
+  executed against a throwaway clone with a local bare `origin` (needs git and PyYAML).
 - `test_workflow_monthly.py`: `.github/workflows/refresh-monthly.yml` the same way (isolation, the 16 outcome combinations, the drop, commit and last
   steps run against a clone; only the eight files it names are ever committed, and it shares the nightly's concurrency group).
 - `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it steps aside when main has moved on since the commit CI passed, that it cannot reach the agencies)
