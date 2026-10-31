@@ -37,6 +37,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   The Map is driven the same way: each state alone and all together (counties, legend, dot colors, the table twin, a hover and a click on a dot, the replay),
   and a county or an operator opened by its state-prefixed key. The Daily report is driven for New Mexico alone (three cards, its color, its 33 counties, no tile for what
   it does not publish) and with all three states (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
+  On a phone it also checks the tabs' edge fade and, in the Daily report with three states, one pill per state, notes and sparklines that fit their cards and no card alone in half a row.
 - `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to
   WCAG 4.5:1 (3:1 for large text), against what is behind it (a gradient counts at its worst stop; disabled controls are exempt). Keyboard: Tab through six views;
   every stop has a name and shows a focus ring and none sticks; one `main`, one visible `h1`, a language and a title per view. A state's own color (orange, purple, green) is

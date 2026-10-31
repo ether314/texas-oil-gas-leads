@@ -136,7 +136,7 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
    Daily report's inventory), refreshing the monthly files in the nightly workflow. Not available yet: Oklahoma jobs (BLS), rig counts
    (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
 3. Visual polish and simplification pass; phone layouts. Done: contrast and keyboard checks (`tests/a11y.cjs`, in CI), the tabs' edge fade on a phone, Operators and Companies tidied.
-   To do: more phone passes on the Map and the Daily report's long cards; look at every view again in dark mode after any color change.
+   To do: more phone passes on the Map and the Daily report's long cards (its first screen is done); look at every view again in dark mode after any color change.
 
 ### Run log
 
@@ -159,3 +159,4 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: accessibility: `tests/a11y.cjs` (text contrast in both themes at both widths, keyboard focus, titles; in CI) found and fixed the primary button's white text (3.5 to 4.6:1),
   a state's own color used as words in the Overview's lists (now ink with a colored dot), the grey "Publishes monthly" tags, the light theme's red for falls and the search placeholders;
   the tabs fade at the edge that has more on a phone; the Companies note under the heading is a quiet line; an operator's Map chip stays with its name.
+- 2026-10-31: the Daily report on a phone: one pill per state (the time its files were read is inside it), sparklines and notes that fit a half-width card (a note was cut off, a sparkline ran past the card), and a card never left alone in half a row.

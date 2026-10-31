@@ -307,6 +307,33 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 7. the Daily report on a phone with the three states: one pill each, cards that hold their text and sparkline, no card alone in half a row
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpis .dr-kpi', { timeout: 25000 });
+      const pills = await page.locator('#daily-root .dr-pills .dr-pill').count();
+      check(pills === 3 && (await page.locator('#daily-root .dr-pills .dr-pill.quiet').count()) === 0, 'the three states are three pills (the time each was read is inside it), not six: ' + pills);
+      const out = await page.evaluate(() => [...document.querySelectorAll('#daily-root .dr-kpi')].flatMap((c) => {
+        const r = c.getBoundingClientRect();
+        return [...c.querySelectorAll('.dr-kpi-note, .dr-kpi-extra, .dr-kpi-spark svg')].filter((k) => k.getBoundingClientRect().right > r.right - 17).map((k) => (k.className.baseVal !== undefined ? k.className.baseVal : k.className) + ' of ' + c.querySelector('.dr-kpi-top').textContent.trim().slice(0, 24));
+      }));
+      check(!out.length, 'every card on a phone holds its note and its sparkline (none runs past the card\'s padding)' + (out.length ? ': ' + out.join(', ') : ''));
+      const alone = await page.evaluate(() => {
+        const cs = [...document.querySelectorAll('#daily-root .dr-kpis > .dr-kpi')];
+        const full = cs[0].getBoundingClientRect().width;
+        const top = (c) => c.getBoundingClientRect().top;
+        return { cards: cs.length, alone: cs.filter((c) => c.getBoundingClientRect().width < full * 0.6 && !cs.some((o) => o !== c && Math.abs(top(o) - top(c)) < 2)).length };
+      });
+      check(alone.cards >= 3 && alone.alone === 0, 'no half-width card is left alone in its row (' + alone.cards + ' cards)');
+    } catch (e) {
+      check(false, 'the Daily report on a phone: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

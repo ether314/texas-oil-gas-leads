@@ -115,8 +115,10 @@ export function createDailyView({ root }) {
       const live = rep.kind === 'live'; const ds = rep.datasets.filter((d) => !d.absent);
       const read = ds.filter((d) => !d.error).length; const cmp = compare(rep);
       const status = live ? (rep.status === 'ok' ? 'good' : rep.status === 'partial' ? 'warn' : 'bad') : 'info';
+      // several states: one pill each, with the time its files were read in it (two pills each was six lines on a phone)
+      if (multi()) { pills.push(chip(status, pre + (live ? read + ' of ' + ds.length + ' files read' + (rep.capturedAt ? ' · ' + central(rep.capturedAt).replace(/ Central$/, ' CT') : '') : 'reconstructed from ' + HISTORY[id]))); continue; }
       pills.push(chip(status, pre + (live ? read + ' of ' + ds.length + ' ' + FILES[id] + ' files read' : 'reconstructed from ' + HISTORY[id])));
-      if (live && rep.capturedAt) pills.push(chip('quiet', (multi() ? name + ' captured ' : 'Captured ') + central(rep.capturedAt)));
+      if (live && rep.capturedAt) pills.push(chip('quiet', 'Captured ' + central(rep.capturedAt)));
       if (!multi() && live && cmp.ok && cmp.fresh) pills.push(chip('quiet', cmp.fresh + ' updated since the last report'));
       if (!multi() && live && !cmp.ok) pills.push(chip('quiet', 'First live capture'));
     }
