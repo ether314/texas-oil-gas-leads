@@ -14,9 +14,9 @@ const WHAT = {
   permits: 'New permits issued, from the nightly Drilling Permit Master and Trailer file (daf420.dat).',
   pending: 'W-1 applications submitted and not yet approved, from the twice-daily pending set.',
   completions: 'Completion forms (W-2, G-1, P-4 and others) submitted or approved that day.',
-  w1images: 'Zipped images of every W-1 approved that day, by RRC district. Only the size is captured.',
-  dirsurveys: 'Zipped directional survey images submitted that day. Only the size is captured.',
-  complimages: 'Zipped completion form images. Only the size is captured.',
+  w1images: 'Zipped images of every W-1 approved that day, by RRC district. The size is captured; live days also count the documents.',
+  dirsurveys: 'Zipped directional survey images submitted that day. The size is captured; live days also count the documents.',
+  complimages: 'Zipped completion form images. The size is captured; live days also count the documents.',
 };
 const KIND = { H: 'Horizontal', D: 'Directional', V: 'Vertical' };
 const PERMIT_TYPE = { '01': 'New drill', '05': 'Other', '07': 'Re-entry', '09': 'Field transfer', '14': 'Recompletion', '15': 'Reclass' };
@@ -163,7 +163,7 @@ export function createDailyView({ root }) {
       kpi({ ic: 'clock', label: 'Waiting for approval', value: q && q.total, color: 'var(--s1)', vals: hist('q'),
         note: q ? num(q.expedite) + ' expedited · ' + num(q.horizontal) + ' horizontal' : 'No pending set recorded for this day' }),
       kpi({ ic: 'drop', label: 'Completions approved', value: c && c.approved, color: 'var(--s3)', vals: hist('c'),
-        note: c ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : 'No completion file read for this day' }),
+        note: c ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : 'No completion file for this day' }),
       kpi({ ic: 'check', label: cmpOk ? 'Nightly files updated' : 'Nightly files read', value: cmpOk ? cmp.fresh : read, color: 'var(--accent)', gauge: ring(cmpOk ? cmp.fresh : read, rep.datasets.length),
         note: cmpOk ? (cmp.fresh === rep.datasets.length ? 'Every dataset changed since the last report' : num(cmp.same.length) + ' unchanged since the last report')
           : live ? 'First live capture: changes show from the next report' : 'Rebuilt from the RRC file history' }));
@@ -286,8 +286,8 @@ export function createDailyView({ root }) {
 
   function pendingSection(rep) {
     const q = rep.pending;
-    if (!q) return card('dr-sec', head('clock', 'Queue', 'Permits pending approval'), el('p', { class: 'empty', text: 'No pending-approval set was recorded for this day. The RRC publishes this file twice a day, and it is only kept for the days this archive was running or could rebuild.' }));
-    return card('dr-sec', head('clock', 'Queue', 'Applications waiting for approval', 'W-1s submitted since the previous run that were still pending when each set was written (' + q.sets.map((s) => s.label + ': ' + s.n).join(', ') + ').'),
+    if (!q) return card('dr-sec', head('clock', 'Queue', 'Permits pending approval'), el('p', { class: 'empty', text: 'No pending-approval set reached the RRC share on this day. The RRC copies a set to the share after 11 AM and after 5 PM, and skips some holidays.' }));
+    return card('dr-sec', head('clock', 'Queue', 'Applications waiting for approval', 'W-1s submitted since the previous run that were still pending when each set was written (' + q.sets.map((s) => (s.at.slice(0, 10) === rep.date ? '' : fmtDow(s.at.slice(0, 10)).split(',')[0] + ' ') + s.label + ': ' + s.n).join(', ') + ').'),
       tiles([{ label: 'Waiting', value: num(q.total), note: 'from ' + q.operatorCount + ' operators' }, { label: 'Flagged to expedite', value: num(q.expedite), note: Math.round((q.expedite / q.total) * 100) + '% of the queue' },
         { label: 'Horizontal', value: num(q.horizontal), note: Math.round((q.horizontal / q.total) * 100) + '%' }, { label: 'Amendments', value: num(q.amendments), note: 'changes to earlier permits' },
         { label: 'Median planned depth', value: q.depth ? num(q.depth.median) + ' ft' : '—', note: q.depth ? 'deepest ' + num(q.depth.max) + ' ft' : '' }]),
@@ -305,7 +305,7 @@ export function createDailyView({ root }) {
 
   function completionsSection(rep) {
     const c = rep.completions;
-    if (!c) return card('dr-sec', head('drop', 'Completions', 'Completion data'), el('p', { class: 'empty', text: 'No completion file was read for this day.' }));
+    if (!c) return card('dr-sec', head('drop', 'Completions', 'Completion data'), el('p', { class: 'empty', text: 'No completion file landed on this day.' }));
     return card('dr-sec', head('drop', 'Completions', 'Completions ' + fmtDow(c.day), 'Forms submitted or approved that day: W-2 (oil), G-1 (gas), P-4, L-1, G-5, G-10, P-15 and W-12.'),
       tiles([{ label: 'Approved', value: num(c.approved), note: num(c.submitted) + ' more submitted' }, { label: 'First tests of new wells', value: num(c.initial), note: 'initial potential filings' },
         { label: 'Oil · gas', value: c.oil + ' · ' + c.gas, note: 'among first tests' }, { label: 'Horizontal', value: num(c.horizontal), note: c.initial ? Math.round((c.horizontal / c.initial) * 100) + '% of first tests' : '' },
@@ -333,11 +333,33 @@ export function createDailyView({ root }) {
       const w1 = id === 'w1images' && s && s.districts.length ? stack(s.districts.slice(0, 6).map(([d, n]) => ({ label: 'District ' + d, value: n })), { format: mb }) : null;
       const box = el('div', { class: 'dr-img' }, el('p', { class: 'eyebrow' }, icon(ICONS[id], 15), title),
         s ? el('b', { class: 'dr-img-num', text: mb(s.bytes) }) : el('b', { class: 'dr-img-num', text: '—' }),
-        el('small', { text: s ? (s.empty ? 'An empty pack: nothing filed for ' + fmtMd(s.day) : 'Pack for ' + fmtDow(s.day)) + (med ? ' · 30-day median ' + Math.round(med) + ' MB' : '') : 'Not captured' }),
+        el('small', { text: s ? (s.empty ? 'An empty pack: nothing filed for ' + fmtMd(s.day) : 'Pack for ' + fmtDow(s.day)) + (med ? ' · 30-day median ' + Math.round(med) + ' MB' : '') : 'Nothing landed this day' }),
         hist.length > 3 ? spark(hist, { w: 220, h: 40, color, label: title + ' size, last 30 days' }) : null, w1);
       return box;
     });
-    return card('dr-sec', head('layers', 'Image packs', 'The three image packs', 'The RRC publishes these as zips of PDF and TIFF images. Only their size is read, so volume stands in for filing activity.'), el('div', { class: 'dr-imgs' }, cards));
+    return card('dr-sec', head('layers', 'Image packs', 'The three image packs', 'The RRC publishes these as zips of PDF and TIFF images. The size of each is read for every day, so volume stands in for filing activity; days captured live also open the zip (next section).'), el('div', { class: 'dr-imgs' }, cards));
+  }
+
+  // what the packs held that day: documents by kind and a sheet of first pages shrunk and blurred so nothing reads (live days since previews began)
+  function packPagesSection(rep) {
+    const im = rep.images || {};
+    const defs = [['w1images', 'W-1 permit images', 'var(--s2)'], ['dirsurveys', 'Directional surveys', 'var(--s7)'], ['complimages', 'Completion images', 'var(--s3)']];
+    const rows = defs.filter(([id]) => im[id] && im[id].docs && im[id].docs.n).map(([id, title, color]) => {
+      const s = im[id]; const d = s.docs;
+      const info = el('div', { class: 'dr-pack-info' }, el('p', { class: 'eyebrow' }, icon(ICONS[id], 15), title),
+        el('b', { class: 'dr-img-num', text: num(d.n) + (d.n === 1 ? ' document' : ' documents') }),
+        el('small', { text: 'Pack for ' + fmtDow(s.day) + (d.packets ? ' · from ' + num(d.packets) + ' completion packets' : '') }),
+        rankList(d.types.map(([k, n]) => ({ label: k, value: n })), { color }));
+      const ok = s.sheet && /^[\w.-]+\.jpg$/.test(s.sheet.file);
+      const fig = ok ? el('figure', { class: 'dr-pack-fig' },
+        el('img', { class: 'dr-sheet', src: 'data/daily/img/' + s.sheet.file, width: s.sheet.w, height: s.sheet.h, loading: 'lazy', decoding: 'async',
+          alt: 'Contact sheet: blurred page one of ' + s.sheet.tiles + ' documents from the ' + title + ' pack, too small to read.' }),
+        el('figcaption', { text: 'Page one of ' + s.sheet.tiles + ' of the ' + num(d.n) + ' documents, one kind after another, shrunk to ' + s.sheet.px + ' pixels wide' + (s.sheet.blur ? ' and blurred' : '') + '.' }))
+        : el('p', { class: 'fine', text: 'No page preview could be drawn for this pack.' });
+      return el('div', { class: 'dr-pack' }, info, fig);
+    });
+    if (!rows.length) return null;
+    return card('dr-sec', head('layers', 'Inside the packs', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. The pages are shrunk and blurred on purpose so that nothing can be read: the filings carry lease names, well numbers and the names of individuals, which this site leaves out. Days before previews began show sizes only.'), ...rows);
   }
 
   function healthSection(rep) {
@@ -385,11 +407,11 @@ export function createDailyView({ root }) {
   function notesSection(rep) {
     const li = (...k) => el('li', {}, ...k);
     return card('dr-sec dr-notes', head('bulb', 'How to read this', 'Notes and limits'), el('ul', { class: 'plain' },
-      li(strong('Each dataset has its own day. '), 'Permits and images for a report day are the newest the RRC had out by about 10 PM Central; completions and their images are the same day, W-1 and survey images the day before.'),
-      li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt from RRC file history: permits from the month-end and nightly files, completions from each day\'s zip, pending sets from the share\'s history. The catalog check and file states only exist for days captured live.'),
+      li(strong('What a day shows. '), 'A report holds what landed on each RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. Each card says which day its data is from.'),
+      li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt from the RRC\'s file history by the same rule: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day. The catalog check and file states only exist for days captured live.'),
       li(strong('Permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. Only some recent permits carry surface coordinates.'),
       li(strong('Pending queue. '), 'Each set holds W-1s submitted since the previous run that were still waiting; it is not a running total, and a permit leaves it when approved.'),
-      li(strong('Times. '), 'File times are shown as the RRC share lists them. The report date is the Central-time day the capture ran.'),
+      li(strong('Times. '), 'File times are shown as the RRC share lists them, which is Central time. The report date is the Central-time day the capture ran.'),
       li(strong('Privacy. '), 'Operators are named only when they are corporations, LLCs or limited partnerships. Lease names, well numbers and anything about individuals are left out.')));
   }
 
@@ -402,7 +424,7 @@ export function createDailyView({ root }) {
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {
-      kids.push(permitsSection(rep), pendingSection(rep), completionsSection(rep), imagesSection(rep), healthSection(rep), archiveSection(), notesSection(rep));
+      kids.push(permitsSection(rep), pendingSection(rep), completionsSection(rep), imagesSection(rep), packPagesSection(rep), healthSection(rep), archiveSection(), notesSection(rep));
     }
     const nodes = kids.filter(Boolean);
     nodes.forEach((n, i) => n.style.setProperty('--d', String(Math.min(i, 9))));
