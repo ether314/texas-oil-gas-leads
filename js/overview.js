@@ -3,8 +3,8 @@ import { $, el, fmt, compactFmt, stat, pct, share, fmtDate, monthLabel, countUp,
 import { barList, delta, spark } from './charts.js';
 import { hideTip, showTip, tipRow } from './tip.js';
 import { icon } from './icons.js';
-import { permitTotals, ownTotals, countyLabel, topBy, newToDrilling } from './overview-data.js';
-import { stateOf, countyState, measureOf, sameMeasure, measurePhrase, listAnd } from './states.js';
+import { permitTotals, ownTotals, topBy, newToDrilling } from './overview-data.js';
+import { stateOf, countyState, measureOf, sameMeasure, measurePhrase, listAnd, inName, placeTitle, placesWord } from './states.js';
 
 export const opsLink = (name) => '#operators?' + new URLSearchParams({ q: name, band: 'all' });
 const hide = (node) => { const c = node.closest('[data-card]'); (c || node).hidden = true; };
@@ -28,7 +28,7 @@ export function renderKpis({ states, meta: m, sp, rows = [], wells = {} }) {
     const t = permitTotals(sp);
     const spud = sp.summed.length === 1 && measureOf(sp.summed[0]).id === 'spuds';
     // a state that counts something else (New Mexico's spuds) is not in the total: its own 12 months are said beside it
-    const apart = sp.ids.filter((id) => !sp.summed.includes(id)).map((id) => { const o = ownTotals(sp, id); return fmt.format(o.last) + ' ' + measureOf(id).noun + ' in ' + stateOf(id).name + ' (to ' + monthLabel(o.to) + ')'; });
+    const apart = sp.ids.filter((id) => !sp.summed.includes(id)).map((id) => { const o = ownTotals(sp, id); return fmt.format(o.last) + ' ' + measureOf(id).noun + ' in ' + inName(id) + ' (to ' + monthLabel(o.to) + ')'; });
     chips.push({
       label: (spud ? 'Wells spudded' : 'New-drill permits') + ', last 12 months', value: t.last, hero: true, href: '#map',
       note: [delta(t.prior ? t.last / t.prior - 1 : null), ' vs the 12 months before'],
@@ -83,14 +83,15 @@ export function renderHot(cp, G, win, states = ['TX']) {
   const multi = states.length > 1;
   const rows = Object.entries(cp.counties).map(([f, v]) => ({ f, v, c: G.byFips.get(f), p12: v.p12, _i: 0, st: countyState(f) })).filter((r) => r.c && r.p12 > 0);
   const items = grouped(rows, states, 'p12', (r) => ({
-    label: r.c.n, value: r.v.p12, href: '#map?county=' + r.f, aria: r.c.n + ' County' + (multi ? ', ' + r.st : '') + ': ' + fmt.format(r.v.p12) + ' ' + measureOf(r.st).noun + '. Open on the map.', r, st: r.st,
+    label: r.c.n, value: r.v.p12, href: '#map?county=' + r.f, aria: placeTitle(r.st, r.c.n) + (multi ? ', ' + r.st : '') + ': ' + fmt.format(r.v.p12) + ' ' + measureOf(r.st).noun + '. Open on the map.', r, st: r.st,
   }));
   barList(ul, items, {
     max: Math.max(1, ...rows.map((r) => r.p12)),
-    tipFor: (it) => [tipRow(fmt.format(it.value), measureOf(it.st).noun + ', ' + countyLabel(it.label, it.st, multi) + ' County'),
+    tipFor: (it) => [tipRow(fmt.format(it.value), measureOf(it.st).noun + ', ' + placeTitle(it.st, it.label) + (multi ? ', ' + it.st : '')),
       tipRow(fmt.format(it.r.v.p12prev), 'in the prior 12 months'), tipRow('Click to open the map', '')],
   });
-  $('#hot-sub').textContent = (multi ? 'Top ' + PER(states) + ' counties of each state' : 'Top 10 counties') + ' by ' + (multi ? measurePhrase(states) : measureOf(states[0]).noun) + ', ' + win + '. Click a bar to open it on the map.';
+  $('#hot-h').textContent = 'Hot ' + placesWord(states);
+  $('#hot-sub').textContent = (multi ? 'Top ' + PER(states) + ' ' + placesWord(states) + ' of each state' : 'Top 10 ' + placesWord(states)) + ' by ' + (multi ? measurePhrase(states) : measureOf(states[0]).noun) + ', ' + win + '. Click a bar to open it on the map.';
 }
 // rows: the operators of the states shown, as objects (overview-data.operatorRows)
 export function renderTopOps(rows, states = ['TX']) {

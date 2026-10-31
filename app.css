@@ -41,10 +41,12 @@
   --s2: light-dark(#eb6834, #d95926);
   --s3: light-dark(#1baf7a, #199e70);
   --s7: light-dark(#6250d6, #9085e9);
-  /* the states: Texas keeps the orange it always had, Oklahoma is the purple slot, New Mexico the green one */
+  /* the states: Texas keeps the orange it always had, Oklahoma is the purple slot, New Mexico the green one, the federal offshore a rose that no
+     other color confuses it with (picked for distance from the other three in normal vision and the common color blindnesses; 4.5:1 on a card) */
   --st-tx: var(--s2);
   --st-ok: var(--s7);
   --st-nm: var(--s3);
+  --st-fo: light-dark(#c93b8f, #e05aa6);
   --up: light-dark(#006300, #0ca30c);
   --down: light-dark(#bd2f2f, #e66767); /* as text on a card it must reach 4.5:1: the lighter red (#d03b3b) was 4.3 */
   /* interaction */
@@ -101,15 +103,18 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .ico { flex: none; display: inline-block; vertical-align: -0.2em; }
 #view-overview[data-states="OK"] .live-dot { background: var(--st-ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-ok) 55%, transparent); }
 #view-overview[data-states="NM"] .live-dot { background: var(--st-nm); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-nm) 55%, transparent); }
+#view-overview[data-states="FO"] .live-dot { background: var(--st-fo); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-fo) 55%, transparent); }
 /* a state's tag in a table: its color, its two letters */
 .st-tag { --c: var(--st-tx); display: inline-block; padding: 1px 7px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 680; letter-spacing: 0.06em; color: var(--ink); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 42%, transparent); }
 .st-tag.st-ok { --c: var(--st-ok); }
 .st-tag.st-nm { --c: var(--st-nm); }
-/* a state's dot in the bar: the color it has in every map, chart and legend; All is the three together */
+.st-tag.st-fo { --c: var(--st-fo); }
+/* a state's dot in the bar: the color it has in every map, chart and legend; All is the four together */
 .seg-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--st-tx)); }
 .seg-dot.st-ok { --c: var(--st-ok); }
 .seg-dot.st-nm { --c: var(--st-nm); }
-.seg-dot.st-all { background: conic-gradient(var(--st-tx) 0 33.3%, var(--st-ok) 0 66.6%, var(--st-nm) 0); }
+.seg-dot.st-fo { --c: var(--st-fo); }
+.seg-dot.st-all { background: conic-gradient(var(--st-tx) 0 25%, var(--st-ok) 0 50%, var(--st-nm) 0 75%, var(--st-fo) 0); }
 /* the states shown: one choice above every view that follows it */
 .statebar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-4) 0; }
 .statebar[hidden] { display: none; }
@@ -118,6 +123,9 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .statebar-note:empty { display: none; }
 #statebar-seg { min-width: 0; max-width: 100%; }
 @media (max-width: 520px) { .statebar .seg button { padding: 0 9px; gap: 5px; } }
+/* the bar's five choices do not fit a narrow phone with full names: TX, OK, NM, Offshore (the button's name stays "Texas (TX)") */
+.seg-a { display: none; }
+@media (max-width: 440px) { .statebar .seg-l.has-abbr { display: none; } .statebar .seg-a { display: inline; } }
 .view-head { padding-block: var(--sp-7) var(--sp-2); }
 .view-head.compact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; padding-block: var(--sp-5) 0; }
 .view-head.compact .lede { margin: 0; font-size: var(--fs-md); flex: 1 1 360px; }
@@ -363,6 +371,7 @@ svg .hbar.on { filter: brightness(1.15); }
 /* Oklahoma's rows take its color wherever a list holds them, and a list of both states says which is which */
 .bars li.st-ok { --bar: var(--st-ok); }
 .bars li.st-nm { --bar: var(--st-nm); }
+.bars li.st-fo { --bar: var(--st-fo); }
 /* a state's heading keeps its color in a dot: the words stay ink, because a state's color on the page is under 4.5:1 as text */
 .bars li.bars-h { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding: 0 6px; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
 .bars li.bars-h::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--bar, var(--ink-2)); }
@@ -539,6 +548,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .lg-st i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 .lg-st.st-ok { --c: var(--st-ok); }
 .lg-st.st-nm { --c: var(--st-nm); }
+.lg-st.st-fo { --c: var(--st-fo); }
 .lg-basin i { flex: none; width: 22px; height: 0; border-top: 3px solid var(--s2); border-radius: 2px; }
 .map-loading { padding: 80px var(--sp-4); text-align: center; color: var(--ink-2); }
 .map-notes { padding: var(--sp-3) var(--sp-4) 14px; border-top: 1px solid var(--border); display: grid; gap: 6px; }
@@ -568,9 +578,9 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .plist-n { font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .plist .pill-link { margin-left: 0; }
 .mini-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; --bar: var(--s1); }
-.mini-row { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 2px 6px; border: 0; border-radius: var(--r-sm); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.mini-row { display: grid; grid-template-columns: 112px 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 2px 6px; border: 0; border-radius: var(--r-sm); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .mini-row:hover { background: color-mix(in srgb, var(--s1) 10%, transparent); }
-.mini-row .bar-label { font-size: var(--fs-sm); }
+.mini-row .bar-label { font-size: var(--fs-sm); white-space: normal; overflow-wrap: anywhere; line-height: 1.2; } /* "Mississippi Canyon" wraps rather than ends in an ellipsis */
 .mini-row .bar { width: calc(100% * var(--p, 0)); max-width: 100%; }
 .mini-row .bar-track { display: flex; }
 .mini-row .bar-value { text-align: right; }

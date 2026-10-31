@@ -37,11 +37,12 @@ function projector(box) {
   };
 }
 
-// city labels on the maps: name, latitude, longitude, state, priority (low is drawn first, and kept on a phone when it is 7 or less)
+// city labels on the maps: name, latitude, longitude, state, priority (low is drawn first, and kept on a phone when it is 7 or less). A city that
+// anchors two states' maps names both ('TX|FO': Houston is a Texas label, and the one that shows where the Gulf's federal waters begin)
 const HUBS = [
-  ['Houston', 29.7604, -95.3698, 'TX', 0], ['Dallas', 32.7767, -96.797, 'TX', 1], ['San Antonio', 29.4241, -98.4936, 'TX', 2],
+  ['Houston', 29.7604, -95.3698, 'TX|FO', 0], ['Dallas', 32.7767, -96.797, 'TX', 1], ['San Antonio', 29.4241, -98.4936, 'TX', 2],
   ['El Paso', 31.7619, -106.485, 'TX', 3], ['Austin', 30.2672, -97.7431, 'TX', 4], ['Midland', 31.9973, -102.0779, 'TX', 5],
-  ['Corpus Christi', 27.8006, -97.3964, 'TX', 6], ['Fort Worth', 32.7555, -97.3308, 'TX', 7], ['Lubbock', 33.5779, -101.8552, 'TX', 8],
+  ['Corpus Christi', 27.8006, -97.3964, 'TX|FO', 6], ['Fort Worth', 32.7555, -97.3308, 'TX', 7], ['Lubbock', 33.5779, -101.8552, 'TX', 8],
   ['Amarillo', 35.222, -101.8313, 'TX', 9], ['Odessa', 31.8457, -102.3676, 'TX', 10], ['Abilene', 32.4487, -99.7331, 'TX', 11],
   ['Laredo', 27.5306, -99.4803, 'TX', 12], ['San Angelo', 31.4638, -100.437, 'TX', 13], ['Victoria', 28.8053, -97.0036, 'TX', 14],
   ['Wichita Falls', 33.9137, -98.4934, 'TX', 15],
@@ -50,6 +51,7 @@ const HUBS = [
   ['Albuquerque', 35.0844, -106.6504, 'NM', 3], ['Santa Fe', 35.687, -105.9378, 'NM', 7], ['Hobbs', 32.7026, -103.136, 'NM', 6],
   ['Carlsbad', 32.4207, -104.2288, 'NM', 8], ['Farmington', 36.7281, -108.2087, 'NM', 9], ['Roswell', 33.3943, -104.523, 'NM', 11],
   ['Las Cruces', 32.3199, -106.7637, 'NM', 12],
+  ['New Orleans', 29.9511, -90.0715, 'FO', 2], ['Mobile', 30.6954, -88.0399, 'FO', 9], ['Tampa', 27.9506, -82.4572, 'FO', 10],
 ];
 
 function inRing(xy, x, y) {
@@ -79,8 +81,10 @@ export function buildGeoIsolated(gj, hubStates) {
 
 export function buildGeo(gj, hubStates = ['TX']) {
   const polys = gj.features.map((f) => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates));
-  let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
+  let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity; let minLon = Infinity; let maxLon = -Infinity;
   for (const poly of polys) for (const rings of poly) for (const ring of rings) for (const p of ring) {
+    if (p[0] < minLon) minLon = p[0];
+    if (p[0] > maxLon) maxLon = p[0];
     albers(p[0], p[1], tmp);
     if (tmp[0] < minX) minX = tmp[0];
     if (tmp[0] > maxX) maxX = tmp[0];
@@ -138,20 +142,22 @@ export function buildGeo(gj, hubStates = ['TX']) {
   });
   for (const e of edges.values()) if (e[4] === 1) { border.moveTo(e[0], e[1]); border.lineTo(e[2], e[3]); }
 
+  // the graticule covers -110 to -90 (every state on land), and further east when the shapes do (the Gulf's federal waters reach -80)
+  const gLo = Math.min(-110, Math.floor(minLon / 2) * 2); const gHi = Math.max(-90, Math.ceil(maxLon / 2) * 2);
   const grat = new Path2D();
   for (let lat = 24; lat <= 38; lat += 2) {
-    for (let lon = -110; lon <= -90; lon += 0.5) {
+    for (let lon = gLo; lon <= gHi; lon += 0.5) {
       project(lon, lat, o);
-      if (lon === -110) grat.moveTo(o[0], o[1]); else grat.lineTo(o[0], o[1]);
+      if (lon === gLo) grat.moveTo(o[0], o[1]); else grat.lineTo(o[0], o[1]);
     }
   }
-  for (let lon = -108; lon <= -92; lon += 2) {
+  for (let lon = gLo + 2; lon <= gHi - 2; lon += 2) {
     for (let lat = 23; lat <= 39; lat += 0.5) {
       project(lon, lat, o);
       if (lat === 23) grat.moveTo(o[0], o[1]); else grat.lineTo(o[0], o[1]);
     }
   }
-  const hubs = HUBS.filter((h) => hubStates.includes(h[3])).sort((a, b) => a[4] - b[4]).map(([n, lat, lon, , pri]) => { project(lon, lat, o); return { n, x: o[0], y: o[1], pri }; });
+  const hubs = HUBS.filter((h) => h[3].split('|').some((id) => hubStates.includes(id))).sort((a, b) => a[4] - b[4]).map(([n, lat, lon, , pri]) => { project(lon, lat, o); return { n, x: o[0], y: o[1], pri }; });
   return { counties, byFips, outline, border, grat, hubs, W, H, toWorld: project };
 }
 
