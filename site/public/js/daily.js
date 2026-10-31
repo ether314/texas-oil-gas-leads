@@ -163,7 +163,7 @@ export function createDailyView({ root }) {
       kpi({ ic: 'clock', label: 'Waiting for approval', value: q && q.total, color: 'var(--s1)', vals: hist('q'),
         note: q ? num(q.expedite) + ' expedited · ' + num(q.horizontal) + ' horizontal' : 'No pending set recorded for this day' }),
       kpi({ ic: 'drop', label: 'Completions approved', value: c && c.approved, color: 'var(--s3)', vals: hist('c'),
-        note: c ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : 'No completion file read for this day' }),
+        note: c ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : 'No completion file for this day' }),
       kpi({ ic: 'check', label: cmpOk ? 'Nightly files updated' : 'Nightly files read', value: cmpOk ? cmp.fresh : read, color: 'var(--accent)', gauge: ring(cmpOk ? cmp.fresh : read, rep.datasets.length),
         note: cmpOk ? (cmp.fresh === rep.datasets.length ? 'Every dataset changed since the last report' : num(cmp.same.length) + ' unchanged since the last report')
           : live ? 'First live capture: changes show from the next report' : 'Rebuilt from the RRC file history' }));
@@ -286,8 +286,8 @@ export function createDailyView({ root }) {
 
   function pendingSection(rep) {
     const q = rep.pending;
-    if (!q) return card('dr-sec', head('clock', 'Queue', 'Permits pending approval'), el('p', { class: 'empty', text: 'No pending-approval set was recorded for this day. The RRC publishes this file twice a day, and it is only kept for the days this archive was running or could rebuild.' }));
-    return card('dr-sec', head('clock', 'Queue', 'Applications waiting for approval', 'W-1s submitted since the previous run that were still pending when each set was written (' + q.sets.map((s) => s.label + ': ' + s.n).join(', ') + ').'),
+    if (!q) return card('dr-sec', head('clock', 'Queue', 'Permits pending approval'), el('p', { class: 'empty', text: 'No pending-approval set reached the RRC share on this day. The RRC copies a set to the share after 11 AM and after 5 PM, and skips some holidays.' }));
+    return card('dr-sec', head('clock', 'Queue', 'Applications waiting for approval', 'W-1s submitted since the previous run that were still pending when each set was written (' + q.sets.map((s) => (s.at.slice(0, 10) === rep.date ? '' : fmtDow(s.at.slice(0, 10)).split(',')[0] + ' ') + s.label + ': ' + s.n).join(', ') + ').'),
       tiles([{ label: 'Waiting', value: num(q.total), note: 'from ' + q.operatorCount + ' operators' }, { label: 'Flagged to expedite', value: num(q.expedite), note: Math.round((q.expedite / q.total) * 100) + '% of the queue' },
         { label: 'Horizontal', value: num(q.horizontal), note: Math.round((q.horizontal / q.total) * 100) + '%' }, { label: 'Amendments', value: num(q.amendments), note: 'changes to earlier permits' },
         { label: 'Median planned depth', value: q.depth ? num(q.depth.median) + ' ft' : '—', note: q.depth ? 'deepest ' + num(q.depth.max) + ' ft' : '' }]),
@@ -305,7 +305,7 @@ export function createDailyView({ root }) {
 
   function completionsSection(rep) {
     const c = rep.completions;
-    if (!c) return card('dr-sec', head('drop', 'Completions', 'Completion data'), el('p', { class: 'empty', text: 'No completion file was read for this day.' }));
+    if (!c) return card('dr-sec', head('drop', 'Completions', 'Completion data'), el('p', { class: 'empty', text: 'No completion file landed on this day.' }));
     return card('dr-sec', head('drop', 'Completions', 'Completions ' + fmtDow(c.day), 'Forms submitted or approved that day: W-2 (oil), G-1 (gas), P-4, L-1, G-5, G-10, P-15 and W-12.'),
       tiles([{ label: 'Approved', value: num(c.approved), note: num(c.submitted) + ' more submitted' }, { label: 'First tests of new wells', value: num(c.initial), note: 'initial potential filings' },
         { label: 'Oil · gas', value: c.oil + ' · ' + c.gas, note: 'among first tests' }, { label: 'Horizontal', value: num(c.horizontal), note: c.initial ? Math.round((c.horizontal / c.initial) * 100) + '% of first tests' : '' },
@@ -333,7 +333,7 @@ export function createDailyView({ root }) {
       const w1 = id === 'w1images' && s && s.districts.length ? stack(s.districts.slice(0, 6).map(([d, n]) => ({ label: 'District ' + d, value: n })), { format: mb }) : null;
       const box = el('div', { class: 'dr-img' }, el('p', { class: 'eyebrow' }, icon(ICONS[id], 15), title),
         s ? el('b', { class: 'dr-img-num', text: mb(s.bytes) }) : el('b', { class: 'dr-img-num', text: '—' }),
-        el('small', { text: s ? (s.empty ? 'An empty pack: nothing filed for ' + fmtMd(s.day) : 'Pack for ' + fmtDow(s.day)) + (med ? ' · 30-day median ' + Math.round(med) + ' MB' : '') : 'Not captured' }),
+        el('small', { text: s ? (s.empty ? 'An empty pack: nothing filed for ' + fmtMd(s.day) : 'Pack for ' + fmtDow(s.day)) + (med ? ' · 30-day median ' + Math.round(med) + ' MB' : '') : 'Nothing landed this day' }),
         hist.length > 3 ? spark(hist, { w: 220, h: 40, color, label: title + ' size, last 30 days' }) : null, w1);
       return box;
     });
@@ -385,11 +385,11 @@ export function createDailyView({ root }) {
   function notesSection(rep) {
     const li = (...k) => el('li', {}, ...k);
     return card('dr-sec dr-notes', head('bulb', 'How to read this', 'Notes and limits'), el('ul', { class: 'plain' },
-      li(strong('Each dataset has its own day. '), 'Permits and images for a report day are the newest the RRC had out by about 10 PM Central; completions and their images are the same day, W-1 and survey images the day before.'),
-      li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt from RRC file history: permits from the month-end and nightly files, completions from each day\'s zip, pending sets from the share\'s history. The catalog check and file states only exist for days captured live.'),
+      li(strong('What a day shows. '), 'A report holds what landed on each RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. Each card says which day its data is from.'),
+      li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt from the RRC\'s file history by the same rule: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day. The catalog check and file states only exist for days captured live.'),
       li(strong('Permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. Only some recent permits carry surface coordinates.'),
       li(strong('Pending queue. '), 'Each set holds W-1s submitted since the previous run that were still waiting; it is not a running total, and a permit leaves it when approved.'),
-      li(strong('Times. '), 'File times are shown as the RRC share lists them. The report date is the Central-time day the capture ran.'),
+      li(strong('Times. '), 'File times are shown as the RRC share lists them, which is Central time. The report date is the Central-time day the capture ran.'),
       li(strong('Privacy. '), 'Operators are named only when they are corporations, LLCs or limited partnerships. Lease names, well numbers and anything about individuals are left out.')));
   }
 
