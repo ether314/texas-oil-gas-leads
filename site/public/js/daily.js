@@ -54,6 +54,8 @@ export function createDailyView({ root }) {
   // the states whose report for the day has a section; the totals, the average and the chart are over these, so a state with no report is out of all of them
   const have = (key) => S.states.filter((id) => S.reps[id] && S.reps[id][key]);
   const onlyNote = (ids) => (multi() && ids.length < S.states.length ? ' · ' + ids.map(sname).join(' and ') + ' only' : '');
+  // a dataset the report could not read: its section is missing for that reason, which is not the same as the commission having had nothing that day
+  const unread = (id, did) => !!(S.reps[id] && S.reps[id].datasets && S.reps[id].datasets.some((d) => d.id === did && d.error));
   const avgTxt = (a) => (a >= 10 ? String(Math.round(a)) : a.toFixed(1));
 
   const ctx = { S, cname: (f) => cname('TX', f), multi, hashFor };
@@ -202,17 +204,18 @@ export function createDailyView({ root }) {
     const items = have('completions').map((id) => ({ id, c: S.reps[id].completions }));
     const nOf = ({ id, c }) => (id === 'TX' ? c.approved : c.filed);
     const label = only() === 'TX' ? 'Completions approved' : only() === 'OK' ? 'Completions filed' : 'Completions';
-    let note = 'No completion filings for this day';
+    const bad = S.states.filter((id) => unread(id, 'completions'));
+    let note = bad.length ? bad.map(sname).join(' and ') + ': the completion files could not be read for this day' : 'No completion filings for this day';
     if (items.length === 1 && !multi()) {
       const { id, c } = items[0];
       note = id === 'TX' ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : pl(c.amended, 'amended filing') + ' · ' + fmtDow(c.day);
-    } else if (items.length) note = items.map((x) => x.id + ' ' + num(nOf(x)) + (x.id === 'TX' ? ' approved' : ' filed')).join(' · ') + onlyNote(items.map((x) => x.id));
+    } else if (items.length) note = items.map((x) => x.id + ' ' + num(nOf(x)) + (x.id === 'TX' ? ' approved' : ' filed')).join(' · ') + (bad.length ? ' · ' + bad.map(sname).join(' and ') + ' could not be read' : onlyNote(items.map((x) => x.id)));
     return kpi({ ic: 'drop', label, value: items.length ? sumOf(items.map(nOf)) : null, color: 'var(--s3)', vals: hist(completionsOf), note });
   }
   function waitingKpi() {
     const q = S.reps.TX && S.reps.TX.pending;
     return kpi({ ic: 'clock', label: multi() ? 'Waiting for approval · Texas' : 'Waiting for approval', value: q && q.total, color: 'var(--s1)', vals: hist((e) => (e.r.TX ? e.r.TX.q : null)),
-      note: q ? num(q.expedite) + ' expedited · ' + num(q.horizontal) + ' horizontal' : 'No pending set recorded for this day' });
+      note: q ? num(q.expedite) + ' expedited · ' + num(q.horizontal) + ' horizontal' : unread('TX', 'pending') ? 'The pending files could not be read for this day' : 'No pending set recorded for this day' });
   }
   function filesKpi() {
     const reps = S.states.filter((id) => S.reps[id]).map((id) => S.reps[id]);
