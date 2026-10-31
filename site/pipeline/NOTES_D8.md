@@ -30,11 +30,11 @@ one is logged and shown in the report.
 
 | id | file (under `FILES`) | what is read |
 |---|---|---|
-| itd | `ITD-wells-formations-daily.xlsx` (about 21 KB) | intents to drill with an approval date: API, operator, well class, application type, planned depth, submit and approval times. 7 complete days (UTC), made about 7:41 PM Central |
+| itd | `ITD-wells-formations-daily.xlsx` (about 21 KB) | intents to drill with an approval date: API, operator, well class, application type, planned depth, submit and approval times. The 7 complete Central days before the day it is made (made about 7:41 PM Central, so it ends the day before) |
 | completions | `completions-wells-formations-daily.xlsx` (about 31 KB) | completion filings (Form 1002A), one row per casing string or test: API, operator, well type, horizontal flag, spud, first production and filing times, oil and gas rates, formation |
 | transfers | `well-transfers-daily.xlsx` (about 120 KB) | wells that changed operator: API, event time, type, from and to operator. About a month, so about 800 rows |
 | wells | `rbdms-wells.csv` (121 MB, 457,359 records) | the nightly well file, counted never listed: status, type, operator and the county in the API number. Made about 4:30 AM Central |
-| history | `ITD-wells-formations-base.xlsx` (154 MB, 404,870 rows since 1999) and `completions-wells-formations-base.xlsx` (76 MB, since 2010) | only with `--history`: the days before the first capture |
+| history | `ITD-wells-formations-base.xlsx` (154 MB, 404,870 rows since 1999) and `completions-wells-formations-base.xlsx` (76 MB, since 2010) | with `--history`: the days before the first capture; otherwise only when a daily file stops short of the day before the report (below) |
 
 Not read, and why (`NOT_READ`): the incident list (its newest incident is weeks older than the file), the GIS copy of the
 well file, and the operator, purchaser and plugger lists (names, phone numbers and addresses of people and companies).
@@ -53,10 +53,15 @@ numbers or text, in any attribute order, with empty rows and cells, and returns 
 
 **One rule for live, rebuilt and repaired reports: a day shows the newest day before it, within 10 days, on which the OCC's files
 hold something.** Monday's report shows Friday's approvals, filings and transfers; a holiday is skipped the same way.
-- **Only whole days are shown.** The daily files are made at about 7:41 PM Central and hold UTC days, so they reach 7 PM Central
-  on the day they are made. Approvals made after 7 PM arrive with the next file. A report that showed its own day could be short
-  of what a rebuild finds later; a report that shows only days before it cannot, so a live night and a rebuild give the same
-  report (`build_reports` is one code path for both, tested).
+- **The daily files end the day before they are made.** The intent-to-drill and completion files are made at about 7:41 PM Central
+  and hold the 7 complete Central days before that day: the file made on the evening of Oct 30 ends with Oct 29 (measured on
+  2026-10-31: its newest approval was Oct 29, 15:02 Central; the master file already held Oct 30). So the night's capture, taken after
+  that evening's file, has everything through the day before the report, which is exactly what the one rule shows; and only whole days
+  are shown, so a live night and a rebuild give the same report (`build_reports` is one code path for both, tested).
+- **A capture whose daily file stops short fills the gap from the master.** A capture in the morning of the report day (a manual run,
+  a repair) has last evening's files, a day short of the day before the report. `masters_to_read` compares each file's last day
+  (`coverage_end`, from its Last-Modified in Central) with the day before the report and reads that dataset's master file for the days
+  after it (about a minute and 230 MB, only then), so a morning, repaired or rebuilt report shows what the evening run will.
 - Times in the files are UTC and are turned into Central days (`central_day`, `zoneinfo`; with a month-based fallback if tz data
   is missing). The listing's `Last-Modified` (GMT) is shown in Central.
 - `datasets[].dataDay` says which day each card's data is from. The well inventory carries its file's date.

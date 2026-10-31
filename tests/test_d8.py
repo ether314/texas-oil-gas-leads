@@ -174,6 +174,30 @@ def run_checks(M, quiet=False):
     ds, capped = pdn(R, 92, 0, True, {"2026-10-30"})
     check(len(ds) == 91 and ds[0] == R - timedelta(days=91) and ds[-1] == R and D(2026, 10, 30) not in ds and not capped, "plan_dates: --history fills the whole archive but days already there")
 
+    # ------------------------------------------------------------------ the daily files' window and the master gap fill
+    ce = M.coverage_end
+    check(ce("2026-10-30T19:41:10") == D(2026, 10, 29), "coverage_end: a file made on the evening of Oct 30 ends with Oct 29 (it holds the 7 complete days before)")
+    check(ce("2026-11-01T00:05:00") == D(2026, 10, 31) and ce(None) is None and ce("junk") is None, "coverage_end: counts from the file's own Central day; no time gives None")
+
+    def job(mod):
+        return {"rows": [], "file": {"name": "x", "modified": mod, "bytes": 1}}
+
+    Rd = D(2026, 10, 31)
+    both = {"itd": job("2026-10-30T19:41:10"), "completions": job("2026-10-30T19:40:46"), "transfers": job("2026-10-30T19:41:37")}
+    chosen = {"itd", "completions", "transfers", "wells"}
+    mr = M.masters_to_read
+    morning = mr(Rd, [Rd], False, both, chosen)
+    check(morning == {"itd": D(2026, 10, 28), "completions": D(2026, 10, 28)}, "masters_to_read: a morning capture (last evening's files end a day short) reads both masters: %s" % morning)
+    tonight = {"itd": job("2026-10-31T19:41:10"), "completions": job("2026-10-31T19:40:46")}
+    check(mr(Rd, [Rd], False, tonight, chosen) == {}, "masters_to_read: the evening capture (files made that evening) reads no master")
+    stale = {"itd": job("2026-10-28T19:41:10"), "completions": job("2026-10-31T19:40:46")}
+    check(set(mr(Rd, [Rd], False, stale, chosen)) == {"itd"}, "masters_to_read: only the dataset whose file is stale reads its master")
+    check(mr(Rd, [Rd], False, {"itd": RuntimeError("x"), "completions": None}, chosen) == {}, "masters_to_read: a dataset that failed or is missing reads no master")
+    check(mr(Rd, [Rd], False, both, {"transfers"}) == {}, "masters_to_read: --only limits it")
+    hist = mr(Rd, [Rd - timedelta(days=91), Rd], True, both, chosen)
+    check(set(hist) == {"itd", "completions"} and hist["itd"] == Rd - timedelta(days=91 + M.LOOKBACK), "masters_to_read: --history reads both masters back to ten days before the oldest day: %s" % hist)
+    check(set(mr(Rd, [Rd], True, {"itd": RuntimeError("x"), "completions": job("2026-10-31T19:40:46")}, chosen)) == {"completions"}, "masters_to_read: --history skips a dataset whose daily file failed")
+
     return fails
 
 
@@ -425,6 +449,8 @@ def mutants(M):
     expect_fail("status codes are not merged", {"status_mix": lambda c, keep=5: [[k, v] for k, v in sorted(c.items(), key=lambda kv: -kv[1])]})
     orig_api = M.api_county
     expect_fail("county from the wrong digits", {"api_county": lambda a: a[3:6] if a.isdigit() else None})
+    expect_fail("a daily file is taken to reach its own day", {"coverage_end": lambda m: (date.fromisoformat(m[:10]) if m else None)})
+    expect_fail("the master is always read", {"masters_to_read": lambda R, dates, history, jobs, chosen: {ds: D(2026, 1, 1) for ds in M.BASES}})
     return fails
 
 

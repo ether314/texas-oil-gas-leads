@@ -9,12 +9,14 @@ This reads the ones it refreshes every day and writes into site/public/data/dail
   index.json        one small row per report day: the numbers the calendar and the trend charts draw
 
 Inputs are public OCC files, only parsed, never run (run with `python3 -I`):
-  itd          ITD-wells-formations-daily.xlsx     Intent to Drill, the 7 complete days before the file is made (about 7:40 PM Central)
+  itd          ITD-wells-formations-daily.xlsx     Intent to Drill, the 7 complete Central days before the day the file is made (it is made about
+                                                   7:40 PM Central, so it ends the day before: the file of the evening of Oct 30 ends Oct 29)
   completions  completions-wells-formations-daily.xlsx   1002A completion filings of the same 7 days, one row per casing or test
   transfers    well-transfers-daily.xlsx           wells that changed operator over about a month
   wells        rbdms-wells.csv                     every well in the state, nightly (457,000 rows): counted, never listed
   history      ITD-wells-formations-base.xlsx and completions-wells-formations-base.xlsx (154 MB and 76 MB, back to 1999 and
-               2010): read only with --history, to rebuild the days before the first nightly capture
+               2010): read with --history, to rebuild the days before the first nightly capture, and by a capture whose daily file
+               stops short of the day before the report (taken in the morning, before that evening's file exists)
 
 One rule for every report, live or rebuilt: a day shows the newest day before it (within 10 days) on which the OCC holds
 permits, completion filings or transfers: Monday's report shows Friday's. Permit and filing times in the files are UTC and are
@@ -637,6 +639,35 @@ def plan_dates(R, keep, backfill, history, have):
     return todo + [R], (not history and backfill > SAFE_BACKFILL)
 
 
+def coverage_end(modified):
+    """The last complete Central day an OCC daily file holds. The daily intent-to-drill and completion files hold the 7 complete Central
+    days before the day they are made, so a file made at 19:41 on day G (its Last-Modified, in Central) ends with day G-1: the file made
+    on the evening of Oct 30 has nothing from Oct 30. None when the file's time is not known."""
+    try:
+        return date.fromisoformat(modified[:10]) - timedelta(days=1)
+    except (TypeError, ValueError):
+        return None
+
+
+def masters_to_read(R, dates, history, jobs, chosen):
+    """{dataset: oldest day to keep} for the master files that must be read. With history, every master, back to the oldest day wanted.
+    Otherwise only the master of a dataset whose daily file stops short of the day before R (a capture in the morning, before that
+    evening's file exists, or after the OCC missed a night): the master has the days after the daily file's last one, so such a report
+    shows the same as the evening run and as a rebuild. A capture in the evening needs no master."""
+    if history:
+        lo = min(dates) - timedelta(days=LOOKBACK)
+        return {ds: lo for ds in BASES if ds in chosen and not isinstance(jobs.get(ds), Exception)}
+    out = {}
+    for ds in BASES:
+        job = jobs.get(ds)
+        if ds not in chosen or job is None or isinstance(job, Exception):
+            continue
+        end = coverage_end((job.get("file") or {}).get("modified"))
+        if end is not None and end < R - timedelta(days=1):
+            out[ds] = end - timedelta(days=1)
+    return out
+
+
 def captured_for_the_night(out_dir, R):
     """When R's report was captured live, with every dataset read, at or after 03:00 UTC the next day; None otherwise."""
     prior = read_json(os.path.join(out_dir, R.isoformat() + ".json"))
@@ -751,11 +782,18 @@ def main():
                 jobs[name] = e
                 log("%-12s SKIPPED (%s)" % (name, e))
 
-    if a.history:  # the master files hold the days before the first capture; the daily files' windows are merged in on top
-        lo = min(dates) - timedelta(days=LOOKBACK)
+    # the master files hold the days before the first capture (--history) and the days after a daily file's last one; the daily files'
+    # rows are merged in on top
+    since = masters_to_read(R, dates, a.history, jobs, chosen)
+    for ds, lo in since.items():
+        if not a.history:
+            log("%-12s its daily file ends %s, short of the %s this report needs: reading the master for the days after it" % (
+                ds, coverage_end(jobs[ds]["file"]["modified"]), R - timedelta(days=1)))
+    if since:
         for ds, fname in BASES.items():
-            if ds not in chosen or isinstance(jobs.get(ds), Exception):
+            if ds not in since:
                 continue
+            lo = since[ds]
             try:
                 dest = os.path.join(a.dl, fname)
                 fetch(FILES + fname, dest)
