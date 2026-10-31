@@ -1,4 +1,4 @@
-// Building blocks shared by the Daily reports (Texas in daily.js, Oklahoma in ok-daily.js): cards, tiles, tables, status chips,
+// Building blocks shared by the Daily report's modules (daily.js, daily-tx.js, daily-ok.js): cards, tiles, tables, status chips,
 // KPI cards and a few small formatters. Text nodes only; every style is a class or a custom property set through the CSSOM
 // (the page's Content-Security-Policy has no 'unsafe-inline').
 import { el, fmt, countUp } from './util.js';
@@ -12,6 +12,9 @@ export const listed = (iso) => (iso ? new Date(iso + 'Z').toLocaleString('en-US'
 export const central = (utc) => new Date(utc).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' Central';
 // 'first' means the previous report was not captured live, so there is nothing to compare a file with
 export const compare = (rep) => { const ds = rep.datasets; return { ok: ds.some((d) => d.state === 'new' || d.state === 'same'), fresh: ds.filter((d) => d.state === 'new').length, same: ds.filter((d) => d.state === 'same') }; };
+export const pl = (n, one, many = one + 's') => num(n) + ' ' + (n === 1 ? one : many);
+export const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + num(Math.abs(n));
+export const pctOf = (n, d) => (d ? Math.round((n / d) * 100) + '%' : '—');
 export const rel = (v, avg) => { const p = Math.round(Math.abs(v / avg - 1) * 100); return p < 3 ? 'in line with' : p + '% ' + (v > avg ? 'above' : 'below'); };
 
 export const card = (cls, ...kids) => el('section', { class: 'card dr-card ' + cls }, ...kids);

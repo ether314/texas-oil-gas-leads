@@ -31,7 +31,6 @@
       <a href="#operators">Operators</a>
       <a href="#companies">Companies</a>
       <a href="#daily">Daily</a>
-      <a href="#oklahoma">Oklahoma</a>
       <a href="#about">Sources<span class="hide-sm"> &amp; method</span></a>
     </nav>
     <div class="theme" role="group" aria-label="Color theme">
@@ -244,10 +243,6 @@
     <div id="daily-root" class="dr"></div>
   </section>
 
-  <section id="oklahoma" data-view hidden>
-    <div id="oklahoma-root" class="dr"></div>
-  </section>
-
   <section id="about" data-view hidden>
     <div class="view-head"><h1>Sources &amp; method</h1></div>
     <div class="prose">
@@ -282,7 +277,7 @@
         <li>Facilities: refinery capacity from the <a href="https://www.eia.gov/petroleum/refinerycapacity/" rel="noopener noreferrer">EIA Refinery Capacity Report</a> (operable capacity on January 1, 2026) and LNG capacity from EIA's U.S. liquefaction capacity file (third quarter 2026). Refinery, gas processing plant and LNG locations come from the <a href="https://www.epa.gov/ghgreporting" rel="noopener noreferrer">EPA Greenhouse Gas Reporting Program</a> facility table for reporting year 2023, which is also the source of the gas processing plant list. EIA's Energy Atlas map layers require a token and were not used directly; two coordinates (the Petromax refinery and Golden Pass LNG) come from a copy of EIA's Energy Atlas layer hosted by Natural Resources Canada.</li>
       </ul>
 
-      <h3>Daily report (Texas)</h3>
+      <h3>Daily report: Texas</h3>
       <ul class="plain">
         <li><small class="fresh-cad src-cad">Publishes nightly</small> <a href="https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/" rel="noopener noreferrer">Railroad Commission of Texas, Drilling Permit Master and Trailer, Daily File</a> (<code>daf420.dat</code>, about 3 MB). The current month's permits, read each night for the <a href="#daily">Daily report</a>: permits issued by day, application type, county, district, operator and planned depth. The monthly Permit Master above is what the county, operator and company tables are built from, so the two can differ by the days since the Master's last refresh.</li>
         <li><small class="fresh-cad src-cad">Publishes twice daily</small> <a href="https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/" rel="noopener noreferrer">Railroad Commission of Texas, Drilling Permits Pending Approval</a>. W-1 applications submitted and still waiting when the 11 AM and 5 PM sets were written, with the applicant, county, district, planned depth and whether it is flagged to expedite. A report shows the sets that reached the RRC's share that day: the previous evening's 5 PM set, which is copied after midnight, and the day's 11 AM set.</li>
@@ -291,12 +286,12 @@
         <li>The Daily report keeps 92 days. Days before the first nightly capture were rebuilt from the RRC's own file history by the same rule (month-end permit files, and the completion zips, image packs and pending sets that had landed on the share each day) and are marked as reconstructed. Operators are named only when they are corporations, LLCs or limited partnerships; lease names and well numbers are never shown.</li>
       </ul>
 
-      <h3>Daily report (Oklahoma)</h3>
+      <h3>Daily report: Oklahoma</h3>
       <ul class="plain">
-        <li><small class="fresh-cad src-cad">Publishes daily</small> <a href="https://oklahoma.gov/occ/divisions/oil-gas/oil-gas-data.html" rel="noopener noreferrer">Oklahoma Corporation Commission, Oil &amp; Gas Data</a>: <code>ITD-wells-formations-daily.xlsx</code> (intents to drill approved in the last 7 complete days), <code>completions-wells-formations-daily.xlsx</code> (completion filings, Form 1002A) and <code>well-transfers-daily.xlsx</code> (wells that changed operator, about a month of them). The <a href="#oklahoma">Oklahoma report</a> shows what each held, one day at a time: counts by county, kind, planned depth and operator. The Commission makes these files at about 7:40 PM Central, and a report shows only whole days, so Monday's shows Friday's.</li>
+        <li><small class="fresh-cad src-cad">Publishes daily</small> <a href="https://oklahoma.gov/occ/divisions/oil-gas/oil-gas-data.html" rel="noopener noreferrer">Oklahoma Corporation Commission, Oil &amp; Gas Data</a>: <code>ITD-wells-formations-daily.xlsx</code> (intents to drill approved in the last 7 complete days), <code>completions-wells-formations-daily.xlsx</code> (completion filings, Form 1002A) and <code>well-transfers-daily.xlsx</code> (wells that changed operator, about a month of them). The <a href="#daily?st=ok">Daily report</a> shows what each held, one day at a time, beside Texas (or on its own with Show set to Oklahoma): counts by county, kind, planned depth and operator. The Commission makes these files at about 7:40 PM Central, and a report shows only whole days, so Monday's shows Friday's.</li>
         <li><small class="fresh-cad src-cad">Publishes nightly</small> The same page's well file <code>rbdms-wells.csv</code> (about 457,000 well records, 121 MB): counted by status, kind, county and operator and never listed, on the days a report was captured live.</li>
         <li>The master files <code>ITD-wells-formations-base.xlsx</code> (since 1999) and <code>completions-wells-formations-base.xlsx</code> (since 2010) rebuilt the days before the first capture, which are marked as reconstructed; the report keeps 92 days. The permit file does not say which permits are horizontal, so planned depth of 12,000 feet or more stands in. Operators are named only when they are corporations, LLCs or limited partnerships. Lease and well names, well and API numbers, and the operator, purchaser and plugger contact lists the Commission also publishes are never used.</li>
-        <li><small class="fresh-cad src-cad">Publishes monthly</small> <a href="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&amp;s=MCRFPOK1&amp;f=M" rel="noopener noreferrer">U.S. Energy Information Administration, Oklahoma field production of crude oil</a> (thousand barrels a month, series MCRFPOK1, through August 2026), beside the WTI and Henry Hub prices listed above, in the Oklahoma report's monthly card. The newest months are EIA estimates that get revised. That card is not for the report's day.</li>
+        <li><small class="fresh-cad src-cad">Publishes monthly</small> <a href="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&amp;s=MCRFPOK1&amp;f=M" rel="noopener noreferrer">U.S. Energy Information Administration, Oklahoma field production of crude oil</a> (thousand barrels a month, series MCRFPOK1, through August 2026), beside the WTI and Henry Hub prices listed above, in the Daily report's monthly figures. The newest months are EIA estimates that get revised. That card is not for the report's day.</li>
         <li><a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" rel="noopener noreferrer">U.S. Census Bureau, cartographic boundary files</a>. The 77 Oklahoma county outlines (2025, 1:5,000,000), for the Oklahoma map.</li>
       </ul>
 
@@ -320,7 +315,7 @@
         <li><strong>Series end on different dates.</strong> Permits run to October 7, 2026, rig counts to August 28, EIA Texas crude to July, tax receipts to August, jobs and prices to September, and the EIA outlook is a forecast to December 2027. Read each chip and chart against its own date.</li>
         <li>About 80% of Comptroller entities have no NAICS code. Service companies with generic names, no code and no RRC registration are not in the pool.</li>
         <li>Permits measure activity, not budget or need.</li>
-        <li><strong>The Oklahoma report is small.</strong> The Commission approves about 3 new-drill permits a business day (Texas about 31), so single days swing: read the 20-day average. Its permit file does not say which wells are horizontal, it has no pending queue or image packs, its transfer file reaches back only about a month, and the well inventory is counted only on days captured live. Oklahoma jobs and rig counts are not shown: their sources could not be reached when the site was built.</li>
+        <li><strong>Oklahoma is small beside Texas.</strong> The Commission approves about 3 new-drill permits a business day (Texas about 31), so single days swing: read the 20-day average. Its permit file does not say which wells are horizontal, it has no pending queue or image packs, its transfer file reaches back only about a month, and the well inventory is counted only on days captured live. Oklahoma jobs and rig counts are not shown: their sources could not be reached when the site was built.</li>
         <li><strong>Permit dots are a located subset.</strong> The RRC publishes a surface location for 70% of new-drill permits in the last 24 months but only 40% of the last 12, and the gaps are uneven: January 2026 and April to October 2026 are thin, and the busiest counties (Midland, Reeves, Upton, Martin) have almost no dots. Do not read dot density, or the replay, as activity; read the shading and the counts.</li>
         <li>Seven offshore permits are in the statewide totals but not in any county or dot.</li>
         <li>Operator trend, spud, depth and the 24-month chart exist for the 504 operators with a permit in the last 24 months. A blank cell means no data, never zero.</li>

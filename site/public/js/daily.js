@@ -1,523 +1,607 @@
-// Daily report: what the Railroad Commission's nightly datasets held, one report per day for the last 92 days.
-// A simple version for the daily look and a verbose one with everything. Each block hides itself if its data is missing.
-import { el, load, loadOpt, reduced } from './util.js';
-import { getGeo } from './geo.js';
+// Daily report: what the Railroad Commission of Texas and the Oklahoma Corporation Commission published overnight, one report per
+// day for the last 92 days, the two states as one dataset. A simple version for the daily look and a verbose one with everything.
+// "Show" narrows it to one state. Each block hides itself if its data is missing, and a day one state has no report for is
+// said so, never counted as zero. The merging itself is in daily-data.js; the parts only one state has are in daily-tx.js
+// (pending queue, image packs, GPS map) and daily-ok.js (transfers, well inventory).
+import { el, loadOpt, reduced, monthLabel } from './util.js';
+import { getGeo, buildGeoIsolated } from './geo.js';
 import { icon } from './icons.js';
 import { segmented, shareButton, absoluteLink } from './ui.js';
-import { spark, delta } from './charts.js';
+import { delta } from './charts.js';
+import { tipRow } from './tip.js';
 import { opsLink } from './overview.js';
-import { trendBars, countyMap, gpsMap, ribbon, calendar, ring, stack, histogram, rankList, isWeekend, fmtMd, fmtDow, fmtLong, addDays, mb } from './daily-viz.js';
-import { num, strong, listed, central, compare, rel, card, head, tiles, table, chip, kpi } from './daily-kit.js';
+import { trendBars, countyMap, ribbon, ring, calendar, stack, histogram, rankList, fmtMd, fmtDow, fmtLong, addDays, mb } from './daily-viz.js';
+import { num, strong, listed, central, compare, rel, card, head, tiles, table, chip, kpi, pl, signed, pctOf } from './daily-kit.js';
+import { STATES, stateOf, parseStates, stateParam, ck, prepIndex, mergeDays, permitSeries, bizSeries, avgBefore, monthToDate, mergeRank, mergedCounties, sumOf } from './daily-data.js';
+import { texasParts, TX_TITLES, TX_ICONS, TX_WHAT, PERMIT_TYPE } from './daily-tx.js';
+import { transfersSection, wellsSection, OK_TITLES, OK_ICONS, OK_WHAT } from './daily-ok.js';
 
-const TITLES = { permits: 'Drilling permits', pending: 'Permits pending approval', completions: 'Completion data', w1images: 'W-1 permit images', dirsurveys: 'Directional surveys', complimages: 'Completion images' };
-const ICONS = { permits: 'pin', pending: 'clock', completions: 'drop', w1images: 'layers', dirsurveys: 'rig', complimages: 'building' };
-const WHAT = {
-  permits: 'New permits issued, from the nightly Drilling Permit Master and Trailer file (daf420.dat).',
-  pending: 'W-1 applications submitted and not yet approved, from the twice-daily pending set.',
-  completions: 'Completion forms (W-2, G-1, P-4 and others) submitted or approved that day.',
-  w1images: 'Zipped images of every W-1 approved that day, by RRC district. The size is captured; live days also count the documents, and the W-1 letters and plats of the day\'s new-drill permits are published for each drill\'s page.',
-  dirsurveys: 'Zipped directional survey images submitted that day. The size is captured; live days also count the documents and publish the surveys, each with its own page.',
-  complimages: 'Zipped completion form images. The size is captured; live days also count the documents.',
-};
-const KIND = { H: 'Horizontal', D: 'Directional', V: 'Vertical' };
-const PERMIT_TYPE = { '01': 'New drill', '05': 'Other', '07': 'Re-entry', '09': 'Field transfer', '14': 'Recompletion', '15': 'Reclass' };
-
-const METRICS = {
-  permits: { label: 'New-drill permits issued', get: (r) => (r.pFresh ? r.pn : null), fmt: (v) => num(v) + ' new-drill permits issued', none: 'No permits issued (weekend or holiday)' },
-  pending: { label: 'Waiting for approval', get: (r) => r.q, fmt: (v) => num(v) + ' applications waiting', none: 'No pending set recorded' },
-  completions: { label: 'Completions approved', get: (r) => r.c, fmt: (v) => num(v) + ' completions approved', none: 'No completion file read' },
-  volume: { label: 'Image pack volume', get: (r) => r.vol, fmt: (v) => Math.round(v) + ' MB of image packs', none: 'No pack sizes read' },
-};
+const TITLES = { TX: TX_TITLES, OK: OK_TITLES };
+const ICONS = { TX: TX_ICONS, OK: OK_ICONS };
+const WHAT = { TX: TX_WHAT, OK: OK_WHAT };
+const FILES = { TX: 'nightly', OK: 'daily' }; // what each commission calls the files the report reads
+const HISTORY = { TX: 'RRC file history', OK: 'Commission file history' };
+const WORDS = { TX: { permits: 'new-drill permits issued', completions: 'completions approved' }, OK: { permits: 'new-drill permits approved', completions: 'completion filings' } };
+const DEEP = 'Deep, 12,000 ft or more';
 
 export function createDailyView({ root }) {
-  const S = { index: null, series: null, G: null, rep: null, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, sel: null, open: null, gpsEl: null };
+  const S = {
+    idx: { TX: null, OK: null }, series: { TX: null, OK: null }, avail: [], states: STATES.map((s) => s.id), days: [], G: null, gTx: null, sok: null, mk: null,
+    reps: {}, miss: {}, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, sel: null, open: null, gpsEl: null, rb: null,
+  };
   const h1 = el('h1', { id: 'dr-h1', class: 'dr-title', tabindex: '-1' });
   root.replaceChildren(h1, el('p', { class: 'empty', text: 'Loading the daily report…' }));
 
+  const multi = () => S.states.length > 1;
+  const only = () => (multi() ? null : S.states[0]);
+  const sname = (id) => stateOf(id).name;
+  const place = () => S.states.map(sname).join(' and ');
+  const issued = () => (only() === 'OK' ? 'approved' : 'issued');
+  // a county's name from the shapes (every county is keyed by state and FIPS), and as a label: "Martin, TX" when both states show
+  const cname = (id, f) => { const c = S.G && S.G.byFips.get(ck(id, f)); return c ? c.n : f || 'Unknown'; };
+  const clabel = (id, name) => name + (multi() ? ', ' + id : '');
+  const R = () => S.reps;
+  // the states whose report for the day has a section; the totals, the average and the chart are over these, so a state with no report is out of all of them
+  const have = (key) => S.states.filter((id) => S.reps[id] && S.reps[id][key]);
+  const onlyNote = (ids) => (multi() && ids.length < S.states.length ? ' · ' + ids.map(sname).join(' and ') + ' only' : '');
+  const avgTxt = (a) => (a >= 10 ? String(Math.round(a)) : a.toFixed(1));
+
+  const ctx = { S, cname: (f) => cname('TX', f), multi, hashFor };
+  const tx = texasParts(ctx);
+
   /* ---------- data ---------- */
   async function boot() {
-    const idx = await load('daily/index');
-    idx.days.forEach((r, i) => {
-      r.pFresh = i === 0 || r.dd !== idx.days[i - 1].dd;
-      r.vol = [r.w1, r.ds, r.cm].some((v) => v != null) ? (r.w1 || 0) + (r.ds || 0) + (r.cm || 0) : null;
-    });
-    S.index = idx;
-    [S.series, S.G] = await Promise.all([loadOpt('daily/permits-series'), getGeo().catch(() => null)]);
+    const raw = await Promise.all(STATES.map((s) => loadOpt(s.dir + '/index')));
+    S.avail = STATES.map((s) => s.id).filter((id, i) => raw[i] && raw[i].days && raw[i].days.length);
+    if (!S.avail.length) throw new Error('no daily data');
+    S.avail.forEach((id) => { S.idx[id] = prepIndex(raw[STATES.findIndex((s) => s.id === id)]); });
+    const [txSeries, gTx, gjTx, gjOk, sok, mk] = await Promise.all([loadOpt('daily/permits-series'), getGeo().catch(() => null), loadOpt('counties.geo'), loadOpt('counties-ok.geo'), loadOpt('series-ok'), loadOpt('series-markets')]);
+    S.series.TX = S.idx.TX ? permitSeries('TX', S.idx.TX, txSeries) : null;
+    S.series.OK = S.idx.OK ? permitSeries('OK', S.idx.OK, null) : null;
+    S.gTx = gTx; S.sok = sok; S.mk = mk;
+    // both states' counties in one set of shapes, built against their own box so the Texas map (hero, Map view, GPS map) keeps its projection
+    const parts = [S.avail.includes('TX') && gjTx && { id: 'TX', gj: gjTx }, S.avail.includes('OK') && gjOk && { id: 'OK', gj: gjOk }].filter(Boolean);
+    try { S.G = parts.length ? buildGeoIsolated(mergedCounties(parts)) : null; } catch (e) { S.G = null; }
     S.ready = true;
   }
-  const countyName = (f) => (S.G && S.G.byFips.get(f) ? S.G.byFips.get(f).n : f || 'Unknown');
-
-  // the last `count` business days of new-drill permits up to and including `until`
-  function biz(until, count) {
-    const s = S.series; const out = { days: [], total: [], horiz: [] };
-    if (!s) return out;
-    for (let i = s.days.length - 1; i >= 0 && out.days.length < count; i--) {
-      if (s.days[i] > until || isWeekend(s.days[i])) continue;
-      out.days.unshift(s.days[i]); out.total.unshift(s.newDrill[i]); out.horiz.unshift(s.horizontal[i]);
-    }
-    return out;
-  }
-  // average of the 20 business days before `day`, leaving out weekdays with no permits at all (holidays)
-  function avgBefore(day, n = 20) {
-    const s = S.series; const v = [];
-    if (!s) return null;
-    for (let i = s.days.length - 1; i >= 0 && v.length < n; i--) {
-      if (s.days[i] >= day || isWeekend(s.days[i]) || !s.total[i]) continue;
-      v.push(s.newDrill[i]);
-    }
-    return v.length >= 5 ? v.reduce((a, x) => a + x, 0) / v.length : null;
-  }
-  function monthToDate(day) {
-    const s = S.series;
-    if (!s) return null;
-    const ym = day.slice(0, 7); const dd = day.slice(8);
-    const prevYm = addDays(ym + '-01', -1).slice(0, 7);
-    let a = 0; let b = 0; let haveFirst = false;
-    s.days.forEach((d, i) => {
-      if (d.slice(0, 7) === ym && d <= day) a += s.newDrill[i];
-      if (d.slice(0, 7) === prevYm && d.slice(8) <= dd) b += s.newDrill[i];
-      if (d === prevYm + '-01') haveFirst = true;
-    });
-    return { a, b: haveFirst ? b : null, ym, prevYm };
-  }
+  const setDays = () => { S.days = mergeDays(S.idx, S.states); };
+  // the day a report opens on: the newest one every state shown has a report for, so a night when one state's capture failed does
+  // not open on a half-empty page (the newer day is still one step Later). Falls back to the newest day there is.
+  const latest = () => { const full = S.days.filter((e) => !e.partial); return (full.length ? full : S.days)[(full.length ? full : S.days).length - 1].d; };
+  const hist = (fn) => { const cut = S.days.findIndex((e) => e.d === S.day); return S.days.slice(Math.max(0, cut - 29), cut + 1).map(fn).filter((v) => v != null); };
+  // completions that day's report adds, summed over the states shown (null when none has the figure)
+  const completionsOf = (e) => { const v = S.states.map((id) => (e.r[id] ? e.r[id].c : null)).filter((x) => x != null); return v.length ? sumOf(v) : null; };
   const tally = (rows, i) => { const m = new Map(); rows.forEach((r) => { if (r[i]) m.set(r[i], (m.get(r[i]) || 0) + 1); }); return m; };
 
-  /* ---------- small builders ---------- */
-  const opNode = (op, name) => (name ? el('a', { href: opsLink(name), text: name }) : el('span', { class: 'muted', text: 'Operator #' + op }));
-  const opItems = (list) => list.map(([op, name, n]) => ({ label: name || 'Operator #' + op, value: n, href: name ? opsLink(name) : null }));
-  const countyItems = (list) => list.map(([f, name, n]) => ({ label: name, value: n }));
+  /* ---------- address of a view: day, version, states shown, and a Texas well ---------- */
+  function hashFor(day, mode, sel) {
+    const q = new URLSearchParams();
+    if (day !== latest()) q.set('d', day);
+    if (mode === 'full') q.set('v', 'full');
+    const sp = stateParam(S.states);
+    if (sp) q.set('st', sp);
+    if (sel) q.set(sel.t === 'p' ? 'drill' : 'survey', sel.id);
+    return '#daily' + (q.toString() ? '?' + q : '');
+  }
 
   /* ---------- header, ribbon, KPIs ---------- */
-  function hero(rep) {
-    const days = S.index.days; const i = days.findIndex((r) => r.d === rep.date);
-    const live = rep.kind === 'live';
-    const read = rep.datasets.filter((d) => !d.error).length; const cmp = compare(rep);
-    const status = live ? (rep.status === 'ok' ? 'good' : rep.status === 'partial' ? 'warn' : 'bad') : 'info';
-    const pills = [chip(status, live ? read + ' of ' + rep.datasets.length + ' nightly files read' : 'Reconstructed from RRC file history')];
-    if (live && rep.capturedAt) pills.push(chip('quiet', 'Captured ' + central(rep.capturedAt)));
-    if (live && cmp.ok && cmp.fresh) pills.push(chip('quiet', cmp.fresh + ' updated since the last report'));
-    if (live && !cmp.ok) pills.push(chip('quiet', 'First live capture'));
+  function hero() {
+    const days = S.days; const i = days.findIndex((r) => r.d === S.day);
+    const pills = [];
+    for (const id of S.states) {
+      const rep = S.reps[id]; const name = sname(id); const pre = multi() ? name + ': ' : '';
+      if (!rep) { pills.push(chip(S.miss[id] === 'error' ? 'bad' : 'warn', pre + (S.miss[id] === 'error' ? 'this report could not be loaded' : 'no report for this day'))); continue; }
+      const live = rep.kind === 'live'; const ds = rep.datasets.filter((d) => !d.absent);
+      const read = ds.filter((d) => !d.error).length; const cmp = compare(rep);
+      const status = live ? (rep.status === 'ok' ? 'good' : rep.status === 'partial' ? 'warn' : 'bad') : 'info';
+      pills.push(chip(status, pre + (live ? read + ' of ' + ds.length + ' ' + FILES[id] + ' files read' : 'reconstructed from ' + HISTORY[id])));
+      if (live && rep.capturedAt) pills.push(chip('quiet', (multi() ? name + ' captured ' : 'Captured ') + central(rep.capturedAt)));
+      if (!multi() && live && cmp.ok && cmp.fresh) pills.push(chip('quiet', cmp.fresh + ' updated since the last report'));
+      if (!multi() && live && !cmp.ok) pills.push(chip('quiet', 'First live capture'));
+    }
     const step = (n) => go(days[i + n].d, S.mode);
     const nav = el('div', { class: 'dr-nav' },
       el('button', { type: 'button', class: 'btn sm', 'data-act': 'earlier', disabled: i === 0, 'aria-label': 'Earlier day', onclick: () => step(-1) }, icon('arrow', 14, 'flip'), 'Earlier'),
       el('button', { type: 'button', class: 'btn sm', 'data-act': 'later', disabled: i === days.length - 1, 'aria-label': 'Later day', onclick: () => step(1) }, 'Later', icon('arrow', 14)),
-      i === days.length - 1 ? null : el('button', { type: 'button', class: 'btn sm primary', 'data-act': 'latest', onclick: () => go(days[days.length - 1].d, S.mode) }, 'Latest'),
+      S.day === latest() ? null : el('button', { type: 'button', class: 'btn sm primary', 'data-act': 'latest', onclick: () => go(latest(), S.mode) }, 'Latest'),
       shareButton(() => absoluteLink(location.hash || '#daily'), 'Copy link'));
     const seg = segmented({ label: 'Report version', options: [{ id: 'simple', label: 'Simple' }, { id: 'full', label: 'Verbose' }], value: S.mode, tabs: false, prefix: 'drv', onChange: (id) => go(S.day, id) });
-    h1.textContent = fmtLong(rep.date).replace(/, \d{4}$/, '');
+    const which = S.avail.length > 1 ? segmented({ label: 'States shown', options: [{ id: 'all', label: 'Both states' }, ...S.avail.map((id) => ({ id, label: sname(id) }))], value: multi() ? 'all' : S.states[0], tabs: false, prefix: 'drs', onChange: setStates }) : null;
+    h1.textContent = fmtLong(S.day).replace(/, \d{4}$/, '');
+    const eyebrow = multi() ? 'Daily Texas and Oklahoma report' : only() === 'TX' ? 'Daily Railroad Commission report' : 'Daily Oklahoma Corporation Commission report';
+    const them = multi() ? 'the Railroad Commission of Texas and the Oklahoma Corporation Commission' : only() === 'TX' ? 'the Railroad Commission' : 'the Oklahoma Corporation Commission';
     return el('header', { class: 'dr-hero' },
       el('div', { class: 'dr-radar', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')),
       el('div', { class: 'dr-hero-in' },
-        el('p', { class: 'eyebrow' }, el('span', { class: 'live-dot', 'aria-hidden': 'true' }), 'Daily Railroad Commission report · ', el('span', { text: rep.date.slice(0, 4) })),
+        el('p', { class: 'eyebrow' }, el('span', { class: 'live-dot', 'aria-hidden': 'true' }), eyebrow + ' · ', el('span', { text: S.day.slice(0, 4) })),
         h1,
-        el('p', { class: 'dr-lede', text: S.mode === 'simple'
-          ? 'The daily look: what the Railroad Commission published overnight, in a minute.'
-          : 'Everything the Railroad Commission lists as nightly or twice daily, captured and read.' }),
+        el('p', { class: 'dr-lede', text: S.mode === 'simple' ? 'The daily look: what ' + them + ' published overnight, in a minute.' : 'Everything ' + them + ' list' + (multi() ? '' : 's') + ' as nightly, twice daily or daily, captured and read.' }),
         el('div', { class: 'dr-pills' }, pills)),
-      el('div', { class: 'dr-controls' }, seg.el, nav));
+      el('div', { class: 'dr-controls' }, which ? which.el : null, seg.el, nav));
   }
+
+  function ribbonTip(e) {
+    const rows = [tipRow(fmtDow(e.d), e.live ? 'captured live' : 'reconstructed')];
+    for (const id of S.states) {
+      const r = e.r[id]; const pre = multi() ? id + ' ' : '';
+      if (!r) { rows.push(tipRow(sname(id), 'no report')); continue; }
+      if (r.pFresh && r.pn != null) rows.push(tipRow(num(r.pn), pre + WORDS[id].permits + ' ' + fmtMd(r.dd)));
+      if (id === 'TX' && r.q != null) rows.push(tipRow(num(r.q), pre + 'waiting for approval'));
+      if (r.c != null) rows.push(tipRow(num(r.c), pre + WORDS[id].completions));
+      if (id === 'OK' && r.t != null) rows.push(tipRow(num(r.t), pre + 'wells changed operator'));
+    }
+    return rows;
+  }
+
+  const stateKey = () => el('span', { class: 'dr-legend-inline' }, S.states.flatMap((id) => [el('i', { class: 'dr-dot ' + id.toLowerCase() }), el('span', { text: sname(id) })]));
 
   function ribbonCard() {
-    const rb = ribbon({ days: S.index.days, selected: S.day, onPick: (d) => go(d, S.mode) });
+    const rb = ribbon({ days: S.days, ids: S.states, selected: S.day, onPick: (d) => go(d, S.mode), tip: ribbonTip });
     S.rb = rb; // positioned again once it is in the page, so a phone opens on the selected day
     return card('dr-ribbon-card', el('div', { class: 'dr-ribbon-head' }, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'Last 3 months'),
-      el('small', { text: 'One bar per report day. Height is the new-drill permits issued that business day; weekends have none.' })), rb.el);
+      el('small', { text: 'One bar per report day. Height is the new-drill permits ' + issued() + ' that business day' + (multi() ? ', both states stacked' : '') + '; weekends have none.' }), multi() ? stateKey() : null), rb.el);
   }
 
-  function kpiRow(rep) {
-    const p = rep.permits; const q = rep.pending; const c = rep.completions;
-    const avg = p ? avgBefore(p.day) : null; const bs = p ? biz(p.day, 20) : { total: [] };
-    const cut = S.index.days.findIndex((r) => r.d === rep.date);
-    const hist = (key) => S.index.days.slice(Math.max(0, cut - 29), cut + 1).map((r) => r[key]).filter((v) => v != null);
-    const live = rep.kind === 'live';
-    const read = rep.datasets.filter((d) => !d.error).length; const cmp = compare(rep); const cmpOk = live && cmp.ok;
-    return el('div', { class: 'dr-kpis' },
-      kpi({ ic: 'pin', label: 'New-drill permits issued', value: p && p.newDrill, hero: true, color: 'var(--s2)', vals: bs.total,
-        note: p ? fmtDow(p.day) + ' · ' + num(p.total) + ' permits of all types' : 'No permit file was read for this day',
-        extra: p && avg ? [delta((p.newDrill - avg) / avg), ' vs the 20-day average of ' + Math.round(avg)] : null }),
-      kpi({ ic: 'clock', label: 'Waiting for approval', value: q && q.total, color: 'var(--s1)', vals: hist('q'),
-        note: q ? num(q.expedite) + ' expedited · ' + num(q.horizontal) + ' horizontal' : 'No pending set recorded for this day' }),
-      kpi({ ic: 'drop', label: 'Completions approved', value: c && c.approved, color: 'var(--s3)', vals: hist('c'),
-        note: c ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : 'No completion file for this day' }),
-      kpi({ ic: 'check', label: cmpOk ? 'Nightly files updated' : 'Nightly files read', value: cmpOk ? cmp.fresh : read, color: 'var(--accent)', gauge: ring(cmpOk ? cmp.fresh : read, rep.datasets.length),
-        note: cmpOk ? (cmp.fresh === rep.datasets.length ? 'Every dataset changed since the last report' : num(cmp.same.length) + ' unchanged since the last report')
-          : live ? 'First live capture: changes show from the next report' : 'Rebuilt from the RRC file history' }));
+  function permitKpi() {
+    const label = 'New-drill permits ' + issued();
+    const ids = have('permits');
+    if (!ids.length) return kpi({ ic: 'pin', label, value: null, hero: true, color: 'var(--s2)', vals: [], note: 'No permit file was read for this day' });
+    const ps = ids.map((id) => ({ id, p: S.reps[id].permits }));
+    const until = ps.map((x) => x.p.day).sort().pop(); const sers = ids.map((id) => S.series[id]);
+    const value = sumOf(ps.map((x) => x.p.newDrill)); const total = sumOf(ps.map((x) => x.p.total));
+    const avg = avgBefore(sers, until); const bs = bizSeries(sers, until, 20);
+    const days = [...new Set(ps.map((x) => x.p.day))];
+    const split = ps.length > 1 ? ps.map((x) => x.id + ' ' + num(x.p.newDrill) + (days.length > 1 ? ' on ' + fmtDow(x.p.day) : '')).join(' · ') : null;
+    return kpi({ ic: 'pin', label, value, hero: true, color: 'var(--s2)', vals: bs.total,
+      note: [days.length === 1 ? fmtDow(days[0]) : null, split, num(total) + (total === 1 ? ' permit' : ' permits') + ' of all ' + (ps.length === 1 && ids[0] === 'TX' ? 'types' : 'kinds') + onlyNote(ids)].filter(Boolean).join(' · '),
+      extra: avg ? [delta((value - avg) / avg), ' vs the 20-day average of ' + avgTxt(avg)] : null });
+  }
+  function completionsKpi() {
+    const items = have('completions').map((id) => ({ id, c: S.reps[id].completions }));
+    const nOf = ({ id, c }) => (id === 'TX' ? c.approved : c.filed);
+    const label = only() === 'TX' ? 'Completions approved' : only() === 'OK' ? 'Completions filed' : 'Completions';
+    let note = 'No completion filings for this day';
+    if (items.length === 1 && !multi()) {
+      const { id, c } = items[0];
+      note = id === 'TX' ? num(c.initial) + ' first tests of new wells · ' + fmtDow(c.day) : pl(c.amended, 'amended filing') + ' · ' + fmtDow(c.day);
+    } else if (items.length) note = items.map((x) => x.id + ' ' + num(nOf(x)) + (x.id === 'TX' ? ' approved' : ' filed')).join(' · ') + onlyNote(items.map((x) => x.id));
+    return kpi({ ic: 'drop', label, value: items.length ? sumOf(items.map(nOf)) : null, color: 'var(--s3)', vals: hist(completionsOf), note });
+  }
+  function waitingKpi() {
+    const q = S.reps.TX && S.reps.TX.pending;
+    return kpi({ ic: 'clock', label: multi() ? 'Waiting for approval · Texas' : 'Waiting for approval', value: q && q.total, color: 'var(--s1)', vals: hist((e) => (e.r.TX ? e.r.TX.q : null)),
+      note: q ? num(q.expedite) + ' expedited · ' + num(q.horizontal) + ' horizontal' : 'No pending set recorded for this day' });
+  }
+  function filesKpi() {
+    const reps = S.states.filter((id) => S.reps[id]).map((id) => S.reps[id]);
+    const live = reps.length > 0 && reps.every((r) => r.kind === 'live');
+    const cmps = reps.map(compare); const cmpOk = live && cmps.every((c) => c.ok);
+    const total = sumOf(reps.map((r) => r.datasets.filter((d) => !d.absent).length));
+    const read = sumOf(reps.map((r) => r.datasets.filter((d) => !d.absent && !d.error).length));
+    const fresh = sumOf(cmps.map((c) => c.fresh)); const same = sumOf(cmps.map((c) => c.same.length));
+    return kpi({ ic: 'check', label: cmpOk ? 'Files updated' : 'Files read', value: cmpOk ? fresh : read, color: 'var(--accent)', gauge: ring(cmpOk ? fresh : read, total),
+      note: cmpOk ? (fresh === total ? 'Every dataset changed since the last report' : num(same) + ' unchanged since the last report')
+        : live ? 'First live capture: changes show from the next report' : (multi() ? 'Rebuilt from the commissions\' file history' : 'Rebuilt from the Commission file history') });
+  }
+  function transfersKpi() {
+    const t = S.reps.OK && S.reps.OK.transfers;
+    return kpi({ ic: 'building', label: 'Wells changing operator', value: t && t.wells, color: 'var(--s1)', vals: hist((e) => (e.r.OK ? e.r.OK.t : null)),
+      note: t ? t.buyerCount + (t.buyerCount === 1 ? ' buyer' : ' buyers') + ' · ' + fmtDow(t.day) : 'No transfers on file for this day' });
+  }
+  function wellsKpi() {
+    const w = S.reps.OK && S.reps.OK.wells;
+    return kpi({ ic: 'rig', label: 'Active wells in the state', value: w && w.active, color: 'var(--accent)',
+      note: w ? (w.change ? signed(w.change.active) + ' since ' + fmtMd(w.change.since) : 'As of ' + fmtMd(w.asOf)) : 'The inventory is counted on the night of each live capture' });
+  }
+  function kpiRow() {
+    return el('div', { class: 'dr-kpis' }, only() === 'OK' ? [permitKpi(), completionsKpi(), transfersKpi(), wellsKpi()] : [permitKpi(), waitingKpi(), completionsKpi(), filesKpi()]);
   }
 
   /* ---------- permits per day and the map ---------- */
-  function trendCard(rep) {
-    const p = rep.permits;
-    const bs = p ? biz(p.day, 30) : null;
-    if (!p || !bs || bs.days.length < 5) return null;
-    const avg = avgBefore(p.day);
-    return card('dr-trend', head('trend', 'Pace', 'New-drill permits per business day', 'Last 30 business days to ' + fmtMd(p.day) + '. Holidays show as empty days.'),
-      el('div', { class: 'dr-legend-inline' }, el('i', { class: 'dr-dot horiz' }), el('span', { text: 'Horizontal' }), el('i', { class: 'dr-dot rest' }), el('span', { text: 'Other' })),
-      trendBars({ days: bs.days, total: bs.total, horiz: bs.horiz, avg, label: 'Bar chart of new-drill permits per business day from ' + fmtMd(bs.days[0]) + ' to ' + fmtMd(p.day) + '. ' + fmtDow(p.day) + ' had ' + p.newDrill + (avg ? ', against an average of ' + Math.round(avg) : '') + '.' }));
+  function trendCard() {
+    const ids = have('permits');
+    if (!ids.length) return null;
+    const until = ids.map((id) => S.reps[id].permits.day).sort().pop(); const sers = ids.map((id) => S.series[id]);
+    const bs = bizSeries(sers, until, 30);
+    if (bs.days.length < 5) return null;
+    const avg = avgBefore(sers, until); const value = sumOf(ids.map((id) => S.reps[id].permits.newDrill));
+    let series; let legend;
+    if (ids.length > 1) {
+      series = ids.map((id) => ({ label: sname(id), cls: id.toLowerCase(), values: bs.n[id] }));
+      legend = ids.map((id) => [id.toLowerCase(), sname(id)]);
+    } else { // one state: its own split, horizontal against the rest in Texas, planned depth in Oklahoma
+      const id = ids[0]; const n = bs.n[id]; const h = bs.h[id]; const tx1 = id === 'TX';
+      const [c1, c2] = tx1 ? ['horiz', 'rest'] : ['ok', 'okrest']; // the state's own colour, solid for the first part and pale for the rest
+      series = [{ label: tx1 ? 'horizontal' : 'planned 12,000 ft or deeper', cls: c1, values: h }, { label: tx1 ? 'other' : 'shallower', cls: c2, values: n.map((v, i) => (v == null ? null : v - (h[i] || 0))) }];
+      legend = [[c1, tx1 ? 'Horizontal' : DEEP], [c2, tx1 ? 'Other' : 'Shallower']];
+    }
+    return card('dr-trend', head('trend', 'Pace', 'New-drill permits per business day', 'Last 30 business days to ' + fmtMd(until) + '. Holidays show as empty days.'),
+      el('div', { class: 'dr-legend-inline' }, legend.flatMap(([cls, text]) => [el('i', { class: 'dr-dot ' + cls }), el('span', { text })])),
+      trendBars({ days: bs.days, series, total: bs.total, avg, avgText: avg ? avgTxt(avg) : null,
+        label: 'Bar chart of new-drill permits per business day from ' + fmtMd(bs.days[0]) + ' to ' + fmtMd(until) + '. ' + fmtDow(until) + ' had ' + value + (avg ? ', against an average of ' + avgTxt(avg) : '') + '.' }));
   }
 
-  function mapCard(rep) {
-    const layers = {}; const defs = [];
-    if (rep.permits) { layers.permits = { map: tally(rep.permits.rows, 1) }; defs.push({ id: 'permits', label: 'Issued' }); }
-    if (rep.pending) { layers.pending = { map: tally(rep.pending.rows, 2) }; defs.push({ id: 'pending', label: 'Waiting' }); }
-    if (rep.completions) { layers.completions = { map: new Map(rep.completions.counties.map((x) => [x[0], x[2]])) }; defs.push({ id: 'completions', label: 'Completions' }); }
+  function mapCard() {
+    const layers = {}; const defs = []; const names = {};
+    const lay = (id, label, parts, st) => {
+      const ps = parts.filter((x) => x && x.rows && x.rows.length);
+      if (!ps.length) return;
+      const map = new Map(); const nm = new Map();
+      for (const { id: s, rows } of ps) for (const [f, name, n] of rows) { map.set(ck(s, f), n); nm.set(ck(s, f), clabel(s, name)); }
+      layers[id] = { map }; names[id] = nm;
+      defs.push({ id, label: label + (st && multi() ? ' · ' + st : '') });
+    };
+    const txR = S.reps.TX; const okR = S.reps.OK;
+    const txCounties = (m) => [...m.entries()].map(([f, n]) => [f, cname('TX', f), n]);
+    lay('permits', 'Permits', [txR && txR.permits && { id: 'TX', rows: txCounties(tally(txR.permits.rows, 1)) }, okR && okR.permits && { id: 'OK', rows: okR.permits.counties }]);
+    lay('pending', 'Waiting', [txR && txR.pending && { id: 'TX', rows: txCounties(tally(txR.pending.rows, 2)) }], 'TX');
+    lay('completions', 'Completions', [txR && txR.completions && { id: 'TX', rows: txR.completions.counties }, okR && okR.completions && { id: 'OK', rows: okR.completions.counties }]);
+    lay('transfers', 'Transfers', [okR && okR.transfers && { id: 'OK', rows: okR.transfers.counties }], 'OK');
+    lay('wells', 'Active wells', [okR && okR.wells && { id: 'OK', rows: okR.wells.counties }], 'OK');
     if (!defs.length) return null;
     if (!layers[S.layer]) S.layer = defs[0].id;
-    const colors = { permits: 'var(--s2)', pending: 'var(--s1)', completions: 'var(--s3)' };
-    const names = { permits: 'new-drill permits issued', pending: 'applications waiting for approval', completions: 'completions approved' };
+    const colors = { permits: 'var(--s2)', pending: 'var(--s1)', completions: 'var(--s3)', transfers: 'var(--s1)', wells: 'var(--s7)' };
+    const unit = { permits: 'new-drill permits ' + issued(), pending: 'applications waiting for approval', completions: only() === 'TX' ? 'completions approved' : only() === 'OK' ? 'completion filings' : 'completions approved or filed', transfers: 'wells that changed operator', wells: 'active wells' };
     const list = el('div', { class: 'dr-maplist' });
     const wrap = el('div', { class: 'dr-mapwrap' });
-    const map = S.G ? countyMap(S.G, layers, S.layer) : null;
+    const map = S.G ? countyMap(S.G, layers, S.layer, { place: place(), only: multi() ? null : S.states, showState: multi(), unit }) : null;
     if (map) wrap.append(map.el);
     const paint = () => {
       wrap.style.setProperty('--lc', colors[S.layer]);
       const top = [...layers[S.layer].map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-      list.replaceChildren(el('p', { class: 'dr-maplist-h', text: 'Top counties · ' + names[S.layer] }),
-        rankList(top.map(([f, n]) => ({ label: countyName(f), value: n })), { color: colors[S.layer], empty: 'No county detail for this layer.' }));
+      list.replaceChildren(el('p', { class: 'dr-maplist-h', text: 'Top counties · ' + unit[S.layer] }),
+        rankList(top.map(([f, n]) => ({ label: names[S.layer].get(f) || f, value: n })), { color: colors[S.layer], empty: 'No county detail for this layer.' }));
     };
     const seg = segmented({ label: 'Map layer', options: defs, value: S.layer, tabs: false, prefix: 'drm', onChange: (id) => { S.layer = id; if (map) map.set(id); paint(); } });
     paint();
-    return card('dr-mapcard', head('pin', 'Where', 'Texas, by county', 'Bubbles grow with the count; hover a county for its number.'), el('div', { class: 'dr-maptools' }, seg.el), wrap, list);
+    return card('dr-mapcard', head('pin', 'Where', place() + ', by county', 'Bubbles grow with the count; hover a county for its number.'), el('div', { class: 'dr-maptools' + (defs.length > 3 ? ' tight' : '') }, seg.el), wrap, list);
   }
 
-  /* ---------- the GPS map, and a page (a URL) for each well with its filings ---------- */
-  const fmtApi = (a) => '42-' + a.slice(0, 3) + '-' + a.slice(3); // state 42, county, well
-  const hashFor = (day, mode, sel) => {
-    const q = new URLSearchParams();
-    if (day !== S.index.days[S.index.days.length - 1].d) q.set('d', day);
-    if (mode === 'full') q.set('v', 'full');
-    if (sel) q.set(sel.t === 'p' ? 'drill' : 'survey', sel.id);
-    return '#daily' + (q.toString() ? '?' + q : '');
-  };
-  // the release a report links to is validated before it becomes a link: names come from a data file
-  const relOk = (r) => !!r && /^[\w.-]+\/[\w.-]+$/.test(r.repo) && /^daily-\d{4}-\d\d-\d\d$/.test(r.tag);
-  const fileUrl = (rep, name) => (relOk(rep.release) && /^[\w.-]+$/.test(name) ? 'https://github.com/' + rep.release.repo + '/releases/download/' + rep.release.tag + '/' + name : null);
-  const releaseUrl = (rep) => (relOk(rep.release) ? 'https://github.com/' + rep.release.repo + '/releases/tag/' + rep.release.tag : null);
-  const gpsText = (lat, lon) => lat.toFixed(5) + ', ' + lon.toFixed(5);
-  const mapsUrl = (lat, lon) => 'https://www.google.com/maps/search/?api=1&query=' + lat.toFixed(5) + ',' + lon.toFixed(5);
-  function docLabel(suffix) {
-    const m = /^(W1|Plat)(?:_(\d+))?\.(\w+)$/.exec(suffix);
-    if (!m) return { label: 'Document', type: '' };
-    return { label: (m[1] === 'W1' ? 'Approved W-1 permit' : 'Permit plat') + (m[2] ? ' ' + m[2] : ''), type: m[3].toUpperCase() };
-  }
-  const docList = (items) => el('ul', { class: 'dr-docs' }, items.map((d) => el('li', {}, d.href
-    ? el('a', { class: 'btn dr-doc', href: d.href, rel: 'noopener noreferrer' }, icon('layers', 15), el('span', { text: d.label }), d.type ? el('small', { text: d.type }) : null)
-    : el('span', { class: 'dr-doc off', text: d.label }))));
-
-  function drillPanel(rep, sel, { close }) {
-    const pr = rep.permits; const sv = rep.surveys;
-    const row = sel.t === 'p' && pr ? pr.rows.find((r) => r[0] === sel.id) : null;
-    const srow = sel.t === 's' && sv ? sv.rows.find((r) => r[8] === sel.id) : null;
-    const closeBtn = el('button', { type: 'button', class: 'btn sm', onclick: close }, icon('close', 14), 'Close');
-    if (!row && !srow) {
-      return el('div', { class: 'dr-drill missing' }, el('p', { text: 'That drill is not in the report for ' + fmtDow(rep.date) + '. A page exists for each new-drill permit of the day and for each directional survey filed that day.' }), closeBtn);
+  // monthly figures: crude production in the states shown (series-markets.json holds Texas, series-ok.json Oklahoma) and the two prices.
+  // They change once a month and are not for the report's day, so each one says which month it is
+  function contextCard() {
+    const items = [];
+    const add = ({ ic, label, months, vals, color, format, unit }) => {
+      if (!months || !vals) return;
+      let i = vals.length - 1;
+      while (i >= 0 && vals[i] == null) i--;
+      if (i < 12 || vals[i - 12] == null) return; // a year behind is the comparison
+      items.push(kpi({ ic, label, value: vals[i], format, color, vals: vals.slice(Math.max(0, i - 35), i + 1).filter((v) => v != null),
+        note: unit + ' in ' + monthLabel(months[i]) + ' · EIA', extra: [delta(vals[i] / vals[i - 12] - 1), ' vs ' + monthLabel(months[i - 12])] }));
+    };
+    const million = (v) => (v / 1000).toFixed(1) + ' million bbl';
+    const mk = S.mk; const ok = S.sok;
+    if (mk && S.states.includes('TX')) add({ ic: 'drop', label: 'Texas crude oil production', months: mk.months, vals: mk.txCrude, color: 'var(--s2)', format: million, unit: 'a month' });
+    if (ok && S.states.includes('OK')) add({ ic: 'drop', label: 'Oklahoma crude oil production', months: ok.months, vals: ok.okCrude, color: 'var(--s3)', format: million, unit: 'a month' });
+    if (mk) {
+      add({ ic: 'dollar', label: 'WTI crude oil price', months: mk.months, vals: mk.wti, color: 'var(--s2)', format: (v) => '$' + v.toFixed(2), unit: 'a barrel' });
+      add({ ic: 'flame', label: 'Henry Hub natural gas price', months: mk.months, vals: mk.henryHub, color: 'var(--s1)', format: (v) => '$' + v.toFixed(2), unit: 'per MMBtu' });
     }
-    const head2 = (title, sub) => el('div', { class: 'dr-drill-head' },
-      el('div', {}, el('p', { class: 'eyebrow' }, icon('pin', 15), 'Drill page'), el('h3', { text: title }), el('p', { class: 'sub', text: sub })),
-      el('div', { class: 'dr-drill-act' }, shareButton(() => absoluteLink(hashFor(S.day, S.mode, sel)), 'Copy link'), closeBtn));
-    const lat = row ? row[8] : srow[9]; const lon = row ? row[9] : srow[10];
-    const gps = lat != null ? { label: 'GPS (NAD83)', value: gpsText(lat, lon), note: 'surface location, RRC map' } : { label: 'GPS', value: 'No point', note: 'the RRC map has none for this well' };
-    const where = lat != null ? el('p', { class: 'fine' }, el('a', { href: mapsUrl(lat, lon), rel: 'noopener noreferrer', text: 'Open this point in a maps app' }), ' (leaves this site).') : null;
-    const more = releaseUrl(rep) ? el('a', { href: releaseUrl(rep), rel: 'noopener noreferrer', text: 'All of this day\'s filings on GitHub' }) : null;
-    const privacy = el('p', { class: 'fine', text: 'These are the Railroad Commission\'s scans, unmodified. They are public records and can carry the names, phone numbers and addresses of individuals.' });
-    if (row) {
-      const own = (row[10] || []).map((suffix) => Object.assign(docLabel(suffix), { href: fileUrl(rep, row[0] + '_' + suffix) }));
-      const surveys = row[7] && sv ? sv.rows.filter((r) => r[0] === row[7]).map((r) => ({ label: 'Directional survey ' + r[8], type: 'PDF', href: fileUrl(rep, 'dir_survey_' + r[8] + '.pdf') })) : [];
-      const docs = own.concat(surveys).filter((d) => d.href);
-      return el('div', { class: 'dr-drill' }, head2('Permit ' + row[0], (row[4] || 'Operator #' + row[3]) + ' · ' + countyName(row[1]) + ' County · District ' + row[2]),
-        tiles([{ label: 'Planned depth', value: row[5] ? num(row[5]) + ' ft' : '—', note: KIND[row[6]] + ' well' }, { label: 'Permit issued', value: fmtDow(pr.day), note: 'new-drill permit' },
-          row[7] ? { label: 'API number', value: fmtApi(row[7]), note: 'state · county · well' } : null, gps]),
-        where,
-        el('h4', { class: 'dr-h4', text: 'Filings for this drill' }),
-        docs.length ? [docList(docs), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
-          : el('p', { class: 'fine', text: 'No filings are published for this drill. They are copied on the night a report is captured live, so a day rebuilt afterward, or captured before publishing was switched on, has none.' }));
-    }
-    const twin = pr && srow[0] ? pr.rows.find((r) => r[7] === srow[0]) : null;
-    return el('div', { class: 'dr-drill' }, head2('Directional survey ' + srow[8], srow[1] ? countyName(srow[1]) + ' County · API ' + fmtApi(srow[0]) : 'Well not identified'),
-      tiles([{ label: 'Survey', value: srow[2] === 'M' ? 'MWD' : 'Other', note: 'directional survey' }, { label: 'Depth surveyed', value: srow[3] && srow[4] ? num(srow[3]) + '–' + num(srow[4]) + ' ft' : '—', note: srow[7] ? 'lateral ' + srow[7] : '' },
-        { label: 'Survey dates', value: srow[5] && srow[6] ? fmtMd(srow[5]) + ' to ' + fmtMd(srow[6]) : '—', note: srow[6] ? srow[6].slice(0, 4) : '' }, { label: 'Filed', value: fmtDow(sv.day || rep.date), note: 'survey pack' }, gps]),
-      where,
-      twin ? el('p', { class: 'fine' }, 'The same well was permitted this day: ', el('a', { href: hashFor(S.day, S.mode, { t: 'p', id: twin[0] }), onclick: (e) => { e.preventDefault(); S.open({ t: 'p', id: twin[0] }); }, text: 'permit ' + twin[0] }), '.') : null,
-      el('h4', { class: 'dr-h4', text: 'Filing' }),
-      fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') ? [docList([{ label: 'Directional survey', type: 'PDF', href: fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') }]), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
-        : el('p', { class: 'fine', text: 'This survey\'s file is not published.' }));
-  }
-
-  function gpsCard(rep) {
-    S.open = null; S.gpsEl = null;
-    const pr = rep.permits; const sv = rep.surveys;
-    const prows = pr ? pr.rows : []; const srows = sv ? sv.rows : [];
-    const prow = prows.filter((r) => r.length >= 10 && r[8] != null); const srow = srows.filter((r) => r[9] != null);
-    if (!S.G || (!prow.length && !srow.length)) return null;
-    const pts = [
-      ...prow.map((r) => ({ key: 'p' + r[0], layer: 'permits', f: r[1], lat: r[8], lon: r[9], aria: 'Permit ' + r[0] + ', ' + countyName(r[1]) + ' County. Press Enter for its page.',
-        tip: [['Permit ' + r[0], countyName(r[1]) + ' County'], [r[4] || 'Operator #' + r[3], ''], [r[5] ? num(r[5]) + ' ft' : 'Depth not given', KIND[r[6]].toLowerCase()]] })),
-      ...srow.map((r) => ({ key: 'w' + r[8], layer: 'surveys', f: r[1], lat: r[9], lon: r[10], aria: 'Directional survey ' + r[8] + ', ' + countyName(r[1]) + ' County. Press Enter for its page.',
-        tip: [['Directional survey', countyName(r[1]) + ' County'], ['API ' + fmtApi(r[0]), ''], [r[3] && r[4] ? num(r[3]) + '–' + num(r[4]) + ' ft' : 'Depth not given', '']] })),
-    ];
-    const keyOf = (sel) => (sel ? (sel.t === 'p' ? 'p' : 'w') + sel.id : null);
-    const host = el('div', { class: 'dr-drill-host', 'aria-live': 'polite' });
-    const map = gpsMap(S.G, pts, { onPick: (key) => pick({ t: key[0] === 'p' ? 'p' : 's', id: key.slice(1) }) });
-    const paint = () => host.replaceChildren(...[S.sel ? drillPanel(rep, S.sel, { close: () => pick(null) }) : null].filter(Boolean));
-    function pick(sel, { fly = false } = {}) {
-      S.sel = sel; map.mark(keyOf(sel));
-      if (fly && sel) map.focusOn(keyOf(sel));
-      paint();
-      history.replaceState(null, '', hashFor(S.day, S.mode, sel)); // in-page picks do not add history entries, like the Map tab
-      if (sel) host.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
-    }
-    const on = { permits: true, surveys: true };
-    const layerBtn = (id, label, n) => (n ? el('button', { type: 'button', class: 'btn sm dr-lay', 'aria-pressed': 'true', onclick: (e) => {
-      on[id] = !on[id]; e.currentTarget.setAttribute('aria-pressed', String(on[id])); map.setLayer(id, on[id]); map.fit();
-    } }, el('i', { class: 'dr-sw ' + id, 'aria-hidden': 'true' }), label + ' · ' + n) : null);
-    const tools = el('div', { class: 'dr-gps-tools' },
-      el('div', { class: 'dr-gps-layers', role: 'group', 'aria-label': 'Layers' }, layerBtn('permits', 'New-drill permits', prow.length), layerBtn('surveys', 'Directional surveys', srow.length)),
-      el('div', { class: 'dr-gps-zoom', role: 'group', 'aria-label': 'Map view' },
-        el('button', { type: 'button', class: 'btn sm', onclick: map.fit }, 'Zoom to wells'), el('button', { type: 'button', class: 'btn sm', onclick: map.all }, 'All Texas'),
-        el('button', { type: 'button', class: 'btn sm', 'aria-label': 'Zoom in', onclick: map.zoomIn, text: '+' }), el('button', { type: 'button', class: 'btn sm', 'aria-label': 'Zoom out', onclick: map.zoomOut, text: '−' })));
-    const link = (sel, text) => el('a', { href: hashFor(S.day, S.mode, sel), text, onclick: (e) => { e.preventDefault(); S.open(sel); } });
-    const gpsCell = (a, b) => (a != null ? gpsText(a, b) : '—');
-    const tables = [];
-    if (prows.length) {
-      tables.push(table([{ t: 'Permit' }, { t: 'County' }, { t: 'Operator' }, { t: 'Depth (ft)', num: true }, { t: 'Well' }, { t: 'GPS' }, { t: 'Filings', num: true }],
-        prows.map((r) => [link({ t: 'p', id: r[0] }, r[0]), countyName(r[1]), opNode(r[3], r[4]), r[5] ? num(r[5]) : null, KIND[r[6]], gpsCell(r[8], r[9]), r[10] ? num(r[10].length) : '—'])));
-    }
-    if (srows.length) {
-      tables.push(el('h3', { class: 'dr-h3-gap', text: 'Directional surveys filed' }),
-        table([{ t: 'Survey' }, { t: 'API' }, { t: 'County' }, { t: 'Kind' }, { t: 'Depth (ft)' }, { t: 'GPS' }],
-          srows.map((r) => [link({ t: 's', id: r[8] }, r[8]), r[0] ? fmtApi(r[0]) : null, r[1] ? countyName(r[1]) : null, r[2] === 'M' ? 'MWD' : 'Other', r[3] && r[4] ? num(r[3]) + '–' + num(r[4]) : null, gpsCell(r[9], r[10])])));
-    }
-    const card2 = card('dr-gps-card', head('pin', 'GPS map', 'Where the wells are', 'Surface locations from the Railroad Commission\'s public map service, matched by API number. Select a point to open that drill\'s page and its filings.'),
-      tools, map.el,
-      el('p', { class: 'fine', text: num(prow.length) + ' of ' + num(prows.length) + ' new-drill permits have a point' + (srows.length ? ' and ' + num(srow.length) + ' of ' + num(srows.length) + ' surveys' : '') + '. Drag to pan; Ctrl or ⌘ plus scroll, a trackpad pinch or the buttons zoom.' }),
-      host,
-      el('details', { class: 'dr-details' }, el('summary', { text: 'The same wells as a table' + (rep.release ? ', with a page for each' : '') }), ...tables));
-    S.gpsEl = card2;
-    S.open = (sel) => { pick(sel, { fly: true }); card2.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); };
-    if (S.sel) { map.mark(keyOf(S.sel)); map.focusOn(keyOf(S.sel)); paint(); }
-    return card2;
+    if (!items.length) return null;
+    return card('dr-ctx-card', head('chart', 'Monthly figures', 'Oil and gas around ' + (multi() ? 'the two states' : 'the state'), 'The latest monthly figures EIA has published. They are not for the day above, and they change once a month.'), el('div', { class: 'dr-ctx' }, items));
   }
 
   /* ---------- what changed: plain-English bullets ---------- */
-  function storyCard(rep) {
-    const out = []; const p = rep.permits; const q = rep.pending; const c = rep.completions;
+  function storyCard() {
+    const out = [];
     const add = (ic, color, ...kids) => { const li = el('li', { class: 'insight' }, el('span', { class: 'insight-ic' }, icon(ic, 18)), el('div', {}, el('p', {}, ...kids))); li.firstChild.style.setProperty('--c', color); out.push(li); };
-    if (p && p.newDrill) {
-      const avg = avgBefore(p.day);
-      add('pin', 'var(--s2)', strong(num(p.newDrill)), ' new-drill permits were issued on ', strong(fmtDow(p.day)), avg ? [', ', strong(rel(p.newDrill, avg)), ' the 20-business-day average of ' + Math.round(avg) + '.'] : '.',
-        p.total > p.newDrill ? ' Another ' + (p.total - p.newDrill) + ' were re-entries, recompletions or other filings.' : '');
-      if (p.counties.length) {
-        const t = p.counties.slice(0, 3);
-        add('layers', 'var(--s2)', strong(t[0][1]), ' led with ', strong(num(t[0][2])), t.length > 1 ? [', then ' + t.slice(1).map((x) => x[1] + ' (' + x[2] + ')').join(' and ')] : '', '. ', p.countyCount + ' counties had at least one.');
+    const pre = (id) => (multi() ? [strong(sname(id) + ': ')] : []);
+    const pids = have('permits'); const ps = pids.map((id) => ({ id, p: R()[id].permits }));
+    // a state with no report is said so, and what follows is without it
+    for (const id of S.states) if (!R()[id]) add('close', 'var(--down)', strong(sname(id) + ': ' + (S.miss[id] === 'error' ? 'this day\'s report could not be loaded. ' : 'no report was captured for this day. ')), 'Its numbers are not in anything below.');
+
+    if (ps.length) {
+      const nd = sumOf(ps.map((x) => x.p.newDrill)); const total = sumOf(ps.map((x) => x.p.total));
+      const days = [...new Set(ps.map((x) => x.p.day))]; const until = days.slice().sort().pop();
+      const avg = avgBefore(pids.map((id) => S.series[id]), until);
+      const when = days.length === 1 ? [' on ', strong(fmtDow(days[0]))] : [];
+      const where = ps.length > 1 ? [' across ' + place(), ...when, ' (' + ps.map((x) => sname(x.id) + ' ' + num(x.p.newDrill) + (days.length > 1 ? ' on ' + fmtDow(x.p.day) : '')).join(', ') + ')'] : when;
+      if (nd) {
+        add('pin', 'var(--s2)', strong(num(nd)), nd === 1 ? ' new-drill permit was ' + issued() : ' new-drill permits were ' + issued(), ...where,
+          avg ? [', ', strong(rel(nd, avg)), ' the 20-business-day average of ' + avgTxt(avg) + '.'] : '.',
+          total - nd ? ' Another ' + (total - nd === 1 ? '1 was an amendment, re-entry, recompletion or other filing.' : (total - nd) + ' were amendments, re-entries, recompletions or other filings.') : '');
+        const top = mergeRank(ps.map(({ id, p }) => ({ id, rows: p.counties })), 3);
+        if (top.length) {
+          add('layers', 'var(--s2)', strong(clabel(top[0].id, top[0].name)), ' led with ', strong(num(top[0].n)), top.length > 1 ? [', then ' + top.slice(1).map((x) => clabel(x.id, x.name) + ' (' + x.n + ')').join(' and ')] : '', '. ',
+            sumOf(ps.map((x) => x.p.countyCount)) + (sumOf(ps.map((x) => x.p.countyCount)) === 1 ? ' county had' : ' counties had') + ' at least one.');
+        }
+        const named = mergeRank(ps.map(({ id, p }) => ({ id, rows: p.operators.filter((o) => o[1]) })), 1)[0];
+        if (named) {
+          const share = sumOf(ps.map((x) => (x.p.namedShare == null ? 0 : x.p.namedShare * x.p.newDrill))) / nd;
+          add('building', 'var(--s2)', named.id === 'TX' ? el('a', { href: opsLink(named.name), text: named.name }) : strong(named.name), ' filed the most among operators that can be named (', strong(num(named.n)), '). ', Math.round(share * 100) + '% of the day\'s new-drill permits went to named operators.');
+        }
+        for (const { id, p } of ps) {
+          if (!p.newDrill) continue;
+          if (id === 'TX') add('rig', 'var(--s2)', ...pre(id), strong(Math.round((p.horizontal / p.newDrill) * 100) + '% horizontal'), p.depth ? [' · median planned depth ', strong(num(p.depth.median) + ' ft'), ', deepest ' + num(p.depth.max) + ' ft'] : '', p.wait ? ' · median ' + p.wait.median + ' days from receipt to approval.' : '.');
+          else add('rig', 'var(--s2)', ...pre(id), strong(pctOf(p.deep, p.newDrill) + ' planned 12,000 ft or deeper'), p.depth ? [' · median planned depth ', strong(num(p.depth.median) + ' ft'), ', deepest ' + num(p.depth.max) + ' ft'] : '', p.wait ? ' · median ' + p.wait.median + (p.wait.median === 1 ? ' day' : ' days') + ' from filing to approval.' : '.');
+        }
+      } else {
+        add('pin', 'var(--s2)', 'No new-drill permits were ' + issued() + ' on ', strong(days.map(fmtDow).join(' or ')), '.');
       }
-      const named = p.operators.filter((o) => o[1]);
-      if (named.length) add('building', 'var(--s2)', el('a', { href: opsLink(named[0][1]), text: named[0][1] }), ' filed the most among operators that can be named (', strong(num(named[0][2])), '). ', p.namedShare != null ? Math.round(p.namedShare * 100) + '% of the day\'s new-drill permits went to named operators.' : '');
-      add('rig', 'var(--s2)', strong(Math.round((p.horizontal / p.newDrill) * 100) + '% horizontal'), p.depth ? [' · median planned depth ', strong(num(p.depth.median) + ' ft'), ', deepest ' + num(p.depth.max) + ' ft'] : '', p.wait ? ' · median ' + p.wait.median + ' days from receipt to approval.' : '.');
-    } else if (p) {
-      add('pin', 'var(--s2)', 'No new-drill permits were issued on ', strong(fmtDow(p.day)), '.');
     }
+    const q = R().TX && R().TX.pending;
     if (q) {
       const d = q.districts[0];
-      add('clock', 'var(--s1)', strong(num(q.total)), ' applications are waiting for approval, ', strong(num(q.expedite)), ' flagged to expedite', d ? [', most of them in District ' + d[0] + ' (' + d[1] + ').'] : '.');
+      add('clock', 'var(--s1)', ...pre('TX'), strong(num(q.total)), ' applications are waiting for approval, ', strong(num(q.expedite)), ' flagged to expedite', d ? [', most of them in District ' + d[0] + ' (' + d[1] + ').'] : '.');
     }
-    if (c) {
-      const best = c.topTests[0];
-      add('drop', 'var(--s3)', strong(num(c.approved)), ' completions were approved on ', strong(fmtDow(c.day)), '; ', strong(num(c.initial)), ' were first tests of new wells (' + c.oil + ' oil, ' + c.gas + ' gas).',
-        best ? [' Best oil test: ', strong(num(best.rate) + ' bbl a day'), ' in ' + best.county + ' County' + (best.operator ? ' (' + best.operator + ')' : '') + '.'] : '');
+    const cs = have('completions').map((id) => ({ id, c: R()[id].completions }));
+    if (cs.length) {
+      const nOf = ({ id, c }) => (id === 'TX' ? c.approved : c.filed);
+      // the best first test across the states shown: the largest oil rate, or Oklahoma's best gas test when nothing has oil
+      const cand = [];
+      cs.forEach(({ id, c }) => { if (id === 'TX' && c.topTests[0]) cand.push({ id, oil: c.topTests[0].rate, county: c.topTests[0].county, operator: c.topTests[0].operator }); if (id === 'OK' && c.tests[0]) cand.push({ id, oil: c.tests[0].oil || 0, gas: c.tests[0].gas, county: c.tests[0].county, operator: c.tests[0].operator }); });
+      cand.sort((a, b) => (b.oil || 0) - (a.oil || 0) || (b.gas || 0) - (a.gas || 0));
+      const best = cand[0];
+      const days = [...new Set(cs.map((x) => x.c.day))];
+      const bestText = best ? [' Best first test: ', strong(num(best.oil || best.gas) + (best.oil ? ' bbl of oil a day' : ' mcf of gas a day')), ' in ' + best.county + ' County' + (multi() ? ', ' + best.id : '') + (best.operator ? ' (' + best.operator + ')' : '') + '.'] : '';
+      if (cs.length === 1 && !multi()) {
+        const { id, c } = cs[0];
+        if (id === 'TX') add('drop', 'var(--s3)', strong(num(c.approved)), ' completions were approved on ', strong(fmtDow(c.day)), '; ', strong(num(c.initial)), ' were first tests of new wells (' + c.oil + ' oil, ' + c.gas + ' gas).', bestText);
+        else add('drop', 'var(--s3)', strong(num(c.filed)), c.filed === 1 ? ' completion was filed on ' : ' completions were filed on ', strong(fmtDow(c.day)), c.amended ? ', and ' + (c.amended === 1 ? '1 earlier filing was' : num(c.amended) + ' earlier filings were') + ' amended' : '', '.', bestText);
+      } else {
+        add('drop', 'var(--s3)', strong(num(sumOf(cs.map(nOf)))), days.length === 1 ? [' completions on ', strong(fmtDow(days[0]))] : ' completions',
+          ' (' + cs.map((x) => sname(x.id) + ' ' + num(nOf(x)) + (x.id === 'TX' ? ' approved, ' + num(x.c.initial) + ' of them first tests of new wells' : ' filed') + (days.length > 1 ? ' on ' + fmtDow(x.c.day) : '')).join('; ') + ').', bestText);
+      }
     }
-    if (rep.kind === 'live') {
-      const cmp = compare(rep); const same = cmp.same; const err = rep.datasets.filter((d) => d.error);
-      if (!cmp.ok && !err.length) add('check', 'var(--accent)', strong('First live capture. '), 'From the next report this line says which files changed overnight.');
-      else if (err.length) add('close', 'var(--down)', strong(err.length + ' of ' + rep.datasets.length + ' files could not be read: '), err.map((d) => d.title).join(', ') + '.');
-      else if (same.length) add('clock', 'var(--accent)', strong(same.length + ' file' + (same.length > 1 ? 's' : '') + ' did not change'), ' since the last report: ' + same.map((d) => d.title).join(', ') + '.');
-      else add('check', 'var(--up)', strong('Every nightly file changed'), ' since the last report.');
+    const t = R().OK && R().OK.transfers;
+    if (t) {
+      const b = t.buyers.find((x) => x[1]); const sb = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+      add('building', 'var(--s1)', ...pre('OK'), strong(num(t.wells)), t.wells === 1 ? ' well changed operator on ' : ' wells changed operator on ', strong(fmtDow(t.day)),
+        b ? [': ', strong(b[1]), ' took ' + num(b[2])] : '', ' (' + sb(t.sellerCount, 'seller') + ', ' + sb(t.buyerCount, 'buyer') + ').');
+    }
+    const w = R().OK && R().OK.wells;
+    if (w) add('rig', 'var(--accent)', ...pre('OK'), strong(num(w.active)), ' active wells in the state inventory', w.change ? [' (', strong(signed(w.change.active)), ' since ' + fmtMd(w.change.since) + ')'] : '', ', ', num(w.plugged) + ' plugged, of ' + num(w.total) + ' records.');
+    for (const id of S.states) {
+      const rep = R()[id];
+      if (!rep || rep.kind !== 'live') continue;
+      const cmp = compare(rep); const same = cmp.same; const err = rep.datasets.filter((d) => d.error); const T = TITLES[id];
+      if (!cmp.ok && !err.length) add('check', 'var(--accent)', ...pre(id), strong('First live capture. '), 'From the next report this line says which files changed overnight.');
+      else if (err.length) add('close', 'var(--down)', ...pre(id), strong(err.length + ' of ' + rep.datasets.length + ' files could not be read: '), err.map((d) => T[d.id]).join(', ') + '.');
+      else if (same.length) add('clock', 'var(--accent)', ...pre(id), strong(same.length + ' file' + (same.length > 1 ? 's' : '') + ' did not change'), ' since the last report: ' + same.map((d) => T[d.id]).join(', ') + '.');
+      else add('check', 'var(--up)', ...pre(id), strong('Every ' + FILES[id] + ' file changed'), ' since the last report.');
       const newer = (rep.monthly || []).filter((m) => m.newer);
-      if (newer.length) add('calendar', 'var(--down)', strong('A newer monthly file is waiting: '), newer.map((m) => m.title).join(', ') + '. The site\'s monthly tables were built from the older one and are due for a rebuild.');
+      if (newer.length) add('calendar', 'var(--down)', ...pre(id), strong('A newer monthly file is waiting: '), newer.map((m) => m.title).join(', ') + '. The site\'s monthly tables were built from the older one and are due for a rebuild.');
     }
     if (!out.length) return null;
     return card('dr-story', head('bulb', 'In short', 'What the files say'), el('ul', { class: 'dr-bullets' }, out));
   }
 
-  function statusStrip(rep) {
-    const live = rep.kind === 'live';
-    return el('div', { class: 'dr-strip', role: 'list', 'aria-label': 'Nightly datasets' }, rep.datasets.map((d) => {
-      const st = d.error ? 'bad' : d.state === 'new' ? 'good' : d.state === 'same' ? 'warn' : 'quiet';
-      const c = el('div', { class: 'dr-ds ' + st, role: 'listitem' }, el('span', { class: 'dr-ds-ic' }, icon(ICONS[d.id], 17)),
-        el('div', {}, el('b', { text: TITLES[d.id] }), el('small', { text: d.error ? 'Could not be read' : d.dataDay ? 'Data for ' + fmtMd(d.dataDay) : 'Nothing for this day' }),
-          el('small', { class: 'dr-ds-st', text: d.error ? 'Error' : live ? (d.state === 'new' ? 'Updated · ' + listed(d.file && d.file.modified) : d.state === 'same' ? 'No change since the last report' : 'Read · ' + listed(d.file && d.file.modified)) : 'Reconstructed' })));
-      c.title = WHAT[d.id];
-      return c;
-    }));
+  function statusStrips() {
+    const blocks = S.states.map((id) => {
+      const rep = S.reps[id]; const s = stateOf(id);
+      const heading = el('p', { class: 'dr-strip-h' }, el('i', { class: 'dr-dot ' + id.toLowerCase() }), s.name + ' · ' + s.agency, el('small', { text: rep ? FILES[id] + ' files' : 'no report for this day' }));
+      if (!rep) return [heading];
+      const live = rep.kind === 'live';
+      const strip = el('div', { class: 'dr-strip' + (id === 'OK' ? ' four' : ''), role: 'list', 'aria-label': s.name + ' datasets' }, rep.datasets.map((d) => {
+        const st = d.error ? 'bad' : d.absent ? 'quiet' : d.state === 'new' ? 'good' : d.state === 'same' ? 'warn' : 'quiet';
+        const c = el('div', { class: 'dr-ds ' + st, role: 'listitem' }, el('span', { class: 'dr-ds-ic' }, icon(ICONS[id][d.id], 17)),
+          el('div', {}, el('b', { text: TITLES[id][d.id] }),
+            el('small', { text: d.error ? 'Could not be read' : d.absent ? 'Only the current inventory is published' : d.dataDay ? 'Data for ' + fmtMd(d.dataDay) : 'Nothing for this day' }),
+            el('small', { class: 'dr-ds-st', text: d.error ? 'Error' : d.absent ? 'Live days only' : live ? (d.state === 'new' ? 'Updated · ' + listed(d.file && d.file.modified) : d.state === 'same' ? 'No change since the last report' : 'Read · ' + listed(d.file && d.file.modified)) : 'Reconstructed' })));
+        c.title = WHAT[id][d.id];
+        return c;
+      }));
+      return [heading, strip];
+    });
+    return el('div', { class: 'dr-strips' }, blocks.flat());
   }
 
   /* ---------- verbose sections ---------- */
-  function permitsSection(rep) {
-    const p = rep.permits;
-    if (!p) return card('dr-sec', head('pin', 'Permits', 'Drilling permits'), el('p', { class: 'empty', text: 'No permit file was read for this day.' }));
-    const m = monthToDate(p.day);
-    const pending = [];
-    const tl = tiles([
-      { label: 'New-drill permits', value: num(p.newDrill), note: 'of ' + num(p.total) + ' issued' },
-      { label: 'Horizontal', value: p.newDrill ? Math.round((p.horizontal / p.newDrill) * 100) + '%' : '—', note: num(p.horizontal) + ' of ' + num(p.newDrill) + (p.directional ? ' · ' + p.directional + ' directional' : '') },
+  // each state's own breakdown in a column of its own when both show, side by side in blocks when one does
+  function byState(items, blocks) {
+    if (multi()) return el('div', { class: 'dr-cols' }, items.map((it) => el('div', {}, el('p', { class: 'dr-state-h' }, el('i', { class: 'dr-dot ' + it.id.toLowerCase() }), sname(it.id)), ...blocks(it).map((b) => el('div', { class: 'dr-blk' }, ...b)))));
+    return el('div', { class: 'dr-cols' }, items.flatMap((it) => blocks(it)).map((b) => el('div', {}, ...b)));
+  }
+  const pair = (items) => items.filter(Boolean);
+  const counties = (parts, color) => rankList(mergeRank(parts, 12).map((x) => ({ label: clabel(x.id, x.name), value: x.n })), { color });
+  const operators = (parts, color) => rankList(mergeRank(parts, 12).map((x) => ({ label: x.name || 'Operator #' + x.key + (multi() ? ' (' + x.id + ')' : ''), value: x.n, href: x.id === 'TX' && x.name ? opsLink(x.name) : null })), { color });
+  const colsOf = (label, a, b) => el('div', { class: 'dr-cols' }, el('div', {}, el('h3', { text: label[0] }), a), el('div', {}, el('h3', { text: label[1] }), b));
+
+  function permitsSection() {
+    const ids = have('permits');
+    if (!ids.length) return card('dr-sec', head('pin', 'Permits', 'Drilling permits'), el('p', { class: 'empty', text: 'No permit file was read for this day.' }));
+    const ps = ids.map((id) => ({ id, p: R()[id].permits }));
+    const until = ps.map((x) => x.p.day).sort().pop();
+    const m = monthToDate(ids.map((id) => S.series[id]), until);
+    const nd = sumOf(ps.map((x) => x.p.newDrill)); const total = sumOf(ps.map((x) => x.p.total));
+    const top = mergeRank(ps.map(({ id, p }) => ({ id, rows: p.counties })), 1)[0];
+    const share = nd ? sumOf(ps.map((x) => (x.p.namedShare == null ? 0 : x.p.namedShare * x.p.newDrill))) / nd : null;
+    const stateTiles = [];
+    if (ps.length === 1) {
+      const { id, p } = ps[0];
+      stateTiles.push(id === 'TX'
+        ? { label: 'Horizontal', value: p.newDrill ? Math.round((p.horizontal / p.newDrill) * 100) + '%' : '—', note: num(p.horizontal) + ' of ' + num(p.newDrill) + (p.directional ? ' · ' + p.directional + ' directional' : '') }
+        : { label: 'Planned 12,000 ft or deeper', value: pctOf(p.deep, p.newDrill), note: num(p.deep) + ' of ' + num(p.newDrill) },
       { label: 'Median planned depth', value: p.depth ? num(p.depth.median) + ' ft' : '—', note: p.depth ? 'deepest ' + num(p.depth.max) + ' ft' : '' },
-      { label: 'Days to approval', value: p.wait ? String(p.wait.median) : '—', note: p.wait ? 'median · longest ' + p.wait.max : 'receipt to issue' },
-      { label: 'Operators', value: num(p.operatorCount), note: p.namedShare != null ? Math.round(p.namedShare * 100) + '% can be named' : '' },
-      { label: 'Counties', value: num(p.countyCount), note: p.counties[0] ? p.counties[0][1] + ' led' : '' },
-      { label: 'Amended that day', value: num(p.amended), note: 'earlier permits changed' },
-      m ? { label: 'Month to date', value: num(m.a), note: m.b != null ? 'vs ' + num(m.b) + ' by the same date last month' : 'new-drill permits' } : null]);
-    pending.push(tl);
-    pending.push(el('div', { class: 'dr-cols' },
-      el('div', {}, el('h3', { text: 'Application types' }), stack(p.types.map(([k, n]) => ({ label: PERMIT_TYPE[k] || 'Type ' + k, value: n })))),
-      el('div', {}, el('h3', { text: 'Planned depth' }), histogram(p.rows.map((r) => r[5]).filter((v) => v > 0), [0, 5000, 7500, 10000, 12500, 15000], ['<5k', '5–7.5k', '7.5–10k', '10–12.5k', '12.5–15k', '15k+'], { unit: 'new-drill permits' }))));
-    pending.push(el('div', { class: 'dr-cols' },
-      el('div', {}, el('h3', { text: 'Counties' }), rankList(countyItems(p.counties), { color: 'var(--s2)' })),
-      el('div', {}, el('h3', { text: 'Operators' }), rankList(opItems(p.operators), { color: 'var(--s2)' }), el('h3', { class: 'dr-h3-gap', text: 'RRC districts' }), rankList(p.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s2)' }))));
-    pending.push(el('details', { class: 'dr-details' }, el('summary', { text: 'All ' + num(p.rows.length) + ' new-drill permits' + (p.newDrill > p.rows.length ? ' (the first ' + p.rows.length + ')' : '') }),
-      table([{ t: 'Permit' }, { t: 'County' }, { t: 'District' }, { t: 'Operator' }, { t: 'Depth (ft)', num: true }, { t: 'Well' }],
-        p.rows.map((r) => [S.open ? el('a', { href: hashFor(S.day, S.mode, { t: 'p', id: r[0] }), onclick: (e) => { e.preventDefault(); S.open({ t: 'p', id: r[0] }); }, text: r[0] }) : r[0], countyName(r[1]), r[2], opNode(r[3], r[4]), r[5] ? num(r[5]) : null, KIND[r[6]]]))));
-    return card('dr-sec', head('pin', 'Permits', 'Drilling permits issued ' + fmtDow(p.day), 'From the nightly Drilling Permit Master and Trailer file. No permits are issued on weekends, so Saturday, Sunday and Monday reports show Friday.'), ...pending);
-  }
-
-  function pendingSection(rep) {
-    const q = rep.pending;
-    if (!q) return card('dr-sec', head('clock', 'Queue', 'Permits pending approval'), el('p', { class: 'empty', text: 'No pending-approval set reached the RRC share on this day. The RRC copies a set to the share after 11 AM and after 5 PM, and skips some holidays.' }));
-    return card('dr-sec', head('clock', 'Queue', 'Applications waiting for approval', 'W-1s submitted since the previous run that were still pending when each set was written (' + q.sets.map((s) => (s.at.slice(0, 10) === rep.date ? '' : fmtDow(s.at.slice(0, 10)).split(',')[0] + ' ') + s.label + ': ' + s.n).join(', ') + ').'),
-      tiles([{ label: 'Waiting', value: num(q.total), note: 'from ' + q.operatorCount + ' operators' }, { label: 'Flagged to expedite', value: num(q.expedite), note: Math.round((q.expedite / q.total) * 100) + '% of the queue' },
-        { label: 'Horizontal', value: num(q.horizontal), note: Math.round((q.horizontal / q.total) * 100) + '%' }, { label: 'Amendments', value: num(q.amendments), note: 'changes to earlier permits' },
-        { label: 'Median planned depth', value: q.depth ? num(q.depth.median) + ' ft' : '—', note: q.depth ? 'deepest ' + num(q.depth.max) + ' ft' : '' }]),
-      el('div', { class: 'dr-cols' },
-        el('div', {}, el('h3', { text: 'RRC districts' }), rankList(q.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s1)' })),
-        el('div', {}, el('h3', { text: 'Operators' }), rankList(opItems(q.operators), { color: 'var(--s1)' }))),
-      el('div', { class: 'dr-cols' },
-        el('div', {}, el('h3', { text: 'Counties' }), rankList(countyItems(q.counties), { color: 'var(--s1)', empty: 'County detail was not recorded for this set.' })),
-        el('div', {}, el('h3', { text: 'When they were submitted' }), stack(q.submitted.map(([d, n]) => ({ label: fmtDow(d), value: n }))),
-          el('h3', { class: 'dr-h3-gap', text: 'Kinds of well' }), stack([{ label: 'Horizontal', value: q.horizontal }, { label: 'Directional', value: q.directional }, { label: 'Vertical', value: Math.max(0, q.total - q.horizontal - q.directional) }].filter((p) => p.value > 0)))),
-      el('details', { class: 'dr-details' }, el('summary', { text: 'The ' + num(q.rows.length) + ' applications' }),
-        table([{ t: 'Operator' }, { t: 'County' }, { t: 'District' }, { t: 'Depth (ft)', num: true }, { t: 'Well' }, { t: 'Expedite' }],
-          q.rows.map((r) => [opNode(r[0], r[1]), r[2] ? countyName(r[2]) : null, r[3], r[4] ? num(r[4]) : null, KIND[r[5]], r[6] ? 'Yes' : 'No']))));
-  }
-
-  function completionsSection(rep) {
-    const c = rep.completions;
-    if (!c) return card('dr-sec', head('drop', 'Completions', 'Completion data'), el('p', { class: 'empty', text: 'No completion file landed on this day.' }));
-    return card('dr-sec', head('drop', 'Completions', 'Completions ' + fmtDow(c.day), 'Forms submitted or approved that day: W-2 (oil), G-1 (gas), P-4, L-1, G-5, G-10, P-15 and W-12.'),
-      tiles([{ label: 'Approved', value: num(c.approved), note: num(c.submitted) + ' more submitted' }, { label: 'First tests of new wells', value: num(c.initial), note: 'initial potential filings' },
-        { label: 'Oil · gas', value: c.oil + ' · ' + c.gas, note: 'among first tests' }, { label: 'Horizontal', value: num(c.horizontal), note: c.initial ? Math.round((c.horizontal / c.initial) * 100) + '% of first tests' : '' },
-        { label: 'Operators', value: num(c.operatorCount), note: 'filed approved completions' }]),
-      c.topTests.length ? el('div', { class: 'dr-tests' }, c.topTests.slice(0, 4).map((t, i) => el('div', { class: 'dr-test' }, el('small', { text: i === 0 ? 'Best oil test' : 'Oil test #' + (i + 1) }), el('b', { text: num(t.rate) }), el('span', { text: 'bbl a day' }),
-        el('small', { text: t.county + ' · District ' + t.district + (t.horizontal ? ' · horizontal' : '') + (t.operator ? ' · ' + t.operator : '') })))) : null,
-      el('div', { class: 'dr-cols' },
-        el('div', {}, el('h3', { text: 'Why they were filed' }), stack(c.purpose.map(([k, n]) => ({ label: k, value: n })))),
-        el('div', {}, el('h3', { text: 'Kinds of first test' }), stack(c.ctype.map(([k, n]) => ({ label: k, value: n }))))),
-      el('div', { class: 'dr-cols' },
-        el('div', {}, el('h3', { text: 'Forms in approved packets' }), rankList(c.forms.map(([k, n]) => ({ label: k, value: n })), { color: 'var(--s3)' })),
-        el('div', {}, el('h3', { text: 'RRC districts' }), rankList(c.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s3)' }))),
-      el('div', { class: 'dr-cols' },
-        el('div', {}, el('h3', { text: 'Counties' }), rankList(countyItems(c.counties), { color: 'var(--s3)' })),
-        el('div', {}, el('h3', { text: 'Operators' }), rankList(opItems(c.operators), { color: 'var(--s3)' }))));
-  }
-
-  function imagesSection(rep) {
-    const im = rep.images || {};
-    const cut = S.index.days.findIndex((r) => r.d === rep.date);
-    const defs = [['w1images', 'w1', 'W-1 permit images', 'var(--s2)'], ['dirsurveys', 'ds', 'Directional surveys', 'var(--s7)'], ['complimages', 'cm', 'Completion images', 'var(--s3)']];
-    const cards = defs.map(([id, key, title, color]) => {
-      const s = im[id]; const hist = S.index.days.slice(Math.max(0, cut - 29), cut + 1).map((r) => r[key]).filter((v) => v != null);
-      const med = hist.length > 4 ? [...hist].sort((a, b) => a - b)[Math.floor(hist.length / 2)] : null;
-      const w1 = id === 'w1images' && s && s.districts.length ? stack(s.districts.slice(0, 6).map(([d, n]) => ({ label: 'District ' + d, value: n })), { format: mb }) : null;
-      const box = el('div', { class: 'dr-img' }, el('p', { class: 'eyebrow' }, icon(ICONS[id], 15), title),
-        s ? el('b', { class: 'dr-img-num', text: mb(s.bytes) }) : el('b', { class: 'dr-img-num', text: '—' }),
-        el('small', { text: s ? (s.empty ? 'An empty pack: nothing filed for ' + fmtMd(s.day) : 'Pack for ' + fmtDow(s.day)) + (med ? ' · 30-day median ' + Math.round(med) + ' MB' : '') : 'Nothing landed this day' }),
-        hist.length > 3 ? spark(hist, { w: 220, h: 40, color, label: title + ' size, last 30 days' }) : null, w1);
-      return box;
-    });
-    return card('dr-sec', head('layers', 'Image packs', 'The three image packs', 'The RRC publishes these as zips of PDF and TIFF images. The size of each is read for every day, so volume stands in for filing activity; days captured live also open the zip (next section).'), el('div', { class: 'dr-imgs' }, cards));
-  }
-
-  // what the packs held that day: documents by kind and a sheet of first pages shrunk and blurred so nothing reads (live days since previews began)
-  function packPagesSection(rep) {
-    const im = rep.images || {};
-    const defs = [['w1images', 'W-1 permit images', 'var(--s2)'], ['dirsurveys', 'Directional surveys', 'var(--s7)'], ['complimages', 'Completion images', 'var(--s3)']];
-    const rows = defs.filter(([id]) => im[id] && im[id].docs && im[id].docs.n).map(([id, title, color]) => {
-      const s = im[id]; const d = s.docs;
-      const info = el('div', { class: 'dr-pack-info' }, el('p', { class: 'eyebrow' }, icon(ICONS[id], 15), title),
-        el('b', { class: 'dr-img-num', text: num(d.n) + (d.n === 1 ? ' document' : ' documents') }),
-        el('small', { text: 'Pack for ' + fmtDow(s.day) + (d.packets ? ' · from ' + num(d.packets) + ' completion packets' : '') }),
-        rankList(d.types.map(([k, n]) => ({ label: k, value: n })), { color }));
-      const ok = s.sheet && /^[\w.-]+\.jpg$/.test(s.sheet.file);
-      const fig = ok ? el('figure', { class: 'dr-pack-fig' },
-        el('img', { class: 'dr-sheet', src: 'data/daily/img/' + s.sheet.file, width: s.sheet.w, height: s.sheet.h, loading: 'lazy', decoding: 'async',
-          alt: 'Contact sheet: blurred page one of ' + s.sheet.tiles + ' documents from the ' + title + ' pack, too small to read.' }),
-        el('figcaption', { text: 'Page one of ' + s.sheet.tiles + ' of the ' + num(d.n) + ' documents, one kind after another, shrunk to ' + s.sheet.px + ' pixels wide' + (s.sheet.blur ? ' and blurred' : '') + '.' }))
-        : el('p', { class: 'fine', text: 'No page preview could be drawn for this pack.' });
-      return el('div', { class: 'dr-pack' }, info, fig);
-    });
-    if (!rows.length) return null;
-    return card('dr-sec', head('layers', 'Inside the packs', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. These sheets are shrunk and blurred on purpose so that nothing can be read, and the completion images are never published. The W-1 letters and plats of the day\'s new-drill permits and the day\'s directional surveys are different: they are published readable, each on its drill\'s page (GPS map above). Days before previews began show sizes only.'), ...rows);
-  }
-
-  function healthSection(rep) {
-    const live = rep.kind === 'live';
-    const chipFor = (d) => (d.error ? chip('bad', 'Error') : d.state === 'new' ? chip('good', 'Updated') : d.state === 'same' ? chip('warn', 'No change') : d.state === 'first' ? chip('quiet', 'First capture') : chip('quiet', 'Reconstructed'));
-    const rows = rep.datasets.map((d) => [el('span', { class: 'dr-dsname' }, icon(ICONS[d.id], 15), TITLES[d.id]), d.cadence ? el('span', { title: d.cadence, text: d.cadence.replace(/,.*$/, '') }) : '—', d.dataDay ? fmtMd(d.dataDay) : '—', d.file ? el('code', { text: d.file.name }) : '—',
-      d.file ? listed(d.file.modified) : '—', d.file && d.file.bytes != null ? mb(d.file.bytes) : '—', d.files != null ? num(d.files) : '—', chipFor(d)]);
-    const kids = [table([{ t: 'Dataset' }, { t: 'RRC says' }, { t: 'Data day' }, { t: 'Newest file' }, { t: 'Listed' }, { t: 'Size', num: true }, { t: 'Files on share', num: true }, { t: 'Status' }], rows, { cap: 'dr-table flat' })];
-    if (live && rep.catalog) {
-      const c = rep.catalog;
-      kids.push(el('p', { class: 'fine', text: 'The RRC page lists ' + c.datasets + ' data sets; ' + c.nightly.length + ' are nightly or twice daily' + (c.unknown.length ? '. New nightly sets this report does not read: ' + c.unknown.join('; ') + '.' : ', the same ones this report reads.') }));
+      { label: 'Days to approval', value: p.wait ? String(p.wait.median) : '—', note: p.wait ? 'median · longest ' + p.wait.max : id === 'TX' ? 'receipt to issue' : 'filing to approval' });
     }
-    if (live && rep.monthly) {
-      kids.push(el('h3', { class: 'dr-h3-gap', text: 'Monthly files the site is built from' }),
+    const kids = [tiles([
+      { label: 'New-drill permits', value: num(nd), note: (ps.length > 1 ? ps.map((x) => x.id + ' ' + num(x.p.newDrill)).join(' · ') + ' · ' : '') + 'of ' + num(total) + ' ' + (only() === 'OK' ? 'approved' : 'issued') + onlyNote(ids) },
+      ...stateTiles,
+      { label: 'Operators', value: num(sumOf(ps.map((x) => x.p.operatorCount))), note: share != null ? Math.round(share * 100) + '% can be named' : '' },
+      { label: 'Counties', value: num(sumOf(ps.map((x) => x.p.countyCount))), note: top ? clabel(top.id, top.name) + ' led' : '' },
+      { label: 'Amended that day', value: num(sumOf(ps.map((x) => x.p.amended))), note: 'earlier permits changed' },
+      m ? { label: 'Month to date', value: num(m.a), note: m.b != null ? 'vs ' + num(m.b) + ' by the same date last month' : 'new-drill permits' } : null])];
+    if (ps.length > 1) {
+      // the two files do not measure the same things (Texas knows which wells are horizontal, Oklahoma only the planned depth), so side by side, not summed
+      const cell = (id, fn) => { const x = ps.find((q) => q.id === id); return x ? fn(x.p) : '—'; };
+      const rows = [
+        ['Permit day', (p) => fmtDow(p.day)], ['New-drill permits', (p) => num(p.newDrill)], ['Other filings that day', (p) => num(p.total - p.newDrill)],
+        ['Horizontal, or planned 12,000 ft or deeper', (p, id) => (id === 'TX' ? pctOf(p.horizontal, p.newDrill) + ' horizontal' : pctOf(p.deep, p.newDrill) + ' deep')],
+        ['Median planned depth', (p) => (p.depth ? num(p.depth.median) + ' ft' : '—')], ['Days to approval, median', (p) => (p.wait ? String(p.wait.median) : '—')],
+        ['Operators', (p) => num(p.operatorCount) + (p.namedShare != null ? ' · ' + Math.round(p.namedShare * 100) + '% named' : '')], ['Counties', (p) => num(p.countyCount)], ['Amended that day', (p) => num(p.amended)]];
+      kids.push(table([{ t: 'By state' }, ...S.states.map((id) => ({ t: sname(id) }))], rows.map(([label, fn]) => [label, ...S.states.map((id) => cell(id, (p) => fn(p, id)))]), { cap: 'dr-table flat' }));
+    }
+    kids.push(byState(ps, ({ id, p }) => (id === 'TX'
+      ? [[el('h3', { text: 'Application types' }), stack(p.types.map(([k, n]) => ({ label: PERMIT_TYPE[k] || 'Type ' + k, value: n })))],
+        [el('h3', { text: 'Planned depth' }), histogram(p.rows.map((r) => r[5]).filter((v) => v > 0), [0, 5000, 7500, 10000, 12500, 15000], ['<5k', '5–7.5k', '7.5–10k', '10–12.5k', '12.5–15k', '15k+'], { unit: 'new-drill permits' })],
+        [el('h3', { text: 'RRC districts' }), rankList(p.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s2)' })]]
+      : pair([[el('h3', { text: 'Kinds of filing' }), stack(p.types.map(([k, n]) => ({ label: k, value: n })))],
+        [el('h3', { text: 'Planned depth' }), p.newDrill ? rankList(p.bands.map(([k, n]) => ({ label: k, value: n })), { color: 'var(--s2)', max: Math.max(1, ...p.bands.map((b) => b[1])) }) : el('p', { class: 'fine', text: 'No new-drill permits.' })],
+        p.classes.length ? [el('h3', { text: 'Kinds of well' }), stack(p.classes.map(([k, n]) => ({ label: k, value: n })))] : null]))));
+    kids.push(colsOf(['Counties', 'Operators'], counties(ps.map(({ id, p }) => ({ id, rows: p.counties })), 'var(--s2)'), operators(ps.map(({ id, p }) => ({ id, rows: p.operators })), 'var(--s2)')));
+    if (R().TX && R().TX.permits && ids.includes('TX')) kids.push(tx.permitRows(R().TX));
+    const sub = 'From the nightly Drilling Permit Master and Trailer file' + (multi() ? ' (Texas) and the Commission\'s daily intent-to-drill file (Oklahoma)' : '') + '. No permits are issued on weekends, so Saturday, Sunday and Monday reports show Friday.';
+    return card('dr-sec', head('pin', 'Permits', 'New-drill permits ' + issued() + ' ' + [...new Set(ps.map((x) => fmtDow(x.p.day)))].join(' and '), sub), ...kids);
+  }
+
+  function completionsSection() {
+    const items = have('completions').map((id) => ({ id, c: R()[id].completions }));
+    if (!items.length) return card('dr-sec', head('drop', 'Completions', 'Completion data'), el('p', { class: 'empty', text: 'No completion data landed for this day.' }));
+    const nOf = ({ id, c }) => (id === 'TX' ? c.approved : c.filed);
+    const kids = [];
+    const total = sumOf(items.map(nOf));
+    const lead = { label: 'Completions', value: num(total), note: multi() ? items.map((x) => x.id + ' ' + num(nOf(x)) + (x.id === 'TX' ? ' approved' : ' filed')).join(' · ') + onlyNote(items.map((x) => x.id))
+      : items[0].id === 'TX' ? num(items[0].c.submitted) + ' more submitted' : items[0].c.amended ? 'plus ' + num(items[0].c.amended) + ' amended' : 'none amended' };
+    const opCount = { label: 'Operators', value: num(sumOf(items.map((x) => x.c.operatorCount))), note: 'filed completions' };
+    if (items.length === 1) {
+      const { id, c } = items[0];
+      kids.push(tiles(id === 'TX'
+        ? [{ ...lead, label: 'Approved' }, { label: 'First tests of new wells', value: num(c.initial), note: 'initial potential filings' }, { label: 'Oil · gas', value: c.oil + ' · ' + c.gas, note: 'among first tests' },
+          { label: 'Horizontal', value: num(c.horizontal), note: c.initial ? Math.round((c.horizontal / c.initial) * 100) + '% of first tests' : '' }, opCount]
+        : [{ ...lead, label: 'Filed' }, { label: 'Horizontal', value: num(c.horizontal), note: c.filed ? pctOf(c.horizontal, c.filed) + ' of filings' : '' },
+          { label: 'Filed after first production', value: c.lag ? pl(c.lag.median, 'day') : '—', note: c.lag ? 'median · longest ' + c.lag.max : 'where a first-production date is on file' },
+          { label: 'Spud to first production', value: c.spudToProd ? pl(c.spudToProd.median, 'day') : '—', note: 'median, where both dates are on file' },
+          { ...opCount, note: c.namedShare != null ? Math.round(c.namedShare * 100) + '% can be named' : '' }, { label: 'Counties', value: num(c.countyCount), note: c.counties[0] ? c.counties[0][1] + ' led' : '' }]));
+    } else {
+      kids.push(tiles([lead, opCount, { label: 'Counties', value: num(sumOf(items.map((x) => (x.c.countyCount != null ? x.c.countyCount : x.c.counties.length)))), note: 'with a completion' }]));
+      const cell = (id, fn) => { const x = items.find((q) => q.id === id); return x ? fn(x.c) : '—'; };
+      const rows = [
+        ['Completion day', (c) => fmtDow(c.day)],
+        ['Completions', (c, id) => (id === 'TX' ? num(c.approved) + ' approved · ' + num(c.submitted) + ' more submitted' : num(c.filed) + ' filed' + (c.amended ? ' · ' + num(c.amended) + ' amended' : ''))],
+        ['First tests of new wells', (c, id) => (id === 'TX' ? num(c.initial) : '—')], ['Oil · gas, among first tests', (c, id) => (id === 'TX' ? c.oil + ' · ' + c.gas : '—')],
+        ['Horizontal', (c, id) => num(c.horizontal) + (id === 'TX' ? (c.initial ? ' · ' + Math.round((c.horizontal / c.initial) * 100) + '% of first tests' : '') : (c.filed ? ' · ' + pctOf(c.horizontal, c.filed) + ' of filings' : ''))],
+        ['Filed after first production, median', (c, id) => (id === 'OK' && c.lag ? pl(c.lag.median, 'day') : '—')], ['Operators', (c) => num(c.operatorCount)]];
+      kids.push(table([{ t: 'By state' }, ...S.states.map((id) => ({ t: sname(id) }))], rows.map(([label, fn]) => [label, ...S.states.map((id) => cell(id, (c) => fn(c, id)))]), { cap: 'dr-table flat' }));
+    }
+    // the best first tests of the states shown, largest oil rate first
+    const tests = [];
+    items.forEach(({ id, c }) => {
+      if (id === 'TX') c.topTests.forEach((t) => tests.push({ id, oil: t.rate, county: t.county, horizontal: t.horizontal, operator: t.operator, extra: 'District ' + t.district }));
+      else c.tests.forEach((t) => tests.push({ id, oil: t.oil || 0, gas: t.gas, county: t.county, horizontal: t.horizontal, operator: t.operator }));
+    });
+    tests.sort((a, b) => (b.oil || 0) - (a.oil || 0) || (b.gas || 0) - (a.gas || 0));
+    if (tests.length) {
+      kids.push(el('div', { class: 'dr-tests' }, tests.slice(0, 4).map((t, i) => el('div', { class: 'dr-test' },
+        el('small', { text: i === 0 ? 'Best first test' : 'Test #' + (i + 1) }), el('b', { text: num(t.oil || t.gas) }), el('span', { text: t.oil ? 'bbl of oil a day' : 'mcf of gas a day' }),
+        el('small', { text: t.county + ' County' + (multi() ? ', ' + t.id : '') + (t.extra ? ' · ' + t.extra : '') + (t.horizontal ? ' · horizontal' : '') + (t.oil && t.gas ? ' · ' + num(t.gas) + ' mcf of gas' : '') + (t.operator ? ' · ' + t.operator : '') })))));
+    }
+    kids.push(byState(items, ({ id, c }) => (id === 'TX'
+      ? [[el('h3', { text: 'Why they were filed' }), stack(c.purpose.map(([k, n]) => ({ label: k, value: n })))], [el('h3', { text: 'Kinds of first test' }), stack(c.ctype.map(([k, n]) => ({ label: k, value: n })))],
+        [el('h3', { text: 'Forms in approved packets' }), rankList(c.forms.map(([k, n]) => ({ label: k, value: n })), { color: 'var(--s3)' })],
+        [el('h3', { text: 'RRC districts' }), rankList(c.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s3)' })]]
+      : [[el('h3', { text: 'Kinds of well' }), stack(c.types.map(([k, n]) => ({ label: k, value: n })))],
+        [el('h3', { text: 'Formations' }), c.formations.length ? rankList(c.formations.map(([k, n]) => ({ label: k, value: n })), { color: 'var(--s3)' }) : el('p', { class: 'fine', text: 'No formation is named on these filings.' })]])));
+    kids.push(colsOf(['Counties', 'Operators'], counties(items.map(({ id, c }) => ({ id, rows: c.counties })), 'var(--s3)'), operators(items.map(({ id, c }) => ({ id, rows: c.operators })), 'var(--s3)')));
+    const sub = multi() ? 'Texas: forms (W-2, G-1, P-4, L-1, G-5, G-10, P-15, W-12) submitted or approved that day. Oklahoma: completion forms (1002A) filed that day, each well counted once per filing day. The two are counted differently, so they are shown side by side as well as added.'
+      : items[0].id === 'TX' ? 'Forms submitted or approved that day: W-2 (oil), G-1 (gas), P-4, L-1, G-5, G-10, P-15 and W-12.' : 'Completion forms (1002A) filed that day. The file holds a row for every casing string and test, so each well is counted once per filing day; amended filings are counted apart.';
+    return card('dr-sec', head('drop', 'Completions', 'Completions ' + [...new Set(items.map((x) => fmtDow(x.c.day)))].join(' and '), sub), ...kids);
+  }
+
+  function healthSection() {
+    const reps = S.states.filter((id) => S.reps[id]);
+    const chipFor = (d) => (d.error ? chip('bad', 'Error') : d.absent ? chip('quiet', 'Live days only') : d.state === 'new' ? chip('good', 'Updated') : d.state === 'same' ? chip('warn', 'No change') : d.state === 'first' ? chip('quiet', 'First capture') : chip('quiet', 'Reconstructed'));
+    const rows = reps.flatMap((id) => S.reps[id].datasets.map((d) => [el('span', { class: 'dr-dsname' }, icon(ICONS[id][d.id], 15), (multi() ? sname(id) + ' · ' : '') + TITLES[id][d.id]), d.cadence ? el('span', { title: d.cadence, text: d.cadence.replace(/,.*$/, '') }) : '—',
+      d.dataDay ? fmtMd(d.dataDay) : '—', d.file ? el('code', { text: d.file.name }) : '—', d.file ? listed(d.file.modified) : '—', d.file && d.file.bytes != null ? mb(d.file.bytes) : '—', d.files != null ? num(d.files) : '—', chipFor(d)]));
+    const kids = [];
+    if (rows.length) kids.push(table([{ t: 'Dataset' }, { t: 'Commission says' }, { t: 'Data day' }, { t: 'Newest file' }, { t: 'Listed' }, { t: 'Size', num: true }, { t: 'Files on share', num: true }, { t: 'Status' }], rows, { cap: 'dr-table flat' }));
+    else kids.push(el('p', { class: 'empty', text: 'No report was loaded for this day.' }));
+    const tag = (id) => (multi() ? sname(id) + ': ' : '');
+    for (const id of reps) {
+      const rep = S.reps[id]; const c = rep.catalog;
+      if (rep.kind !== 'live' || !c) continue;
+      kids.push(el('p', { class: 'fine', text: id === 'TX'
+        ? tag(id) + 'The RRC page lists ' + c.datasets + ' data sets; ' + c.nightly.length + ' are nightly or twice daily' + (c.unknown.length ? '. New nightly sets this report does not read: ' + c.unknown.join('; ') + '.' : ', the same ones this report reads.')
+        : tag(id) + 'The Commission\'s data page lists ' + c.nightly.length + ' files it refreshes daily or nightly; this report reads the ' + rep.datasets.length + ' that carry drilling and well activity' +
+          (c.unknown.length ? '. New ones it does not read: ' + c.unknown.join('; ') + '.' : '. The rest are master copies of the same records, a map copy of the well file, an incident list that runs weeks behind and contact lists this site does not use.') }));
+    }
+    const tm = S.reps.TX;
+    if (tm && tm.kind === 'live' && tm.monthly) {
+      kids.push(el('h3', { class: 'dr-h3-gap', text: 'Monthly files the site is built from (Texas)' }),
         table([{ t: 'File' }, { t: 'Newest on the RRC share' }, { t: 'Listed' }, { t: 'Site built from' }, { t: 'Status' }],
-          rep.monthly.map((m) => [m.title, m.file ? el('code', { text: m.file }) : '—', listed(m.modified), m.siteBuilt || '—', m.error ? chip('bad', 'Not read') : m.newer ? chip('bad', 'Newer file waiting') : m.siteBuilt ? chip('good', 'Current') : chip('quiet', 'Not tracked')]), { cap: 'dr-table flat' }),
+          tm.monthly.map((m) => [m.title, m.file ? el('code', { text: m.file }) : '—', listed(m.modified), m.siteBuilt || '—', m.error ? chip('bad', 'Not read') : m.newer ? chip('bad', 'Newer file waiting') : m.siteBuilt ? chip('good', 'Current') : chip('quiet', 'Not tracked')]), { cap: 'dr-table flat' }),
         el('p', { class: 'fine', text: 'The site\'s county, operator and company tables come from these monthly files. When a newer one appears, those tables are due for a rebuild; the daily report above does not depend on it.' }));
     }
-    return card('dr-sec', head('check', 'Source health', 'Is everything arriving?', live ? 'What each nightly file looked like when it was read.' : 'This day was rebuilt from the RRC file history, so file times are not available.'), ...kids);
+    const allLive = reps.length > 0 && reps.every((id) => S.reps[id].kind === 'live');
+    return card('dr-sec', head('check', 'Source health', 'Is everything arriving?', allLive ? 'What each file looked like when it was read.' : 'Days not captured live were rebuilt from the commissions\' file history, so file times are not available for them.'), ...kids);
   }
 
-  // one cell per calendar day: permits by the day they were issued (the next report shows them), the rest by report day
+  // one cell per calendar day. Permits sit on the day they were issued and open the next report, which shows them; every other
+  // figure sits on the report day that shows it.
+  const METRICS = {
+    permits: { label: 'New-drill permits issued', fmt: (v) => num(v) + ' new-drill permits issued', none: 'No permits issued (weekend or holiday)' },
+    pending: { label: 'Waiting for approval · Texas', need: 'TX', get: (e) => (e.r.TX ? e.r.TX.q : null), fmt: (v) => num(v) + ' applications waiting', none: 'No pending set recorded' },
+    completions: { label: 'Completions', get: completionsOf, fmt: (v) => num(v) + ' completions', none: 'No completion data' },
+    transfers: { label: 'Wells changing operator · Oklahoma', need: 'OK', get: (e) => (e.r.OK ? e.r.OK.t : null), fmt: (v) => num(v) + ' wells changed operator', none: 'No transfers on file for this day' },
+    volume: { label: 'Image pack volume · Texas', need: 'TX', get: (e) => (e.r.TX ? e.r.TX.vol : null), fmt: (v) => Math.round(v) + ' MB of image packs', none: 'No pack sizes read' },
+  };
+  const metrics = () => Object.entries(METRICS).filter(([, m]) => !m.need || S.states.includes(m.need));
   function calCells(id) {
-    const days = S.index.days; const byDay = new Map(days.map((r) => [r.d, r]));
-    if (id === 'permits' && S.series) {
-      const s = S.series;
-      return s.days.map((d, i) => { const next = addDays(d, 1); const open = byDay.has(next) ? next : null; return { d, v: s.newDrill[i] > 0 ? s.newDrill[i] : null, open, live: !!open && byDay.get(open).k === 'live' }; });
+    const byDay = new Map(S.days.map((e) => [e.d, e]));
+    if (id === 'permits') {
+      const ss = S.states.map((s) => S.series[s]).filter((s) => s && s.lo);
+      if (!ss.length) return [];
+      const lo = ss.map((s) => s.lo).sort()[0]; const hi = ss.map((s) => s.hi).sort().pop(); const cells = [];
+      for (let d = lo; d <= hi; d = addDays(d, 1)) {
+        const vs = ss.map((s) => s.get(d)).filter(Boolean); const v = sumOf(vs.map((x) => x.n));
+        const next = addDays(d, 1); const e = byDay.get(next);
+        cells.push({ d, v: v > 0 ? v : null, open: e ? next : null, live: !!e && e.live });
+      }
+      return cells;
     }
-    return days.map((r) => ({ d: r.d, v: METRICS[id].get(r), open: r.d, live: r.k === 'live' }));
+    return S.days.map((e) => ({ d: e.d, v: METRICS[id].get(e), open: e.d, live: e.live }));
   }
 
   function archiveSection() {
-    const days = S.index.days;
+    const days = S.days;
     const host = el('div', { class: 'dr-cal-host' });
+    if (!metrics().some(([id]) => id === S.metric)) S.metric = 'permits';
     const paint = () => {
-      const m = METRICS[S.metric];
-      host.replaceChildren(calendar({ cells: calCells(S.metric), selected: S.day, label: m.label + ' by day', format: m.fmt, none: m.none, onPick: (d) => { go(d, S.mode); window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); } }),
-        el('p', { class: 'fine', text: 'Paler is lower, deeper is higher. Select a day to open its report. Permits sit on the day they were issued and open the next day\'s report. Bordered days were captured live; the rest were rebuilt from the RRC file history.' }));
+      const m = METRICS[S.metric]; const cells = calCells(S.metric);
+      host.replaceChildren(cells.length > 1 ? calendar({ cells, selected: S.day, label: m.label + ' by day', format: m.fmt, none: m.none, onPick: (d) => { go(d, S.mode); window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); } }) : el('p', { class: 'empty', text: 'Nothing to show yet.' }),
+        el('p', { class: 'fine', text: 'Paler is lower, deeper is higher. Select a day to open its report. Permits sit on the day they were issued and open the next day\'s report; every other figure sits on the report that shows it. Bordered days were captured live; the rest were rebuilt from the commissions\' file history.' }));
     };
-    const seg = segmented({ label: 'Calendar figure', options: Object.entries(METRICS).map(([id, m]) => ({ id, label: m.label })), value: S.metric, tabs: false, prefix: 'drc', onChange: (id) => { S.metric = id; paint(); } });
+    const seg = segmented({ label: 'Calendar figure', options: metrics().map(([id, m]) => ({ id, label: m.label })), value: S.metric, tabs: false, prefix: 'drc', onChange: (id) => { S.metric = id; paint(); } });
     paint();
     return card('dr-sec', head('calendar', 'Archive', 'Every day, three months', 'Pick a figure and a day. ' + days.length + ' reports from ' + fmtMd(days[0].d) + ' to ' + fmtMd(days[days.length - 1].d) + '.'), el('div', { class: 'dr-maptools' }, seg.el), host);
   }
 
-  function notesSection(rep) {
+  function notesSection() {
     const li = (...k) => el('li', {}, ...k);
-    return card('dr-sec dr-notes', head('bulb', 'How to read this', 'Notes and limits'), el('ul', { class: 'plain' },
-      li(strong('What a day shows. '), 'A report holds what landed on each RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. Each card says which day its data is from.'),
-      li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt from the RRC\'s file history by the same rule: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day. The catalog check and file states only exist for days captured live.'),
-      li(strong('Permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. GPS points come from the Railroad Commission\'s public map service (its Well Locations layer, matched by API number), so a permit can have none until the RRC maps it.'),
-      li(strong('Pending queue. '), 'Each set holds W-1s submitted since the previous run that were still waiting; it is not a running total, and a permit leaves it when approved.'),
-      li(strong('Times. '), 'File times are shown as the RRC share lists them, which is Central time. The report date is the Central-time day the capture ran.'),
-      li(strong('Privacy. '), 'Operators are named only when they are corporations, LLCs or limited partnerships, and this site\'s own pages leave out lease names, well numbers and anything about individuals. One deliberate exception: each drill\'s page links to the Railroad Commission\'s scanned W-1 letter, plat and directional survey, published unmodified as GitHub release files. They are public records and can carry the names, phone numbers and addresses of individuals; nothing is redacted. Completion images stay blurred and unpublished.')));
+    const T = S.states.includes('TX'); const O = S.states.includes('OK');
+    const items = [];
+    items.push(li(strong('What a day shows. '), 'A report holds what each commission published, and each card says which day its data is from. ' + (T ? 'Texas: what landed on the RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. ' : '') + (O ? 'Oklahoma: the newest day before the report on which the Commission\'s files hold anything, so Monday\'s report shows Friday\'s approvals, filings and transfers. Only whole days are shown: the Commission\'s daily files are made around 7:40 PM Central, and a day is not counted until it is over.' : '')));
+    if (multi()) {
+      items.push(li(strong('Both states together. '), 'Permits and completions are added across the states; everything is also shown by state, because the files differ. Texas says which permits are horizontal and Oklahoma only gives planned depth, so those two are never added. Texas counts completion forms approved that day, Oklahoma counts completion filings (one per well and day), so the total is a count of completion paperwork, not of wells. Two states can show different permit days on the same report (a state with no approvals on a day shows the one before). A county is always named with its state, because the two states share county names. If a state has no report for a day, that is said at the top and it is left out of every total, chart and average on the page, not counted as zero.'));
+    }
+    items.push(li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt by the same rule from the commissions\' file history' + (T ? ' (Texas: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day' + (O ? '; ' : ')') : '') + (O ? (T ? '' : ' (') + 'Oklahoma: the master files of intents to drill and completions, and the transfer file for as far back as it goes, about a month. Its well inventory cannot be rebuilt: only days captured live have it)' : '') + '. The catalog check and file states only exist for days captured live.'));
+    if (T) {
+      items.push(li(strong('Texas permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. GPS points come from the Railroad Commission\'s public map service (its Well Locations layer, matched by API number), so a permit can have none until the RRC maps it.'));
+      items.push(li(strong('Texas pending queue. '), 'Each set holds W-1s submitted since the previous run that were still waiting; it is not a running total, and a permit leaves it when approved.'));
+    }
+    if (O) {
+      items.push(li(strong('Oklahoma permits. '), 'New-drill means application type DR with an approval date; rejected and deleted applications are left out. Times in the files are UTC and are turned into Central days. The file does not say which permits are horizontal, so the report shows planned depth instead and calls a well planned to 12,000 feet or more deep (about three in four of the new-drill permits in this archive). Oklahoma approves far fewer permits a day than Texas (about 3 against 31), so single days swing a lot; read the averages.'));
+      items.push(li(strong('Oklahoma completions and transfers. '), 'The completion file holds a row for every casing string and test. Rows are folded to one filing per well and day, and amended filings are counted apart. A filing is dated by the day it was created. A transfer counts a well whose operator changed; one sale can move hundreds of wells in a day.'));
+      items.push(li(strong('Oklahoma well inventory. '), 'The nightly well file has a record for every well ever drilled in the state, about 457,000, most of them plugged. Active wells are the ones with status AC. It is counted, never listed.'));
+    }
+    items.push(li(strong('Times. '), 'File times are shown as the share lists them (Central). The report date is the Central-time day the capture ran.'));
+    items.push(li(strong('Privacy. '), 'Operators are named only when they are corporations, LLCs or limited partnerships, and this site\'s own pages leave out lease names, well numbers, API numbers and anything about individuals' + (O ? '; the Oklahoma Commission\'s operator, purchaser and plugger contact lists are not read' : '') + '.' + (T ? ' One deliberate exception: each Texas drill\'s page links to the Railroad Commission\'s scanned W-1 letter, plat and directional survey, published unmodified as GitHub release files. They are public records and can carry the names, phone numbers and addresses of individuals; nothing is redacted. Completion images stay blurred and unpublished.' : '')));
+    return card('dr-sec dr-notes', head('bulb', 'How to read this', 'Notes and limits'), el('ul', { class: 'plain' }, items));
   }
 
   /* ---------- page ---------- */
   function render() {
-    const rep = S.rep;
     const ae = document.activeElement;
     const keep = ae && root.contains(ae) ? (ae.id || (ae.dataset && ae.dataset.act) || null) : null;
-    const kids = [hero(rep), ribbonCard(), kpiRow(rep), el('div', { class: 'dr-grid2' }, el('div', { class: 'dr-col' }, trendCard(rep), storyCard(rep)), mapCard(rep)), gpsCard(rep), statusStrip(rep)];
+    const rtx = S.reps.TX;
+    S.open = null; S.gpsEl = null; // set again by the GPS card when it is on the page
+    const gps = rtx ? tx.gpsCard(rtx) : null;
+    const kids = [hero(), ribbonCard(), kpiRow(), el('div', { class: 'dr-grid2' }, el('div', { class: 'dr-col' }, trendCard(), storyCard()), mapCard()), gps, contextCard(), statusStrips()];
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {
-      kids.push(permitsSection(rep), pendingSection(rep), completionsSection(rep), imagesSection(rep), packPagesSection(rep), healthSection(rep), archiveSection(), notesSection(rep));
+      kids.push(permitsSection(), rtx ? tx.pendingSection(rtx) : null, completionsSection(), S.reps.OK ? transfersSection(S.reps.OK) : null, S.reps.OK ? wellsSection(S.reps.OK) : null,
+        rtx ? tx.imagesSection(rtx) : null, rtx ? tx.packPagesSection(rtx) : null, healthSection(), archiveSection(), notesSection());
     }
     const nodes = kids.filter(Boolean);
     nodes.forEach((n, i) => n.style.setProperty('--d', String(Math.min(i, 9))));
@@ -529,21 +613,35 @@ export function createDailyView({ root }) {
   async function show(day) {
     const seq = ++S.seq;
     S.day = day;
-    let rep;
-    try { rep = await load('daily/' + day); } catch (e) { root.replaceChildren(h1, el('p', { class: 'empty', text: 'That day\'s report could not be loaded. Reload the page to try again.' })); return; }
+    // a state is asked for the report only when its index lists the day; undefined means it has none, null that loading it failed
+    const got = await Promise.all(S.states.map((id) => (S.idx[id].days.some((r) => r.d === day) ? loadOpt(stateOf(id).dir + '/' + day) : Promise.resolve(undefined))));
     if (seq !== S.seq) return;
-    S.rep = rep;
+    S.reps = {}; S.miss = {};
+    S.states.forEach((id, i) => { if (got[i]) S.reps[id] = got[i]; else S.miss[id] = got[i] === undefined ? 'none' : 'error'; });
+    if (!Object.keys(S.reps).length) { root.replaceChildren(h1, el('p', { class: 'empty', text: 'That day\'s report could not be loaded. Reload the page to try again.' })); return; }
     render();
     if (S.sel && S.gpsEl) requestAnimationFrame(() => S.gpsEl.scrollIntoView({ block: 'start', behavior: 'auto' })); // a shared drill link opens on its page
     document.title = fmtLong(day).replace(/, \d{4}$/, '') + ' · Daily report · Texas Oil & Gas Leads';
-    const i = S.index.days.findIndex((r) => r.d === day);
-    [i - 1, i + 1].forEach((k) => { if (S.index.days[k]) loadOpt('daily/' + S.index.days[k].d); });
+    const i = S.days.findIndex((e) => e.d === day);
+    [i - 1, i + 1].forEach((k) => { if (S.days[k]) S.states.forEach((id) => { if (S.days[k].r[id]) loadOpt(stateOf(id).dir + '/' + S.days[k].d); }); });
   }
 
   function go(day, mode) {
     S.mode = mode;
     if (day !== S.day) S.sel = null; // a drill belongs to its day; switching between the simple and verbose report keeps it
     const hash = hashFor(day, mode, S.sel);
+    if (location.hash !== hash) history.pushState(null, '', hash);
+    return show(day);
+  }
+
+  // "Show": both states, or one. The days listed are the days those states have, so the selected day stays when it is still there
+  function setStates(key) {
+    const next = key === 'all' ? S.avail.slice() : [key];
+    if (next.join() === S.states.join()) return;
+    S.states = next; setDays();
+    if (!S.states.includes('TX')) S.sel = null;
+    const day = S.days.some((e) => e.d === S.day) ? S.day : latest();
+    const hash = hashFor(day, S.mode, S.sel);
     if (location.hash !== hash) history.pushState(null, '', hash);
     return show(day);
   }
@@ -557,12 +655,14 @@ export function createDailyView({ root }) {
           return;
         }
       }
-      const want = params.get('d'); const days = S.index.days;
-      const day = days.some((r) => r.d === want) ? want : days[days.length - 1].d;
-      S.mode = params.get('v') === 'full' ? 'full' : 'simple';
       const dr = params.get('drill'); const sv = params.get('survey');
       S.sel = dr && /^\d{7}$/.test(dr) ? { t: 'p', id: dr } : sv && /^\d{1,12}$/.test(sv) ? { t: 's', id: sv } : null;
-      await show(day);
+      let want = parseStates(params.get('st')).filter((id) => S.avail.includes(id));
+      if (!want.length || (S.sel && S.avail.includes('TX') && !want.includes('TX'))) want = S.avail.slice(); // a well is a Texas one: show Texas with it
+      S.states = want; setDays();
+      const d = params.get('d');
+      S.mode = params.get('v') === 'full' ? 'full' : 'simple';
+      await show(S.days.some((e) => e.d === d) ? d : latest());
     },
   };
 }

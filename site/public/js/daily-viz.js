@@ -4,28 +4,22 @@ import { el, svg, fmt, reduced, clamp } from './util.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { toWorld } from './geo.js';
 
-/* ---------- dates (all UTC noon so a day never slips) ---------- */
-const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MOL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-export const at = (iso) => new Date(iso + 'T12:00:00Z');
-export const weekday = (iso) => at(iso).getUTCDay();
-export const isWeekend = (iso) => { const d = weekday(iso); return d === 0 || d === 6; };
-export const fmtMd = (iso) => MO[+iso.slice(5, 7) - 1] + ' ' + +iso.slice(8);
-export const fmtDow = (iso) => WD[weekday(iso)] + ', ' + fmtMd(iso);
-export const fmtLong = (iso) => WDL[weekday(iso)] + ', ' + MOL[+iso.slice(5, 7) - 1] + ' ' + +iso.slice(8) + ', ' + iso.slice(0, 4);
-export const monthName = (iso) => MOL[+iso.slice(5, 7) - 1];
-export const addDays = (iso, n) => new Date(at(iso).getTime() + n * 864e5).toISOString().slice(0, 10);
+/* ---------- dates: the pure helpers live in daily-dates.js (Node-testable); re-exported so the views import them from here ---------- */
+import { at, weekday, fmtMd, fmtDow, fmtLong, monthName, addDays } from './daily-dates.js';
+export { fmtMd, fmtDow, fmtLong, addDays };
 export const mb = (bytes) => (bytes >= 1 << 30 ? (bytes / (1 << 30)).toFixed(2) + ' GB' : bytes >= 1 << 20 ? (bytes / (1 << 20)).toFixed(1) + ' MB' : Math.round(bytes / 1024) + ' KB');
 
 const nice = (v) => (v <= 10 ? 10 : v <= 60 ? Math.ceil(v / 10) * 10 : Math.ceil(v / 20) * 20);
 const rise = (node, i) => { node.style.setProperty('--i', String(i)); return node; };
 
-/* ---------- permits per business day: stacked bars (horizontal / other), average line, the selected day lit ---------- */
-// avgText names the average line (default: the average rounded to a whole number). A top of 12 or less is rounded up to a
-// multiple of 4 so every axis tick is a whole number (the Oklahoma counts are that small).
-export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill permits', sub = 'horizontal', avgText = null }) {
+/* ---------- permits per business day: stacked bars, average line, the last day lit ---------- */
+// series: [{ label, cls, values }], bottom segment first; a value is null for a day that state has no data for. total[i] is the
+// sum shown over the day; avgText names the average line (default: the average rounded to a whole number). A top of 12 or less
+// is rounded up to a multiple of 4 so every axis tick is a whole number (Oklahoma alone has counts that small).
+const topRound = (x, y, w, h, r) => (r > 0 && h > r
+  ? 'M' + x + ' ' + (y + h) + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'Q' + (x + w) + ' ' + y + ' ' + (x + w) + ' ' + (y + r) + 'V' + (y + h) + 'Z'
+  : 'M' + x + ' ' + (y + h) + 'V' + y + 'H' + (x + w) + 'V' + (y + h) + 'Z');
+export function trendBars({ days, series, total, avg, label, unit = 'new-drill permits', avgText = null }) {
   const W = 640; const H = 236; const L = 34; const R = 8; const T = 24; const B = 30;
   const top = Math.max(1, ...total, avg || 0);
   const n = days.length; const max = top <= 12 ? Math.ceil(top / 4) * 4 : nice(top);
@@ -38,12 +32,17 @@ export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill pe
   }
   const last = n - 1;
   days.forEach((d, i) => {
-    const t = total[i]; const h = horiz[i] || 0;
     const g = svg('g', { class: 'dr-barg' + (i === last ? ' on' : '') });
-    g.append(rise(svg('rect', { class: 'dr-bar rest', x: x(i), y: y(t), width: bw, height: Math.max(0, y(0) - y(t)), rx: Math.min(3, bw / 3) }), i));
-    if (h) g.append(rise(svg('rect', { class: 'dr-bar horiz', x: x(i), y: y(h), width: bw, height: Math.max(0, y(0) - y(h)), rx: Math.min(3, bw / 3) }), i));
+    const live = series.filter((s) => s.values[i] > 0);
+    let acc = 0;
+    live.forEach((s, k) => {
+      const v = s.values[i]; const y1 = y(acc + v); const h = Math.max(0, y(acc) - y1);
+      g.append(rise(svg('path', { class: 'dr-bar ' + s.cls, d: topRound(+x(i).toFixed(2), +y1.toFixed(2), +bw.toFixed(2), +h.toFixed(2), k === live.length - 1 ? Math.min(3, bw / 3) : 0) }), i));
+      acc += v;
+    });
     const hit = svg('rect', { class: 'dr-hit', x: L + cw * i, y: T, width: cw, height: H - T - B });
-    hit.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(fmt.format(t), unit), h ? tipRow(fmt.format(h), sub) : null], e.clientX, e.clientY));
+    hit.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(fmt.format(total[i]), unit),
+      ...series.map((s) => (s.values[i] == null ? tipRow(s.label, 'no data this day') : s.values[i] ? tipRow(fmt.format(s.values[i]), s.label) : null))], e.clientX, e.clientY));
     hit.addEventListener('pointerleave', hideTip);
     g.append(hit);
     root.append(g);
@@ -58,7 +57,11 @@ export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill pe
   return root;
 }
 
-/* ---------- Texas by county: shaded counties, glowing bubbles, the leader pulsing ---------- */
+/* ---------- the states by county: shaded counties, glowing bubbles, the leader pulsing ----------
+   G holds the counties of every state shown, each keyed by state + FIPS (daily-data.js ck) and carrying its state in c.s.
+   opts.only: the state ids to draw (the map is cropped to them); opts.place names the area in the label; opts.showState adds
+   ", TX" to county names, for when the map holds more than one state. Bubbles and labels are scaled with the crop so a map of
+   one state looks like the map of the whole area. */
 const dCache = new WeakMap();
 function countyPath(c) {
   if (!dCache.has(c)) {
@@ -71,11 +74,21 @@ function countyPath(c) {
   return dCache.get(c);
 }
 export function countyMap(G, layers, first, opts = {}) {
-  const place = opts.state || 'Texas';
-  const root = svg('svg', { class: 'dr-map', viewBox: '0 0 ' + G.W + ' ' + Math.ceil(G.H), role: 'img', 'aria-label': '' });
+  const place = opts.place || 'Texas';
+  const only = opts.only ? new Set(opts.only) : null;
+  const shown = G.counties.filter((c) => !only || only.has(c.s));
+  const nm = (c) => c.n + (opts.showState ? ', ' + c.s : '');
+  let vb = [0, 0, G.W, Math.ceil(G.H)];
+  if (only && shown.length) {
+    const x0 = Math.min(...shown.map((c) => c.bb[0])) - 10; const y0 = Math.min(...shown.map((c) => c.bb[1])) - 10;
+    vb = [x0, y0, Math.max(...shown.map((c) => c.bb[2])) + 10 - x0, Math.max(...shown.map((c) => c.bb[3])) + 10 - y0];
+  }
+  const k = vb[2] / G.W; // world units per 1000: the crop's scale against the whole area
+  const root = svg('svg', { class: 'dr-map', viewBox: vb.map((v) => v.toFixed(1)).join(' '), role: 'img', 'aria-label': '' });
+  root.style.setProperty('--ml', (15 * k).toFixed(2) + 'px');
   const base = svg('g', { class: 'dr-counties' });
   const paths = new Map();
-  for (const c of G.counties) {
+  for (const c of shown) {
     const p = svg('path', { class: 'dr-county', d: countyPath(c), 'data-f': c.f });
     base.append(p); paths.set(c.f, p);
   }
@@ -90,23 +103,22 @@ export function countyMap(G, layers, first, opts = {}) {
     const max = Math.max(1, ...L.map.values());
     paths.forEach((p, f) => p.style.setProperty('--k', String(L.map.has(f) ? 0.18 + 0.82 * Math.sqrt(L.map.get(f) / max) : 0)));
     bub.replaceChildren();
-    const ranked = [...L.map.entries()].sort((a, b) => b[1] - a[1]);
+    const ranked = [...L.map.entries()].filter(([f]) => paths.has(f)).sort((a, b) => b[1] - a[1]);
     ranked.forEach(([f, v], i) => {
       const c = G.byFips.get(f);
-      if (!c) return;
-      const r = 6 + 17 * Math.sqrt(v / max);
+      const r = (6 + 17 * Math.sqrt(v / max)) * k;
       if (i === 0 && !reduced()) bub.append(svg('circle', { class: 'dr-pulse', cx: c.lx, cy: c.ly, r }));
       bub.append(rise(svg('circle', { class: 'dr-bubble', cx: c.lx, cy: c.ly, r }), i));
-      if (i < 3) bub.append(svg('text', { class: 'dr-maplabel', x: c.lx, y: c.ly - r - 5, 'text-anchor': 'middle', text: c.n + ' · ' + fmt.format(v) }));
+      if (i < 3) bub.append(svg('text', { class: 'dr-maplabel', x: c.lx, y: c.ly - r - 5 * k, 'text-anchor': 'middle', text: nm(c) + ' · ' + fmt.format(v) }));
     });
-    root.setAttribute('aria-label', ranked.length ? 'Map of ' + place + ' counties. ' + ranked.slice(0, 3).map(([f, v]) => G.byFips.get(f).n + ' ' + fmt.format(v)).join(', ') + ' ' + unit[id] + '.' : 'Map of ' + place + ' counties. No data for this layer.');
+    root.setAttribute('aria-label', ranked.length ? 'Map of ' + place + ' counties. ' + ranked.slice(0, 3).map(([f, v]) => nm(G.byFips.get(f)) + ' ' + fmt.format(v)).join(', ') + ' ' + unit[id] + '.' : 'Map of ' + place + ' counties. No data for this layer.');
   }
   root.addEventListener('pointermove', (e) => {
     const f = e.target.dataset && e.target.dataset.f;
     const L = layers[cur];
     if (!f || !L) { hideTip(); return; }
     const c = G.byFips.get(f); const v = L.map.get(f) || 0;
-    showTip([tipRow(c.n + ' County', ''), tipRow(fmt.format(v), unit[cur])], e.clientX, e.clientY);
+    showTip([tipRow(nm(c) + ' County', ''), tipRow(fmt.format(v), unit[cur])], e.clientX, e.clientY);
   });
   root.addEventListener('pointerleave', hideTip);
   set(first);
@@ -242,40 +254,50 @@ export function gpsMap(G, pts, { onPick }) {
   };
 }
 
-/* ---------- the 92-day ribbon: one bar per report day, the selected day lit; arrow keys move a day ---------- */
-// words names the three figures in the tooltip; the Texas wording is the default
-const TX_WORDS = { permits: 'new-drill permits issued', queue: 'waiting for approval', completions: 'completions approved' };
-export function ribbon({ days, selected, onPick, words = TX_WORDS }) {
+/* ---------- the 92-day ribbon: one bar per report day, stacked by state, the selected day lit; arrow keys move a day ----------
+   days: merged report days (daily-data.js mergeDays), ids: the states shown, bottom first, tip(day): the tooltip rows.
+   A day whose permit day is the previous report's is a grey stub; a day some state has no report for is dashed. */
+export function ribbon({ days, ids, selected, onPick, tip }) {
   const n = days.length; const bw = 9; const gap = 3; const W = n * (bw + gap) + 6; const H = 84; const T = 8; const B = 18;
-  const vals = days.map((r) => (r.pFresh ? r.pn || 0 : 0));
-  const max = Math.max(10, ...vals);
+  const room = H - T - B - 5;
+  const max = Math.max(10, ...days.map((r) => r.total));
   const root = svg('svg', { class: 'dr-ribbon', viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' });
-  const bars = [];
+  const groups = []; const xs = [];
   days.forEach((r, i) => {
-    const h = r.pFresh ? 5 + (H - T - B - 5) * ((r.pn || 0) / max) : 4;
-    const b = svg('rect', { class: 'dr-rb' + (r.pFresh ? '' : ' off') + (r.k === 'live' ? ' live' : ''), x: 3 + i * (bw + gap), y: H - B - h, width: bw, height: h, rx: 2.5, 'data-i': i });
-    bars.push(b); root.append(b);
+    const x = 3 + i * (bw + gap); xs.push(x);
+    const g = svg('g', { class: 'dr-rbg' + (r.fresh ? '' : ' off') + (r.live ? ' live' : '') + (r.partial ? ' partial' : '') });
+    let tall = 4;
+    if (!r.fresh) g.append(svg('rect', { class: 'dr-rb off', x, y: H - B - 4, width: bw, height: 4, rx: 2 }));
+    else {
+      const live = ids.filter((id) => r.parts[id] > 0);
+      const segs = live.length ? live : [ids[0]]; let y = H - B;
+      segs.forEach((id, k) => {
+        const h = (k === 0 ? 5 : 0) + room * ((r.parts[id] || 0) / max);
+        y -= h;
+        g.append(svg('path', { class: 'dr-rb ' + id.toLowerCase(), d: topRound(x, +y.toFixed(2), bw, +h.toFixed(2), k === segs.length - 1 ? 2.5 : 0) }));
+      });
+      tall = H - B - y;
+    }
+    g.append(svg('rect', { class: 'dr-rbsel', x, y: +(H - B - tall).toFixed(2), width: bw, height: +tall.toFixed(2), rx: 2.5 }));
+    g.append(svg('rect', { class: 'dr-rbhit', x: x - gap / 2, y: 0, width: bw + gap, height: H - B + 2, 'data-i': i }));
+    groups.push(g); root.append(g);
     const firstOfMonth = r.d.slice(8) === '01'; // the left edge only gets a label when a month does not start within a few bars
-    if (firstOfMonth || (i === 0 && !days.slice(1, 6).some((x) => x.d.slice(8) === '01'))) root.append(svg('text', { class: 'dr-ax', x: 3 + i * (bw + gap), y: H - 4, text: fmtMd(r.d).split(' ')[0] }));
+    if (firstOfMonth || (i === 0 && !days.slice(1, 6).some((q) => q.d.slice(8) === '01'))) root.append(svg('text', { class: 'dr-ax', x, y: H - 4, text: fmtMd(r.d).split(' ')[0] }));
   });
   const wrap = el('div', { class: 'dr-ribbon-wrap', 'data-act': 'ribbon', role: 'slider', tabindex: '0', 'aria-label': 'Report day, 3-month archive. Arrow keys move one day.', 'aria-valuemin': '0', 'aria-valuemax': String(n - 1) }, root);
   let cur = -1;
   function mark(d) {
     cur = Math.max(0, days.findIndex((r) => r.d === d));
-    bars.forEach((b, i) => b.classList.toggle('sel', i === cur));
+    groups.forEach((g, i) => g.classList.toggle('sel', i === cur));
     wrap.setAttribute('aria-valuenow', String(cur));
     wrap.setAttribute('aria-valuetext', fmtLong(days[cur].d));
-    const bb = bars[cur]; const x = +bb.getAttribute('x');
-    wrap.scrollLeft = Math.max(0, (x / W) * wrap.scrollWidth - wrap.clientWidth / 2);
+    wrap.scrollLeft = Math.max(0, (xs[cur] / W) * wrap.scrollWidth - wrap.clientWidth / 2);
   }
   root.addEventListener('click', (e) => { const i = e.target.dataset && e.target.dataset.i; if (i != null) onPick(days[+i].d); });
   root.addEventListener('pointermove', (e) => {
     const i = e.target.dataset && e.target.dataset.i;
     if (i == null) { hideTip(); return; }
-    const r = days[+i];
-    showTip([tipRow(fmtDow(r.d), r.k === 'live' ? 'captured live' : 'reconstructed'), r.pFresh && r.pn != null ? tipRow(fmt.format(r.pn), words.permits + ' ' + fmtMd(r.dd)) : null,
-      r.q != null && words.queue ? tipRow(fmt.format(r.q), words.queue) : null, r.c != null ? tipRow(fmt.format(r.c), words.completions) : null,
-      r.t != null && words.transfers ? tipRow(fmt.format(r.t), words.transfers) : null], e.clientX, e.clientY);
+    showTip(tip(days[+i]), e.clientX, e.clientY);
   });
   root.addEventListener('pointerleave', hideTip);
   wrap.addEventListener('keydown', (e) => {
