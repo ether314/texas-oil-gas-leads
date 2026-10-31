@@ -1,0 +1,51 @@
+# Captures the Railroad Commission's nightly files into site/public/data/daily/ and commits the result.
+# It runs from the default branch only, and it does not deploy anything.
+name: Daily RRC report
+
+on:
+  schedule:
+    # 03:15 UTC = 10:15 PM CDT / 9:15 PM CST: after the RRC's evening files are out, still the same Central-time day
+    - cron: "15 3 * * *"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Also rebuild missing days of the last N days (the schedule uses 7; 91 fills a whole archive)"
+        default: "7"
+
+concurrency:
+  group: daily-rrc-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Capture the report
+        env:
+          BACKFILL: ${{ github.event.inputs.backfill || '7' }}
+        run: |
+          case "$BACKFILL" in ''|*[!0-9]*) echo "backfill must be a whole number"; exit 1;; esac
+          python3 -I site/pipeline/d7_daily.py --backfill "$BACKFILL"
+
+      - name: Check the archive
+        run: python3 -I site/pipeline/d7_daily.py --check
+
+      - name: Commit the new files
+        run: |
+          git config user.name "daily-rrc-report"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/data/daily
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "Daily RRC report $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
