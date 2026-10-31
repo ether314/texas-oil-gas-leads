@@ -17,6 +17,12 @@ Inputs are public RRC files, only parsed, never executed (run with `python3 -I`)
   completions  Completion Information in Data Format: <MM-DD-YYYY>.zip of packetData_*.dat, `{`-delimited.
   images       W-1 images, directional surveys, completion images: only the share listing is read (names, sizes).
 
+One rule for every report, live, rebuilt or repaired: a day shows what landed on each share that day, judged by the
+file's Last Modified time (the share prints Central time). Completions and the three image packs: the dated zip that was
+listed that day (a zip named for a day lands the next morning, so a report shows the day before's; a day on which none
+landed shows none). Pending: the complete sets that landed that day (the previous evening's 5 PM set and the day's 11 AM
+set). Permits: the newest issue date before the day. A past day captured later gives the same report.
+
   python3 -I site/pipeline/d7_daily.py [--date YYYY-MM-DD] [--backfill N] [--out DIR] [--dl DIR] [--keep 92]
   python3 -I site/pipeline/d7_daily.py --check [--out DIR]     only reload and check what is already there
   python3 -I site/pipeline/d7_daily.py --skip-if-captured      for a backup schedule: exit quietly if the evening run already did the day
@@ -71,7 +77,7 @@ DATASETS = [
     {"id": "complimages", "title": "Completion images", "match": "Imaged Completion Files",
      "guid": "8e91acb8-69cc-4d57-ad72-c7f7d5a7675e"},
 ]
-IMAGE_LAG = {"w1images": 1, "dirsurveys": 1, "complimages": 0}  # days between a pack's day and the day its file is out
+IMAGE_PACKS = ("w1images", "dirsurveys", "complimages")
 # monthly files the site is built from: read for context only (is a newer file waiting?)
 MONTHLY = [
     {"id": "permit-master", "title": "Drilling Permit Master and Trailer", "guid": "beeeab0c-7d07-4111-af88-783c93677b2c",
@@ -144,6 +150,17 @@ def oracle_date(text):
 
 def top(counter, n):
     return [[k, v] for k, v in sorted(counter.items(), key=lambda kv: (-kv[1], str(kv[0])))[:n]]
+
+
+def listed_day(row):
+    """The day (Central time) a share lists a file under: the date of its Last Modified time, 'YYYY-MM-DD', or None."""
+    return row["modified"][:10] if row and row.get("modified") else None
+
+
+def landed_on(rows_by_day, day):
+    """Of the dated files {named day: row} a share lists, the named day of the newest one that landed on `day`, or None.
+    A zip named for a day lands the next morning, so this is how a report finds the one that belongs to it."""
+    return max((d for d, r in rows_by_day.items() if listed_day(r) == day.isoformat()), default=None)
 
 
 def write_json(path, obj):
@@ -392,7 +409,7 @@ def permits_job(ctx):
             elif last < today:  # a month that has not ended has no month-end file yet
                 log("permits: %s is not in the End of Month share, so that month is not covered" % name)
         retries += eom.s.retries
-    return {"perms": perms, "series": day_series(perms), "file": cur, "files": sh.total, "covered": covered, "retries": retries + sess.retries}
+    return {"perms": perms, "series": day_series(perms), "picked": {R: cur}, "files": sh.total, "covered": covered, "retries": retries + sess.retries}
 
 
 # ------------------------------------------------------------------------------------------------ pending
@@ -465,30 +482,38 @@ def pending_section(day, parts, lk):
     }
 
 
+def pending_ready(listing):
+    """The complete pending sets on a share listing, oldest first, as (day listed, day named, half, files). A set is
+    complete once both files the report reads are listed (the copy to the share takes about 100 minutes). It belongs to
+    the one report of the day its last file appeared: the 11 AM set lands that afternoon, the 5 PM set after midnight."""
+    out = []
+    for (named, half), files in sorted(pending_sets(listing).items()):
+        stamps = [f["modified"] for f in files.values()]
+        if len(files) == 2 and all(stamps):
+            out.append((max(stamps)[:10], named, half, files))
+    return out
+
+
 def pending_job(ctx):
     sess = Session()
     sh = Share(ctx["guid"]["pending"], sess)
     sh.open()
     listing = sh.newest(24 * (len(ctx["dates"]) + 2))
-    by_day = collections.defaultdict(list)
-    for (d, half), files in sorted(pending_sets(listing).items(), key=lambda kv: kv[0]):
-        if len(files) == 2:  # a set still being copied has only some of its files: wait for the next run
-            by_day[d].append((half, files))
-    out = {}
+    ready = pending_ready(listing)
+    out, picked = {}, {}
     for day in ctx["dates"]:
-        # a rebuilt day needs its own sets; today's report falls back to the newest complete set
-        use = day if by_day.get(day) else (max((d for d in by_day if d <= day), default=None) if len(ctx["dates"]) == 1 else None)
+        sets = [s for s in ready if s[0] == day.isoformat()]  # the sets that landed on the share that day
         parts = []
-        for half, files in by_day.get(use, []):
+        for _, named, half, files in sets:
             stamp = files["drilling_permit"]["name"][-18:-4]
             dest = os.path.join(ctx["dl"], "pending-%s" % stamp)
             prm = read_delimited(sh.download(files["drilling_permit"]["name"], dest), "}")
             wb = read_delimited(sh.download(files["wellbore"]["name"], dest), "}")
             parts.append(("11 AM" if half == "am" else "5 PM", datetime.strptime(stamp, "%Y%m%d%H%M%S").isoformat(), prm, wb))
         if parts:
-            out[day] = pending_section(use, parts, ctx["lk"])
-    newest = next((r for r in listing if r["name"].startswith("dp_drilling_permit_pending_")), listing[0] if listing else None)
-    return {"sections": out, "file": newest, "files": sh.total, "retries": sess.retries}
+            out[day] = pending_section(max(s[1] for s in sets), parts, ctx["lk"])
+            picked[day] = max((s[3]["drilling_permit"] for s in sets), key=lambda r: r["modified"])
+    return {"sections": out, "picked": picked, "files": sh.total, "retries": sess.retries}
 
 
 # ------------------------------------------------------------------------------------------------ completions
@@ -551,19 +576,20 @@ def completions_job(ctx):
     sh = Share(ctx["guid"]["completions"], sess)
     sh.open()
     listing = sh.newest(len(ctx["dates"]) + 8)
-    days = {}
+    zips = {}
     for r in listing:
         m = re.fullmatch(r"(\d\d)-(\d\d)-(\d{4})\.zip", r["name"])
         if m:
-            days[date(int(m.group(3)), int(m.group(1)), int(m.group(2)))] = r
-    out = {}
+            zips[date(int(m.group(3)), int(m.group(1)), int(m.group(2)))] = r
+    out, picked, read = {}, {}, {}
     for day in ctx["dates"]:
-        use = max((d for d in days if d <= day), default=None)
-        if use is not None and (day - use).days <= 3:
-            r = days[use]
-            packets = read_completions(sh.download(r["name"], os.path.join(ctx["dl"], "completions-%s" % use.isoformat())))
-            out[day] = completions_section(use, packets, r["bytes"], ctx["lk"])
-    return {"sections": out, "file": listing[0] if listing else None, "files": sh.total, "retries": sess.retries}
+        use = landed_on(zips, day)  # the zip named for the day before lands at about 2:20 AM, so that is the one a day shows
+        if use is not None:
+            r = zips[use]
+            if use not in read:
+                read[use] = read_completions(sh.download(r["name"], os.path.join(ctx["dl"], "completions-%s" % use.isoformat())))
+            out[day], picked[day] = completions_section(use, read[use], r["bytes"], ctx["lk"]), r
+    return {"sections": out, "picked": picked, "files": sh.total, "retries": sess.retries}
 
 
 # ------------------------------------------------------------------------------------------------ image packs
@@ -573,7 +599,7 @@ def images_job(ctx, ds):
     sh = Share(ctx["guid"][ds], sess)
     sh.open()
     listing = sh.newest((14 if ds == "w1images" else 1) * (len(ctx["dates"]) + 4))
-    days = collections.defaultdict(lambda: {"bytes": 0, "districts": {}, "modified": None})
+    days = collections.defaultdict(lambda: {"name": None, "bytes": 0, "districts": {}, "modified": None})
     for r in listing:
         m = re.fullmatch(r"subscriptions_(\d{4})-(\d\d)-(\d\d)(?:_district(\w+))?\.zip", r["name"]) if ds == "w1images" else None
         if m:
@@ -586,14 +612,17 @@ def images_job(ctx, ds):
         if dist:
             days[d]["districts"][dist] = r["bytes"] or 0
         else:
-            days[d]["bytes"], days[d]["modified"] = r["bytes"] or 0, r["modified"]
-    whole = [r for r in listing if "_district" not in r["name"]]
-    return {"days": dict(days), "file": whole[0] if whole else None, "files": sh.total, "retries": sess.retries}
+            days[d]["name"], days[d]["bytes"], days[d]["modified"] = r["name"], r["bytes"] or 0, r["modified"]
+    picked = {}
+    for day in ctx["dates"]:
+        use = landed_on(days, day)
+        if use is not None:
+            picked[day] = {"name": days[use]["name"], "modified": days[use]["modified"], "bytes": days[use]["bytes"]}
+    return {"days": dict(days), "picked": picked, "files": sh.total, "retries": sess.retries}
 
 
-def image_section(days, report_day, lag):
-    """The newest day of an image pack whose file was out `lag` days before the report day."""
-    use = max((d for d in days if d <= report_day - timedelta(days=lag) and days[d]["modified"]), default=None)
+def image_section(days, use):
+    """The report's block for the image pack named `use` (None when no pack landed that day)."""
     if use is None:
         return None
     row = days[use]
@@ -643,7 +672,7 @@ def build_reports(ctx, jobs, cat, kind_by_date):
         for did in ("pending", "completions"):
             if did in ok and ok[did]["sections"].get(day):
                 rep[did] = ok[did]["sections"][day]
-        rep["images"] = {did: image_section(ok[did]["days"], day, lag) for did, lag in IMAGE_LAG.items() if did in ok}
+        rep["images"] = {did: image_section(ok[did]["days"], landed_on(ok[did]["days"], day)) for did in IMAGE_PACKS if did in ok}
         entries = []
         for spec in DATASETS:
             did = spec["id"]
@@ -654,7 +683,7 @@ def build_reports(ctx, jobs, cat, kind_by_date):
                 entry.update({"error": str(job)[:200] if job else "not captured", "file": None})
             else:
                 live = kind_by_date[day] == "live"
-                entry.update({"error": None, "file": file_info(job["file"]) if live else None, "files": job["files"] if live else None})
+                entry.update({"error": None, "file": file_info(job["picked"].get(day)) if live else None, "files": job["files"] if live else None})
             entries.append(entry)
         rep["datasets"] = entries
         reports[day] = rep
@@ -672,8 +701,8 @@ def headline(rep):
 
 
 def update_states(live, out_dir):
-    """Mark each dataset 'new' when its file changed since the previous live report, 'same' when it did not and
-    'first' when there is no live report to compare with."""
+    """Mark each dataset 'new' when its file changed since the previous live report, 'same' when it did not (or when
+    nothing landed that day) and 'first' when there is no live report to compare with."""
     prev_days = sorted(f[:-5] for f in os.listdir(out_dir) if DAY_FILE.fullmatch(f) and f[:-5] < live["date"])
     prev = read_json(os.path.join(out_dir, prev_days[-1] + ".json")) if prev_days else None
     before = {d["id"]: d.get("file") for d in prev["datasets"]} if prev and prev.get("kind") == "live" else None
@@ -682,6 +711,8 @@ def update_states(live, out_dir):
             d["state"] = "error"
         elif before is None:
             d["state"] = "first"  # the previous report was rebuilt, not captured live: nothing to compare against
+        elif d.get("file") is None:
+            d["state"] = "same"  # no pending set landed that day, or no zip within reach
         elif before.get(d["id"]):
             d["state"] = "same" if before[d["id"]] == d["file"] else "new"
         else:

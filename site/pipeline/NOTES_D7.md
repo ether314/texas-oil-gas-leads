@@ -28,8 +28,8 @@ from the page; the constants in `DATASETS` are the fallback. A new nightly datas
 | id | RRC dataset | what is read |
 |---|---|---|
 | permits | Drilling Permit Master and Trailer - Daily File | `daf420.dat`, the current month, parsed (below). Rebuilt days also read the End of Month files (`f5dfea9c-...`) |
-| pending | Drilling Permits Pending Approval | the newest 11 AM and 5 PM sets: `dp_drilling_permit_pending_*` and `dp_wellbore_pending_*` |
-| completions | Completion Information in Data Format | `<MM-DD-YYYY>.zip`, one `packetData_<n>_(Approved\|Submitted).dat` per packet, by district |
+| pending | Drilling Permits Pending Approval | the sets that landed that day: `dp_drilling_permit_pending_*` and `dp_wellbore_pending_*` |
+| completions | Completion Information in Data Format | the newest `<MM-DD-YYYY>.zip` listed, one `packetData_<n>_(Approved\|Submitted).dat` per packet, by district |
 | w1images, dirsurveys, complimages | the three image packs | the share listing only (size, time); the zips are hundreds of MB and are never downloaded |
 
 Not daily, so not read: Digital Map Data (twice a week) and everything weekly or monthly.
@@ -53,7 +53,7 @@ Not daily, so not read: Digital Map Data (twice a week) and everything weekly or
 
 ## When the files land (Central, as listed)
 
-Seen on 2026-10-24 to 10-31. This is why a report captured at 22:15 holds what it holds.
+Seen on 2026-10-24 to 10-31 (pending sets: since August). This is why the rule above goes by the time a file was listed, and why a report captured at 22:15 holds everything its day can have.
 
 | file | lands |
 |---|---|
@@ -92,20 +92,28 @@ Seen on 2026-10-24 to 10-31. This is why a report captured at 22:15 holds what i
 
 ## Which day a report shows
 
-Each dataset keeps its own day (`datasets[].dataDay`): permits = newest issue date before the report day; pending = the
-sets named for the report day that are complete on the share; completions and completion images = the newest zip on or
-before the report day; W-1 images and surveys = the newest pack from before the report day. The report date is the Central
-day the capture ran (`zoneinfo`, with a US daylight-saving fallback).
+**One rule for live, rebuilt and repaired reports: a day shows what landed on each share that day (Central), judged by each
+file's Last Modified time.** Because the rule reads only the listing, a past day captured later (a rebuild, or `--date` a
+week afterwards) gives the same report as the evening run, and the report is a function of the day and the share.
+- completions and completion images: the dated zip listed that day. A zip named for a day lands at about 02:20 the next
+  morning, so a day shows the zip named for the day before. A day on which none landed (the RRC skipped 2026-08-30,
+  10-10 and 10-18) shows none, instead of repeating the last one.
+- W-1 images and directional surveys: the pack listed that day (surveys about 07:55 and W-1 images about 10:20 the next
+  morning, so also the day before's). There is no W-1 pack for a weekend, so Sunday and Monday have none (26 days of the
+  92); Saturday shows Friday's.
+- pending: the complete sets that landed that day, in order: the previous evening's 5 PM set (copied after midnight) and the
+  day's 11 AM set. Weekends have only the 5 PM set (no weekend 11 AM sets), so Saturday and Sunday show one set each; the day
+  after a holiday with no sets can show just one, and a day on which nothing landed has no pending section (the page says
+  so). A set belongs to the day its last needed file was listed, so a copy that crosses midnight lands on the next day.
+- permits: the newest issue date before the day (a different kind of file: a month's cumulative list, see below).
 
-**A live report and a rebuilt one differ by what had landed** (see "When the files land"). The evening run sees the report
-day's 11 AM set but not its 5 PM set (copied after midnight), and a day's zip is not there until 02:20 the next morning, so
-a live report holds the 11 AM set only and the *previous* day's completions and completion images. A rebuilt day is made
-later from the share's history: it holds both sets and the report day's own zip. Each card says which day its data is
-from, and the page marks rebuilt days, but the two kinds are not on one rule (completions are a day apart, and live pending
-totals leave out the 5 PM set). The consistent rule is "what landed on the share that day": the previous evening's 5 PM set
-and the day's 11 AM set, the previous day's zips. Everything that rule names is on the share by the evening run, so a live
-capture can meet it; the pending and completions selection, the rebuild and the page's note would have to change, and the
-archive would be regenerated. Not done.
+`datasets[].dataDay` says which day each card's data is from (pending: the newest set's named day). For a live report
+`datasets[].file` is the file that dates the card (the zip, the pack, the newest set's permit file, `daf420.dat`), chosen by
+the same rule, so a repair does not show a newer file than its data. The report date is the Central day the capture ran
+(`zoneinfo`, with a US daylight-saving fallback).
+
+Before 2026-10-31 live days held the day's 11 AM set only and the previous day's completions, while rebuilt days held both
+named sets and the day's own zip (a day apart on completions). The archive was regenerated under this rule.
 
 `state` per dataset (live days only): `new` when the newest file's name, time or size changed since the previous *live*
 report, `same` when not, `first` when the previous report was rebuilt (nothing to compare), `error` when it could not be read.
@@ -157,6 +165,20 @@ the previous month's file too (one extra 2.4 MB download).
    a file. On the real shares `--date 2026-10-30 --backfill 7 --skip-if-captured` captured the day, and a second run exited
    0 with "already captured live".
 
+9. One rule (2026-10-31). `landed_on` and `pending_ready` with fake shares (51 checks): each day picks the pending sets, the
+   zip and the packs listed that day; weekends show one 5 PM set; a set whose copy crosses midnight lands on the next day;
+   a late zip is shown the day it was listed; a day with no zip or no W-1 pack shows none; and every day captured in the
+   evening equals the same day captured after more files landed. Three deliberately wrong versions of the rule (zips and
+   packs by the day in their name, pending sets by the day in their name, "listed by the end of the day") fail 23, 15 and 5
+   of the checks. On the real shares the whole archive was regenerated (`--date 2026-10-30 --backfill 91` over the archive
+   with its rebuilt days removed; `--check` clean): pending differs on all 92 days, completions and completion images on
+   89 (a day earlier); the W-1 pack is empty on 26 days (Sundays and Mondays), completions on 3 (the zips the RRC skipped
+   for Aug 30, Oct 10 and Oct 18). The ledger changed on one day (2026-08-21, horizontal 20 to 23) and permit cards on 50
+   days (`amended` on 45, `rows` 10, `located` 8, `depth` 4, `directional` 3, `horizontal` 3, `wait` 2), all from letting
+   the newest month-end file's record win for a permit that is in several files (an amendment can change a flag or the
+   depth). The page was opened in a browser at desktop and phone width on a weekday with two pending sets, a Sunday and
+   the Monday after a skipped zip day: no horizontal overflow, no console errors.
+
 ## Run and schedule
 
 ```
@@ -187,17 +209,13 @@ Oct 30 report was captured by hand, and 22:15 Central.)
 `--backfill` fills days that have no file and never replaces one that exists, so a report that is partial, or was captured
 too early, stays as it is until a run names that day. To repair one: Actions, Daily RRC report, Run workflow, put the day
 in `date` (YYYY-MM-DD, Central), leave `backfill` at 7. The run captures that day live (`kind` live, `capturedAt` the
-repair time) from what the shares list at that moment, so it holds anything posted since, then commits and publishes like a
-night's run. Good to know:
-- A repaired day can hold more than the evening run would have: after 02:20 the next morning the day's own completions zip
-  is on the share and the report shows it (the next live report then shows it again, as the day before's data).
+repair time) and, since a day shows what the shares had listed by its end, it gives the same report the evening run would
+have given, however late it runs (the day's own completions zip, listed the next morning, belongs to the next day's report).
+It then commits and publishes like a night's run. Good to know:
 - `state` (new / same / first) compares with the previous *live* report; next to rebuilt days it reads `first`.
 - A day of an earlier month works (its permits come from the month-end file) as long as that file is on the share.
 - The date is checked twice, as a shape in the workflow and as a real day that is not in the future in the script.
 
 Known limits: a rebuilt day has no catalog check, file states or monthly watch; the pending queue is only as old as the
 share keeps it; image packs are measured by size only; permit coordinates are ignored here (only part of recent permits have
-them); a live report leaves out the day's 5 PM pending set and shows the previous day's completions (see "Which day a report
-shows"). The 91 rebuilt days were made when the oldest month-end file won for a permit in several of them, which undercounts
-`amended` (2026-09-15: 8, 15 with the newest file winning, which is the rule now); regenerate them together with any change
-to the day rules.
+them).
