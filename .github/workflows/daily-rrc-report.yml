@@ -41,7 +41,9 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # the three captures have limits of their own (below, 25 + 12 + 6 minutes): a download that trickles must fail its own step, not use up the job and
+    # leave nothing committed for any state
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,6 +72,7 @@ jobs:
       - name: Capture the report
         id: tx_capture
         continue-on-error: true
+        timeout-minutes: 25
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '7' }}
           REPORT_DATE: ${{ github.event.inputs.date }}
@@ -93,6 +96,7 @@ jobs:
       - name: Capture the Oklahoma report
         id: ok_capture
         continue-on-error: true
+        timeout-minutes: 12
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '7' }}
           REPORT_DATE: ${{ github.event.inputs.date }}
@@ -116,6 +120,7 @@ jobs:
       - name: Capture the New Mexico report
         id: nm_capture
         continue-on-error: true
+        timeout-minutes: 6
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '7' }}
           REPORT_DATE: ${{ github.event.inputs.date }}

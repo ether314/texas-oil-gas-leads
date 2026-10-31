@@ -147,12 +147,13 @@ master intent-to-drill workbook (154 MB, every application since 1999, about 75 
   last 12 months are 100% located. Points outside the state's box are dropped; the county always comes from the API number, never from the point.
 - **Privacy.** Operators are named only by the corporate rule (`nameable`); 98% of the last 12 months' permits went to named operators and the
   rest are in every count and in no name. City and state are the operator's office on its newest permit: never a street, a signer or a phone.
-  `--check` fails a file that holds an API-like number, an e-mail address or a link.
+  `--check` fails a file that holds an API-like number, an e-mail address, a link or a phone number, or an operator whose city is not a place name or whose
+  state is not two letters.
 - **Checks.** `tests/test_d8_monthly.py`: synthetic rows for every rule above, the validator against twelve deliberate faults, six mutants
   (everyone or nobody named, UTC days, a window a month too long, formation rows counted, a re-approved well counted once); with
   `OK_REAL_FILES` the real workbooks too, which must agree with the Daily archive.
 - **Run** by hand: `python3 -I site/pipeline/d8_ok_monthly.py` (downloads both files, writes the four, checks them); `--check` only validates.
-  Not in the nightly workflow yet.
+  `.github/workflows/refresh-monthly.yml` runs it weekly (Mondays 05:40 UTC), isolated from New Mexico's the same way as the nightly's captures.
 
 ## Rebuilt days
 
@@ -161,6 +162,37 @@ do not already hold (by API and time) and builds every missing day by the one ru
 (about a month, so 60 of the 92 days have none), and the well inventory cannot be rebuilt at all: those days are marked
 `absent`, and the page says so. A plain `--backfill` rebuilds at most the last 3 missed days (`SAFE_BACKFILL`), because the daily
 files hold only 7 days and an older day would be rebuilt from too little; older days need `--history`.
+
+## Bad nights
+
+The nightly runs unattended, so what it does with files that are late, cut short or not what they were is part of the design. A third
+independent review (a fresh reader, offline, with repro scripts) tried each of these; `tests/test_d8_nights.py` runs them as whole nights
+with the network faked, and a mutant puts each fix's old behavior back and must be noticed.
+
+- **A file that is not the file.** The well inventory needs `WELLSTATUS` and `API` columns and at least one well: an error page, an empty
+  export or a renamed column fails that dataset (the report is `partial`, the other three files are kept, the page shows no inventory).
+  A UTF-8 byte-order mark is read through. A total under 90% of the newest earlier report's (`WELLS_FLOOR`, `previous_wells_total`) is refused
+  as a cut-short download, not published as fewer wells (if the OCC ever really does shrink its inventory by more than that, the page keeps saying
+  so every night: run it by hand once with `--wells-floor 0`). The completion workbook needs `API_Number`, `Create_Date` and `Review_Status`; a
+  renamed figure column (`COMP_OPTIONAL`) costs that figure, not the file (`ok_xlsx.rows(..., optional=)`).
+- **One permit, not one per formation.** The permit workbook holds a row per formation: rows with the same API number, approval time and
+  application type are one permit (`read_itd`, as the monthly file does). Rows with no API number are never folded.
+- **A permit with no county.** A blank, short or other state's API number is counted in every total and in no county (`tally_counties`),
+  and is never sorted against a county code (that once crashed the night).
+- **A later capture never makes the report worse.** A capture of a day that read fewer datasets than the report already stored for that day
+  (the backup run when the 121 MB inventory is refused) keeps the stored one; one that read nothing keeps it too; one that read as many or more
+  replaces it. A master file that could not be read when it was needed (the daily files were late) leaves the days after the daily files' last one
+  out, so the report is `partial` and the backup run goes ahead. A rebuilt day that was written `partial` is built again by a later night
+  (`--backfill`); a live report is never rebuilt.
+- **Dates and numbers.** An ISO text keeps its time of day (the files' times are UTC; the Excel serials the OCC writes always did); a date with no
+  time is noon UTC, which is the same Central day in summer and winter. NaN and infinity are blanks. In the monthly files an approval dated after
+  today is a typo in the source and is skipped, because it would end every window on that day.
+- **Text in the files.** A failure's text, in a report or in the log, is one line without a web address (`clean_error`): the data files never
+  carry a link. The naming rule refuses every spelling of a person trading under a name (dba, d/b/a, d.b.a, d b a, db/a, doing business as, trading
+  as, t/a, aka, a/k/a, a k a, also known as). The monthly validator refuses a phone number anywhere in a file and an operator's city or state that is not
+  a place name or two letters.
+- **Time.** Each state's capture step has a time limit of its own in the workflow (Texas 25 minutes, Oklahoma 12, New Mexico 6, the job 60), so a
+  download that hangs cannot use up the time the other states, the commit and the publish need (`tests/test_workflow.py`).
 
 ## Checks (all pass)
 
@@ -189,6 +221,10 @@ files hold only 7 days and an older day would be rebuilt from too little; older 
    console or CSP error. The Texas Daily page renders byte-identical DOM before and after the shared building blocks moved to
    `daily-kit.js`, and the Texas Map draws identically after Oklahoma has been opened. These scripts were scratch work and are
    not in the repository.
+8. Whole nights, offline (`tests/test_d8_nights.py`): `main()` with `urlopen` faked and synthetic workbooks, for each case under *Bad nights*
+   (a permit with no county, an inventory that is an error page, empty, header-only, renamed, with a byte-order mark, or cut short, a backup run
+   that reads less, a master that cannot be read, a rebuilt day left partial, a failure with an address in its text), the permit and completion
+   workbook readers, and eleven mutants that put the old behavior back. About 4 seconds.
 
 ## Run and schedule
 

@@ -48,7 +48,17 @@ def run_checks(M, quiet=False):
     w = M.when
     check(w("46323.5") == datetime(2026, 10, 28, 12, 0) and w("") is None and w(None) is None, "when: an Excel serial, blank and None")
     check(w("1") is None and w("1900-01-01") is None and w("2026-13-45") is None and w("junk") is None, "when: placeholders and junk are None")
-    check(w("2026-10-30 08:15:00") == datetime(2026, 10, 30), "when: an ISO text keeps the day")
+    check(w("2026-10-30 08:15:00") == datetime(2026, 10, 30, 8, 15) and w("2026-10-30T23:50:01") == datetime(2026, 10, 30, 23, 50, 1),
+          "when: an ISO text keeps its time of day (the files' times are UTC: a day cut at midnight would put a 02:00 UTC approval on the wrong Central day)")
+    check(cd(w("2026-10-31 02:00:00")) == D(2026, 10, 30) and cd(w("2026-10-31 05:30:00")) == D(2026, 10, 31),
+          "when: an ISO text late in the UTC day lands on the Central day it belongs to")
+    check(cd(w("2026-10-30")) == D(2026, 10, 30) and cd(w("2026-12-05")) == D(2026, 12, 5) and cd(w("2026-03-15")) == D(2026, 3, 15),
+          "when: a date with no time is noon UTC, which is that same day in Central in summer and winter")
+    check(M.number("12") == 12.0 and M.number("x") is None and M.number("nan") is None and M.number("inf") is None and M.number("-Infinity") is None and M.number(None) is None,
+          "number: blanks, junk, NaN and infinity are None (an infinite depth would break the JSON and every average)")
+    ce_ = M.clean_error(RuntimeError("could not read https://oklahoma.gov/x/y.xlsx?token=1: <urlopen error\n [Errno 111] refused>"))
+    check("http" not in ce_ and "oklahoma.gov" not in ce_ and "\n" not in ce_ and "refused" in ce_ and len(M.clean_error(RuntimeError("x" * 500))) == 160 and M.clean_error(RuntimeError("boom")) == "boom",
+          "clean_error: an error becomes one short line with no web address: %r" % ce_)
 
     # ------------------------------------------------------------------ county from API
     ac = M.api_county
@@ -59,7 +69,11 @@ def run_checks(M, quiet=False):
     yes = ["CONTINENTAL RESOURCES INC", "BCE-MACH III LLC", "NADEL AND GUSSMAN, L.L.C.", "CITATION OIL & GAS CORP", "MERIT ENERGY COMPANY", "ABC OIL CO",
            "SMITH PETROLEUM LP", "GREAT HORNED OWLS, LLC", "JOE SMITH INC", "ACME OPERATING LIMITED", "RIDGETOP RANCH PROPERTIES INC"]
     no = ["JOHN SMITH", "SMITH, JOHN D", "SMITH FAMILY TRUST", "ESTATE OF JANE DOE", "JANE DOE REVOCABLE TRUST LLC", "RANDY CO", "", None,
-          "OTC/OCC NOT ASSIGNED", "SMITH HEIRS LLC", "WILLCOX", "ALLCO", "FINNEY KYLER A DBA FINNEY OIL CO", "Smith d/b/a Smith Oil Co", "JONES D.B.A. JONES OIL LLC"]
+          "OTC/OCC NOT ASSIGNED", "SMITH HEIRS LLC", "WILLCOX", "ALLCO", "FINNEY KYLER A DBA FINNEY OIL CO", "Smith d/b/a Smith Oil Co", "JONES D.B.A. JONES OIL LLC",
+          "JONES D B A JONES OIL LLC", "JONES DB/A JONES OIL LLC", "JONES DOING BUSINESS AS JONES OIL LLC", "JONES TRADING AS JONES OIL LLC", "JONES T/A JONES OIL LLC",
+          "JONES AKA JONES OIL LLC", "JONES A K A JONES OIL LLC", "JONES ALSO KNOWN AS JONES OIL LLC", "Jones Dba Jones Oil LLC"]
+    # a word that merely contains one of these letters is still a company
+    yes += ["DEBRA ENERGY LLC", "DATA OIL LLC", "TAKA OPERATING LLC", "ALTA RESOURCES INC", "AKAL ENERGY LLC"]
     check(all(M.nameable(n) for n in yes), "nameable: corporations, LLCs, partnerships and oil companies are named")
     check(not any(M.nameable(n) for n in no), "nameable: people, trusts, estates, families, a person's dba, bare 'Co', blanks and 'LLC' inside a word are not: %s" % [n for n in no if M.nameable(n)])
     check(M.pretty("BLACKJACK OPERATING, LLC") == "Blackjack Operating, LLC" and M.pretty("AWM OPERATING LLC") == "AWM Operating LLC" and M.pretty("BCE-MACH III LLC") == "BCE-Mach III LLC"
@@ -98,6 +112,20 @@ def run_checks(M, quiet=False):
     check(p["namedShare"] == round(2 / 3, 3), "permits: named share counts permits, not operators: %s" % p["namedShare"])
     check("JANE" not in json.dumps(p).upper() and "DOE" not in json.dumps(p).upper(), "permits: the individual's name is nowhere in the section")
     check(M.permits_section(D(2026, 10, 30), [itd("1", "137", "1", "X", "AM", 0, None, ap)], lk)["namedShare"] is None, "permits: no new-drill permits gives no share, no crash")
+    # a permit whose API number gives no county (blank, short, another state's) is counted everywhere but never placed in a county: sorting a None against a code crashed the whole night
+    odd = [itd("", None, "1", "ACME OIL LLC", "DR", 9000, None, ap), itd("42137005900000", None, "1", "ACME OIL LLC", "DR", 9000, None, ap),
+           itd("3513700590", "137", "1", "ACME OIL LLC", "DR", 9000, None, ap), itd("3503900011", "039", "1", "ACME OIL LLC", "DR", 9000, None, ap)]
+    try:
+        po = M.permits_section(D(2026, 10, 30), odd, lk)
+    except TypeError as e:
+        po = None
+        check(False, "permits: a permit with no county made the section crash (%s)" % e)
+    if po:
+        check(po["total"] == 4 and po["newDrill"] == 4 and sum(c[2] for c in po["counties"]) == 2 and po["countyCount"] == 2 and all(c[0] for c in po["counties"]),
+              "permits: a permit with no county is in the totals and in no county: %s" % po["counties"])
+    tc = M.tally_counties(collections.Counter({None: 2, "": 1, "137": 3, "039": 3, "017": 1}), lk)
+    check(tc == [["039", lk.county_name("039"), 3], ["137", lk.county_name("137"), 3], ["017", lk.county_name("017"), 1]],
+          "tally_counties: largest first, ties by code, nothing without a code: %s" % tc)
 
     # ------------------------------------------------------------------ completions
     def comp(api, county, op, opname, typ, new, day, oil=0.0, gas=0.0, horizontal=False, spud=None, fp=None):
@@ -157,6 +185,9 @@ def run_checks(M, quiet=False):
     check(all(not d.get("absent") for d in live_only["datasets"]) and all(d["file"] for d in live_only["datasets"]), "build_reports: a live report carries every file's name, time and size")
     err = M.build_reports({"R": mon, "dates": [mon], "lk": lk}, {**jobs, "itd": RuntimeError("boom")}, {}, {mon: "live"})[mon]
     check("permits" not in err and [d for d in err["datasets"] if d["id"] == "itd"][0]["error"] == "boom", "build_reports: a dataset that failed leaves its section out and says why")
+    err2 = M.build_reports({"R": mon, "dates": [mon], "lk": lk}, {**jobs, "itd": RuntimeError("could not read https://oklahoma.gov/content/dam/ok/en/occ/documents/og/ogdatafiles/ITD.xlsx: <urlopen error timed out>")}, {}, {mon: "live"})[mon]
+    msg2 = [d for d in err2["datasets"] if d["id"] == "itd"][0]["error"]
+    check("http" not in msg2 and "oklahoma.gov" not in msg2 and "timed out" in msg2, "build_reports: the text of a failure carries no web address: %r" % msg2)
     h = M.headline(live_only)
     check(h["f"] == 4 and h["dd"] == "2026-10-30" and h["pn"] == 1 and h["w"] == 5 and h["k"] == "live", "headline: files read, data day, counts: %s" % h)
     check(M.headline(rebuilt)["f"] == 3 and M.headline(rebuilt)["w"] is None, "headline: a rebuilt day reads three files and has no inventory")

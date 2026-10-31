@@ -37,6 +37,9 @@ COMMIT = "Commit the new files"
 # ---- structure: each state's capture and check carry on after an error, and everything else is ordered around them
 IDS = ("tx_capture", "tx_check", "ok_capture", "ok_check", "nm_capture", "nm_check")
 check(all(by_id[i].get("continue-on-error") is True for i in IDS), "all three captures and all three checks are continue-on-error")
+caps = [by_id[i] for i in ("tx_capture", "ok_capture", "nm_capture")]
+check(all(c.get("timeout-minutes") for c in caps) and sum(c["timeout-minutes"] for c in caps) + 10 <= wf["jobs"]["capture"]["timeout-minutes"],
+      "each capture has a time limit of its own and the three together leave the job room to commit and publish (%s of %s minutes): a download that trickles cannot use up the job" % ([c.get("timeout-minutes") for c in caps], wf["jobs"]["capture"]["timeout-minutes"]))
 names = [s.get("name") or s.get("uses") for s in wf["jobs"]["capture"]["steps"]]
 pos = {n: names.index(n) for n in (TX_DROP, OK_DROP, NM_DROP, COMMIT, "Publish the site to GitHub Pages", LAST)}
 check(pos[TX_DROP] < pos[COMMIT] and pos[OK_DROP] < pos[COMMIT] and pos[NM_DROP] < pos[COMMIT] < pos["Publish the site to GitHub Pages"] < pos[LAST], "the drops come before the commit, the commit before the publish, the failing step last")

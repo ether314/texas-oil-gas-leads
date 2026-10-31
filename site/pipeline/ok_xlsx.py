@@ -71,13 +71,14 @@ VALUE = re.compile(rb"<v>(.*?)</v>", re.S)
 INLINE = re.compile(rb"<t[^>]*>(.*?)</t>", re.S)
 
 
-def rows(path, want=None, sheet=0):
+def rows(path, want=None, sheet=0, optional=()):
     """Yield one dict per data row: {header: text or None} for the wanted columns (all of them when want is None). The first
-    row is the header. Rows are yielded in file order."""
+    row is the header. Rows are yielded in file order. A wanted column that is not in the sheet is an error; an `optional` one
+    that is not there is None in every row (a renamed column then costs a figure, not the whole file)."""
     with zipfile.ZipFile(path) as z:
         shared = _shared_strings(z)
         with z.open(sheet_member(z, sheet)) as f:
-            buf, head, cols = b"", None, None
+            buf, head, cols, absent = b"", None, None, ()
             while True:
                 chunk = f.read(CHUNK)
                 buf += chunk
@@ -111,12 +112,13 @@ def rows(path, want=None, sheet=0):
                         cells[n] = val
                     if head is None:
                         head = {n: (v or "").strip() for n, v in cells.items()}
-                        cols = {n: h for n, h in head.items() if want is None or h in want}
+                        cols = {n: h for n, h in head.items() if want is None or h in want or h in optional}
                         missing = set(want or ()) - set(cols.values())
                         if missing:
                             raise ValueError("columns not in the sheet: %s" % ", ".join(sorted(missing)))
+                        absent = [h for h in optional if h not in cols.values()]
                         continue
-                    yield {h: cells.get(n) for n, h in cols.items()}
+                    yield {**{h: None for h in absent}, **{h: cells.get(n) for n, h in cols.items()}}
                 buf = buf[end:]
                 if not chunk:
                     break

@@ -98,7 +98,9 @@ Oklahoma's reports are built the same way by `site/pipeline/d8_ok_daily.py` into
 `site/pipeline/d9_nm_daily.py` into `site/public/data/daily-nm/` (two requests to the Division's well layer), in the same workflow run,
 after the Texas capture. The three captures are isolated from each other: if one fails (the RRC has refused GitHub's runners for hours
 at a time, and the OCC and the OCD can have outages of their own), that state's changes are dropped before the commit, the others are
-committed, the site is published, and the run then ends red so the failure shows. To fill Oklahoma's archive from the OCC's master
+committed, the site is published, and the run then ends red so the failure shows. Each capture also has a time limit of its own (25, 12 and 6 minutes), so
+a download that hangs cannot starve the others. A later capture of a day never replaces a report that read more files, and a file that is not the one
+expected (an error page, an empty or cut-short inventory) fails its dataset instead of being published. To fill Oklahoma's archive from the OCC's master
 files (230 MB, about 2 minutes): `python3 -I site/pipeline/d8_ok_daily.py --history`, or tick `oklahoma_history` when running the
 workflow by hand; for New Mexico's, `python3 -I site/pipeline/d9_nm_daily.py --history` or `new_mexico_history`. The monthly cards (Oklahoma
 and New Mexico crude production) are refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py [--state NM]`.
