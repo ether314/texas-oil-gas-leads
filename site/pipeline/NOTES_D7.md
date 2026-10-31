@@ -312,6 +312,19 @@ was captured at or after 03:00 UTC the next day. On a normal night the backup is
 or never ran, it captures the day. (That missed run lost no data: none of the nightly files lands between 20:33, when the
 Oct 30 report was captured by hand, and 22:15 Central.)
 
+### When the RRC refuses the runner
+
+On 2026-10-31 three runs could not read the RRC at all (09:22, 09:32 and 09:45 UTC): HTTP 403 ("no file table") on some shares and
+dropped TLS handshakes (`SSLEOFError`, 18 tries each) on the rest, so 0 of 6 datasets and exit 1 after five to six minutes of retries.
+The four runs before them that day (the last at 08:06 UTC) had worked, a retry 23 minutes later failed the same way, and the same
+shares answered from another address, so it was GitHub's runner addresses that were refused. Nothing in the script can fix that.
+
+What the workflow does about it: the Texas capture and its check are `continue-on-error`, so the Oklahoma capture, the commit and
+the publish still run. A failed capture exits 1 but still rewrites `index.json` (a new `generated` time on the old data; measured
+by running the script against a dead network), so a step puts `site/public/data/daily/` back as committed before the commit. The last
+step fails the run so the night shows red. Before this a Texas failure stopped the whole job: no Oklahoma capture, no commit, no
+publish. The backup run an hour later tries the RRC again; to fill a missed day afterwards, run the workflow by hand with `date`.
+
 ### Repairing a day
 
 `--backfill` fills days that have no file and never replaces one that exists, so a report that is partial, or was captured

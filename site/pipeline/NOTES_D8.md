@@ -156,9 +156,10 @@ python3 -I site/pipeline/d8_ok_daily.py --counties       # rebuild counties-ok.g
 python3 -I site/pipeline/d8_ok_context.py                # refresh series-ok.json from EIA (by hand, about the end of each month)
 ```
 `.github/workflows/daily-rrc-report.yml` runs it in the same job as the Texas capture, after it, at 03:15 and 04:20 UTC (the files
-are made at about 00:41 UTC in daylight time, so both runs are after). The Oklahoma steps cannot stop the job: the capture and its
-check are `continue-on-error`, and if either failed the step after them puts `site/public/data/daily-ok/` back as it was
-committed, so a bad Oklahoma capture never reaches `main` and the Texas report is still committed and published. The workflow's
+are made at about 00:41 UTC in daylight time, so both runs are after). The two states' captures are isolated: each capture and its
+check are `continue-on-error`, and if either of a state's failed, a step puts that state's folder back as it was committed, so a bad
+capture never reaches `main` and the other state is still committed and published. The last step then fails the run, so a night
+that lost a state shows red. The workflow's
 `oklahoma_history` input (a checkbox) refills the whole archive from the master files; `date` repairs a day for both states.
 Raw downloads go to `dl/daily-ok/` (gitignored with the rest of `dl/`).
 
