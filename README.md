@@ -11,6 +11,8 @@ external requests) plus the Python scripts that build its data files.
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
   basin outlines and a time-lapse of permits.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields.
+- **Daily report**: what the Railroad Commission's nightly files held, one report a day for the last 92 days. A simple version
+  for the daily look, and a verbose one with permits, the pending queue, completions, image packs and source health.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
@@ -18,7 +20,8 @@ Texas Comptroller (franchise taxpayers, severance-tax revenue, Property Value St
 outlook, refinery capacity), BLS (QCEW, state employment), Census (county boundaries, County Business Patterns, ZIP
 centroids), EPA facility data and Baker Hughes rig counts (through Internet Archive copies of its public workbooks).
 Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
-`site/pipeline/NOTES_*.md`.
+`site/pipeline/NOTES_*.md`. The Daily report reads the six datasets the RRC lists as nightly or twice daily (permits, pending
+applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`.
 
 ## Privacy
 Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
@@ -36,10 +39,16 @@ The scripts in `site/pipeline/` (`d1` to `d6`) and `site/build_data.py` write th
 the lead lists `leadpool.csv`, `leadpool_ranked.csv` and `rrc_operators.csv`, which `leadpool.py` and
 `rrc_operators.py` generate; they are not committed because they carry contact details from public filings.
 
+The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard library only; no lead CSVs needed) into
+`site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night and commits the result; it does not
+deploy. To fill the archive from the RRC's file history the first time: `python3 -I site/pipeline/d7_daily.py --backfill 91`.
+
 ## Known limits
 - Permit dots show only permits with a recorded surface location (about 40% of the last 12 months); counts and trends
   use every permit.
 - RRC production is complete only through January 2026 because reports lag.
+- The Daily report reads nightly files, but the county, operator and company tables are built from the RRC's monthly files, so the
+  two can show permits through different dates. The report's source-health section says when a monthly rebuild is due.
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been
