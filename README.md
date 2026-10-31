@@ -13,6 +13,10 @@ address keep their first name, `texas-oil-gas-leads`.)
   such wherever they show, never added to the permits, and ending two months back because spud dates arrive late (`site/pipeline/NOTES_D9.md`, `NOTES_D10.md`).
   The federal offshore (BSEE, the Gulf's federal waters) is small (about 45 wells a year from 16 operators), is divided into 63 protraction areas where the others have
   counties, publishes no depth, and has no Daily report because its file is weekly.
+- **National**: every state agency's drilling permits side by side (`#national`): a tile map of the states you click into, the months stacked by state, a ranking, the kinds of permits
+  (new wells, injection and disposal, re-entries, reworks, amendments) where an agency tells them apart, and a table of who is covered and who is not yet. Each agency counts what it
+  publishes, permits by approval or issue date or, where no approval dates by well exist, wells by spud date; the two are never added together, a state not read yet is "not available" and never zero,
+  and the BLM's onshore permits (federal land, which the states also permit) are a line of their own and never added into the states. See `site/pipeline/NOTES_D11.md`.
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
   top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
   operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green, the federal offshore rose).
@@ -80,6 +84,9 @@ Then open http://localhost:8000. Any static host works.
 `python3 -I tests/run_all.py` runs the Python tests (pipeline rules, validators, the nightly workflow's own steps), `node tests/smoke.cjs`
 loads every view in a real browser at desktop and phone width and `node tests/a11y.cjs` checks text contrast in both themes, keyboard focus and that nothing is cut off at 360 px;
 `.github/workflows/ci.yml` runs them on every pull request. See `tests/README.md`.
+
+The national report's files are `site/public/data/nat/<ST>.json` (one per state, written by `site/pipeline/d11_nat_<st>.py`) merged into `national.json` by
+`python3 -I site/pipeline/d11_nat_build.py`; `NOTES_D11.md` has the shape and the rules every producer follows.
 
 ## Rebuild the data
 The scripts in `site/pipeline/` (`d1` to `d6`) and `site/build_data.py` write the JSON files in `site/public/data/`
