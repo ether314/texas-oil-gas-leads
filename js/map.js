@@ -681,7 +681,7 @@ export function createMapView({ root, meta }) {
     });
     ui.tableBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', text: 'Table view' });
     ui.tableBtn.addEventListener('click', () => setTable(!state.table));
-    ui.tlBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', title: 'Replay two years of located ' + S.word + ' by ' + (S.states.every((id) => measureOf(id).id === 'spuds') ? 'spud' : 'issue') + ' date' }, icon('play', 15), el('span', { text: 'Watch' }), el('span', { class: 'hide-sm', text: ' ' + drillLabel() }));
+    ui.tlBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', title: 'Replay two years of located ' + S.word + ' by ' + (S.states.every((id) => measureOf(id).id === 'spuds') ? 'spud' : 'issue') + ' date' }, icon('play', 15), el('span', null, 'Watch', el('span', { class: 'hide-sm', text: ' ' + drillLabel() })));
     ui.tlBtn.addEventListener('click', () => toggleReplay());
     const bar = el('div', { class: 'map-bar' },
       el('label', { class: 'field' }, el('span', { class: 'field-label', text: 'Shade counties by' }), ui.metricSel),
@@ -742,7 +742,7 @@ export function createMapView({ root, meta }) {
       ui.tl.show();
     } else ui.tl.hide();
     ui.tlBtn.setAttribute('aria-pressed', String(on));
-    ui.tlBtn.replaceChildren(icon(on ? 'close' : 'play', 15), el('span', { text: on ? 'Close' : 'Watch' }), el('span', { class: 'hide-sm', text: on ? ' replay' : ' ' + drillLabel() }));
+    ui.tlBtn.replaceChildren(icon(on ? 'close' : 'play', 15), el('span', null, on ? 'Close' : 'Watch', el('span', { class: 'hide-sm', text: on ? ' replay' : ' ' + drillLabel() })));
     hideTip();
   }
 
