@@ -82,8 +82,8 @@ writes `series-fo.json`, key `foCrude`, one request to EIA's page; the page's ti
 end of each month. BSEE's own production files are not used.
 
 `.github/workflows/refresh-monthly.yml` runs `d10_fo_monthly.py` every Monday at 05:40 UTC as a third isolated refresh (with its own check and drop steps; BSEE makes its file on Sundays): a failure puts back the four files
-as committed, the other two refreshes go ahead, and the run ends red after the publish. It never rebuilds the map of areas (`--areas` is by hand). The producer has been run from this machine against the real BSEE files only; the
-first scheduled run is the first from a GitHub runner.
+as committed, the other two refreshes go ahead, and the run ends red after the publish. It never rebuilds the map of areas (`--areas` is by hand). The workflow was dispatched once by hand on 2026-10-31 (21:27 UTC) to prove it on a GitHub runner: BSEE answered (the borehole file, 4.0 MB, made 2026-10-25), the checks passed, the twelve files
+came out byte-identical to the committed ones and nothing was committed. A week in which BSEE makes a new file is the first that changes them.
 
 ## Not available
 
