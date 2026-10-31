@@ -1,8 +1,8 @@
 # Texas oil & gas leads
 
 An interactive dashboard and map of Texas oil and gas drilling activity, producing operators and the companies that
-serve them, built only from public records. It is a static site (HTML, CSS and JavaScript modules, no build step, no
-external requests) plus the Python scripts that build its data files.
+serve them, built only from public records, with a daily report for Oklahoma too. It is a static site (HTML, CSS and
+JavaScript modules, no build step, no external requests) plus the Python scripts that build its data files.
 
 ## What is in it
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
@@ -13,6 +13,9 @@ external requests) plus the Python scripts that build its data files.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields.
 - **Daily report**: what the Railroad Commission's nightly files held, one report a day for the last 92 days. A simple version
   for the daily look, and a verbose one with permits, the pending queue, completions, image packs (sizes, and for days captured live a count of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and source health.
+- **Oklahoma daily report**: the same two versions and 92-day archive for the Oklahoma Corporation Commission's daily files: intents to
+  drill, completion filings, wells that changed operator and, for days captured live, the state's well inventory, with a county map,
+  counts by kind, depth and operator, and source health.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
@@ -21,7 +24,9 @@ outlook, refinery capacity), BLS (QCEW, state employment), Census (county bounda
 centroids), EPA facility data and Baker Hughes rig counts (through Internet Archive copies of its public workbooks).
 Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
 `site/pipeline/NOTES_*.md`. The Daily report reads the six datasets the RRC lists as nightly or twice daily (permits, pending
-applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`.
+applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`. The Oklahoma report reads four files from the
+Oklahoma Corporation Commission (intents to drill, completions and well transfers daily; the well inventory nightly) and the
+Census outlines of Oklahoma's 77 counties; see `site/pipeline/NOTES_D8.md`.
 
 ## Privacy
 Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
@@ -42,9 +47,15 @@ the lead lists `leadpool.csv`, `leadpool_ranked.csv` and `rrc_operators.csv`, wh
 The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard library only; no lead CSVs needed) into
 `site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night, commits the result to `main` and
 publishes the site. A second schedule an hour later is a backup for a run GitHub skips: it does nothing when the first one
-already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily RRC
-report, Run workflow) and give the day in the `date` box. To fill the archive from the RRC's file history the first time:
+already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily
+reports, Run workflow) and give the day in the `date` box. To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
+
+The Oklahoma report is built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, in the same
+workflow run, after the Texas capture. Its steps cannot stop the run: if the Oklahoma capture or its check fails, its changes are
+dropped before the commit and the Texas report is committed and published as usual. To fill its archive from the OCC's master
+files (230 MB, about 2 minutes): `python3 -I site/pipeline/d8_ok_daily.py --history`, or tick `oklahoma_history` when running the
+workflow by hand.
 
 ## Publishing
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
@@ -58,6 +69,9 @@ the two leading folders), add `.nojekyll`, commit and push.
 - RRC production is complete only through January 2026 because reports lag.
 - The Daily report reads nightly files, but the county, operator and company tables are built from the RRC's monthly files, so the
   two can show permits through different dates. The report's source-health section says when a monthly rebuild is due.
+- The Oklahoma report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
+  image packs, planned depth instead of horizontal (the permit file does not say), transfers for about the last month and the well
+  inventory only for days captured live. It does not rebuild the monthly tables, operator pages or company lists for Oklahoma.
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been
