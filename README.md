@@ -30,7 +30,7 @@ address keep their first name, `texas-oil-gas-leads`.)
   3-month ribbon and calendar and one plain-English summary, and also shown side by side by state wherever the files measure
   different things (Texas and New Mexico know which wells are horizontal, Oklahoma only the planned depth). The states bar narrows the whole
   report to some of them (`#daily?st=tx`, `st=ok`, `st=nm`); an old `#oklahoma` link opens it that way. A day one state has no report for says so and is left out
-  of every total, never counted as zero. Texas alone adds the pending queue, the image packs (sizes, and for days captured live a count
+  of every total, never counted as zero; when the newest report is two or more days behind today's date (Central) the page says so, in case the nightly capture failed. Texas alone adds the pending queue, the image packs (sizes, and for days captured live a count
   of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and a **GPS map** of each day's
   new-drill permits and directional surveys; every point opens a **page with its own URL** (`#daily?d=DAY&drill=PERMIT`) holding the
   well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and survey, which the nightly job stores as the

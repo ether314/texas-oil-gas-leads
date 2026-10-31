@@ -439,6 +439,35 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 11. the Daily report says so when its newest report is two or more days behind today's date (Central): the nightly capture may have failed; not otherwise
+  {
+    const days = [].concat(...['daily', 'daily-ok', 'daily-nm'].map((dir) => { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', dir, 'index.json'), 'utf8')); return (j.days || j).map((r) => r.d); })).sort();
+    const newest = days[days.length - 1];
+    const at = (offsetDays, hour) => new Date(Date.parse(newest + 'T00:00:00Z') + offsetDays * 86400000 + hour * 3600000);
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.clock.setFixedTime(at(0, 18)); // noon Central on the newest report's day
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      check((await page.locator('#daily-root .dr-stale').count()) === 0, 'on the newest report\'s own day the Daily report has no warning');
+      await page.clock.setFixedTime(at(5, 18)); // five days later
+      await page.goto(base + '#daily?d=' + newest + '&st=tx', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      const note = (await page.locator('#daily-root .dr-stale').count()) ? await page.locator('#daily-root .dr-stale').innerText() : '';
+      check(/newest report is [4-6] days old/.test(note) && /may have failed/.test(note), 'five days later it says the newest report is old and the capture may have failed: ' + note.slice(0, 80));
+      // an older day is not "the newest report", so it carries no warning
+      const older = days[Math.max(0, days.length - 10)];
+      await page.goto(base + '#daily?d=' + older, { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      check((await page.locator('#daily-root .dr-stale').count()) === 0, 'and a day that is not the newest carries none');
+    } catch (e) {
+      check(false, 'the stale-report notice: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

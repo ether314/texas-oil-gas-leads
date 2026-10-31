@@ -706,6 +706,8 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-title { font-size: var(--fs-display); line-height: 1.02; letter-spacing: var(--track-display); font-weight: 740; text-wrap: balance; margin: 0 0 var(--sp-3); }
 .dr-lede { margin: 0 0 var(--sp-4); max-width: 52ch; color: var(--ink-2); font-size: clamp(15px, 1vw + 12px, 18px); }
 .dr-pills { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.dr-stale { display: flex; align-items: flex-start; gap: var(--sp-2); max-width: 62ch; margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); background: color-mix(in srgb, var(--s2) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--s2) 34%, transparent); color: var(--ink); font-size: var(--fs-sm); }
+.dr-stale .ico { margin-top: 2px; color: var(--s2); }
 .dr-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 13px 5px 10px; border-radius: var(--r-pill); border: 1px solid var(--border-2); background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: var(--fs-sm); font-weight: 620; white-space: nowrap; max-width: 100%; }
 .dr-pill.quiet { font-weight: 560; color: var(--ink-2); }
 .dr-led { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 3px color-mix(in srgb, var(--muted) 24%, transparent); }
