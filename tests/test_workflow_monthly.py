@@ -39,7 +39,7 @@ FO_DROP = "Drop the federal offshore files if the refresh or its check failed"
 LAST = "Fail the run if a refresh or a check failed"
 COMMIT = "Commit the new files"
 PUBLISH = "Publish the site to GitHub Pages"
-IDS = ("nm_refresh", "ok_refresh", "fo_refresh", "nm_check", "ok_check", "fo_check")
+IDS = ("nm_refresh", "ok_refresh", "fo_refresh", "nm_check", "ok_check", "fo_check", "nat_build")
 DATA = "site/public/data"
 NM_FILES = [DATA + "/" + n + "-nm.json" for n in ("series-permits", "county-permits", "operators", "permits")]
 OK_FILES = [DATA + "/" + n + "-ok.json" for n in ("series-permits", "county-permits", "operators", "permits")]
@@ -62,8 +62,12 @@ check("d9_nm_monthly.py" in runs["Refresh New Mexico's permit history"] and "d8_
       and "d9_nm_monthly.py --check" in runs["Check New Mexico's files"] and "d8_ok_monthly.py --check" in runs["Check Oklahoma's files"] and "d10_fo_monthly.py --check" in runs["Check the federal offshore's files"],
       "each refresh and each check runs its own producer (python3 -I)")
 check(all(re.search(r"python3 -I ", runs[k]) for k in runs if "site/pipeline" in runs[k]), "producers run isolated: python3 -I")
-check(all(os.path.exists(os.path.join(REPO, f)) for f in NM_FILES + OK_FILES + FO_FILES), "the twelve files the workflow names are the twelve committed ones")
+check(all(os.path.exists(os.path.join(REPO, f)) for f in NM_FILES + OK_FILES + FO_FILES), "the twelve files the workflow names are the twelve committed ones (and national.json is the thirteenth)")
 ALL = {"nm": (NM_FILES, NM_DROP), "ok": (OK_FILES, OK_DROP), "fo": (FO_FILES, FO_DROP)}
+NAT = "Rebuild the national report's file"
+check(names.index(FO_DROP) < names.index(NAT) < pos[COMMIT] and "d11_nat_build.py" in steps[NAT]["run"] and "python3 -I " in steps[NAT]["run"] and by_id["nat_build"].get("continue-on-error") is True,
+      "the national report's file is rebuilt after the drops and before the commit, isolated, and a failed rebuild cannot stop the commit")
+check("site/public/data/national.json" in steps[COMMIT]["run"] and not any("national" in steps[d]["run"] for d in (NM_DROP, OK_DROP, FO_DROP)), "the commit adds national.json, which no drop step restores (it is rebuilt from whatever survived)")
 check(all(f in steps[COMMIT]["run"] for f in NM_FILES + OK_FILES + FO_FILES) and all(f in steps[drop]["run"] for files, drop in ALL.values() for f in files)
       and not any(f in steps[drop]["run"] for st, (files, drop) in ALL.items() for other, (fs, _) in ALL.items() if other != st for f in fs),
       "the commit adds the twelve; each drop step restores its own state's four and none of the others'")
@@ -78,12 +82,12 @@ def cond(name, outcomes, cancelled=False):
 
 
 good = True
-for nr, orf, fr, nc, oc, fc in itertools.product(["success", "failure"], repeat=6):
-    o = dict(zip(IDS, (nr, orf, fr, nc, oc, fc)))
+for nr, orf, fr, nc, oc, fc, nb in itertools.product(["success", "failure"], repeat=7):
+    o = dict(zip(IDS, (nr, orf, fr, nc, oc, fc, nb)))
     nm_bad, ok_bad, fo_bad = "failure" in (nr, nc), "failure" in (orf, oc), "failure" in (fr, fc)
     good &= (cond(NM_DROP, o) == nm_bad and cond(OK_DROP, o) == ok_bad and cond(FO_DROP, o) == fo_bad
-             and cond(LAST, o) == (nm_bad or ok_bad or fo_bad) and cond(LAST, o, True) is False)
-check(good, "all 64 outcome combinations: each drop step runs exactly when its state failed; the last step runs when any did and never when cancelled")
+             and cond(LAST, o) == (nm_bad or ok_bad or fo_bad or nb == "failure") and cond(LAST, o, True) is False)
+check(good, "all 128 outcome combinations: each drop step runs exactly when its state failed; the last step runs when any step (the national rebuild too) failed and never when cancelled")
 
 # ---- a throwaway clone with a local bare origin, made from the tracked files as they are now
 TMP = tempfile.mkdtemp()
@@ -146,13 +150,13 @@ open(os.path.join(W, FO_FILES[3]), "a").write(" ")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 files = sorted(l.split("|")[0].strip() for l in git("show", "--stat", "--format=", "HEAD").splitlines() if "|" in l)
 left = git("status", "--short")
-check(code == 0 and files == sorted([OK_FILES[1], FO_FILES[3]]) and "stray.json" in left, "it commits only the twelve files, whatever else is lying about (the download folder is ignored by git): %s" % files)
+check(code == 0 and files == sorted([OK_FILES[1], FO_FILES[3]]) and "stray.json" in left, "it commits only the files it names (twelve and national.json), whatever else is lying about (the download folder is ignored by git): %s" % files)
 
 # the last step, rendered as GitHub renders it
-outs = {"nm_refresh": "success", "ok_refresh": "failure", "fo_refresh": "success", "nm_check": "success", "ok_check": "success", "fo_check": "failure"}
+outs = {"nm_refresh": "success", "ok_refresh": "failure", "fo_refresh": "success", "nm_check": "success", "ok_check": "success", "fo_check": "failure", "nat_build": "success"}
 rendered = re.sub(r"\$\{\{ steps\.(\w+)\.outcome \}\}", lambda m: outs[m.group(1)], steps[LAST]["run"])
 code, out = sh(rendered)
-check(code == 1 and "::error title=Monthly files::New Mexico refresh success, New Mexico check success, Oklahoma refresh failure, Oklahoma check success, federal offshore refresh success, federal offshore check failure" in out, "the last step fails the run, naming each outcome (exit %d)" % code)
+check(code == 1 and "::error title=Monthly files::New Mexico refresh success, New Mexico check success, Oklahoma refresh failure, Oklahoma check success, federal offshore refresh success, federal offshore check failure, national report file success" in out, "the last step fails the run, naming each outcome (exit %d)" % code)
 check("${{" not in rendered, "every expression in it is one GitHub fills in")
 
 shutil.rmtree(TMP, ignore_errors=True)
