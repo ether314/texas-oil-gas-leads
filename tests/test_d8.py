@@ -59,9 +59,9 @@ def run_checks(M, quiet=False):
     yes = ["CONTINENTAL RESOURCES INC", "BCE-MACH III LLC", "NADEL AND GUSSMAN, L.L.C.", "CITATION OIL & GAS CORP", "MERIT ENERGY COMPANY", "ABC OIL CO",
            "SMITH PETROLEUM LP", "GREAT HORNED OWLS, LLC", "JOE SMITH INC", "ACME OPERATING LIMITED", "RIDGETOP RANCH PROPERTIES INC"]
     no = ["JOHN SMITH", "SMITH, JOHN D", "SMITH FAMILY TRUST", "ESTATE OF JANE DOE", "JANE DOE REVOCABLE TRUST LLC", "RANDY CO", "", None,
-          "OTC/OCC NOT ASSIGNED", "SMITH HEIRS LLC", "WILLCOX", "ALLCO"]
+          "OTC/OCC NOT ASSIGNED", "SMITH HEIRS LLC", "WILLCOX", "ALLCO", "FINNEY KYLER A DBA FINNEY OIL CO", "Smith d/b/a Smith Oil Co", "JONES D.B.A. JONES OIL LLC"]
     check(all(M.nameable(n) for n in yes), "nameable: corporations, LLCs, partnerships and oil companies are named")
-    check(not any(M.nameable(n) for n in no), "nameable: people, trusts, estates, families, bare 'Co', blanks and 'LLC' inside a word are not: %s" % [n for n in no if M.nameable(n)])
+    check(not any(M.nameable(n) for n in no), "nameable: people, trusts, estates, families, a person's dba, bare 'Co', blanks and 'LLC' inside a word are not: %s" % [n for n in no if M.nameable(n)])
     check(M.pretty("BLACKJACK OPERATING, LLC") == "Blackjack Operating, LLC" and M.pretty("AWM OPERATING LLC") == "AWM Operating LLC" and M.pretty("BCE-MACH III LLC") == "BCE-Mach III LLC"
           and M.pretty("CITATION OIL & GAS CORP") == "Citation Oil & Gas Corp", "pretty: casing keeps suffixes and acronyms")
 

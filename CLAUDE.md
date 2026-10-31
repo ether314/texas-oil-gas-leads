@@ -62,7 +62,7 @@ One sentence.
 ## Guardrails that stay in force
 
 - **Privacy** (README, Privacy): business-, place- and market-level data only. No individuals' names, phone numbers, street addresses.
-  Operators are named only when they are corporations, LLCs or limited partnerships (`nameable()` in `d8_ok_daily.py` is the Oklahoma
+  Operators are named only when they are corporations, LLCs or limited partnerships, never a person's "dba" (`nameable()` in `d8_ok_daily.py` is the Oklahoma
   rule, the P-5 organization type is Texas's). There is one documented exception (the Texas drill pages link to the RRC's scanned W-1
   documents). Do not extend it, and do not publish Oklahoma documents or any contact list.
 - **Never commit secrets** (keys, tokens, `.env`, service-account files). **Never put the owner's e-mail address or any personal data
@@ -91,7 +91,8 @@ for Texas and Oklahoma, built only from public records (README has the full desc
   `st=tx|ok` narrows it); `geo.js` holds the projection (module state, Texas-fitted: `buildGeoIsolated` builds a second state);
   `util.js` has `el()`/`svg()`/`load()`.
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
-  `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
+  `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`
+  the monthly EIA series) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
 - `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
   `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
 - Time: RRC listing times are Central; times inside OCC files are UTC and are turned into Central days; a report shows only whole days.
@@ -118,13 +119,16 @@ manual run of the workflow does, and so can the by-hand procedure in the README.
 
 1. One state switch (Both, Texas, Oklahoma) across the whole site. (The rebrand to Oil tracker is done: name, titles, header, hero.
    Views still describe themselves as Texas where they are Texas only; each loses that wording when Oklahoma reaches it.)
-2. Oklahoma in the Overview, Map, Operators and Sources: county permits and trend, permit dots (the OCC permit file has coordinates),
-   operators named by the corporate rule, active wells by county and operator, EIA crude. Not available yet: Oklahoma jobs (BLS),
-   rig counts (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
+2. Oklahoma in the Overview, Map, Operators and Sources. Data done: `d8_ok_monthly.py` writes the permit series, county counts, operators and
+   permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
+   Daily report's inventory), refreshing the monthly files in the nightly workflow. Not available yet: Oklahoma jobs (BLS), rig counts
+   (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
 3. Publish the site automatically after a merge that is green, without touching the RRC (tests and CI are in place).
 4. Visual polish and simplification pass; phone layouts; keyboard and contrast checks.
 
 ### Run log
 
 - 2026-10-31: Oklahoma Daily report, unified Daily report, GPS map and drill pages, nightly workflow made outage-proof (PR #12).
-- 2026-10-31: CLAUDE.md, tests and CI (PR #13, #14); Oklahoma gap fill from the master files (PR #15); site renamed Oil tracker.
+- 2026-10-31: CLAUDE.md, tests and CI (PR #13, #14); Oklahoma gap fill from the master files (PR #15); site renamed Oil tracker (PR #16).
+- 2026-10-31: Oklahoma permit history files (`d8_ok_monthly.py`). Privacy fix found while reading the operator list: two reports had named two
+  sole proprietors ("... DBA ..."); the rule now refuses a dba and the two days were rebuilt. The live site shows the old names until it is published.
