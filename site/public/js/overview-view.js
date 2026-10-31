@@ -8,17 +8,17 @@ import { renderKpis, renderHot, renderTopOps, renderProducers, renderFreshness }
 import { loadMarketData, initMarkets } from './pulse.js';
 import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
-import { STATES, otherStates, stateOf, statesKey } from './states.js';
+import { STATES, otherStates, stateOf, statesKey, measureOf, sameMeasure } from './states.js';
 import { permitSeries, countyPermits, operatorRows, activeWells } from './overview-data.js';
 
 const LEDE = {
   TX: 'New-drill permits from the Permian to the Eagle Ford, the operators filing them and the companies that serve them.',
   OK: 'New-drill permits across Oklahoma, from the Anadarko Basin to the rest of the state, and the operators filing them.',
-  NM: 'New-drill permits across New Mexico, from the Delaware Basin to the San Juan Basin, and the operators filing them.',
+  NM: 'Wells spudded across New Mexico, from the Delaware Basin to the San Juan Basin, and the operators drilling them.',
   MANY: 'New-drill permits from the Permian to the Anadarko Basin, the operators filing them and, for Texas, the companies that serve them.',
 };
 // what each state's permit window is called in the hero's eyebrow
-const SOURCE = { TX: 'Railroad Commission permits', OK: 'Corporation Commission approvals', NM: 'Oil Conservation Division approvals' };
+const SOURCE = { TX: 'Railroad Commission permits', OK: 'Corporation Commission approvals', NM: 'Oil Conservation Division spud reports' };
 
 const pct = (x) => (x >= 1 ? '100%' : Math.min(99, Math.round(x * 100)) + '%'); // 99.6% is not 100%
 
@@ -55,8 +55,9 @@ export function createOverview(meta) {
       if (hero) hero.update(G, P); else hero = createHero(canvas, host, G, P);
       const cov = (id) => (pm.coverageBy ? pm.coverageBy[id] : pm.coverage);
       const share = (id) => { const c = cov(id); return pct(c.share24) + ' of the last 24 months, ' + pct(c.share12) + ' of the last 12'; };
-      note.textContent = 'Dots are permits with a recorded surface location: ' + (states.length > 1 ? states.map((id) => stateOf(id).name + ' ' + share(id)).join('; ') : share(states[0]))
-        + '. Brighter dots are the last 12 months. Counts and trends use every permit.';
+      note.textContent = 'Dots are ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded surface location: ' + (states.length > 1 ? states.map((id) => stateOf(id).name + ' ' + share(id)).join('; ') : share(states[0]))
+        + '. Brighter dots are the last 12 months. Counts and trends use every one.'
+        + (states.some((id) => measureOf(id).id === 'spuds') ? ' New Mexico counts wells spudded, not permits (its regulator publishes no approval dates), and ends two months back because spud dates arrive late.' : '');
       host.classList.add('has-map');
     } catch (err) { note.textContent = 'The map backdrop could not be loaded.'; }
   }
@@ -67,7 +68,7 @@ export function createOverview(meta) {
     if (ov.coreLoaded) return;
     ov.docs.series.TX = await loadOpt('series-permits');
     await Promise.all(otherStates.map(async (q) => {
-      const [series, operators, index] = await Promise.all([loadOpt(q.files.series), loadOpt(q.files.operators), loadOpt(q.dir + '/index')]);
+      const [series, operators, index] = await Promise.all([loadOpt(q.files.series), loadOpt(q.files.operators), q.dir ? loadOpt(q.dir + '/index') : null]);
       ov.docs.series[q.id] = series; ov.docs.operators[q.id] = operators; ov.wells[q.id] = activeWells(index);
     }));
     ov.coreLoaded = true;
@@ -169,7 +170,7 @@ export function createOverview(meta) {
     }
     for (const id of others()) {
       const s = ov.docs.series[id]; const q = stateOf(id);
-      if (s) items.push({ icon: 'pin', label: 'Permits (' + q.agency + ')', value: (s.verb || 'Approved') + ' to ' + fmtDate(s.through), cadence: s.cadence || 'daily' });
+      if (s) items.push({ icon: 'pin', label: (measureOf(id).id === 'spuds' ? 'Wells spudded' : 'Permits') + ' (' + q.agency + ')', value: measureOf(id).verb + ' to ' + fmtDate(s.through), cadence: s.cadence || 'daily' });
       if (ov.wells[id]) items.push({ icon: 'rig', label: 'Well inventory (' + q.agency + ')', value: 'Counted ' + fmtDate(ov.wells[id].day), cadence: 'nightly' });
     }
     const sr = raw['series-production']; const pf = prod || opProd || sr;

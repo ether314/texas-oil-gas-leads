@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 import { segmented } from './ui.js';
 import { hideTip } from './tip.js';
 import { permitSeries } from './overview-data.js';
-import { otherStates, stateOf } from './states.js';
+import { otherStates, stateOf, measureOf, sameMeasure } from './states.js';
 
 // Texas's own files, and each other state's permit series and (where it has one) the EIA's crude oil production for it
 const FILES = ['series-permits', 'series-markets', 'series-rigs', 'series-jobs', 'series-tax', 'series-outlook', 'series-production',
@@ -44,9 +44,9 @@ function registry(raw, states = ['TX']) {
   const jb = T && raw['series-jobs']; const tx = T && raw['series-tax']; const ol = raw['series-outlook']; const pr = T && raw['series-production'];
   const sp = permitSeries(states, { TX: raw['series-permits'], ...Object.fromEntries(otherStates.map((q) => [q.id, raw[q.files.series]])) });
   if (sp) {
-    R.permits = mser(sp.months, sp.permits);
-    R.permitsBy = sp.ids.length > 1 ? Object.fromEntries(sp.ids.map((id) => [id, mser(sp.months, sp.by[id])])) : null;
-    R.permitIds = sp.ids;
+    R.permits = mser(sp.months, sp.permits); // the states that count the same thing, added up (permitSeries)
+    R.permitsBy = sp.ids.length > 1 ? Object.fromEntries(sp.ids.map((id) => [id, mser(sp.own[id].months, sp.own[id].permits)])) : null; // each state on its own months
+    R.permitIds = sp.ids; R.summedIds = sp.summed;
   }
   if (sm) {
     if (sm.wti) R.wti = mser(sm.months, sm.wti);
@@ -100,10 +100,16 @@ function chipDefs(R, raw) {
     id: 'prm', group: 'activity', icon: 'rig', color: 'var(--s2)', label: 'Permian rigs', ser: R.rigPermian, fmt: (v) => fmt.format(v), unit: 'rigs in Texas counties', src: 'Baker Hughes', weekly: true,
     note: R.rigPermianAll ? fmt.format(R.rigPermianAll.v[lastIdx(R.rigPermianAll.v)]) + ' basin-wide, incl. New Mexico' : '',
   });
-  const ids = R.permitIds || [];
+  const ids = R.summedIds || [];
   const AGENCY = { TX: 'RRC', OK: 'OCC', NM: 'OCD' };
-  add({ id: 'permits', group: 'activity', icon: 'pin', color: ids.length === 1 ? stColor(ids[0]) : 'var(--st-tx)', label: 'New permits', ser: R.permits, fmt: (v) => fmt.format(v),
-    unit: 'new-drill, in the month' + (ids.length > 1 ? ', ' + ids.map(stName).join(' and ') : ''), src: ids.map((id) => AGENCY[id]).join(' and ') });
+  const spud = ids.length === 1 && measureOf(ids[0]).id === 'spuds';
+  add({ id: 'permits', group: 'activity', icon: 'pin', color: ids.length === 1 ? stColor(ids[0]) : 'var(--st-tx)', label: spud ? 'Wells spudded' : 'New permits', ser: R.permits, fmt: (v) => fmt.format(v),
+    unit: (spud ? 'in the month' : 'new-drill, in the month') + (ids.length > 1 ? ', ' + ids.map(stName).join(' and ') : spud ? ', ' + stName(ids[0]) : ''), src: ids.map((id) => AGENCY[id]).join(' and ') });
+  // a state that counts something else than the others' permits (New Mexico's spuds) gets its own chip rather than a place in their sum
+  for (const id of (R.permitIds || []).filter((x) => !ids.includes(x))) {
+    const ser = R.permitsBy && R.permitsBy[id];
+    if (ser) add({ id: 'spuds' + id, group: 'activity', icon: 'rig', color: stColor(id), label: stName(id), ser, fmt: (v) => fmt.format(v), unit: measureOf(id).noun + ', in the month', src: AGENCY[id] });
+  }
   for (const [id, ser] of Object.entries(R.crude)) add({ id: id.toLowerCase() + 'crude', group: 'production', icon: 'pipe', color: stColor(id), label: stName(id) + ' crude', ser, fmt: (v) => compactFmt.format(v), unit: 'barrels a month', src: 'EIA est.' });
   add({
     id: 'jobs', group: 'jobs', icon: 'jobs', color: 'var(--s7)', label: 'Oil & gas jobs', ser: R.jobsAll, fmt: (v) => compactFmt.format(v * 1000), unit: 'jobs', src: 'BLS',
@@ -166,11 +172,12 @@ function makeGroups(R, raw) {
   if (R.permits || R.rigTx) {
     const panels = [];
     const ids = R.permitIds || []; const one = ids.length === 1 ? ids[0] : null;
+    const word = sameMeasure(ids) ? (one && measureOf(one).id === 'spuds' ? 'Wells spudded' : 'New-drill permits') : 'New-drill permits and wells spudded';
     if (R.permits) panels.push({
-      id: 'permits', title: 'New-drill permits a month' + (one && one !== 'TX' ? ', ' + stName(one) : ''), icon: 'pin', color: one ? stColor(one) : 'var(--st-tx)', zero: true, fmtTick: tickK, events: [{ t: monthMs('2020-04'), label: 'COVID-19' }],
-      // several states: one line each (the sum is mostly Texas), so every state's own course shows
-      series: R.permitsBy ? ids.map((id) => S({ id: 'permits' + id, name: stName(id), unit: 'a month', color: stColor(id), ...R.permitsBy[id], fmtVal: (v) => fmt.format(v) }))
-        : [S({ id: 'permits', name: 'Permits', unit: 'a month', color: one ? stColor(one) : 'var(--st-tx)', ...R.permits, fmtVal: (v) => fmt.format(v) })],
+      id: 'permits', title: word + ' a month' + (one && one !== 'TX' ? ', ' + stName(one) : ''), icon: 'pin', color: one ? stColor(one) : 'var(--st-tx)', zero: true, fmtTick: tickK, events: [{ t: monthMs('2020-04'), label: 'COVID-19' }],
+      // several states: one line each (the sum is mostly Texas), so every state's own course shows, and a state that counts something else says so
+      series: R.permitsBy ? ids.map((id) => S({ id: 'permits' + id, name: stName(id) + (sameMeasure(ids) ? '' : ' (' + measureOf(id).noun + ')'), unit: 'a month', color: stColor(id), ...R.permitsBy[id], fmtVal: (v) => fmt.format(v) }))
+        : [S({ id: 'permits', name: measureOf(ids[0]).id === 'spuds' ? 'Wells spudded' : 'Permits', unit: 'a month', color: one ? stColor(one) : 'var(--st-tx)', ...R.permits, fmtVal: (v) => fmt.format(v) })],
     });
     if (R.rigTx) {
       const series = [S({ id: 'rigTx', name: 'Texas', unit: 'rigs', color: 'var(--s2)', ...R.rigTx, fmtVal: (v) => fmt.format(v), dateFmt: dayLabelT, tol: WEEK })];
@@ -184,7 +191,7 @@ function makeGroups(R, raw) {
       notes: [(R.rigTx ? 'Rig counts are Baker Hughes weekly counts through ' + fmtDate(R.rigAsOf) + ' (the workbooks come from Internet Archive copies of Baker Hughes’ public files). "Permian, Texas counties" is the Texas part of Baker Hughes’ Permian basin; the basin-wide count also includes southeastern New Mexico.' : '')
         + (R.permits ? (ids.includes('TX') ? ' Texas permits are Railroad Commission new-drill permits by issue month.' : '')
           + (ids.includes('OK') ? ' Oklahoma permits are Oklahoma Corporation Commission new-drill permits by approval month, one per well and day.' : '')
-          + (ids.includes('NM') ? ' New Mexico’s are wells added to the Oil Conservation Division’s well layer when an application to drill is approved, by month added.' : '') : '')],
+          + (ids.includes('NM') ? ' New Mexico’s are wells spudded, by the month of the spud date: its regulator publishes no approval dates by well, and spud dates are reported about two months late, so its line ends two months before the others.' : '') : '')],
     });
   }
 
@@ -296,7 +303,7 @@ export function initMarkets({ ticker, card, raw, states = ['TX'] }) {
   live = { tabs, cleanup: () => toggle.removeEventListener('click', flip) };
   show(groups[0].id);
   src.textContent = 'Each group has its own latest date; see "Data freshness" below and Sources and method for what each series is.'
-    + (!states.includes('TX') ? ' ' + states.map(stName).join(' and ') + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here: their sources could not be read when the site was built.'
+    + (!states.includes('TX') ? ' ' + states.map(stName).join(' and ') + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here (see Sources and method).'
       : states.length > 1 ? ' Rigs, jobs and taxes are Texas’s: ' + states.filter((id) => id !== 'TX').map(stName).join(' and ') + ' ' + (states.length > 2 ? 'have' : 'has') + ' none of them here.' : '');
   api = {
     select(id, scroll) {
