@@ -116,7 +116,8 @@ manual run of the workflow does, and so can the by-hand procedure in the README.
 
 ## Backlog (living; edit it in the PR that changes it)
 
-1. Oil tracker rebrand (name, titles, copy) and one state switch (Both, Texas, Oklahoma) across the whole site.
+1. One state switch (Both, Texas, Oklahoma) across the whole site. (The rebrand to Oil tracker is done: name, titles, header, hero.
+   Views still describe themselves as Texas where they are Texas only; each loses that wording when Oklahoma reaches it.)
 2. Oklahoma in the Overview, Map, Operators and Sources: county permits and trend, permit dots (the OCC permit file has coordinates),
    operators named by the corporate rule, active wells by county and operator, EIA crude. Not available yet: Oklahoma jobs (BLS),
    rig counts (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
@@ -126,3 +127,4 @@ manual run of the workflow does, and so can the by-hand procedure in the README.
 ### Run log
 
 - 2026-10-31: Oklahoma Daily report, unified Daily report, GPS map and drill pages, nightly workflow made outage-proof (PR #12).
+- 2026-10-31: CLAUDE.md, tests and CI (PR #13, #14); Oklahoma gap fill from the master files (PR #15); site renamed Oil tracker.
