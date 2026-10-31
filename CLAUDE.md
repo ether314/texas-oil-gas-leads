@@ -127,16 +127,19 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 
 ## Backlog (living; edit it in the PR that changes it)
 
-1. One state choice across the whole site (Texas, Oklahoma, New Mexico). Done: the bar, the Overview, the Daily report (Texas and Oklahoma; the bar says New Mexico has
-   none yet), Operators and Companies (Companies are Texas only and say so), the Map (rebuilt for the states shown; `map.js` `prepare`/`rebuild`), the Daily report (New Mexico's is permits only: `d9_nm_daily.py`, 92 days in `daily-nm/`, `daily-nm.js`;
-   `daily.js` asks what a report holds, `HORIZ`, `PERMIT_FROM`, `SERIES`, not which state it is). To do: Sources; watch the first nightly run with New Mexico's capture and the first weekly refresh. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
-   Never add New Mexico's spuds to the other states' permits (`states.js` measures: `sameMeasure`).
-2. Oklahoma in Sources (the Overview, Operators and Map are done). Data done: `d8_ok_monthly.py` writes the permit series, county counts, operators and
-   permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
-   Daily report's inventory), refreshing the monthly files in the nightly workflow. Not available yet: Oklahoma jobs (BLS), rig counts
-   (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
-3. Visual polish and simplification pass; phone layouts. Done: contrast, keyboard and phone-reflow checks (`tests/a11y.cjs`, in CI), the tabs' edge fade on a phone, Operators and Companies tidied, the Daily report's first screen and cards on a phone.
-   To do: more phone passes on the Map and the Daily report's long cards (its first screen is done); look at every view again in dark mode after any color change.
+1. **Watch the first scheduled runs.** The first nightly capture of all three states (03:15 UTC, backup 04:20) and the first weekly `refresh-monthly.yml`
+   (Mondays 05:40 UTC) have not run on their schedules yet; each was dispatched once by hand and was green. The three captures (and the two weekly refreshes) are isolated,
+   so a failure in one leaves the others committed and published and ends the run red. Look at Actions, at the committed data and at the live site; fix forward at once.
+2. **One state choice across the site: done** (the bar, the Overview, the Map, Operators, Companies (Texas only, and say so), the Daily report (New Mexico's is permits to drill from the
+   OCD layer and its well inventory: `d9_nm_daily.py`, `daily-nm/`, `daily-nm.js`; `daily.js` asks what a report holds, `HORIZ`, `PERMIT_FROM`, `SERIES`, not which state it is) and Sources).
+   Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it. Never add New Mexico's spuds to the other states'
+   permits (`states.js` measures: `sameMeasure`).
+3. **Not available yet** (the pages say "not available", never zero): Oklahoma and New Mexico jobs (BLS), rig counts (Baker Hughes), production by county, companies (no public bulk source like the
+   Texas Comptroller's), New Mexico's depth, filing dates, completions and transfers. Counted but not shown by county or operator: the Oklahoma and New Mexico well inventories.
+4. **Texas's monthly files are rebuilt by hand** (`d1` to `d6`, `build_data.py`: a 3.7 GB production dump and lead lists with contact details make it unfit for a workflow). The Overview says how old they
+   are. Refreshing Texas's permit master the way Oklahoma's is (a weekly workflow) would be the next freshness win; the production and company files would stay by hand.
+5. **Visual polish and simplification.** Done: contrast, keyboard, phone reflow and target size (`tests/a11y.cjs`, in CI), the tabs' edge fade, Operators and Companies, the Daily report's first screen and
+   cards on a phone, print. To do: more phone passes on the Map and on the Daily report's long cards; look at every view again in dark mode after any color change.
 
 ### Run log
 
@@ -163,3 +166,7 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: the Operators CSV no longer turns a negative number into text (a fall of -14.4 had a spreadsheet guard's apostrophe), and `a11y.cjs` gained a reflow check at 360 px that found the Daily cards' clipped notes.
 - 2026-10-31: a walk through the archive's days found "NaN%" in the verbose report on a day with an empty Texas queue (Aug 9, Sep 7), and a random-click run found "NaN ft" in the Map's legend for New Mexico's depth (it publishes none: the legend and the list now say so); fixed, and smoke now walks the archive and every map metric under three state sets for NaN, undefined, null and Infinity. The browser's own bar takes the page's color (`theme-color`, kept in step with the theme).
 - 2026-10-31: touch targets: the Map chips, the column sort buttons and the "Open the map" links were 20 to 22 px high on a phone; all controls are 24 px or more (WCAG 2.2) and `a11y.cjs` checks it.
+- 2026-10-31: the Sources page's 28 external links were fetched once by hand: 22 answered, 5 are bot-blocked pages that answer a browser (Baker Hughes, BLS CEW, FERC, PHMSA, SEC), and one was dead (the Secretary of State's bulk-orders help page): repointed. No test does this (the tests use no network).
+- 2026-10-31: the Daily report warns when its newest report is two or more days behind today's date in Central ("the nightly capture may have failed"), so an unattended failure shows to a visitor instead of an old day passing for today's.
+- 2026-10-31: print: a Daily report (or the Overview) saves as a PDF in light colors without the header, the states bar, the controls or the buttons, each card kept whole (`@media print` at the end of `app.css`).
+- 2026-10-31: a data file whose request is dropped (a phone between towers, a server hiccup) is tried once more after 0.7 s (`util.js` `load`); a missing file (HTTP 4xx) is not retried, since the optional files are meant to be missing sometimes. Found by aborting each file in turn: no view threw, but the Map showed only "Could not load the map data" for any one of Oklahoma's or New Mexico's files (it still does if one is really gone: drawing the other states is a possible next step).

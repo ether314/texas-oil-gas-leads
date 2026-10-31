@@ -439,6 +439,76 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 11. the Daily report says so when its newest report is two or more days behind today's date (Central): the nightly capture may have failed; not otherwise
+  {
+    const days = [].concat(...['daily', 'daily-ok', 'daily-nm'].map((dir) => { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', dir, 'index.json'), 'utf8')); return (j.days || j).map((r) => r.d); })).sort();
+    const newest = days[days.length - 1];
+    const at = (offsetDays, hour) => new Date(Date.parse(newest + 'T00:00:00Z') + offsetDays * 86400000 + hour * 3600000);
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.clock.setFixedTime(at(0, 18)); // noon Central on the newest report's day
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      check((await page.locator('#daily-root .dr-stale').count()) === 0, 'on the newest report\'s own day the Daily report has no warning');
+      await page.clock.setFixedTime(at(5, 18)); // five days later
+      await page.goto(base + '#daily?d=' + newest + '&st=tx', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      const note = (await page.locator('#daily-root .dr-stale').count()) ? await page.locator('#daily-root .dr-stale').innerText() : '';
+      check(/newest report is [4-6] days old/.test(note) && /may have failed/.test(note), 'five days later it says the newest report is old and the capture may have failed: ' + note.slice(0, 80));
+      // an older day is not "the newest report", so it carries no warning
+      const older = days[Math.max(0, days.length - 10)];
+      await page.goto(base + '#daily?d=' + older, { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      check((await page.locator('#daily-root .dr-stale').count()) === 0, 'and a day that is not the newest carries none');
+    } catch (e) {
+      check(false, 'the stale-report notice: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
+  // 12. printing (or saving as a PDF) the Daily report: light even when the page is dark, none of the screen-only parts, cards kept whole
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', colorScheme: 'dark' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpis .dr-kpi', { timeout: 25000 });
+      await page.click('[data-theme-set="dark"]');
+      const screen = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      await page.emulateMedia({ media: 'print' });
+      const printed = await page.evaluate(() => {
+        const gone = (sel) => [...document.querySelectorAll(sel)].every((e) => getComputedStyle(e).display === 'none');
+        return { bg: getComputedStyle(document.body).backgroundColor, ink: getComputedStyle(document.body).color, header: gone('header.top'), bar: gone('#statebar'), controls: gone('#daily-root .dr-controls'), buttons: gone('#daily-root .btn'), keep: getComputedStyle(document.querySelector('#daily-root .dr-kpi')).breakInside };
+      });
+      check(screen !== 'rgb(255, 255, 255)' && printed.bg === 'rgb(255, 255, 255)' && printed.ink !== 'rgb(255, 255, 255)', 'a dark page prints light: the screen is ' + screen + ', the paper ' + printed.bg + ' with ' + printed.ink + ' ink');
+      check(printed.header && printed.bar && printed.controls && printed.buttons && printed.keep === 'avoid', 'the header, the states bar, the controls and the buttons stay off the paper, and a card is not split across pages: ' + JSON.stringify(printed));
+    } catch (e) {
+      check(false, 'printing the Daily report: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
+  // 13. a dropped connection is tried once more (a phone between towers): the Map's first request for its permit file fails and it still draws; a missing file is not retried
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    let permitAsks = 0; let missingAsks = 0;
+    await ctx.route('**/data/permits.json', (route) => { permitAsks++; if (permitAsks === 1) route.abort(); else route.continue(); });
+    await ctx.route('**/data/daily-nm/1999-01-01.json', (route) => { missingAsks++; route.fulfill({ status: 404, body: 'not found' }); });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#map', { waitUntil: 'load' });
+      await page.waitForSelector('#map-root canvas', { timeout: 25000 });
+      check(permitAsks === 2, 'the Map draws although its first request for the permit file was dropped (it asked ' + permitAsks + ' times)');
+      const miss = await page.evaluate(async () => { const m = await import('./js/util.js'); const t0 = performance.now(); const r = await m.loadOpt('daily-nm/1999-01-01'); return { r, ms: Math.round(performance.now() - t0) }; });
+      check(miss.r === null && missingAsks === 1 && miss.ms < 600, 'a missing file is asked for once and answered at once, not retried: ' + missingAsks + ' ask, ' + miss.ms + ' ms');
+    } catch (e) {
+      check(false, 'the retry of a dropped request: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

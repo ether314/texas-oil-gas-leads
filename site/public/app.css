@@ -706,6 +706,8 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-title { font-size: var(--fs-display); line-height: 1.02; letter-spacing: var(--track-display); font-weight: 740; text-wrap: balance; margin: 0 0 var(--sp-3); }
 .dr-lede { margin: 0 0 var(--sp-4); max-width: 52ch; color: var(--ink-2); font-size: clamp(15px, 1vw + 12px, 18px); }
 .dr-pills { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.dr-stale { display: flex; align-items: flex-start; gap: var(--sp-2); max-width: 62ch; margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); background: color-mix(in srgb, var(--s2) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--s2) 34%, transparent); color: var(--ink); font-size: var(--fs-sm); }
+.dr-stale .ico { margin-top: 2px; color: var(--s2); }
 .dr-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 13px 5px 10px; border-radius: var(--r-pill); border: 1px solid var(--border-2); background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: var(--fs-sm); font-weight: 620; white-space: nowrap; max-width: 100%; }
 .dr-pill.quiet { font-weight: 560; color: var(--ink-2); }
 .dr-led { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 3px color-mix(in srgb, var(--muted) 24%, transparent); }
@@ -952,6 +954,23 @@ ul.plain li { margin-bottom: var(--sp-2); }
   .dr-cols { grid-template-columns: minmax(0, 1fr); }
   .dr-ribbon-card { padding: var(--sp-3) var(--sp-4); }
   .dr-rr { grid-template-columns: 1fr; }
+}
+
+/* ---------- print: a day's report saved as a PDF or put on paper ---------- */
+@media print {
+  :root, :root[data-theme="dark"] { color-scheme: light; }
+  @page { margin: 0.55in; }
+  body { background: #fff; }
+  body::before, .dr-radar { display: none; }
+  /* what only works on a screen: the header, the states bar, the controls, the buttons and the segmented switches */
+  .top, .statebar, .skip, .toast, .dr-controls, .dr-more, .btn, .ibtn, .seg, .filters, .map-bar, .map-zoom, .theme { display: none !important; }
+  .wrap { max-width: none; padding-inline: 0; }
+  .js .reveal, .reveal { opacity: 1 !important; transform: none !important; }
+  .card, .dr-hero, .dr-kpi, .dr-sec, .tchip, .bcard, .psec, .dr-ribbon-card { break-inside: avoid; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  h1, h2, h3 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .table-wrap { overflow: visible; }
+  table.grid { font-size: 10px; }
 }
 
 /* ---------- motion and contrast preferences ---------- */
