@@ -11,10 +11,11 @@ import { renderInsights } from './insights.js';
 import { createMapView } from './map.js';
 import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
+import { createOkDailyView } from './ok-daily.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator } from './ui.js';
 
-const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
+const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', oklahoma: 'Oklahoma daily report', about: 'Sources & method' };
 
 function startHero() {
   const canvas = $('#hero-canvas'); const host = $('#hero');
@@ -149,6 +150,7 @@ async function boot() {
   const tables = createTables(meta);
   const map = createMapView({ root: $('#map-root'), meta });
   const daily = createDailyView({ root: $('#daily-root') });
+  const okDaily = createOkDailyView({ root: $('#oklahoma-root') });
   const lazy = { operators: { t: tables.operators, started: false }, companies: { t: tables.companies, started: false } };
   function ensure(name) {
     const item = lazy[name];
@@ -174,6 +176,7 @@ async function boot() {
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
     ensure(id);
     if (id === 'daily') daily.activate(params);
+    if (id === 'oklahoma') okDaily.activate(params);
     if (id === 'about') fillProdNote();
     if (moveFocus) {
       if (shown !== id || hasQuery) window.scrollTo(0, 0);
