@@ -53,7 +53,7 @@ sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path
 import d8_ok_daily as D8  # noqa: E402  (the one naming rule: a corporation, LLC or partnership, never a person's dba)
 import privacy_check  # noqa: E402
 
-OUT = os.path.join(SITE, "public", "data", "nat")
+OUT = os.environ.get("D11_NAT_DIR") or os.path.join(SITE, "public", "data", "nat")  # the runner (and the tests) point a producer elsewhere through D11_NAT_DIR
 UA = "Mozilla/5.0 (research script)"  # identifies no person
 FIRST_MONTH = "2019-01"
 BANDS = ("new", "inj", "redrill", "rework", "amend", "other")
@@ -388,11 +388,11 @@ def check_dir(out_dir=OUT):
         try:
             doc = json.load(open(os.path.join(out_dir, name), encoding="utf-8"))
         except (OSError, ValueError) as e:
-            out.append("%s: unreadable (%s)" % (name, e))
+            out.append("%s: unreadable (%s)" % (name[:-5], privacy_check.clean_error(e, 80)))
             continue
         out += ["%s: %s" % (name[:-5], x) for x in validate(doc)]
         if doc.get("state") != name[:-5]:
-            out.append("%s: file name and state differ" % name)
+            out.append("%s: file name and state differ" % name[:-5])
     return out
 
 

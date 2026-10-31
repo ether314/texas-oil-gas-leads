@@ -114,6 +114,8 @@ for Texas, Oklahoma, New Mexico and the federal offshore (the Gulf of America), 
 - `.github/workflows/refresh-monthly.yml`: weekly (Mondays 05:40 UTC) refresh of Oklahoma's, New Mexico's and the federal offshore's permit history files, isolated the same way
   (three refreshes, 64 outcome combinations tested), in the nightly's concurrency group; it commits and publishes by itself. The EIA crude series (`d8_ok_context.py --state OK|NM|FO`) and the offshore's
   map of areas are refreshed by hand.
+- `.github/workflows/refresh-national.yml`: weekly (Mondays 06:20 UTC, after the monthly one) run of every `d11_nat_<st>.py` through `d11_nat_run.py` (each isolated, bounded, a failed one restored; a refusal is an answer), then `national.json` is rebuilt and committed. `refresh-monthly.yml` also rebuilds `national.json`
+  after its refreshes, because the report reads the Oklahoma, New Mexico and offshore files it refreshes (a test fails if `national.json` is not what the builder makes from the committed files).
 - `.github/workflows/publish.yml` and `.github/scripts/publish_pages.sh`: the publish after a green merge (and, by the same script, the
   nightly's publish); it never contacts the RRC or the OCC.
 - Time: RRC listing times are Central; times inside OCC files are UTC and are turned into Central days; a report shows only whole days.

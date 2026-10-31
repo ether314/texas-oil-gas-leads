@@ -101,7 +101,11 @@ def collect():
     if os.path.isdir(NAT):
         for name in sorted(os.listdir(NAT)):
             if name.endswith(".json"):
-                doc = json.load(open(os.path.join(NAT, name), encoding="utf-8"))
+                try:
+                    doc = json.load(open(os.path.join(NAT, name), encoding="utf-8"))
+                except (OSError, ValueError) as e:
+                    log("%s: unreadable (%s); left out" % (name, C.privacy_check.clean_error(e, 80)))
+                    continue
                 bad = C.validate(doc)
                 if bad:
                     log("%s: %s; left out" % (name, "; ".join(bad[:2])))

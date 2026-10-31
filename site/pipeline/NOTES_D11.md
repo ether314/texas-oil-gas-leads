@@ -43,6 +43,14 @@ a fall; the BLM is not stacked), a ranking, the mix of kinds of permits (only dr
 Texas, Oklahoma, New Mexico and the offshore keep their colors from the rest of the site; the other big producers take the next palette slots; the rest fold into "Other states".
 Addresses: `#national?s=ND&m=spuds` (state, count). Every chart has its table twin.
 
+## The weekly run
+
+`.github/workflows/refresh-national.yml` (Mondays 06:20 UTC, after `refresh-monthly.yml`, in the nightly capture's concurrency group) runs `d11_nat_run.py`, which finds every `d11_nat_<st>.py`, runs each in its own process
+(`python3 -I`, no token in its environment, `D11_NAT_DIR` pointing at the folder it may write) under its own time limit (10 minutes by default; `TIMEOUTS` for a big download) and a 40-minute budget for the whole run. Per producer:
+`wrote` or `unchanged` (a good file), `refused` (exit 2: the server said no, or the network is blocked: **an answer, not an error**; the earlier file stays and the summary says so), or `failed` / `invalid` / `timeout` / `skipped`
+(the producer's file is put back exactly as committed, or removed if it is new; the run exits 1 so the workflow shows red after the commit and publish). Then `national.json` is rebuilt from whatever files survived (and put back if the rebuild
+fails). A state whose producer fails keeps last week's file; its `asOf` and `through` say how old it is. `refresh-monthly.yml` rebuilds `national.json` too (it refreshes the Oklahoma, New Mexico and offshore files the report reads).
+
 ## Known limits
 
 - Texas's monthly series is application type 01 only; it says nothing about the other bands (its Daily report holds only the last 92 days). Oklahoma's, New Mexico's and the offshore's the same.
