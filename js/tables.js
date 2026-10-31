@@ -7,10 +7,15 @@ import { stateOf, measureOf, spudStates, inName, listAnd, placesOr } from './sta
 import { stateOperatorRows, operatorExtras } from './overview-data.js';
 
 const BAND_ORDER = { A: 0, B: 1, C: 2, D: 3, '': 4 };
-const BAND_TITLES = {
-  A: '10 or more new-well permits in the last 12 months', B: '1 to 9 new-well permits in the last 12 months',
-  C: 'RRC operator with no new-well permit in the last 12 months', D: 'No RRC match', '': 'Not ranked',
-};
+// what a band means in the row's own measure: Texas and Oklahoma count new-well permits, New Mexico and the federal offshore count wells spudded; another
+// state's list holds the operators with something in the last 24 months, so its band C had some in the 12 before and none since
+function bandTitle(band, st) {
+  const what = st && measureOf(st).id === 'spuds' ? 'wells spudded' : 'new-well permits';
+  if (band === 'A') return '10 or more ' + what + ' in the last 12 months';
+  if (band === 'B') return '1 to 9 ' + what + ' in the last 12 months';
+  if (band === 'C') return st && st !== 'TX' ? 'No ' + what + ' in the last 12 months, but some in the 12 before' : 'RRC operator with no new-well permit in the last 12 months';
+  return band === 'D' ? 'No RRC match' : 'Not ranked';
+}
 const TYPE_SHORT = { LLC: 'LLC', corporation: 'Corp', 'limited partnership': 'LP' };
 const ROLE_LABELS = {
   'OPRS/O': 'Oil operator', 'OPRS/G': 'Gas operator', 'G/PUR': 'Gas purchaser', 'GTHS/G': 'Gas gatherer',
@@ -25,9 +30,9 @@ const SPECIALTY_LABELS = {
 const MATCH_LABELS = { exact: 'exact name', prefix: 'name prefix', 'fuzzy+zip': 'similar name, same ZIP' };
 
 const bandLabel = (band) => (band === 'D' ? 'No RRC match' : band ? 'Band ' + band : 'Not ranked');
-function chip(band) {
+function chip(band, st) {
   const ranked = band && band !== 'D';
-  return el('span', { class: 'chip ' + (ranked ? band.toLowerCase() : 'none'), text: ranked ? band : '–', title: BAND_TITLES[band] || '', 'aria-label': bandLabel(band) });
+  return el('span', { class: 'chip ' + (ranked ? band.toLowerCase() : 'none'), text: ranked ? band : '–', title: bandTitle(band, st), 'aria-label': bandLabel(band) });
 }
 const place = (r) => [r.city, r.state].filter(Boolean).join(', ');
 function roleList(r) {
@@ -245,7 +250,7 @@ function operatorsConfig(ctx) {
     text: (r) => [r.name, r.city, r.state, r.zip, r.num].join(' '),
     cols: [
       { key: 'st', label: 'State', hint: 'The state whose records the row comes from', hidden: true, render: (r) => el('span', { class: 'st-tag st-' + r.st.toLowerCase(), title: stateOf(r.st).name, text: r.st }), sort: (r) => r.st },
-      { key: 'band', label: 'Band', hint: 'Drilling activity band', render: (r) => chip(r.band), sort: (r) => BAND_ORDER[r.band] },
+      { key: 'band', label: 'Band', hint: 'Drilling activity band', render: (r) => chip(r.band, r.st), sort: (r) => BAND_ORDER[r.band] },
       {
         key: 'name', label: 'Operator', cls: 'name', sort: (r) => r.name.toLowerCase(),
         render: (r) => el('span', { class: 'op-name' }, r.name, ctx.hasPts.has(r.num) ? mapLink('#map?op=' + r.num, 'Show ' + r.name + ' on the map') : null),
@@ -285,7 +290,7 @@ function operatorsConfig(ctx) {
         render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : 'n/a'),
         sort: (r) => (r.x ? (r.x.fips ? cname(r.x.fips).toLowerCase() : '￿') : null),
       },
-      { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => fmtDate(r.last) + (r.last && measureOf(r.st).id === 'spuds' ? ' · spud' : ''), sort: (r) => r.last },
+      { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => fmtDate(r.last) + (r.last && ctx.mixed && measureOf(r.st).id === 'spuds' ? ' · spud' : ''), sort: (r) => r.last },
       { key: 'dist', label: 'District', hint: 'RRC district with the most permits in 24 months', render: (r) => r.dist, sort: (r) => r.dist, filled: (r) => r.dist },
       { key: 'notes', label: 'Notes', cls: 'notes', render: operatorNotes },
     ],
@@ -377,7 +382,7 @@ const zipCounties = () => once('zipcounty', async () => {
 });
 
 export function createTables(meta) {
-  const ctx = { G: null, hasPts: new Set(), zipSet: new Set() };
+  const ctx = { G: null, hasPts: new Set(), zipSet: new Set(), mixed: false }; // mixed: the Operators list holds permits and spuds together, so a spud's date is marked
   const opCfg = operatorsConfig(ctx);
   const operators = explorer(opCfg, meta);
   const companies = explorer(companiesConfig(meta, ctx), meta);
@@ -430,6 +435,9 @@ export function createTables(meta) {
         const spudWho = listAnd(sp.map(inName));
         operators.relabel('new12', 'New wells (12 mo)', 'New-drill permits in the last 12 months' + (sp.length ? ' (' + spudWho + ': wells spudded, which ' + (sp.length > 1 ? 'they count' : 'it counts') + ' instead because ' + (sp.length > 1 ? 'their regulators publish' : 'its regulator publishes') + ' no approval dates by well)' : ''));
         operators.relabel('trend', 'Trend', 'Permits in the last 12 full calendar months against the 12 before' + (sp.length ? ' (' + spudWho + ': wells spudded)' : '') + '. "new" means none in the prior 12.');
+        ctx.mixed = sp.length > 0 && sp.length < states.length;
+        const last = !sp.length ? 'permit' : sp.length === states.length ? 'spud' : 'permit or spud';
+        operators.relabel('last', 'Last ' + last, 'The date of the operator’s newest ' + last + (ctx.mixed ? ' (a spud is marked)' : ''));
         const place = placesOr(states);
         operators.relabel('county', 'Top ' + place, place.replace(/^./, (c) => c.toUpperCase()) + ' with the most of its ' + (sp.length === states.length ? 'wells spudded' : sp.length ? 'permits or spuds' : 'permits') + ' in the last 24 months');
         // a column nothing fills for the states shown (production, RRC districts, a city, a depth) is hidden, never a column of blanks
