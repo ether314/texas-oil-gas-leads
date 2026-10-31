@@ -1,5 +1,5 @@
-# Captures the Railroad Commission's nightly files into site/public/data/daily/ and commits the result.
-# It runs from the default branch only, and it does not deploy anything.
+# Captures the Railroad Commission's nightly files into site/public/data/daily/, commits the result, then publishes
+# the site to GitHub Pages (the gh-pages branch). It runs from the default branch only.
 name: Daily RRC report
 
 on:
@@ -18,6 +18,7 @@ concurrency:
 
 permissions:
   contents: write
+  pages: write
 
 jobs:
   capture:
@@ -25,6 +26,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -49,3 +52,29 @@ jobs:
           git commit -m "Daily RRC report $(date -u +%F)"
           git pull --rebase origin "$GITHUB_REF_NAME"
           git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # The live site is the gh-pages branch: a copy of the committed site/public plus the .nojekyll marker that stops
+      # Pages from running Jekyll. A plain push, never a force push, so the branch keeps its history.
+      - name: Publish the site to GitHub Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          src="$(git rev-parse --short HEAD)"
+          dest="$RUNNER_TEMP/pages"
+          git fetch origin gh-pages
+          git worktree add -B gh-pages "$dest" origin/gh-pages
+          find "$dest" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          git archive HEAD site/public | tar -x --strip-components=2 -C "$dest"
+          touch "$dest/.nojekyll"
+          # a publish replaces the whole site, so refuse to go on if the copy is not a site
+          test -s "$dest/index.html" && test -s "$dest/js/main.js" && test -s "$dest/data/meta.json" \
+            || { echo "the copy of site/public is incomplete; not publishing"; exit 1; }
+          cd "$dest"
+          git add -A
+          if git diff --cached --quiet; then echo "the published site is already current"; exit 0; fi
+          git commit -m "Publish the site (from $src)"
+          git push origin HEAD:gh-pages
+          # a push made with the workflow's own token may not start a Pages build, so ask for one (harmless if one ran)
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" > /dev/null \
+            || echo "::warning::could not request a Pages build; the push itself may still publish the site"

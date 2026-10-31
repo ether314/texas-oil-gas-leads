@@ -40,8 +40,14 @@ the lead lists `leadpool.csv`, `leadpool_ranked.csv` and `rrc_operators.csv`, wh
 `rrc_operators.py` generate; they are not committed because they carry contact details from public filings.
 
 The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard library only; no lead CSVs needed) into
-`site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night and commits the result; it does not
-deploy. To fill the archive from the RRC's file history the first time: `python3 -I site/pipeline/d7_daily.py --backfill 91`.
+`site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night, commits the result to `main` and
+publishes the site. To fill the archive from the RRC's file history the first time: `python3 -I site/pipeline/d7_daily.py --backfill 91`.
+
+## Publishing
+The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
+file. The nightly workflow refreshes it after each capture with an ordinary push. **A change on `main` alone does not reach
+the live site.** To publish by hand, replace the branch's contents with `git archive main site/public` (extracted without
+the two leading folders), add `.nojekyll`, commit and push.
 
 ## Known limits
 - Permit dots show only permits with a recorded surface location (about 40% of the last 12 months); counts and trends
