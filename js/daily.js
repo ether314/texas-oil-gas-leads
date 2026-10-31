@@ -106,6 +106,15 @@ export function createDailyView({ root }) {
   }
 
   /* ---------- header, ribbon, KPIs ---------- */
+  // the nightly capture runs every evening (Central time): when the newest report is two or more days behind today's date, say so, so that a visitor
+  // does not take an old day for today's after a failed run
+  function staleNote() {
+    if (S.day !== latest()) return null;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    const age = Math.round((Date.parse(today) - Date.parse(S.day)) / 86400000);
+    if (!(age >= 2)) return null;
+    return el('p', { class: 'dr-stale', role: 'status' }, icon('clock', 15), 'The newest report is ' + age + ' days old (' + fmtLong(S.day).replace(/, \d{4}$/, '') + '). The nightly capture may have failed; it tries again every night.');
+  }
   function hero() {
     const days = S.days; const i = days.findIndex((r) => r.d === S.day);
     const pills = [];
@@ -138,7 +147,7 @@ export function createDailyView({ root }) {
         el('p', { class: 'eyebrow' }, el('span', { class: 'live-dot', 'aria-hidden': 'true' }), eyebrow + ' · ', el('span', { text: S.day.slice(0, 4) })),
         h1,
         el('p', { class: 'dr-lede', text: S.mode === 'simple' ? 'The daily look: what ' + them + ' published overnight, in a minute.' : 'Everything ' + them + ' list' + (multi() ? '' : 's') + ' as nightly, twice daily or daily, captured and read.' }),
-        el('div', { class: 'dr-pills' }, pills)),
+        el('div', { class: 'dr-pills' }, pills), staleNote()),
       el('div', { class: 'dr-controls' }, seg.el, nav));
   }
 

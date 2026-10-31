@@ -60,12 +60,17 @@ export function halves(m) {
 
 /* data */
 const cache = new Map();
+// a dropped connection (a phone between towers) or a server hiccup is tried once more after a moment; a missing file (HTTP 4xx) is not, since
+// the optional files (a day with no report) are expected to be missing and must not be slowed
+const fetchJson = (name, retry) => fetch('data/' + name + '.json').then((r) => {
+  if (!r.ok) throw Object.assign(new Error(name + ': HTTP ' + r.status), { status: r.status });
+  return r.json();
+}).catch((e) => (retry && !(e.status >= 400 && e.status < 500)
+  ? new Promise((done) => setTimeout(done, 700)).then(() => fetchJson(name, false))
+  : Promise.reject(e)));
 export function load(name) {
   if (!cache.has(name)) {
-    const p = fetch('data/' + name + '.json').then((r) => {
-      if (!r.ok) throw new Error(name + ': HTTP ' + r.status);
-      return r.json();
-    });
+    const p = fetchJson(name, true);
     cache.set(name, p);
     p.catch(() => cache.delete(name));
   }
