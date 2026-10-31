@@ -3,7 +3,7 @@ import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash,
 import { spark, delta } from './charts.js';
 import { getGeo, getPoints, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
-import { stateOf, measureOf } from './states.js';
+import { stateOf, measureOf, spudStates, inName, listAnd, placesOr } from './states.js';
 import { stateOperatorRows, operatorExtras } from './overview-data.js';
 
 const BAND_ORDER = { A: 0, B: 1, C: 2, D: 3, '': 4 };
@@ -252,9 +252,9 @@ function operatorsConfig(ctx) {
       },
       { key: 'type', label: 'Type', render: (r) => TYPE_SHORT[r.type] || r.type, sort: (r) => r.type },
       { key: 'loc', label: 'Location', cls: 'loc', render: place, sort: (r) => (r.state + r.city).toLowerCase(), filled: (r) => r.city || r.state },
-      { key: 'new12', label: 'New wells (12 mo)', hint: 'New-drill permits in the last 12 months (New Mexico: wells spudded, which it counts instead because it publishes no approval dates)', align: 'right', desc: true, render: (r) => fmt.format(r.new12), sort: (r) => r.new12 },
+      { key: 'new12', label: 'New wells (12 mo)', hint: 'New-drill permits in the last 12 months', align: 'right', desc: true, render: (r) => fmt.format(r.new12), sort: (r) => r.new12 },
       {
-        key: 'trend', label: 'Trend', hint: 'Permits in the last 12 full calendar months against the 12 before (New Mexico: wells spudded). "new" means none in the prior 12.',
+        key: 'trend', label: 'Trend', hint: 'Permits in the last 12 full calendar months against the 12 before. "new" means none in the prior 12.',
         cls: 'trend', render: trendCell, desc: true, sort: (r) => (r.x && r.h.f != null ? (r.h.f === Infinity ? 1e9 : r.h.f) : null),
       },
       { key: 'm24', label: '24 months', hint: 'Monthly new-drill permits, last 24 full months', render: (r) => (r.x ? spark(r.x.m24, { w: 84, h: 24, label: 'Monthly ' + (r.st && measureOf(r.st).id === 'spuds' ? 'wells spudded' : 'new-drill permits') + ', last 24 months', color: r.st && r.st !== 'TX' ? 'var(--st-' + r.st.toLowerCase() + ')' : undefined }) : null) },
@@ -425,6 +425,13 @@ export function createTables(meta) {
         if (through) through.textContent = states.length === 1 && tx ? 'Permit data runs through ' + fmtDate(ends[0][1]) + '.'
           : 'Data runs through ' + ends.map(([id, d]) => fmtDate(d) + (states.length > 1 ? ' (' + stateOf(id).name + ')' : '')).join(', ') + '.';
         operators.setColHidden('st', states.length < 2);
+        // what these columns count and what a county is, for the states shown (the states that count wells spudded say so)
+        const sp = spudStates(states);
+        const spudWho = listAnd(sp.map(inName));
+        operators.relabel('new12', 'New wells (12 mo)', 'New-drill permits in the last 12 months' + (sp.length ? ' (' + spudWho + ': wells spudded, which ' + (sp.length > 1 ? 'they count' : 'it counts') + ' instead because ' + (sp.length > 1 ? 'their regulators publish' : 'its regulator publishes') + ' no approval dates by well)' : ''));
+        operators.relabel('trend', 'Trend', 'Permits in the last 12 full calendar months against the 12 before' + (sp.length ? ' (' + spudWho + ': wells spudded)' : '') + '. "new" means none in the prior 12.');
+        const place = placesOr(states);
+        operators.relabel('county', 'Top ' + place, place.replace(/^./, (c) => c.toUpperCase()) + ' with the most of its ' + (sp.length === states.length ? 'wells spudded' : sp.length ? 'permits or spuds' : 'permits') + ' in the last 24 months');
         // a column nothing fills for the states shown (production, RRC districts, a city, a depth) is hidden, never a column of blanks
         opCfg.cols.forEach((c) => { if (c.filled) operators.setColHidden(c.key, !rows.some(c.filled)); });
         // and what only Texas's registrations can answer is not asked without Texas

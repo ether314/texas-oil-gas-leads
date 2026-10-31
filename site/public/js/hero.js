@@ -5,7 +5,7 @@ import { clamp, onReducedChange, reduced, whenVisible } from './util.js';
 import { isDark, onTheme } from './theme.js';
 
 const TAU = Math.PI * 2;
-// Texas's permits are orange, Oklahoma's purple and New Mexico's green: the states' colors everywhere (--st-tx, --st-ok, --st-nm), in the order of STATES
+// Texas's permits are orange, Oklahoma's purple, New Mexico's green and the federal offshore's rose: the states' colors everywhere (--st-tx, --st-ok, --st-nm, --st-fo), in the order of STATES
 const PALETTE = {
   dark: {
     grat: 'rgba(160,190,230,0.05)', line: 'rgba(150,180,220,0.14)', border: 'rgba(170,200,240,0.5)', glow: 'rgba(60,130,230,0.16)',
@@ -14,6 +14,7 @@ const PALETTE = {
       { old: 'rgba(255,138,78,0.5)', fresh: 'rgba(255,176,118,0.98)', pulse: 'rgb(255,160,100)', halo: ['rgba(255,170,112,0.95)', 'rgba(240,108,52,0.4)', 'rgba(235,104,52,0)'] },
       { old: 'rgba(150,132,245,0.55)', fresh: 'rgba(192,178,255,0.98)', pulse: 'rgb(170,152,255)', halo: ['rgba(190,176,255,0.95)', 'rgba(128,108,238,0.4)', 'rgba(110,90,226,0)'] },
       { old: 'rgba(40,196,140,0.5)', fresh: 'rgba(120,232,186,0.98)', pulse: 'rgb(80,214,160)', halo: ['rgba(130,236,192,0.95)', 'rgba(30,178,126,0.4)', 'rgba(25,158,112,0)'] },
+      { old: 'rgba(224,90,166,0.52)', fresh: 'rgba(248,152,208,0.98)', pulse: 'rgb(240,120,188)', halo: ['rgba(250,166,216,0.95)', 'rgba(214,72,150,0.4)', 'rgba(201,59,143,0)'] },
     ],
   },
   light: {
@@ -23,6 +24,7 @@ const PALETTE = {
       { old: 'rgba(235,104,52,0.42)', fresh: 'rgba(235,104,52,0.95)', pulse: 'rgb(235,104,52)', halo: ['rgba(255,170,112,0.95)', 'rgba(240,108,52,0.4)', 'rgba(235,104,52,0)'] },
       { old: 'rgba(98,80,214,0.42)', fresh: 'rgba(98,80,214,0.95)', pulse: 'rgb(98,80,214)', halo: ['rgba(160,146,245,0.95)', 'rgba(108,90,222,0.4)', 'rgba(98,80,214,0)'] },
       { old: 'rgba(27,175,122,0.42)', fresh: 'rgba(22,150,104,0.95)', pulse: 'rgb(22,150,104)', halo: ['rgba(110,214,170,0.95)', 'rgba(27,175,122,0.4)', 'rgba(27,175,122,0)'] },
+      { old: 'rgba(201,59,143,0.42)', fresh: 'rgba(201,59,143,0.95)', pulse: 'rgb(201,59,143)', halo: ['rgba(240,150,200,0.95)', 'rgba(201,59,143,0.4)', 'rgba(201,59,143,0)'] },
     ],
   },
 };

@@ -48,6 +48,10 @@ const VIEWS = [
   ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'],
   ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'],
   ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
+  // the federal offshore last: the bar keeps its choice from one view to the next, and the views above are meant for the states they name
+  ['overview, federal offshore', '#overview?st=fo', '#hot-bars .bar-row'],
+  ['map, federal offshore', '#map?st=fo', '#map-root canvas'],
+  ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
   ['sources', '#about', '#view-about h1'],
 ];
 const SIZES = [[1280, 800], [390, 844]];
@@ -211,6 +215,7 @@ function targets() {
       ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
       ['daily', '#daily', '#daily-root .dr-hero'], ['daily, Texas', '#daily?st=tx', '#daily-root .dr-hero'], ['daily, Oklahoma', '#daily?st=ok', '#daily-root .dr-hero'], ['daily, New Mexico', '#daily?st=nm', '#daily-root .dr-hero'],
       ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'], ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'], ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
+      ['overview, federal offshore', '#overview?st=fo', '#hot-bars .bar-row'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'],
     ];
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light' });

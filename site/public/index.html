@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
-<meta name="description" content="Oil tracker: where oil is being drilled right now. New-drill permits, the operators filing them and the companies that serve them, for Texas, Oklahoma and New Mexico, from public records.">
+<meta name="description" content="Oil tracker: where oil is being drilled right now. New-drill permits and wells spudded, the operators behind them and the companies that serve them, for Texas, Oklahoma, New Mexico and the federal offshore of the Gulf of America, from public records.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
@@ -24,7 +24,7 @@
       <img class="brand-mark" src="favicon.svg" alt="" width="30" height="30">
       <span class="brand-text">
         <span class="brand-name">Oil tracker</span>
-        <span class="brand-sub">Texas, Oklahoma and New Mexico, from public records</span>
+        <span class="brand-sub">Texas, Oklahoma, New Mexico and the Gulf, from public records</span>
       </span>
     </a>
     <nav class="nav" aria-label="Sections">
@@ -183,7 +183,7 @@
         <summary>How to use this site, and what the columns mean</summary>
         <h2>How to use it</h2>
         <ul class="plain">
-          <li><strong>Map</strong> follows the states bar: its shapes, dots (each state in its own color), legend and panels are those of the states shown. It shades counties by permits (New Mexico: wells spudded) and, for Texas, by production, jobs, establishments, mineral value or companies, and shows permit locations, and for Texas refineries, gas plants, LNG terminals and where the pooled companies sit. Pick a basin to frame it, press Watch to replay two years of permits, or click a county for its numbers; a county of another state says which Texas figures it has none of.</li>
+          <li><strong>Map</strong> follows the states bar: its shapes, dots (each state in its own color), legend and panels are those of the states shown. It shades counties (offshore, protraction areas) by permits (New Mexico and the federal offshore: wells spudded) and, for Texas, by production, jobs, establishments, mineral value or companies, and shows permit locations, and for Texas refineries, gas plants, LNG terminals and where the pooled companies sit. Pick a basin to frame it, press Watch to replay two years of permits, or click a county or an offshore area for its numbers; one outside Texas says which Texas figures it has none of.</li>
           <li><strong>Operators</strong> lists every active Railroad Commission registrant that is a corporation, LLC or limited partnership. Start with bands A and B: they are drilling now. Tick Top producers to see who produces the most oil.</li>
           <li><strong>Companies</strong> lists the Comptroller pool: entities filed under an oil and gas industry code, plus entities with no code whose names say oil and gas. Where a company matched an RRC operator, its permit counts are filled in.</li>
           <li><strong>On this page</strong>, click a bar, a number or a market figure to open the matching records or chart.</li>
@@ -317,6 +317,13 @@
         <li><a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" rel="noopener noreferrer">U.S. Census Bureau, cartographic boundary files</a>. The 33 New Mexico county outlines (2025, 1:5,000,000).</li>
       </ul>
 
+      <h3>Federal offshore</h3>
+      <ul class="plain">
+        <li><small class="fresh-cad src-cad">Publishes weekly</small> <a href="https://www.data.bsee.gov/Main/RawData.aspx" rel="noopener noreferrer">Bureau of Safety and Environmental Enforcement, Data Center: all releasable borehole information</a> (<a href="https://www.data.bsee.gov/Main/HtmlPage.aspx?page=borehole" rel="noopener noreferrer">layout</a>; about 55,000 boreholes, made every Sunday). Read for the <a href="#overview?st=fo">Overview</a> as <strong>wells spudded</strong> in the federal waters of the Gulf of America by month since 2019, by protraction area for the last 12 months and the 12 before, the operators that spudded a well in the last 24 months (named by the same corporate rule as the other states) and one point per well at its surface location, rounded to about 100 meters. A well is the first ten digits of its API number, on the spud day of its earliest borehole (a sidetrack or bypass is not another well). <strong>It counts spuds, not permits</strong>: BSEE publishes approvals to drill only as an online query, not as a file. Spud dates arrive late, so the figures end 60 days back (August 31, 2026); how late BSEE's own are has not been measured yet. The file has a total depth for 6 of the last year's 47 wells, so no depth is shown, and no office city or state.</li>
+        <li><small class="fresh-cad src-cad">Publishes monthly</small> The Data Center's company file (the numbers and names of the companies BSEE knows), read only to name an operator number. Its addresses and contacts are never read.</li>
+        <li>The Data Center's protraction diagrams (<code>protclip.zip</code>, the official diagrams of the Gulf clipped to federal waters). The 63 protraction areas, such as Green Canyon, Mississippi Canyon and Eugene Island, are the offshore's "counties" on the maps, simplified to about a kilometer. Many have no wells: the Eastern Gulf is closed to leasing.</li>
+      </ul>
+
       <h2>Method</h2>
       <ul class="plain">
         <li>Operators: all <span data-fill="registered"></span> active P-5 registrants, narrowed to the <span data-fill="opsShown"></span> that are corporations, LLCs or limited partnerships.</li>
@@ -328,7 +335,7 @@
         <li>Basin cards and the basin outline on the map use the county lists above. The operators named on a basin card come from each county's top-eight operator list, so they are the operators with the most permits there, not a full ranking.</li>
         <li>Companies by county use the Comptroller's county code, which numbers counties alphabetically (not in FIPS order); 107 Texas rows with code 0 are left out of the county counts. The County filter on the Companies tab uses the county that holds each ZIP code's center, so its counts can differ from the map's (within about 2% for most counties, more for a few such as Midland).</li>
         <li>Companies by ZIP: 1,560 ZIP codes cover every pooled Texas company. 239 ZIPs have no Census center (PO boxes and the like) and are placed at their city's center, so several ZIPs of one city can share a point.</li>
-        <li>County permit counts, trends and rankings, the market charts and the headline numbers use every permit. Only the dots, and the Watch replay, use the located subset (Oklahoma and New Mexico publish a location for nearly all of theirs). The replay shows each located permit on its issue date, over the last 24 months.</li>
+        <li>County permit counts, trends and rankings, the market charts and the headline numbers use every permit. Only the dots, and the Watch replay, use the located subset (Oklahoma, New Mexico and the federal offshore publish a location for nearly all of theirs). The replay shows each located permit on its issue date, over the last 24 months.</li>
         <li>The Insights on the Overview are computed in your browser from the same files. Growth compares the last 12 full months with the 12 before, and counties or operators with a small base are left out.</li>
       </ul>
 
@@ -337,7 +344,8 @@
         <li><strong>Series end on different dates.</strong> Permits run to October 7, 2026, rig counts to August 28, EIA Texas crude to July, tax receipts to August, jobs and prices to September, and the EIA outlook is a forecast to December 2027. Read each chip and chart against its own date.</li>
         <li>About 80% of Comptroller entities have no NAICS code. Service companies with generic names, no code and no RRC registration are not in the pool.</li>
         <li>Permits measure activity, not budget or need.</li>
-        <li><strong>New Mexico counts something else.</strong> Texas and Oklahoma publish permits by approval date; New Mexico does not, so its figures are wells spudded, which come about two months after the permit and arrive late. The Overview adds permits only to permits, names New Mexico's spuds wherever it shows them, and ends New Mexico's series two months back. It has no depth, rig counts, jobs, taxes, companies or production by county here.</li>
+        <li><strong>New Mexico and the federal offshore count something else.</strong> Texas and Oklahoma publish permits by approval date; New Mexico and BSEE do not, so their figures are wells spudded, which come about two months after the permit and arrive late. The Overview adds permits only to permits, names their spuds wherever it shows them, and ends their series two months back. Neither has a depth, rig counts, jobs, taxes, companies or production by county here.</li>
+        <li><strong>The federal offshore is small.</strong> About 45 wells a year (Texas about 7,900 permits), so a month holds about four and one more is a 25% swing: read the 12-month figures. Many areas have none, and a rank among 16 operators moves with one well. Its file is weekly, so there is no Daily report for it.</li>
         <li><strong>Oklahoma is small beside Texas.</strong> The Commission approves about 3 new-drill permits a business day (Texas about 31), so single days swing: read the 20-day average. Its permit file does not say which wells are horizontal, it has no pending queue or image packs, its transfer file reaches back only about a month, and the well inventory is counted only on days captured live. Oklahoma jobs and rig counts are not shown: their sources could not be reached when the site was built. Beside the permits, its Overview has operators, active wells and crude production, and no company pool, taxes or production by county.</li>
         <li><strong>Permit dots are a located subset.</strong> The RRC publishes a surface location for 70% of new-drill permits in the last 24 months but only 40% of the last 12, and the gaps are uneven: January 2026 and April to October 2026 are thin, and the busiest counties (Midland, Reeves, Upton, Martin) have almost no dots. Do not read dot density, or the replay, as activity; read the shading and the counts.</li>
         <li>Seven offshore permits are in the statewide totals but not in any county or dot.</li>
@@ -362,7 +370,7 @@
 </main>
 
 <footer class="wrap foot">
-  <p>Built from public records. Not affiliated with the Railroad Commission of Texas, the Oklahoma Corporation Commission, the New Mexico Oil Conservation Division, the Texas Comptroller or any other agency. This page is unlisted and asks search engines not to index it.</p>
+  <p>Built from public records. Not affiliated with the Railroad Commission of Texas, the Oklahoma Corporation Commission, the New Mexico Oil Conservation Division, the Bureau of Safety and Environmental Enforcement, the Texas Comptroller or any other agency. This page is unlisted and asks search engines not to index it.</p>
 </footer>
 
 <div id="tip" class="tip" role="tooltip" hidden></div>

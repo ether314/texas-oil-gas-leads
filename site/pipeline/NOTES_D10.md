@@ -66,6 +66,14 @@ a spud after today, an area with no shape, a location outside the Gulf, an indiv
 refusing an error page and a handful of companies, the validator on the built files and on five deliberate faults, five mutants, the committed files and the 63 areas (closed rings, inside the
 Gulf box, small), and, with `FO_REAL_FILES` set to a folder of the three BSEE zips, the real files. Real run on 2026-10-31: 55,575 boreholes, 4,052 companies, 500 wells through Aug 31 (47 in the last 12 months, 44 before), 16 named operators, 91 points.
 
+## In the site
+
+`site/public/js/states.js` has the fourth entry (`FO`, "Federal offshore", `short: 'Offshore'`, measure SPUDS, no `dir`, so nothing asks it for a Daily report, and a `noDaily` reason that the states bar's note shows).
+Its other fields are what makes the shared pages read right: `place` (a protraction area where the others have a county: "Green Canyon area", "Top areas", no FIPS code in the
+panel), `in` ("in the federal offshore" inside a sentence), `drill` ("Watch the Gulf drill") and `cadence` (the freshness list says "Publishes weekly"). Its color is a rose (`--st-fo`: #c93b8f light,
+#e05aa6 dark) chosen for distance from the other three in normal vision and the common color blindnesses (it is used for dots, bars and lines, never as the color of words). The bar shows
+TX, OK, NM and Offshore on a phone below 440 px so all five fit; each button keeps its full name for a screen reader. The graticule extends east for the Gulf's shapes (`geo.js`).
+
 ## Not available
 
 Permits by approval date (an online query only), depth, production by area or operator (the EIA's monthly offshore crude series is planned for the monthly card), jobs, rig counts, a Daily report (BSEE's file is weekly,
