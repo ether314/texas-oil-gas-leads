@@ -91,6 +91,8 @@ async function boot() {
     $('#co-root').hidden = !tx;
     const co = $('#co-note');
     co.hidden = tx && ids.length === 1;
+    // with Texas among several states the note is a line under the heading; with none of them it is the page's empty state
+    co.className = tx ? 'fine' : 'empty';
     co.textContent = !tx ? 'Companies come from the Texas Comptroller’s franchise-tax records, so there is nothing to list for ' + ids.map((id) => stateOf(id).name).join(' or ')
       + ': no public bulk list like it exists there. Choose All or Texas to browse the Texas pool.' : ids.length > 1 ? 'The company pool is the Texas Comptroller’s, so this list is Texas only.' : '';
   }

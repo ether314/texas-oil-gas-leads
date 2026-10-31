@@ -655,7 +655,8 @@ export function createDailyView({ root }) {
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {
-      kids.push(permitsSection(), rtx ? tx.pendingSection(rtx) : null, completionsSection(), S.reps.OK ? transfersSection(S.reps.OK) : null, S.reps.OK ? wellsSection(S.reps.OK) : null, S.reps.NM ? wellsSection(S.reps.NM) : null,
+      // a state that publishes no completions (New Mexico) has no completions card of its own: when it is the only one shown there is nothing to say
+      kids.push(permitsSection(), rtx ? tx.pendingSection(rtx) : null, S.states.some((id) => id !== 'NM') ? completionsSection() : null, S.reps.OK ? transfersSection(S.reps.OK) : null, S.reps.OK ? wellsSection(S.reps.OK) : null, S.reps.NM ? wellsSection(S.reps.NM) : null,
         rtx ? tx.imagesSection(rtx) : null, rtx ? tx.packPagesSection(rtx) : null, healthSection(), archiveSection(), notesSection());
     }
     const nodes = kids.filter(Boolean);
