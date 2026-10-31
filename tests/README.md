@@ -31,6 +31,8 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_d11_nat.py`: the national report's data layer (`d11_nat_common.py`, `d11_nat_build.py`): a permit falls in exactly one band (amendments first, then reworks, re-entries, service wells), the fluid words, dates in the shapes
   agencies use and the placeholders they put in, complete months only and the lag a spud-counting state needs, only corporations, LLCs and partnerships named, a band a source cannot tell published as null and never zero, the validator against 22 deliberate
   faults, a refused write leaving the committed file alone, the merge keeping measures apart (a state that ends earlier is padded with null) and never adding the BLM into the states, four mutants, and the committed `national.json` and `nat/*.json`.
+- `test_build_db.py`: the local SQLite database (`build_db.py`): every data file stored verbatim (size and SHA-256), every table with exactly the rows its source implies (a band a source cannot tell has no row, never a zero; measures
+  kept apart), a build that is repeatable, a failed build that leaves the old file alone, a file that is not SQLite never overwritten, `--check` noticing a tampered document or table, the odd shapes in the real files, and a mutant.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, a year's wells agreeing across the series, the counties and the operators,
   the validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,
