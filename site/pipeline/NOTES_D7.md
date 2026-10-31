@@ -1,10 +1,10 @@
 # NOTES_D7: the daily Railroad Commission report (producer D7)
 
 Scripts: `site/pipeline/d7_daily.py` and its share client `site/pipeline/rrc_share.py` (stdlib only; run with `python3 -I`).
-About 20 s for one day, about 10 minutes to rebuild all 92 days. Page: `#daily` (`js/daily.js`, `js/daily-viz.js`).
+About 20 s for one day; rebuilding all 92 days took 88 s (2026-10-31). Page: `#daily` (`js/daily.js`, `js/daily-viz.js`).
 
-Files in `site/public/data/daily/`: `YYYY-MM-DD.json` (3-13 KB each, 92 kept), `index.json` (one row per day, 12 KB),
-`permits-series.json` (permits issued per calendar day, 3 KB). Budgets 60 / 40 / 20 KB, enforced by `--check`.
+Files in `site/public/data/daily/`: `YYYY-MM-DD.json` (3-13 KB each, 92 kept), `index.json` (one row per day, 13 KB),
+`permits-series.json` (permits issued per calendar day, 2 KB). Budgets 60 / 40 / 20 KB, enforced by `--check`.
 
 ## Read this first
 
@@ -85,7 +85,10 @@ report, `same` when not, `first` when the previous report was rebuilt (nothing t
 1. Rebuilt monthly new-drill totals against `series-permits.json` (from `daf802`): August 594 = 594, September 681 vs 682.
 2. Counts on 2026-10-29 by hand from the file: 40 permits issued, 36 new-drill, 28 horizontal; completions that day 66
    approved and 57 submitted packets (123 files in the zip).
-3. `--check` reloads every file and verifies: index rows = day files, six datasets in order, counts nest, pending total =
+3. A full 92-day rebuild into an empty folder matches the committed archive: 92 of 94 files byte-identical, the other two differ
+   only in `capturedAt`/`retries`/`generated`. Rebuilding two deleted days gave byte-identical files too, and a run on the
+   next night marks every unchanged file `same`.
+4. `--check` reloads every file and verifies: index rows = day files, six datasets in order, counts nest, pending total =
    sum of its sets, series arrays aligned and in order, size budgets. It was run against a deliberately corrupted copy
    (five faults, all reported).
 
@@ -93,7 +96,7 @@ report, `same` when not, `first` when the previous report was rebuilt (nothing t
 
 ```
 python3 -I site/pipeline/d7_daily.py                  # today (Central), writes the day, index and series, then checks
-python3 -I site/pipeline/d7_daily.py --backfill 91    # also rebuild every missing day of the last 91 (first run: ~10 min)
+python3 -I site/pipeline/d7_daily.py --backfill 91    # also rebuild every missing day of the last 91 (the whole archive: about 90 s)
 python3 -I site/pipeline/d7_daily.py --check          # only validate
 ```
 `.github/workflows/daily-rrc-report.yml` runs it at 03:15 UTC (10:15 PM CDT / 9:15 PM CST, after the evening files are
