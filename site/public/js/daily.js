@@ -1,12 +1,13 @@
 // Daily report: what the Railroad Commission's nightly datasets held, one report per day for the last 92 days.
 // A simple version for the daily look and a verbose one with everything. Each block hides itself if its data is missing.
-import { el, load, loadOpt, fmt, countUp, reduced } from './util.js';
+import { el, load, loadOpt, reduced } from './util.js';
 import { getGeo } from './geo.js';
 import { icon } from './icons.js';
 import { segmented, shareButton, absoluteLink } from './ui.js';
 import { spark, delta } from './charts.js';
 import { opsLink } from './overview.js';
 import { trendBars, countyMap, gpsMap, ribbon, calendar, ring, stack, histogram, rankList, isWeekend, fmtMd, fmtDow, fmtLong, addDays, mb } from './daily-viz.js';
+import { num, strong, listed, central, compare, rel, card, head, tiles, table, chip, kpi } from './daily-kit.js';
 
 const TITLES = { permits: 'Drilling permits', pending: 'Permits pending approval', completions: 'Completion data', w1images: 'W-1 permit images', dirsurveys: 'Directional surveys', complimages: 'Completion images' };
 const ICONS = { permits: 'pin', pending: 'clock', completions: 'drop', w1images: 'layers', dirsurveys: 'rig', complimages: 'building' };
@@ -20,13 +21,6 @@ const WHAT = {
 };
 const KIND = { H: 'Horizontal', D: 'Directional', V: 'Vertical' };
 const PERMIT_TYPE = { '01': 'New drill', '05': 'Other', '07': 'Re-entry', '09': 'Field transfer', '14': 'Recompletion', '15': 'Reclass' };
-const num = (v) => fmt.format(v);
-const strong = (t) => el('strong', { text: t });
-const listed = (iso) => (iso ? new Date(iso + 'Z').toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) : '—');
-const central = (utc) => new Date(utc).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' Central';
-// 'first' means the previous report was not captured live, so there is nothing to compare a file with
-const compare = (rep) => { const ds = rep.datasets; return { ok: ds.some((d) => d.state === 'new' || d.state === 'same'), fresh: ds.filter((d) => d.state === 'new').length, same: ds.filter((d) => d.state === 'same') }; };
-const rel = (v, avg) => { const p = Math.round(Math.abs(v / avg - 1) * 100); return p < 3 ? 'in line with' : p + '% ' + (v > avg ? 'above' : 'below'); };
 
 const METRICS = {
   permits: { label: 'New-drill permits issued', get: (r) => (r.pFresh ? r.pn : null), fmt: (v) => num(v) + ' new-drill permits issued', none: 'No permits issued (weekend or holiday)' },
@@ -89,13 +83,6 @@ export function createDailyView({ root }) {
   const tally = (rows, i) => { const m = new Map(); rows.forEach((r) => { if (r[i]) m.set(r[i], (m.get(r[i]) || 0) + 1); }); return m; };
 
   /* ---------- small builders ---------- */
-  const card = (cls, ...kids) => el('section', { class: 'card dr-card ' + cls }, ...kids);
-  const head = (ic, eyebrow, title, sub) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null));
-  const tiles = (items) => el('dl', { class: 'dr-tiles' }, items.filter(Boolean).map((t) => el('div', { class: 'dr-tile' }, el('dt', { text: t.label }), el('dd', { text: t.value }), t.note ? el('small', { text: t.note }) : null)));
-  const table = (cols, rows, { cap = 'dr-table' } = {}) => el('div', { class: 'table-wrap ' + cap },
-    el('table', { class: 'grid' }, el('thead', {}, el('tr', {}, cols.map((c) => el('th', { scope: 'col', class: c.num ? 'num' : null, text: c.t })))),
-      el('tbody', {}, rows.map((r) => el('tr', {}, r.map((v, i) => el('td', { class: cols[i].num ? 'num' : null }, v == null ? '—' : v)))))));
-  const chip = (cls, text) => el('span', { class: 'dr-pill ' + cls }, el('i', { class: 'dr-led' }), text);
   const opNode = (op, name) => (name ? el('a', { href: opsLink(name), text: name }) : el('span', { class: 'muted', text: 'Operator #' + op }));
   const opItems = (list) => list.map(([op, name, n]) => ({ label: name || 'Operator #' + op, value: n, href: name ? opsLink(name) : null }));
   const countyItems = (list) => list.map(([f, name, n]) => ({ label: name, value: n }));
@@ -137,18 +124,6 @@ export function createDailyView({ root }) {
       el('small', { text: 'One bar per report day. Height is the new-drill permits issued that business day; weekends have none.' })), rb.el);
   }
 
-  function kpi({ ic, label, value, note, extra, vals, color, hero: big, gauge }) {
-    const n = el('strong', { class: 'dr-kpi-num' });
-    const c = el('div', { class: 'dr-kpi' + (big ? ' lead' : '') },
-      el('div', { class: 'dr-kpi-top' }, icon(ic, 16), el('span', { text: label })),
-      gauge ? el('div', { class: 'dr-kpi-gauge' }, gauge) : n,
-      note ? el('div', { class: 'dr-kpi-note' }, note) : null,
-      extra ? el('div', { class: 'dr-kpi-extra' }, extra) : null,
-      vals && vals.length > 3 ? el('div', { class: 'dr-kpi-spark' }, spark(vals, { w: 160, h: 34, color, label: label + ', recent days' })) : null);
-    c.style.setProperty('--kc', color);
-    if (value == null) n.textContent = '—'; else countUp(n, value);
-    return c;
-  }
   function kpiRow(rep) {
     const p = rep.permits; const q = rep.pending; const c = rep.completions;
     const avg = p ? avgBefore(p.day) : null; const bs = p ? biz(p.day, 20) : { total: [] };
