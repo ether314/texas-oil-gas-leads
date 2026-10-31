@@ -47,6 +47,10 @@ check(S.spudsNote(['TX', 'OK']) === '' && S.spudsNote(['NM']) === 'New Mexico co
   && S.spudsNote(['FO']) === 'The federal offshore counts wells spudded, not permits (its regulator publishes no approval dates by well)'
   && S.spudsNote(ids) === 'New Mexico and the federal offshore count wells spudded, not permits (their regulators publish no approval dates by well)' && same(S.spudStates(ids), ['NM', 'FO']), 'spudsNote says once which states count wells spudded, and in the singular or plural');
 check(same(S.dailyStates.map((q) => q.id), ['TX', 'OK', 'NM']) && !S.stateOf('FO').dir && typeof S.stateOf('FO').noDaily === 'string' && S.STATES.every((q) => q.dir || q.noDaily), 'the federal offshore has no Daily report (its file is weekly) and says why: every state has a Daily folder or a reason');
+// "the last 12 months" starts where the state's own count starts: the first day of the month 11 back for a spud state's month-end file, 365 days back for the others
+check(S.yearStart('FO', '2026-08-31') === Date.UTC(2025, 8, 1) && S.yearStart('NM', '2026-08-31') === Date.UTC(2025, 8, 1) && S.yearStart('FO', '2026-12-31') === Date.UTC(2026, 0, 1)
+  && S.yearStart('FO', '2026-08-15') === Date.parse('2026-08-15T00:00:00Z') - 365 * 864e5 && S.yearStart('TX', '2026-10-07') === Date.parse('2025-10-07T00:00:00Z')
+  && S.yearStart('OK', '2026-08-31') === Date.parse('2025-08-31T00:00:00Z'), 'yearStart: 12 calendar months from the first day for the states that count spuds at a month end, the 365 days that end on the day for the others');
 check(S.stateOf('TX').fips === '48' && S.stateOf('OK').fips === '40' && S.stateOf('NM').fips === '35', 'each state knows its FIPS code (a county\'s FIPS is the state\'s and its three digits)');
 check(S.dailyStates.map((q) => q.id).join() === 'TX,OK,NM' && S.STATES.find((q) => q.id === 'NM').dir === 'daily-nm' && S.STATES.every((q) => !q.dir || /^daily/.test(q.dir)), 'a state with a Daily report has a folder for it, and only those are asked for one');
 {

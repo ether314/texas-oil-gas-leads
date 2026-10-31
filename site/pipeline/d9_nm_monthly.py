@@ -159,6 +159,7 @@ def reliable_asof(today, lag=LAG_DAYS):
 
 SPEC = {
     "names": NAMES, "box": BOX, "new_kind": "SP", "county_of": county_of,
+    "calendar_windows": True,  # the files end on a month end, so "the last 12 months" are 12 calendar months, as the monthly series counts them (d1_permits_geo.windows)
     "src": lambda asof, modified: ("New Mexico Oil Conservation Division, public well layer (Wells_Public, refreshed daily): wells by spud date, one per API number, "
                                    "by month spudded. Spud dates are reported about two months late, so the series ends with the newest month that ended at least %d days "
                                    "before the layer was read; spuds through %s" % (LAG_DAYS, asof.isoformat())),

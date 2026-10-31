@@ -29,19 +29,41 @@ Operators page name the measure wherever they show it and never add it to the pe
 
 - **A well** is the first ten digits of the API number, on the spud day of its earliest borehole that has one (a sidetrack or bypass is another borehole of
   the same well; one well in the file has a spud date only on a sidetrack). 37,509 wells have a spud date; 505 since 2018.
+- **What is not counted: sidetracks and bypasses.** A well is the first ten API digits, so a sidetrack or bypass (another borehole of a well) is not another well, as a re-entry or a sidetrack
+  is not a "new-drill permit" in Texas. It is drilling, though: in the 12 months to Aug 2026 the file shows 101 boreholes spudded, 47 of them the first borehole of a new well (counted) and 54 sidetracks or
+  bypasses (13 of wells first spudded inside the window, 41 of older wells), and two operators account for 25 of the 41 (Arena Offshore, LP 15, Cantium, LLC 10). An operator that mostly sidetracks therefore
+  shows few or no new wells and can sit in band C while its rig is busy. The series' source text (`src`) carries the two numbers for the window, rebuilt weekly, and the Overview, the Map's notes, the
+  Operators page and the Sources page say that a sidetrack or bypass is not counted as a well.
 - **How small it is.** About 45 wells a year since 2024 (2015: 87, 2021: 41, 2025: 43, 2026 through Oct 3: 36), from 16 operators, all corporations: Shell Offshore
   Inc. (37 since 2024), BP Exploration & Production Inc. (18), Anadarko Petroleum Corporation (15), LLOG Exploration Offshore, L.L.C. (11), Murphy Exploration & Production
   Company - USA (10), Chevron U.S.A. Inc. (10) and ten more. Texas has about 7,900 permits a year. A month holds about four wells, so one is a 25% swing; the pages
   lean on the 12-month counts.
 - **An area** is this state's "county": the 63 protraction areas (Green Canyon, Mississippi Canyon, Eugene Island, ...), numbered 001 to 063 in the order of their two-letter codes
   (`AREA_ORDER` in the producer: AC 001 ... GC 024 ... MC 036 ... WR 063). A well's area is the area of its surface block. `--areas` refuses a shapefile that does not hold
-  exactly those 63, because the numbering is part of the published points. Many of the 63 have no wells (the Eastern Gulf is closed to leasing); they are drawn, with no figure.
+  exactly those 63, because the numbering is part of the published points; each feature of `counties-fo.geo.json` carries its two-letter code (`c`) and every rebuild of the points refuses a file that is not the
+  63 with the code `AREA_ORDER` gives each number. Two areas have one name in BSEE's shapes ("Sabine Pass", off Louisiana and off Texas): they are published as "Sabine Pass (LA12)" and "Sabine Pass (TX8)", the
+  diagrams' own numbers. Many of the 63 have no wells (the Eastern Gulf is closed to leasing); they are drawn, with no figure. The outlines are simplified one ring at a time, so a border between two areas
+  is not always the same line on both sides and the map draws some of them heavier than others (the raw shapes share only 3% of their edges, because a long border is two vertices on one side and several on the other;
+  left as it is).
 - **No depth is published**, as for New Mexico: the file has a total measured depth for 6 of the 46 wells spudded in the last 12 months (it arrives after the well
   is finished, months later); a mean of that few would describe the old wells. The water depth, always there (a median of about 6,000 ft for the recent wells), is not a well depth and is not published as one.
+- **The year.** The files end on a month end, so "the last 12 months" are the 12 calendar months from the first day (`calendar_windows` in the spec, `d1_permits_geo.windows(calendar=True)`): the series, the
+  areas and the operators add up to the same 47 and 43 (before, one well on Aug 31 of the year before was in the areas' year and not in the series': an independent review found 47 against 44 on one page).
+  New Mexico, built the same way, has the same rule.
+- **The company's name.** The company file has a row for each name and each address a company has had, sorted by name and not by date. The name published is the one with no end date (field 4), else the one
+  that ended last: reading the last row would have named operator 3407 "JSJ ENERGY, LLC" (it has been "Array Petroleum, LLC" since 2016) and 2970 "Castex Offshore, LLC" (now "Inc."), which flips a name's type.
+  71 of the 449 operators that ever spudded a well have more than one name in the file.
+- **What a rebuild refuses.** `guard()` runs before anything is written; a refusal exits 2 with the reasons, the files stay as committed, and the weekly run ends red after the publish. It refuses a file whose
+  months before the last 12 hold fewer wells than the committed series by more than 3% and 3 wells (a truncated file: cut at 95% of the rows it lost a third of the history), more than 10 spud dates that are not
+  YYYYMMDD dates (a layout that moved: ISO dates made 36 wells vanish without a word), spud dates that come after the total-depth date on more than 1% of the boreholes that have both (it holds on all 54,496), fewer than 90% of the
+  last 24 months' wells with a location in the Gulf, fewer than 90% of the last 12 months' wells with a named operator, more than 2% of the wells in no area of the areas file, an operator name that holds a street address, a suite or a
+  post-office box, and an areas file that is not the 63 areas with the two-letter code that `AREA_ORDER` gives each number.
 - **The lag.** A spud is reported with some delay and the file is made weekly, so a month is shown only when it ended at least 60 days ago (the files end Aug 31 today).
   60 days is New Mexico's measured figure, used here as a cautious one: this producer has no earlier snapshots of the file to measure BSEE's own. Compare the
-  weekly builds over the coming weeks (a month's count should stop growing) and shorten it if it does.
-- **Operators** are named only by the corporate rule (`d8_ok_daily.nameable`); the types (corporation, LLC, limited partnership) are read from the names. The company file's other fields (addresses, contacts) are never read.
+  weekly builds over the coming weeks (a month's count should stop growing) and shorten it if it does. One hint that the real delay is shorter: the file made Oct 25, 2026 holds spuds to Oct 3 and 4 wells
+  in September (a month holds about four), so reports may arrive within weeks; one file is not a measure (August holds 2), and the committed history of weekly builds will be.
+- **Operators** are named only by the corporate rule (`d8_ok_daily.nameable`); the types (corporation, LLC, limited partnership) are read from the names. The company file's other fields (addresses, contacts) are never read
+  (it holds a street, suite, city and ZIP for most companies; only the number, the two dates and the name are read, and a name that itself holds an address is refused).
 - **Points** are surface locations rounded to 3 decimals (about 100 m), NAD27 degrees as BSEE has them (the difference from NAD83 is under 100 m, invisible at map scale).
 - Nothing names an API number, a well, a lease, a platform or a block.
 

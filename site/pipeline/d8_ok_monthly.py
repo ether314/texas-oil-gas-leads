@@ -151,8 +151,8 @@ def org_type(name):
     return "corporation"
 
 
-def window_of(asof):
-    return D1.windows(asof)
+def window_of(asof, calendar=False):
+    return D1.windows(asof, calendar)
 
 
 def name_of(permits_of_op):
@@ -169,7 +169,7 @@ def build(coll, county_names, asof=None, modified=None, spec=None):
     if through is None:
         raise SystemExit("no approved permit in the files")
     asof = asof or through
-    w = window_of(asof)
+    w = window_of(asof, spec.get("calendar_windows", False))
     asofo = asof.toordinal()
     by_op = collections.defaultdict(list)
     for r in permits.values():
