@@ -72,6 +72,9 @@ reports, Run workflow) and give the day in the `date` box. The Texas workflow st
 the job publishes only counts and blurred sheets. To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
+Oklahoma's permit history (monthly series, county counts, operators and permit points, in the Texas files' shapes) is built by
+`site/pipeline/d8_ok_monthly.py` from the OCC's master permit workbook (154 MB, about 75 s): `python3 -I site/pipeline/d8_ok_monthly.py`.
+
 Oklahoma's reports are built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, in the same
 workflow run, after the Texas capture. The two captures are isolated from each other: if one fails (the RRC has refused GitHub's
 runners for hours at a time, and the OCC can have outages of its own), that state's changes are dropped before the commit, the other

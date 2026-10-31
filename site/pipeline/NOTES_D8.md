@@ -1,7 +1,8 @@
 # NOTES_D8: the daily Oklahoma Corporation Commission report (producer D8)
 
-Scripts: `site/pipeline/d8_ok_daily.py` (the producer), `site/pipeline/ok_xlsx.py` (a small .xlsx reader) and
-`site/pipeline/d8_ok_context.py` (one monthly series for the card under the map), all standard library only; run with `python3 -I`. A live capture takes about 10 s (most of it the 121 MB well file); rebuilding all 92 days from the
+Scripts: `site/pipeline/d8_ok_daily.py` (the producer), `site/pipeline/ok_xlsx.py` (a small .xlsx reader),
+`site/pipeline/d8_ok_context.py` (one monthly series for the card under the map) and `site/pipeline/d8_ok_monthly.py` (the permit history
+for the Overview, Map and Operators: see "The permit history files" below), all standard library only; run with `python3 -I`. A live capture takes about 10 s (most of it the 121 MB well file); rebuilding all 92 days from the
 master files takes about 2 minutes (2026-10-31). Page: the Daily report, `#daily` (`js/daily.js`, which
 merges the two states, with `js/daily-ok.js` for the sections only Oklahoma has, `js/daily-data.js` for the merge rules and `js/daily-viz.js` /
 `js/daily-kit.js`, which both states share); `#oklahoma` redirects to `#daily?st=ok`, the Daily report narrowed to Oklahoma. County shapes: `site/public/data/counties-ok.geo.json` (77 counties).
@@ -17,10 +18,13 @@ Files in `site/public/data/daily-ok/`: `YYYY-MM-DD.json` (3-6 KB each, 92 kept) 
 2. **Oklahoma is small next to Texas: about 3 new-drill permits a business day** (208 on the 64 approval days from July 31 to
    October 30; Texas averaged about 31 over its last 60 business days). Single days swing, so the page leans on the 20-day
    average and on the counts of other filings. It is a real picture of the files, not a thin capture.
-3. Operators are named only when the name ends like a corporation, LLC or partnership. The files also carry operators' street
+3. Operators are named only when the name ends like a corporation, LLC or partnership, and never when it says a person trades under it
+   ("... DBA ..."): a sole proprietor is a person (two reports named two of them until 2026-10-31; the rule now refuses them, and the
+   two days were rebuilt from the master files). The files also carry operators' street
    addresses, the person who signed each application and their phone number: none of that is read. A name that fails the rule is
-   written as an operator number only (the page shows "Operator #n"). Lease names, well names, well numbers, API numbers and
-   locations are never written.
+   written as an operator number only (the page shows "Operator #n"). Lease names, well names, well numbers and API numbers are
+   never written, and the Daily report writes no locations. (The permit history files below hold the surface location of each
+   new-drill permit, rounded to about 100 m, with no name of a lease or well.)
 
 ## What it reads
 
@@ -111,6 +115,44 @@ is reachable through its keyless API (25 requests a day per address, the build h
 refuse a request with no contact in the User-Agent); Baker Hughes blocks scripts and its workbook copies are on the Internet Archive,
 which the build host could not reach (the connection is cut during the handshake). FRED was unreachable too. Both can be added from a
 host with access, the jobs by the same call `d5_federal.py` makes for Texas with the Oklahoma ids.
+
+## The permit history files (`d8_ok_monthly.py`)
+
+The Daily report is one day at a time. The Overview, Map and Operators show a year and its trend, so `d8_ok_monthly.py` reads the
+master intent-to-drill workbook (154 MB, every application since 1999, about 75 s) and the daily one beside it, and writes four files into
+`site/public/data/`, shaped like the Texas files they sit beside (the same windows, from `d1_permits_geo.windows`):
+
+| file | shape | Texas counterpart |
+|---|---|---|
+| `series-permits-ok.json` | new-drill permits by approval month, 2019-01 to the last complete month | `series-permits.json` |
+| `county-permits-ok.json` | per county (77): `p12`, `p12prev`, 36 monthly counts, mean planned depth, top 8 named operators | `county-permits.json` |
+| `operators-ok.json` | the named operators with a permit in the last 24 months: band, type read from the name, office city and state, `new12`, `prev12`, `all12`, `all24`, last approval, depth, top county, counties, new to drilling, 24 monthly counts | `operators.json` plus `operator-extras.json` |
+| `permits-ok.json` | one point per new-drill permit of the last 24 months: latitude and longitude (rounded to about 100 m), operator, day, depth, county | `permits.json` |
+
+- **What counts as a permit.** The master has one row per formation until mid-2025 (a permit naming ten formations is ten rows; since then
+  the formation columns are empty and a permit is one row). Counting rows would double the earlier years, so rows are folded to one
+  permit per API number (its first ten digits) and Central approval day: the Daily report's rule, so the two agree (August 2026: 54 in the
+  report archive and in the series; September: 70 and 70). A well approved again after its permit lapsed counts again, on the new day.
+  New-drill is application type `DR`; recompletions, re-entries and deepenings are permits too (they are in `all12` and `all24`);
+  amendments change a permit already counted and are left out; rejected and deleted applications are left out. In the real files 404,897
+  rows fold into 11,232 permits since 2018.
+- **Windows.** The last 12 months run 365 days back from the newest approval day (the end of the files), the 12 before them 730 days
+  back; a month is complete when it is over, so the current month is never in a series. Counts use every permit; only the named
+  operators are named.
+- **Bands.** A is 10 or more new-drill permits in the last 12 months, B is 1 to 9, C is none in the last 12 but some in the 12 before.
+  Texas's band C is every registered operator with none; the OCC's registrant list holds names, phones and addresses and is not read, so
+  Oklahoma has operators with a permit in the last 24 months only. New to drilling is a first drilling permit, ever, in the last 24 months.
+- **Operator type** is read from the name (LLC, limited partnership or corporation): the OCC has no organization type.
+- **Locations.** 99.5% of the last 24 months' permits carry a surface location (Texas: 70%), decimal degrees (the file does not name the datum; the common ones differ by less than a dot at map scale), rounded to 3 decimals. The
+  last 12 months are 100% located. Points outside the state's box are dropped; the county always comes from the API number, never from the point.
+- **Privacy.** Operators are named only by the corporate rule (`nameable`); 98% of the last 12 months' permits went to named operators and the
+  rest are in every count and in no name. City and state are the operator's office on its newest permit: never a street, a signer or a phone.
+  `--check` fails a file that holds an API-like number, an e-mail address or a link.
+- **Checks.** `tests/test_d8_monthly.py`: synthetic rows for every rule above, the validator against twelve deliberate faults, six mutants
+  (everyone or nobody named, UTC days, a window a month too long, formation rows counted, a re-approved well counted once); with
+  `OK_REAL_FILES` the real workbooks too, which must agree with the Daily archive.
+- **Run** by hand: `python3 -I site/pipeline/d8_ok_monthly.py` (downloads both files, writes the four, checks them); `--check` only validates.
+  Not in the nightly workflow yet.
 
 ## Rebuilt days
 
