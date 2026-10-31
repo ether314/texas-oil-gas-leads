@@ -65,16 +65,23 @@ report day, 92 kept, and `permits-series.json`), the same shapes as Oklahoma's s
   by kind, county code and operator, in four group-by requests (a count the server would cut short is an error, not a smaller number). Only counts are kept: plugged (both kinds), the
   status mix (five largest plus Other, so it adds up), active wells by kind (Oil, Gas, the rest together), by county, the 12 largest named operators, how many operators have an active well,
   and the active wells of unnamed operators and of none. `change` is against the previous live report that had one. If the inventory cannot be read the permits are still a report, marked
-  partial (so the backup run takes the night over), and the dataset says why.
+  partial (so the backup run takes the night over), and the dataset says why. The groups the server returns are **added, never overwritten** (a county under two spellings is one county; a
+  missing status and an empty one are one status), and the four answers must agree: the active wells counted by kind, by county and by operator each have to add up to the active wells (within
+  `max(10, 0.5%)`, for an edit between two requests), or one answer was cut short or empty and the inventory is refused, so the report is partial. A county code that is not one of the state's 33 is
+  no county (the well is counted, never placed in one), in the permits and in the inventory, so one typo in the layer cannot fail the night's check. A second capture of the same day (a run by hand
+  in the morning, the night's run in the evening) that cannot read the inventory keeps the one the first captured, and stays partial so that the backup run tries again.
 - **A well is counted once.** The layer holds some wells twice (a record per location: 10 records for 5 wells on 2026-10-29), so the API number is read to count a well once and is
   never kept or published (`validate` fails a file that holds one).
 - **The layer is entered late.** The newest two or three days run well under the 17 to 22 permits a business day of the weeks before (5, 5 and 8 on 2026-10-29, -28 and -27 when this was
   written) and fill in later; the layer's newest edit was 2026-10-29 16:31 UTC on Saturday 2026-10-31. A report names the day its permits are from and the layer's newest edit as its
   file time (the page shows "No change since the last report" when the layer has not been edited). The pace chart reads `permits-series.json`, which every run **rewrites from the layer as it
   stands** for the days it read (about 11 days back; older days stay as they were), over the last 122 days, with a day the layer has not caught up with **absent, not zero**.
-  The Texas file of the same name has the same shape, so the view's series code takes both.
+  The Texas file of the same name has the same shape, so the view's series code takes both. The reports already written settle the same way: each night's run **recounts the permits of every
+  earlier report whose permit day it can still see** (`settle_permits`: the day a report shows never moves, only its figures for that day; the inventory, file times and capture time are not
+  touched), so the report, the index row (the ribbon) and the chart agree once the layer has caught up, and a report older than the window keeps what it settled at. (Found by an independent
+  review: before, every live report kept its first, low count for good, 5 to 15 against 20, and the page compared it with settled days.)
 - **Rebuilt days** (`--history`, or `--backfill N` up to 7 missed nights) count only the approvals still in status New, so an old day can have lost a few that were cancelled or moved on;
-  they are marked reconstructed. A day captured live the night after is complete to that night. Nothing rebuilt ever overwrites a live report.
+  they are marked reconstructed. Nothing rebuilt ever overwrites a live report (a rebuilt day's permits are recounted like any other's while it is inside the window).
 - `--check` reloads and validates the folder; `--skip-if-captured` is for the backup schedule (exit quietly when the report day was captured live at or after 03:00 UTC the next day).
   If the layer cannot be read (or answers with no approvals) nothing is written and the run exits 1, so the workflow can carry on without it.
 - Archive built 2026-10-31 with `--history`: 92 days, 1,338 approvals read.
@@ -86,8 +93,10 @@ names), the files built from synthetic wells and the validator on them and on fa
 nobody named, no lag, a lag of 30 days). Run the producer: `python3 -I site/pipeline/d9_nm_monthly.py` (then `--check`). It is not in the nightly workflow yet.
 
 `tests/test_d9_nm_daily.py`: the rules (a well once, the real approval day, which day a report shows, what is named, what is left out), the reports, index rows and dataset states, the
-series (rewritten days, kept days, a day past the layer's last edit absent), planning, a whole run with the network faked (a first night with history, the next night leaving earlier
-reports byte for byte as they were, 'same' and 'new', the backup guard, a failure writing nothing), the validator on faults, five mutants and the committed archive.
+series (rewritten days, kept days, a day past the layer's last edit absent), planning, a county code that is not one of the 33, the inventory's four counts (added not overwritten, refused
+when they do not add up), a whole run with the network faked (a first night with history, the next night leaving earlier reports byte for byte as they were when the layer has not changed,
+'same' and 'new', the backup guard, a failure writing nothing, a second capture that keeps the first one's inventory), three nights against a layer that is entered late (the earlier reports'
+permits settle, the rest of them and a report older than the window do not change), the validator on faults, six mutants and the committed archive.
 
 ## Not available
 

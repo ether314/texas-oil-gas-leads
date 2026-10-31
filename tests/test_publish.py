@@ -57,7 +57,9 @@ job = wf["jobs"]["publish"]
 steps = job["steps"]
 check(steps[0]["uses"].startswith("actions/checkout@") and "workflow_run.head_sha" in steps[0]["with"]["ref"] and "'main'" in steps[0]["with"]["ref"],
       "it checks out the commit CI passed, or main for a manual run")
-check("publish_pages.sh" in steps[1]["run"], "and runs the shared publish script")
+by_name = {st.get("name"): st for st in steps}
+SKIP, PUBLISH = "Skip when main has moved on", "Publish the site to GitHub Pages"
+check([st.get("name") or st.get("uses") for st in steps][1:] == [SKIP, PUBLISH] and "publish_pages.sh" in by_name[PUBLISH]["run"], "then checks main has not moved on and runs the shared publish script, in that order")
 check(not re.search(r"d7_|d8_|python|rrc\.texas|oklahoma\.gov|curl|wget", text + open(SCRIPT).read(), re.I), "nothing in it can reach the Railroad Commission or the OCC")
 nightly_publish = [s for s in nightly["jobs"]["capture"]["steps"] if s.get("name") == "Publish the site to GitHub Pages"]
 check(len(nightly_publish) == 1 and "publish_pages.sh" in nightly_publish[0]["run"], "the nightly capture publishes with the same script")
@@ -76,6 +78,17 @@ check(cond("workflow_run", "success", "push") is True, "a green CI run for a pus
 check(cond("workflow_run", "failure", "push") is False and cond("workflow_run", "cancelled", "push") is False and cond("workflow_run", "skipped", "push") is False,
       "a failed, cancelled or skipped CI run does not")
 check(cond("workflow_run", "success", "pull_request") is False and cond("workflow_run", "success", "workflow_dispatch") is False, "nor does a green CI run that was not a push to main")
+
+# the step that steps aside when main has moved on: it runs for a CI run only, and the publish waits for its answer
+check(by_name[SKIP]["if"].strip() == "${{ github.event_name == 'workflow_run' }}" and by_name[SKIP]["id"] == "tip", "the check runs for a CI run only (a manual run publishes main as it is)")
+
+
+def publishes(outputs):
+    expr = by_name[PUBLISH]["if"].replace("${{", "").replace("}}", "").strip()
+    return eval(expr.replace("steps.tip.outputs.skip", "outputs.get('skip')"), {"outputs": outputs})
+
+
+check(publishes({}) is True and publishes({"skip": "true"}) is False, "and the publish goes ahead unless it says skip")
 
 # ---- the script, against a throwaway clone with a local bare origin
 REAL_GIT = shutil.which("git")
@@ -163,6 +176,40 @@ def pages_files():
 
 
 make_origin()
+
+# the step itself, run in a clone as it would run there: the commit CI passed is main's tip, or it is not
+w = clone("work-tip")
+head_sha = git("rev-parse", "HEAD", cwd=w)
+out_file = os.path.join(TMP, "gh-output")
+
+
+def run_tip_step(sha):
+    if os.path.exists(out_file):
+        os.remove(out_file)
+    script = by_name[SKIP]["run"].replace("${{ github.event.workflow_run.head_sha }}", sha)
+    assert "${{" not in script
+    r = subprocess.run(["bash", "-e", "-c", script], cwd=w, env={"PATH": os.environ["PATH"], "HOME": TMP, "GITHUB_OUTPUT": out_file}, capture_output=True, text=True)
+    return r.returncode, r.stdout + r.stderr, (open(out_file).read() if os.path.exists(out_file) else "")
+
+
+code, text, written = run_tip_step(head_sha)
+check(code == 0 and "skip" not in written and "::notice" not in text, "when the commit CI passed is still main's tip the check says nothing and the publish goes ahead")
+# main's tip cannot be read (the remote is unreachable): the check must not be what stops a publish
+git("remote", "set-url", "origin", os.path.join(TMP, "no-such-remote.git"), cwd=w)
+code, text, written = run_tip_step(head_sha)
+check(code == 0 and "skip" not in written, "and when main's tip cannot be read it does not skip either (a guard must not stop a publish)")
+git("remote", "set-url", "origin", ORIGIN, cwd=w)
+newer = os.path.join(TMP, "newer")
+shutil.rmtree(newer, ignore_errors=True)
+subprocess.run([REAL_GIT, "clone", "-q", "--branch", "main", ORIGIN, newer], check=True, capture_output=True)
+open(os.path.join(newer, "site", "public", "data", "nightly.txt"), "w").write("the nightly's data")
+git("add", "-A", cwd=newer)
+git("commit", "-q", "-m", "Daily reports (the nightly)", cwd=newer)
+git("push", "-q", "origin", "HEAD:main", cwd=newer)
+code, text, written = run_tip_step(head_sha)
+check(code == 0 and "skip=true" in written and "::notice title=Publish skipped::" in text and head_sha in text, "when a newer commit (the nightly's data) is on main it says skip, naming the commit it left to the newer publish: %s" % written.strip())
+make_origin()
+
 w = clone("work")
 before = pages_tip()
 head = git("rev-parse", "--short", "HEAD", cwd=w)
