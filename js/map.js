@@ -171,6 +171,8 @@ export function createMapView({ root, meta }) {
     }
     const ramp = RAMP[dark ? 'dark' : 'light'];
     const vs = m.vals.filter((v) => v != null).sort((a, b) => a - b);
+    // no county has a value (New Mexico publishes no depth): there is no scale to draw, only the no-data line
+    if (!vs.length) return { colors: [ramp[0]], classOf: () => 0, names: [''], minText: '', maxText: '', empty: true };
     const edges = []; const K = ramp.length;
     const zeros = vs.filter((v) => v === 0).length;
     const zeroClass = (m.int || m.zero) && zeros >= vs.length * 0.08;
@@ -224,8 +226,8 @@ export function createMapView({ root, meta }) {
       sw.style.background = c; return sw;
     }));
     const nd = el('span', { class: 'lg-sw nodata' }); nd.style.background = NODATA[dark ? 'dark' : 'light'];
-    const kids = [el('div', { class: 'lg-title', text: title }), ramp,
-      el('div', { class: 'lg-ends' }, el('span', { text: sc.minText }), el('span', { text: sc.maxText }))];
+    const kids = [el('div', { class: 'lg-title', text: title })];
+    if (!sc.empty) kids.push(ramp, el('div', { class: 'lg-ends' }, el('span', { text: sc.minText }), el('span', { text: sc.maxText })));
     if (hasNone) kids.push(el('div', { class: 'lg-nodata' }, nd, el('span', { text: m.nodata + (S.multi && m.tx ? '; not available outside Texas' : '') })));
     // with several states the dots take their state's color, so the legend says which is which
     if (S.multi && state.layers.has('permits')) {
@@ -514,7 +516,9 @@ export function createMapView({ root, meta }) {
             el('span', { class: 'bar-label', text: S.G.counties[i].n + (S.multi ? ', ' + countyState(S.G.counties[i].f) : '') }),
             m.kind === 'seq' ? el('span', { class: 'bar-track' }, bar) : null,
             el('span', { class: 'bar-value', text: m.kind === 'div' ? signed(v) : m.fmt(v) })));
-        }))),
+        })),
+        // nothing to rank because no county has the figure at all (New Mexico publishes no depth): say so, not an empty list
+        m.vals.every((v) => v == null) ? el('p', { class: 'fine', text: 'No county has a figure for this: ' + m.nodata.charAt(0).toLowerCase() + m.nodata.slice(1) + '.' }) : null),
       el('p', { class: 'fine', text: 'Drag to pan, scroll or pinch to zoom, double-click to zoom in. Keyboard: focus the map, then use the arrow keys, plus, minus and 0.' }));
   }
   function renderPanel() {
