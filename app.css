@@ -101,6 +101,10 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .ico { flex: none; display: inline-block; vertical-align: -0.2em; }
 #view-overview[data-states="OK"] .live-dot { background: var(--st-ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-ok) 55%, transparent); }
 #view-overview[data-states="NM"] .live-dot { background: var(--st-nm); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-nm) 55%, transparent); }
+/* a state's tag in a table: its color, its two letters */
+.st-tag { --c: var(--st-tx); display: inline-block; padding: 1px 7px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 680; letter-spacing: 0.06em; color: var(--ink); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 42%, transparent); }
+.st-tag.st-ok { --c: var(--st-ok); }
+.st-tag.st-nm { --c: var(--st-nm); }
 /* the states shown: one choice above every view that follows it */
 .statebar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-4) 0; }
 .statebar[hidden] { display: none; }
