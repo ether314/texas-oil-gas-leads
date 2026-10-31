@@ -30,7 +30,7 @@ export const STATES = [
     // the Gulf of America's federal waters (BSEE). Its "counties" are the 63 protraction areas; its file is weekly, so it has no Daily report
     id: 'FO', name: 'Federal offshore', short: 'Offshore', in: 'the federal offshore', fips: null, agency: 'Bureau of Safety and Environmental Enforcement', measure: SPUDS, place: AREA, drill: 'the Gulf drill',
     noDaily: 'BSEE’s file is weekly', cadence: 'weekly',
-    files: { geo: 'counties-fo.geo', series: 'series-permits-fo', county: 'county-permits-fo', operators: 'operators-fo', points: 'permits-fo' },
+    files: { geo: 'counties-fo.geo', series: 'series-permits-fo', county: 'county-permits-fo', operators: 'operators-fo', points: 'permits-fo', crude: 'series-fo' },
   },
 ];
 export const measureOf = (id) => stateOf(id).measure;
