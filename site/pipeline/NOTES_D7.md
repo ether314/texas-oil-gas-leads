@@ -103,8 +103,12 @@ a live report holds the 11 AM set only and the *previous* day's completions and 
 later from the share's history: it holds both sets and the report day's own zip. Each card says which day its data is
 from, and the page marks rebuilt days, but the two kinds are not on one rule (completions are a day apart, and live pending
 totals leave out the 5 PM set). The consistent rule is "what landed on the share that day": the previous evening's 5 PM set
-and the day's 11 AM set, the previous day's zips. A live capture already meets it; the rebuild and the page's note would
-need to follow, and the archive would be regenerated. Not done.
+and the day's 11 AM set, the previous day's zips. Everything that rule names is on the share by the evening run, so a live
+capture can meet it; the pending and completions selection, the rebuild and the page's note would have to change, and the
+archive would be regenerated. Not done.
+
+`state` per dataset (live days only): `new` when the newest file's name, time or size changed since the previous *live*
+report, `same` when not, `first` when the previous report was rebuilt (nothing to compare), `error` when it could not be read.
 
 ## Which months a file covers
 
@@ -122,9 +126,6 @@ those counts over the month in the ledger. Seen by running `--date 2026-09-15` a
 Which month the plain file turns to, and when, is not known for the plain file itself (only for the dated snapshots: the
 3rd), so nothing here depends on it. A day's section looks back up to 10 days, so reports in the first days of a month read
 the previous month's file too (one extra 2.4 MB download).
-
-`state` per dataset (live days only): `new` when the newest file's name, time or size changed since the previous *live*
-report, `same` when not, `first` when the previous report was rebuilt (nothing to compare), `error` when it could not be read.
 
 ## Checks (all pass)
 
