@@ -40,6 +40,7 @@ operators.json). Lease names, well numbers and everything about individuals are 
 import argparse
 import collections
 import concurrent.futures
+import glob
 import html.parser
 import json
 import os
@@ -55,12 +56,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.dirname(HERE)
 ROOT = os.path.dirname(SITE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path; rrc_share.py sits next to this file
-from rrc_share import Session, Share, ShareError  # noqa: E402
+from rrc_share import Session, Share, ShareError, TooSlow  # noqa: E402
 import d7_packs  # noqa: E402
 
 DATA_PAGE = "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/"
 UA = "Mozilla/5.0 (research script)"
 KEEP_DAYS = 92
+PACK_SECONDS = 480  # a pack download gets this long (and 3 tries): the nightly capture waits for every dataset, so a stall must not hold it up
 EOM_GUID = "f5dfea9c-bb39-4a5e-a44e-fb522e088cba"  # Drilling Permit Master and Trailer, End of Month files
 DEFAULT_OUT = os.path.join(SITE, "public", "data", "daily")
 BUDGET_BYTES = {"index.json": 40_000, "permits-series.json": 20_000, "day": 60_000, "sheet": 150_000}
@@ -631,16 +633,18 @@ def pack_preview(sh, ctx, ds, name):
     """Download the pack that landed on the live day, count its documents and draw its contact sheet (d7_packs). Returns
     {'docs': ..., 'sheet': ...} or None when it cannot be done: a pack that cannot be read never costs the dataset."""
     path = None
+    sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, time.time() + PACK_SECONDS
     try:
         path = sh.download(name, os.path.join(ctx["dl"], "pack-%s-%s" % (ds, ctx["R"].isoformat())))
         docs, sheet = d7_packs.inspect_pack(path, ds, os.path.join(ctx["img_out"], "%s-%s.jpg" % (ctx["R"].isoformat(), ds)), log)
         return dict({"docs": docs}, **({"sheet": sheet} if sheet else {}))
-    except Exception as e:  # noqa: BLE001 - a bad zip, a failed download, a full disk
+    except Exception as e:  # noqa: BLE001 - a bad zip, a failed or too slow download, a full disk
         log("%-12s pack preview SKIPPED (%s)" % (ds, e))
         return None
     finally:
-        if path and os.path.exists(path):
-            os.remove(path)
+        sh.s.deadline = None
+        for f in glob.glob(os.path.join(ctx["dl"], "pack-%s-%s" % (ds, ctx["R"].isoformat()), "*")):
+            os.remove(f)  # the zip, or what is left of a download that gave up
 
 
 def image_section(days, use):

@@ -92,7 +92,10 @@ rule, not a setting. Pillow and `pdftoppm` (poppler-utils) draw the sheet; witho
 is skipped with a log line. A pack that cannot be downloaded or opened is skipped the same way and never costs the dataset.
 
 Safety: the pack is untrusted. Members are read one at a time, over 12 MB are never opened, `pdftoppm` runs under a 25 s
-timeout, a sheet gets 100 s in all, Pillow refuses a TIFF past 120 million pixels, and the zip is deleted afterwards.
+timeout, a sheet gets 100 s in all, Pillow refuses a TIFF past 120 million pixels, and the zip is deleted afterwards. A pack
+download gets 8 minutes and 3 tries (`PACK_SECONDS`, and `TooSlow` in `rrc_share.py`, which the retry loop does not swallow):
+the nightly capture waits for every dataset, so a stalled download must not be able to hold it up. One that goes over is
+skipped and logged like any other failed preview.
 
 Cost: the three packs are 360-510 MB a night (306 MB took 39 s through the agent proxy here; a whole run with the packs took
 under two minutes). The workflow installs poppler-utils and Pillow first (about 15 s, `continue-on-error`). Three sheets are
@@ -223,7 +226,8 @@ the previous month's file too (one extra 2.4 MB download).
     **no file name, lease name or permit number appears in the counts, the sheet record or the log**. `images_job` with
     `--packs` opens only the live day and deletes the zip; a failed download skips the preview and keeps the dataset;
     `validate` reports a missing or oversized sheet and kinds that do not add up; `prune_images` deletes unreferenced
-    sheets. A real run (`--date 2026-10-30 --packs`, 365 MB of packs, 6 connection resets absorbed) wrote the three sheets and
+    sheets. A download past its time budget (a fake stream of 0.3 s a megabyte against a 1 s budget) stops after 1.2 s with
+    no retry, the half file is deleted and the dataset stays. A real run (`--date 2026-10-30 --packs`, 365 MB of packs, 6 connection resets absorbed) wrote the three sheets and
     passed `--check`; the verbose page showed them at desktop and phone width with no overflow and no console errors.
 
 ## Run and schedule
