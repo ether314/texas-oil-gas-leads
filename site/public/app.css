@@ -339,6 +339,7 @@ svg .hbar.on { filter: brightness(1.15); }
 .pulse-legend .dots i { height: 0; background: none; border-top: 3px dotted var(--c); border-radius: 0; }
 .pulse-latest { display: flex; align-items: baseline; gap: 10px; }
 .pulse-value { font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.026em; }
+.pulse-who { font-size: var(--fs-sm); font-weight: 620; color: var(--ink-2); }
 .pulse-asof { font-size: var(--fs-xs); color: var(--ink-2); }
 .pulse-plot svg, .pulse-axis svg { display: block; overflow: visible; }
 .pulse-foot { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--ink-2); max-width: 90ch; }

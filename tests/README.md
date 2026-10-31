@@ -38,6 +38,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   and a county or an operator opened by its state-prefixed key. The Daily report is driven for New Mexico alone (three cards, its color, its 33 counties, no tile for what
   it does not publish) and with all three states (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
   On a phone it also checks the tabs' edge fade, the browser bar's color in each theme and, in the Daily report with three states, one pill per state, notes and sparklines that fit their cards and no card alone in half a row.
+  It checks that what a state does not publish is never a 0 (the Daily map's tooltips, New Mexico's "other filings", the amended-permits figure naming the states it adds), that an address naming two states lights no segment of the bar and says which are shown, that the Overview's chips name New Mexico's different measure, and that a Map operator panel never shows more dots than the operator has.
   It sweeps every map metric under New Mexico, Oklahoma and all three states for a NaN in the legend or panel, and says so when no county has a figure (New Mexico's depth).
   It drops the first request for a data file and checks the page still draws (one retry), and that a missing file is asked for once.
   Under print media it checks that a dark page prints light and that the header, states bar, controls and buttons stay off the paper.

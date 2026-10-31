@@ -18,12 +18,13 @@ export function segmented({ label, options, value, onChange, tabs = true, prefix
     root.style.setProperty('--tx', b.offsetLeft + 'px'); root.style.setProperty('--tw', b.offsetWidth + 'px');
   };
   function set(id, fire = true, focus = false) {
-    if (!btns.some((b) => b.dataset.id === id)) return;
-    cur = id;
+    if (id !== null && !btns.some((b) => b.dataset.id === id)) return;
+    cur = id; // null: none chosen (the states bar when an address names two of the three states)
     btns.forEach((b) => {
-      const on = b.dataset.id === id;
+      const on = id !== null && b.dataset.id === id;
       if (tabs) { b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; } else b.setAttribute('aria-pressed', String(on));
     });
+    if (id === null) { root.style.setProperty('--tw', '0px'); return; }
     place();
     const b = btns.find((x) => x.dataset.id === id);
     if (focus) b.focus({ preventScroll: true });

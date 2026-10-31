@@ -117,7 +117,10 @@ export function countyMap(G, layers, first, opts = {}) {
     const f = e.target.dataset && e.target.dataset.f;
     const L = layers[cur];
     if (!f || !L) { hideTip(); return; }
-    const c = G.byFips.get(f); const v = L.map.get(f) || 0;
+    const c = G.byFips.get(f);
+    // a state that has no such layer (New Mexico publishes no completions, Oklahoma no queue, Texas's report no inventory) has no figure: never a 0
+    if (L.states && !L.states.includes(c.s)) { showTip([tipRow(nm(c) + ' County', ''), tipRow('Not available', (opts.stateName ? opts.stateName(c.s) : c.s) + ' publishes none')], e.clientX, e.clientY); return; }
+    const v = L.map.get(f) || 0;
     showTip([tipRow(nm(c) + ' County', ''), tipRow(fmt.format(v), unit[cur])], e.clientX, e.clientY);
   });
   root.addEventListener('pointerleave', hideTip);
@@ -325,10 +328,10 @@ export function calendar({ cells, selected, label, format, none, onPick }) {
     const d = addDays(first, i); dates.push(d);
     const c = byDate.get(d); const v = c ? c.v : null; const sel = !!c && c.open === selected;
     const b = el('button', { type: 'button', class: 'dr-cell' + (v == null ? ' none' : '') + (sel ? ' sel' : '') + (c && c.live ? ' live' : ''), 'data-d': d, 'data-act': 'cal-' + d,
-      disabled: !(c && c.open), 'aria-label': fmtDow(d) + ': ' + (v == null ? none : format(v)), 'aria-pressed': sel ? 'true' : 'false' });
+      disabled: !(c && c.open), 'aria-label': fmtDow(d) + ': ' + (v == null ? none : format(v) + (c && c.note ? ' (' + c.note + ')' : '')), 'aria-pressed': sel ? 'true' : 'false' });
     b.style.setProperty('--k', v == null ? '0' : String(0.14 + 0.86 * Math.sqrt(v / max)));
     if (c && c.open) b.addEventListener('click', () => onPick(c.open));
-    b.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(v == null ? none : format(v), ''), c && c.open && c.open !== d ? tipRow('Opens', 'the ' + fmtMd(c.open) + ' report') : null], e.clientX, e.clientY));
+    b.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(v == null ? none : format(v) + (c && c.note ? ' (' + c.note + ')' : ''), ''), c && c.open && c.open !== d ? tipRow('Opens', 'the ' + fmtMd(c.open) + ' report') : null], e.clientX, e.clientY));
     b.addEventListener('pointerleave', hideTip);
     grid.append(b);
   }
