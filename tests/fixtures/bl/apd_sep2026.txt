@@ -1,0 +1,92 @@
+        FY 2026 Application for Permit to Drill (APDs) Status Report:
+                                                                                                         Approved
+                           9/1/2026 to 9/30/2026                                                      Permits Available
+                                                                                                       for Drilling on
+                                                                                                        10/1/2026 (*)
+                                  APDs             APDs
+                                                                    APDs               APDs
+       State Office              Received         Pending
+                                                                 Processed (C)      Approved (D)
+                                   (A)              (B)
+Alaska                                     1                1                 0                  0              1
+California                                 0                8                 0                  0             128
+Colorado                                  12               87                 3                  3             277
+Eastern States                             2                3                 0                  0             12
+Montana                                   11               27                40                 40             286
+Nevada                                     0                3                 0                  0              3
+New Mexico                               135              842               140                140           6,775
+Utah                                      49              166               148                148            1,070
+Wyoming                                   51              182                42                 38           1,670
+Total                                    261            1,319               373                369           10,222
+Federal Well Total                       229            1,240               330                326           9,754
+Indian Well Total                         32               79                43                 43             468
+Fiscal Year Totals (**)                4,647            1,319             6,312              5,602           10,222
+
+(A) APDs received counts APDs received by the BLM and the APD Fee has been paid during the reporting period.
+
+(B) APDs Pending includes cumulative APDs received without a final disposition. This includes the steps in the process
+where the BLM is determining completeness of the application, or the Operator is addressing deficiencies such as,
+Wildlife or Cultural Clearances, or the application is impacted by ongoing leasing litigation, and APDs awaiting final
+decision.
+
+(C) APDs Processed include APDs that are approved (column D), denied, returned, withdrawn, or cancelled.
+(*) AAPDs are APDs that have been approved and are available to drill. For APDs approved prior to June 22, 2024,
+these AAPDs are either in their original two-year term or have been granted an extension beyond the first two years, but
+not to exceed a total of four years. For APDs approved between June 22, 2024, and July 3, 2025, these AAPDs are in
+their three-year term. For APDs approved after July 4, 2025, these APDs are in their four-year term. This AAPD number
+is accurate on the date that the report is generated, which is distinct from the data on APD status for the month. Once an
+APD is drilled, expired, or withdrawn, it is removed from the Approved and Available (AAPDs) numbers.
+(**) Fiscal Year Totals Cover 10/1/2025 to 9/30/2026
+Individual State Office data includes APD activity for both Federal and Tribal lands
+Data current as of 10/1/2026
+The data in this report is accurate on the date it is pulled. Changes to previously reported numbers may result from
+ongoing data quality control reviews.
+              FY 2026 Application for Permit to Drill Status Report:
+                             10/1/2025 to 9/30/2026                                                     Approved
+                                                                                                         Permits
+                                                                                                       Available for
+                                                                                                        Drilling on
+                                                                                                       10/1/2026 (*)
+                                  APDs            APDs              APDs               APDs
+       State Office
+                               Received (A)     Pending (B)      Processed (C)      Approved (D)
+
+
+Alaska                                    11                1                10                 10             1
+California                                 6                8                44                 29           128
+Colorado                                 215               87               230                203           277
+Eastern States                            17                3                18                 18            12
+Montana                                  277               27               304                284           286
+Nevada                                     1                3                 4                  2             3
+New Mexico                             2,607              842             3,956              3,484         6,775
+Utah                                     742              166               881                802          1,070
+Wyoming                                  771              182               865                770         1,670
+Total                                  4,647            1,319             6,312              5,602         10,222
+Federal Well Total                     4,309            1,240             5,875              5,226         9,754
+Indian Well Total                        338               79               437                376           468
+Fiscal Year Totals (**)                4,647            1,319             6,312              5,602         10,222
+
+(A) APDs received counts APDs received by the BLM and the APD Fee has been paid during the reporting period.
+
+(B) APDs Pending includes cumulative APDs received without a final disposition. This includes the steps in the
+process where the BLM is determining completeness of the application, or the Operator is addressing deficiencies
+such as, Wildlife or Cultural Clearances, or the application is impacted by ongoing leasing litigation, and APDs
+awaiting final decision.
+
+(C) APDs Processed include APDs that are approved (column D), denied, returned, withdrawn, or cancelled.
+(*) AAPDs are APDs that have been approved and are available to drill. For APDs approved prior to June 22, 2024,
+these AAPDs are either in their original two-year term or have been granted an extension beyond the first two years,
+but not to exceed a total of four years. For APDs approved between June 22, 2024, and July 3, 2025, these AAPDs
+are in their three-year term. For APDs approved after July 4, 2025, these APDs are in their four-year term. This
+AAPD number is accurate on the date that the report is generated, which is distinct from the data on APD status for
+the month. Once an APD is drilled, expired, or withdrawn, it is removed from the Approved and Available (AAPDs)
+numbers.
+(**) Fiscal Year Totals Cover 10/1/2025 to 9/30/2026
+
+Individual State Office data includes APD activity for both Federal and Tribal lands
+
+Data current as of 10/1/2026
+
+The data in this report is accurate on the date it is pulled. Changes to previously reported numbers may result from
+ongoing data quality control reviews.
+

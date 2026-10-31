@@ -21,6 +21,7 @@ The shape of nat/<ST>.json (v1):
   namedShare                     the share of the last 12 months' `new` permits whose operator may be named
   read                           how many records the source gave (a sanity figure)
   note                           anything a reader should know (a lag, a revision, a limit)
+  unit, place                    optional: what one count is ("APDs approved"), and what the places are called ("state offices"), where they are not new-drill permits and counties
 
 The bands (a permit is in exactly one):
   new      a new well drilled to produce or explore (oil, gas, wildcat, development)
@@ -245,29 +246,30 @@ class Tally:
         self.read = 0
         self.newest = None
 
-    def add(self, day, band="new", county=None, operator=None, fluid=None):
-        """One permit. `day` is a date (the day the counts are by); `operator` the agency's name for it (kept only if it may be named)."""
-        if day is None or band not in BANDS:
+    def add(self, day, band="new", county=None, operator=None, fluid=None, n=1):
+        """One permit (or `n` of them, for a source that publishes counts: a month's total for one place). `day` is a date (the day the counts are by); `operator` the agency's
+        name for it (kept only if it may be named)."""
+        if day is None or band not in BANDS or not isinstance(n, int) or n < 1:
             return
-        self.read += 1
+        self.read += n
         if self.newest is None or day > self.newest:
             self.newest = day
         ym = month_of(day)
-        self.m[band][ym] += 1
+        self.m[band][ym] += n
         if band != "new":
             return
         if county:
             c = " ".join(str(county).replace("_", " ").split())
             if PLACE.match(c) and not re.search(r"\d{3,}", c):
-                self.county[ym][c.upper()] += 1
+                self.county[ym][c.upper()] += n
         if operator and nameable(operator):
-            self.oper[ym][" ".join(operator.upper().replace(",", " ").split())] += 1
-        else:
-            self.unnamed[ym] += 1
+            self.oper[ym][" ".join(operator.upper().replace(",", " ").split())] += n
+        elif operator is not None:
+            self.unnamed[ym] += n  # an operator that may not be named; a source with no operators at all (counts only) has nothing unnamed
         if self.fluid:
-            self.fl[ym][fluid if fluid in FLUIDS else "unknown"] += 1
+            self.fl[ym][fluid if fluid in FLUIDS else "unknown"] += n
 
-    def document(self, *, name=None, agency, source_name, source_url, basis, cadence, measure="permits", lag_days=0, asof=None, note="", first=FIRST_MONTH):
+    def document(self, *, name=None, agency, source_name, source_url, basis, cadence, measure="permits", lag_days=0, asof=None, note="", first=FIRST_MONTH, unit=None, place=None):
         asof = asof or self.newest
         if asof is None:
             raise ValueError("no permit was read: refusing to write an empty state")
@@ -284,16 +286,21 @@ class Tally:
             fl.update(self.fl.get(ym, {}))
         named = sum(ops.values())
         total12 = sum(bands["new"][-12:])
-        return {
+        doc = {
             "v": 1, "state": self.state, "name": name or NAME_OF[self.state], "agency": agency, "measure": measure, "basis": basis,
             "source": {"name": source_name, "url": source_url}, "asOf": asof.isoformat(), "through": month_end(through).isoformat(), "cadence": cadence,
             "months": months, "bands": bands,
             "fluid": ({f: fl.get(f, 0) for f in FLUIDS} if self.fluid else None),
             "counties": [[c.title(), n] for c, n in sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
             "operators": [[o, n] for o, n in sorted(ops.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
-            "namedShare": round(named / total12, 3) if total12 else None,
+            "namedShare": round(named / total12, 3) if total12 and (named or sum(self.unnamed.values())) else None,  # null for a source that names no operators at all
             "read": self.read, "note": note,
         }
+        if unit:
+            doc["unit"] = unit  # what one count is, where it is not "new-drill permits" (the BLM counts APDs approved)
+        if place:
+            doc["place"] = place  # what its places are called, where they are not counties (the BLM's are state offices)
+        return doc
 
 
 # ------------------------------------------------------------------------------------------------ validation
@@ -356,6 +363,8 @@ def validate(doc, today=None):
     ns = doc.get("namedShare")
     _fail(p, ns is None or (isinstance(ns, (int, float)) and 0 <= ns <= 1), "namedShare must be 0 to 1")
     _fail(p, isinstance(doc.get("read"), int) and doc["read"] > 0, "read must count the records")
+    for k in ("unit", "place"):
+        _fail(p, k not in doc or (isinstance(doc[k], str) and 0 < len(doc[k]) <= 40 and re.fullmatch(r"[A-Za-z ]+", doc[k])), "%s must be a short plain phrase" % k)
     text = json.dumps(doc, ensure_ascii=False)
     for what in privacy_check.scan(re.sub(r"https://[\w./\-]+", "", text), digits=True):
         p.append("the file holds " + what)

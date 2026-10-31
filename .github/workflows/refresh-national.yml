@@ -32,6 +32,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      # pdftotext (poppler-utils) reads the BLM's monthly PDF reports (d11_nat_bl.py). Its own limit: a package mirror that hangs must not hold the job, and without it only the BLM's producer fails
+      - name: Install the tool that reads PDF reports
+        id: tools
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+
       # every producer, one at a time, each under its own limit and a budget of 40 minutes in all; the runner restores a failed producer's file and rebuilds national.json
       - name: Read every state agency's permits
         id: nat_run

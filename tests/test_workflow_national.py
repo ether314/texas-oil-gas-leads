@@ -54,6 +54,8 @@ check(hm(wf[True]["schedule"][0]["cron"]) > hm(monthly[True]["schedule"][0]["cro
 check(wf["concurrency"]["group"] == nightly["concurrency"]["group"] and wf["concurrency"]["cancel-in-progress"] is False, "it shares the nightly capture's concurrency group: the two never run at once, neither cancels the other")
 check(wf["permissions"] == {"contents": "write"}, "it can commit and nothing else")
 check(all(by_id[i].get("continue-on-error") is True for i in ("nat_run", "nat_build", "nat_check")), "the producers, the rebuild and the check are continue-on-error: the commit and publish still happen for what succeeded")
+check(by_id["tools"].get("continue-on-error") is True and by_id["tools"].get("timeout-minutes", 99) <= 6 and "poppler-utils" in steps["Install the tool that reads PDF reports"]["run"] and names.index("Install the tool that reads PDF reports") < names.index(RUN),
+      "poppler (for the BLM's PDF reports) is installed first, with its own short limit, and a failed install cannot stop the run")
 check(by_id["nat_run"].get("timeout-minutes", 0) >= 30 and by_id["nat_run"]["timeout-minutes"] + 10 <= job["timeout-minutes"], "the producers have a limit that leaves the job room to check, commit and publish")
 budget = int(re.search(r"--budget (\d+)", steps[RUN]["run"]).group(1))
 check(budget / 60 < by_id["nat_run"]["timeout-minutes"], "the runner's own budget (%d s) ends before the step's limit, so it stops cleanly and does not get cut off" % budget)
