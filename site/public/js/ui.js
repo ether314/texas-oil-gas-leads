@@ -79,7 +79,7 @@ export function shareButton(getUrl, label = 'Share this view') {
       const url = getUrl();
       if (await copyText(url)) toast('Link copied to the clipboard'); else toast('Copy this link', { copy: url });
     },
-  }, icon('share', 16), el('span', { text: label.split(' ')[0] }), label.includes(' ') ? el('span', { class: 'hide-sm', text: ' ' + label.split(' ').slice(1).join(' ') }) : null);
+  }, icon('share', 16), el('span', null, label.split(' ')[0], label.includes(' ') ? el('span', { class: 'hide-sm', text: ' ' + label.split(' ').slice(1).join(' ') }) : null)); // one label, so the gap is a word space and not the icon's gap
 }
 // a link to a hash that reopens what is on screen, the states shown included
 export function absoluteLink(hash) {
