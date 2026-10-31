@@ -39,6 +39,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      # poppler draws page one of the PDFs and Pillow builds the contact sheets of the image packs (d7_packs.py). Without
+      # them the packs are still counted and the capture does not fail, so a hiccup here costs the previews and nothing else.
+      - name: Install the tools that draw page previews
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+          python3 -m pip install --quiet pillow
+
       - name: Capture the report
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '7' }}
@@ -46,7 +55,7 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           case "$BACKFILL" in ''|*[!0-9]*) echo "backfill must be a whole number"; exit 1;; esac
-          args=(--backfill "$BACKFILL")
+          args=(--backfill "$BACKFILL" --packs)
           if [ -n "$REPORT_DATE" ]; then
             case "$REPORT_DATE" in
               [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) args+=(--date "$REPORT_DATE") ;;

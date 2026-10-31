@@ -35,6 +35,10 @@ class ShareError(RuntimeError):
     pass
 
 
+class TooSlow(RuntimeError):
+    """A download went past its time budget. Not an OSError, so the retry loop does not swallow it."""
+
+
 def attrs(tag):
     return {k: html.unescape(v) for k, v in re.findall(r'([\w:.-]+)="([^"]*)"', tag)}
 
@@ -61,6 +65,7 @@ class Session:
         self.conn = None
         self.cookies = {}
         self.retries = 0  # how many resets this session absorbed (reported by the daily script)
+        self.deadline = None  # time.time() after which a streaming download gives up (TooSlow); None means no limit
 
     def close(self):
         if self.conn is not None:
@@ -100,6 +105,8 @@ class Session:
             sink.seek(0)
             sink.truncate()
             while True:
+                if self.deadline is not None and time.time() > self.deadline:
+                    raise TooSlow("download of %s went past its time budget" % path.split("?")[0])
                 chunk = r.read(1 << 20)
                 if not chunk:
                     break

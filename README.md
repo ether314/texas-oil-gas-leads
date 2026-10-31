@@ -12,7 +12,7 @@ external requests) plus the Python scripts that build its data files.
   basin outlines and a time-lapse of permits.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields.
 - **Daily report**: what the Railroad Commission's nightly files held, one report a day for the last 92 days. A simple version
-  for the daily look, and a verbose one with permits, the pending queue, completions, image packs and source health.
+  for the daily look, and a verbose one with permits, the pending queue, completions, image packs (sizes, and for days captured live a count of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and source health.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
