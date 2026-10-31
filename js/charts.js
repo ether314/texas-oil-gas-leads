@@ -159,7 +159,7 @@ export function seriesGroup(root, spec) {
     const box = el('div', { class: 'pulse-panel' },
       el('div', { class: 'pulse-head' },
         el('h3', { class: 'pulse-title' }, p.icon ? icon(p.icon, 17) : null, p.title, legend),
-        last >= 0 ? el('div', { class: 'pulse-latest' }, el('strong', { class: 'pulse-value', text: main.fmtVal(main.v[last]) }), delta(prevY, { suffix: ' YoY' }),
+        last >= 0 ? el('div', { class: 'pulse-latest' }, legend ? el('span', { class: 'pulse-who', text: main.name.replace(/ \(.*\)$/, '') }) : null, el('strong', { class: 'pulse-value', text: main.fmtVal(main.v[last]) }), delta(prevY, { suffix: ' YoY' }),
           el('span', { class: 'pulse-asof', text: (main.dateFmt || monthLabelT)(main.t[last]) })) : null),
       el('div', { class: 'pulse-plot' }), p.foot ? el('p', { class: 'pulse-foot' }, p.foot) : null);
     box.style.setProperty('--c', p.color);

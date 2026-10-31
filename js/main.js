@@ -9,7 +9,7 @@ import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, measurePhrase, measureOf, sameMeasure, listAnd } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesName, measurePhrase, measureOf, sameMeasure, listAnd } from './states.js';
 
 const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the Both / Texas / Oklahoma choice; the others show what they showed before (Texas) and hide the choice
@@ -98,7 +98,8 @@ async function boot() {
   }
 
   /* ---------- the states shown: one choice for every view that follows it, kept in the address as st=tx or st=ok ---------- */
-  const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : 'all');
+  // the bar offers All and each state; an address can also name two of three (st=tx,ok): then the bar has none chosen, and the note below says which are shown
+  const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : null);
   const bar = segmented({
     label: 'States shown', tabs: false, prefix: 'sb', value: choice(),
     options: [{ id: 'all', label: 'All', dot: 'st-all' }, ...STATES.map((x) => ({ id: x.id, label: x.name, dot: 'st-' + x.id.toLowerCase() }))],
@@ -116,14 +117,14 @@ async function boot() {
   // what the bar says about the view on screen: the Daily report only has some states
   const note = $('#statebar-note');
   function setNote() {
-    let text = '';
+    let text = activeStates().length > 1 && activeStates().length < STATES.length ? 'Showing ' + statesName(activeStates()) + '. Choose a state, or All, to change it.' : '';
     if (shown === 'daily') {
       const have = daily.available();
       const missing = activeStates().filter((id) => have.length && !have.includes(id));
       if (missing.length) {
         const names = (ids) => ids.map((id) => STATES.find((x) => x.id === id).name).join(' and ');
         const shownIds = activeStates().filter((id) => have.includes(id));
-        text = names(missing) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report yet; ' + (shownIds.length ? 'it shows ' + names(shownIds) + '.' : 'it shows ' + names(have) + ' instead.');
+        text = (text ? text + ' ' : '') + names(missing) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report yet; ' + (shownIds.length ? 'it shows ' + names(shownIds) + '.' : 'it shows ' + names(have) + ' instead.');
       }
     }
     note.textContent = text;

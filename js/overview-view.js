@@ -32,7 +32,8 @@ export function createOverview(meta) {
 
   /* ---------- text that depends on the states ---------- */
   // each state's own last day: "Oct 7 (Texas), Oct 30 (Oklahoma) and Aug 31 (New Mexico), 2026", the year once when it is the same for all
-  const datesPhrase = (ids, tag = (id) => '(' + stateOf(id).name + ')') => {
+  const datesPhrase = (all, tag = (id) => '(' + stateOf(id).name + ')') => {
+    const ids = all.filter((id) => id === 'TX' || ov.docs.series[id]); // a state whose permit series did not load has no date of its own to name (nor figures in the headline)
     const years = new Set(ids.map((id) => through(id).slice(0, 4)));
     const day = (id) => (years.size > 1 ? fmtDate(through(id)) : fmtDate(through(id)).replace(/, \d{4}$/, ''));
     return listAnd(ids.map((id) => day(id) + ' ' + tag(id))) + (years.size > 1 ? '' : ', ' + [...years][0]);

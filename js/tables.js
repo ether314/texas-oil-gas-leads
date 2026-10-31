@@ -285,7 +285,7 @@ function operatorsConfig(ctx) {
         render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : 'n/a'),
         sort: (r) => (r.x ? (r.x.fips ? cname(r.x.fips).toLowerCase() : '￿') : null),
       },
-      { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => fmtDate(r.last), sort: (r) => r.last },
+      { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => fmtDate(r.last) + (r.last && measureOf(r.st).id === 'spuds' ? ' · spud' : ''), sort: (r) => r.last },
       { key: 'dist', label: 'District', hint: 'RRC district with the most permits in 24 months', render: (r) => r.dist, sort: (r) => r.dist, filled: (r) => r.dist },
       { key: 'notes', label: 'Notes', cls: 'notes', render: operatorNotes },
     ],

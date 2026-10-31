@@ -105,6 +105,13 @@ export function createDailyView({ root }) {
     return '#daily' + (q.toString() ? '?' + q : '');
   }
 
+  // amended permits are counted by Texas and Oklahoma only: the figure adds up those, and says so when a state shown does not count them
+  function amendedTile(ps) {
+    const am = ps.filter((x) => x.p.amended !== undefined);
+    if (!am.length) return null;
+    return { label: 'Amended that day', value: num(sumOf(am.map((x) => x.p.amended))), note: 'earlier permits changed' + (am.length < ps.length ? ' · ' + listAnd(am.map((x) => sname(x.id))) + ' only' : '') };
+  }
+
   /* ---------- header, ribbon, KPIs ---------- */
   // the nightly capture runs every evening (Central time): when the newest report is two or more days behind today's date, say so, so that a visitor
   // does not take an old day for today's after a failed run
@@ -259,10 +266,14 @@ export function createDailyView({ root }) {
       series = [{ label: hz ? 'horizontal' : 'planned 12,000 ft or deeper', cls: c1, values: h }, { label: hz ? 'other' : 'shallower', cls: c2, values: n.map((v, i) => (v == null ? null : v - (h[i] || 0))) }];
       legend = [[c1, hz ? 'Horizontal' : DEEP], [c2, hz ? 'Other' : 'Shallower']];
     }
+    // the states' newest permit days can differ (Texas and New Mexico Thursday, Oklahoma Friday): then the summary names each state's own day, not one sum for a day
+    const sameDay = ids.every((id) => S.reps[id].permits.day === until);
+    const latest = sameDay ? fmtDow(until) + ' had ' + value + (avg ? ', against an average of ' + avgTxt(avg) : '')
+      : 'Each state\'s newest day: ' + ids.map((id) => sname(id) + ' ' + S.reps[id].permits.newDrill + ' on ' + fmtDow(S.reps[id].permits.day)).join(', ');
     return card('dr-trend', head('trend', 'Pace', 'New-drill permits per business day', 'Last 30 business days to ' + fmtMd(until) + '. Holidays show as empty days.'),
       el('div', { class: 'dr-legend-inline' }, legend.flatMap(([cls, text]) => [el('i', { class: 'dr-dot ' + cls }), el('span', { text })])),
       trendBars({ days: bs.days, series, total: bs.total, avg, avgText: avg ? avgTxt(avg) : null,
-        label: 'Bar chart of new-drill permits per business day from ' + fmtMd(bs.days[0]) + ' to ' + fmtMd(until) + '. ' + fmtDow(until) + ' had ' + value + (avg ? ', against an average of ' + avgTxt(avg) : '') + '.' }));
+        label: 'Bar chart of new-drill permits per business day from ' + fmtMd(bs.days[0]) + ' to ' + fmtMd(until) + '. ' + latest + '.' }));
   }
 
   function mapCard() {
@@ -272,7 +283,7 @@ export function createDailyView({ root }) {
       if (!ps.length) return;
       const map = new Map(); const nm = new Map();
       for (const { id: s, rows } of ps) for (const [f, name, n] of rows) { map.set(ck(s, f), n); nm.set(ck(s, f), clabel(s, name)); }
-      layers[id] = { map }; names[id] = nm;
+      layers[id] = { map, states: ps.map((x) => x.id) }; names[id] = nm;
       // when only some of the states shown have the layer, the tab says which ("Waiting · TX", "Active wells · OK and NM")
       const has = ps.map((x) => x.id);
       defs.push({ id, label: label + (multi() && has.length < S.states.length ? ' · ' + has.join(' and ') : '') });
@@ -290,7 +301,7 @@ export function createDailyView({ root }) {
     const unit = { permits: 'new-drill permits ' + issued(), pending: 'applications waiting for approval', completions: only() === 'TX' ? 'completions approved' : only() === 'OK' ? 'completion filings' : 'completions approved or filed', transfers: 'wells that changed operator', wells: 'active wells' };
     const list = el('div', { class: 'dr-maplist' });
     const wrap = el('div', { class: 'dr-mapwrap' });
-    const map = S.G ? countyMap(S.G, layers, S.layer, { place: place(), only: multi() ? null : S.states, showState: multi(), unit }) : null;
+    const map = S.G ? countyMap(S.G, layers, S.layer, { place: place(), only: multi() ? null : S.states, showState: multi(), unit, stateName: sname }) : null;
     if (map) wrap.append(map.el);
     const paint = () => {
       wrap.style.setProperty('--lc', colors[S.layer]);
@@ -472,13 +483,13 @@ export function createDailyView({ root }) {
       ...stateTiles,
       { label: 'Operators', value: num(sumOf(ps.map((x) => x.p.operatorCount))), note: share != null ? Math.round(share * 100) + '% can be named' : '' },
       { label: 'Counties', value: num(sumOf(ps.map((x) => x.p.countyCount))), note: top ? clabel(top.id, top.name) + ' led' : '' },
-      ps.some((x) => x.p.amended !== undefined) ? { label: 'Amended that day', value: num(sumOf(ps.map((x) => x.p.amended))), note: 'earlier permits changed' } : null,
+      amendedTile(ps),
       m ? { label: 'Month to date', value: num(m.a), note: m.b != null ? 'vs ' + num(m.b) + ' by the same date last month' : 'new-drill permits' } : null])];
     if (ps.length > 1) {
       // the two files do not measure the same things (Texas knows which wells are horizontal, Oklahoma only the planned depth), so side by side, not summed
       const cell = (id, fn) => { const x = ps.find((q) => q.id === id); return x ? fn(x.p) : '—'; };
       const rows = [
-        ['Permit day', (p) => fmtDow(p.day)], ['New-drill permits', (p) => num(p.newDrill)], ['Other filings that day', (p) => num(p.total - p.newDrill)],
+        ['Permit day', (p) => fmtDow(p.day)], ['New-drill permits', (p) => num(p.newDrill)], ['Other filings that day', (p, id) => (id === 'NM' ? '—' : num(p.total - p.newDrill))],
         ['Horizontal, or planned 12,000 ft or deeper', (p) => (p.horizontal != null ? pctOf(p.horizontal, p.newDrill) + ' horizontal' : p.deep != null ? pctOf(p.deep, p.newDrill) + ' deep' : '—')],
         ['Median planned depth', (p) => (p.depth ? num(p.depth.median) + ' ft' : '—')], ['Days to approval, median', (p) => (p.wait ? String(p.wait.median) : '—')],
         ['Operators', (p) => num(p.operatorCount) + (p.namedShare != null ? ' · ' + Math.round(p.namedShare * 100) + '% named' : '')], ['Counties', (p) => num(p.countyCount)], ['Amended that day', (p) => (p.amended != null ? num(p.amended) : '—')]];
@@ -595,13 +606,14 @@ export function createDailyView({ root }) {
   function calCells(id) {
     const byDay = new Map(S.days.map((e) => [e.d, e]));
     if (id === 'permits') {
-      const ss = S.states.map((s) => S.series[s]).filter((s) => s && s.lo);
+      const sts = S.states.filter((s) => S.series[s] && S.series[s].lo); const ss = sts.map((s) => S.series[s]);
       if (!ss.length) return [];
       const lo = ss.map((s) => s.lo).sort()[0]; const hi = ss.map((s) => s.hi).sort().pop(); const cells = [];
       for (let d = lo; d <= hi; d = addDays(d, 1)) {
-        const vs = ss.map((s) => s.get(d)).filter(Boolean); const v = sumOf(vs.map((x) => x.n));
+        const got = sts.filter((s) => S.series[s].get(d)); const v = sumOf(got.map((s) => S.series[s].get(d).n));
         const next = addDays(d, 1); const e = byDay.get(next);
-        cells.push({ d, v: v > 0 ? v : null, open: e ? next : null, live: !!e && e.live });
+        // a day some of the states shown have no series for (Texas starts later than the others) is a sum of the rest, and says so
+        cells.push({ d, v: v > 0 ? v : null, open: e ? next : null, live: !!e && e.live, note: got.length < S.states.length ? listAnd(got.map(sname)) + ' only' : '' });
       }
       return cells;
     }

@@ -4,7 +4,7 @@ import { barList, delta, spark } from './charts.js';
 import { hideTip, showTip, tipRow } from './tip.js';
 import { icon } from './icons.js';
 import { permitTotals, ownTotals, countyLabel, topBy, newToDrilling } from './overview-data.js';
-import { stateOf, countyState, measureOf, sameMeasure, measurePhrase } from './states.js';
+import { stateOf, countyState, measureOf, sameMeasure, measurePhrase, listAnd } from './states.js';
 
 export const opsLink = (name) => '#operators?' + new URLSearchParams({ q: name, band: 'all' });
 const hide = (node) => { const c = node.closest('[data-card]'); (c || node).hidden = true; };
@@ -37,16 +37,25 @@ export function renderKpis({ states, meta: m, sp, rows = [], wells = {} }) {
   }
   const mine = rows.filter((r) => states.includes(r.st) && r.st !== 'TX');
   const drilling = (tx ? (o.bands.A || 0) + (o.bands.B || 0) : 0) + mine.filter((r) => r.band === 'A' || r.band === 'B').length;
-  chips.push({ label: 'Operators drilling now', value: drilling, note: (multi ? 'band A or B in every state shown' : 'band A or B') + ': ' + (states.every((id) => measureOf(id).id === 'spuds') ? 'wells spudded' : 'new-well permits') + ' in the last 12 months', href: '#operators?band=ab' });
+  chips.push({ label: 'Operators drilling now', value: drilling, note: (multi ? 'band A or B in every state shown' : 'band A or B') + ': ' + measurePhrase(states) + ' in the last 12 months', href: '#operators?band=ab' });
   if (tx) {
     chips.push(
       { label: 'Companies in the pool', value: c.shown, note: pct(c.texas, c.shown) + ' with Texas addresses' + (multi ? ' · Texas only' : ''), href: '#companies?seg=all' },
       { label: 'New entities', value: c.newEntities, note: 'chartered in the last 24 months' + (multi ? ' · Texas only' : ''), href: '#companies?isNew=1' },
     );
   } else {
-    chips.push({ label: 'New to drilling', value: newToDrilling(mine), note: 'operators whose first ' + (states.every((id) => measureOf(id).id === 'spuds') ? 'well was spudded' : 'drilling permit came') + ' in the last 24 months', href: '#operators?band=all' });
-    const w = states.map((id) => wells[id]).filter(Boolean);
-    if (w.length) chips.push({ label: 'Active wells', value: w.reduce((t, x) => t + x.n, 0), note: 'in the Commission’s well inventory, ' + fmtDate(w[0].day), href: '#daily' });
+    chips.push({ label: 'New to drilling', value: newToDrilling(mine), note: 'operators whose first ' + (states.every((id) => measureOf(id).id === 'spuds') ? 'well was spudded' : 'drilling permit came' + (sameMeasure(states) ? '' : ' (first spud in ' + listAnd(states.filter((id) => measureOf(id).id === 'spuds').map((id) => stateOf(id).name)) + ')')) + ' in the last 24 months', href: '#operators?band=all' });
+    // each state's inventory is counted on its own day: one date when they agree, each state's own when they do not, and the states with no count are named
+    const counted = states.filter((id) => wells[id]);
+    if (counted.length) {
+      const days = [...new Set(counted.map((id) => wells[id].day))];
+      const missing = states.filter((id) => !wells[id]);
+      chips.push({
+        label: 'Active wells', value: counted.reduce((t, id) => t + wells[id].n, 0), href: '#daily',
+        note: (counted.length > 1 ? 'in the well inventories of ' + listAnd(counted.map((id) => stateOf(id).name)) : 'in the Commission’s well inventory') + ', ' + (days.length === 1 ? fmtDate(days[0]) : counted.map((id) => stateOf(id).name + ' ' + fmtDate(wells[id].day)).join(', '))
+          + (missing.length ? ' · none yet for ' + listAnd(missing.map((id) => stateOf(id).name)) : ''),
+      });
+    }
   }
   const small = chips.length - (sp ? 1 : 0);
   $('#kpis').replaceChildren(...chips.map((k, i) => {
@@ -74,7 +83,7 @@ export function renderHot(cp, G, win, states = ['TX']) {
   const multi = states.length > 1;
   const rows = Object.entries(cp.counties).map(([f, v]) => ({ f, v, c: G.byFips.get(f), p12: v.p12, _i: 0, st: countyState(f) })).filter((r) => r.c && r.p12 > 0);
   const items = grouped(rows, states, 'p12', (r) => ({
-    label: r.c.n, value: r.v.p12, href: '#map?county=' + r.f, aria: r.c.n + ' County' + (multi ? ', ' + r.st : '') + ': ' + fmt.format(r.v.p12) + ' new-drill permits. Open on the map.', r, st: r.st,
+    label: r.c.n, value: r.v.p12, href: '#map?county=' + r.f, aria: r.c.n + ' County' + (multi ? ', ' + r.st : '') + ': ' + fmt.format(r.v.p12) + ' ' + measureOf(r.st).noun + '. Open on the map.', r, st: r.st,
   }));
   barList(ul, items, {
     max: Math.max(1, ...rows.map((r) => r.p12)),
@@ -89,7 +98,7 @@ export function renderTopOps(rows, states = ['TX']) {
   if (!rows || !rows.length) { hide(ul); return; }
   const multi = states.length > 1;
   const items = grouped(rows, states, 'new12', (r) => ({
-    label: r.name, value: r.new12, href: opsLink(r.name), aria: r.name + (multi ? ' (' + r.st + ')' : '') + ': ' + fmt.format(r.new12) + ' new-well permits. Open in Operators.', r, st: r.st,
+    label: r.name, value: r.new12, href: opsLink(r.name), aria: r.name + (multi ? ' (' + r.st + ')' : '') + ': ' + fmt.format(r.new12) + (measureOf(r.st).id === 'spuds' ? ' wells spudded' : ' new-well permits') + '. Open in Operators.', r, st: r.st,
   }));
   barList(ul, items, {
     max: Math.max(1, ...rows.map((r) => r.new12)),
