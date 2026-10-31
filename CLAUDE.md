@@ -94,7 +94,9 @@ for Texas and Oklahoma, built only from public records (README has the full desc
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
 - `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
   `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
-- Time: RRC listing times are Central; OCC file times are UTC and are turned into Central days; a report shows only whole days.
+- Time: RRC listing times are Central; times inside OCC files are UTC and are turned into Central days; a report shows only whole days.
+  The OCC's daily permit and completion files end the day before the day they are made (made 19:41 CDT on Oct 30, they end Oct 29), so
+  a morning capture fills the gap from the master files.
 
 ## Publishing
 
