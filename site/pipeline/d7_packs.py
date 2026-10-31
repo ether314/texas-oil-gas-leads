@@ -2,20 +2,24 @@
 """D7 helper: look inside one day's RRC image pack and draw a contact sheet of first pages.
 
 A pack is a zip of scanned filings (PDF and TIFF): approved W-1 letters and plats, directional survey reports, and the
-forms, plats, logs and reports filed with completions. What this module publishes is deliberately thin:
+forms, plats, logs and reports filed with completions. What this module publishes by default is deliberately thin:
 
   docs   how many documents of each kind the pack holds (and, for completions, how many packets they came from)
   sheet  one JPEG with page one of a spread of the documents, each shrunk to 112 px wide and blurred, which cannot be read
 
-The filings carry lease names, well numbers and the names, phone numbers and addresses of individuals (README, Privacy:
-none of that is shown), so no page is ever published legibly and no file name leaves this module; documents are told
-apart by name pattern only and counted. Pillow and pdftoppm (poppler-utils) draw the sheet; without either the counts
-are still produced and the sheet is skipped.
+The filings carry lease names, well numbers and the names, phone numbers and addresses of individuals, so the sheet never
+shows a page legibly, and documents are told apart by name pattern only and counted. Pillow and pdftoppm (poppler-utils)
+draw the sheet; without either the counts are still produced and the sheet is skipped.
+
+The one exception, decided on 2026-10-31 and recorded in the README: with --publish-docs the W-1 and survey packs are also
+staged readable (stage_pack, below) so d7_release.py can attach them to a GitHub release and each drill's page can link
+to its own filings. Completion images are never staged.
 
 The pack is untrusted data. Members are read one at a time, capped in size, rendered under a timeout and never run.
 Python standard library, plus Pillow and pdftoppm when a sheet is wanted.
 """
 import collections
+import csv
 import io
 import os
 import re
@@ -204,6 +208,124 @@ def inspect_pack(zip_path, ds, sheet_path, log=print):
             except ToolsMissing as e:
                 log("%s: no sheet (%s)" % (ds, e))
     return info, sheet
+
+
+# ------------------------------------------------------------------------------------------------ documents to publish
+#
+# Decided 2026-10-31 (README, Privacy): the approved W-1 letters, permit plats and directional surveys are republished
+# readable, unmodified, as files of one GitHub release a day (d7_release.py), and each drill's page links to its own. They are the
+# RRC's public records but can carry the names, phone numbers and addresses of individuals, and nothing here redacts them.
+# Completion images are not published (the contact sheet above stays blurred). Only run when asked (--publish-docs).
+
+MAX_ASSET = 40_000_000  # bytes a document may be before it is left out (a release file may be 2 GB; the pack is untrusted)
+MAGIC = {".pdf": (b"%PDF",), ".tif": (b"II*\x00", b"MM\x00*"), ".tiff": (b"II*\x00", b"MM\x00*")}
+W1_NAME = re.compile(r"(\d+)_([A-Za-z0-9-]+?)_")
+SURVEY_NAME = re.compile(r"dir_survey_(\d{1,12})\.pdf", re.I)
+W1_KINDS = {"w1": "W1", "plat": "Plat"}
+ISO_DAY = re.compile(r"\d{4}-\d\d-\d\d")
+
+
+def copy_member(zf, info, dest):
+    """Write one member to dest and return its size, or None (and no file) when it is too big or is not what its extension says.
+    Names are made up by the caller, never taken from the pack, so nothing in the pack can pick a path."""
+    ext = os.path.splitext(info.filename)[1].lower()
+    if info.file_size > MAX_ASSET or ext not in MAGIC:
+        return None
+    written, head = 0, b""
+    try:
+        with zf.open(info) as src, open(dest, "wb") as dst:
+            while True:
+                chunk = src.read(1 << 20)
+                if not chunk:
+                    break
+                if not head:
+                    head = chunk[:4]
+                written += len(chunk)
+                if written > MAX_ASSET:
+                    raise ValueError("unpacks past the limit")
+                dst.write(chunk)
+        if head not in MAGIC[ext]:
+            raise ValueError("not a %s file" % ext)
+    except (OSError, ValueError, zipfile.BadZipFile, zlib.error):
+        if os.path.exists(dest):
+            os.remove(dest)
+        return None
+    return written
+
+
+def stage_w1(zf, docs, out_dir, log=print):
+    """Copy each permit's approved W-1 letter and plats to out_dir as <permit>_W1.pdf, <permit>_Plat_1.pdf, ... (permit padded to
+    7 digits like the report's rows; numbered when a permit has several of a kind). Returns {permit: [[suffix, bytes], ...]}."""
+    groups = collections.defaultdict(list)
+    for info, base in docs:
+        m = W1_NAME.match(base)
+        kind = W1_KINDS.get(m.group(2).lower()) if m else None
+        if kind:
+            groups[("%07d" % int(m.group(1)), kind)].append((info.filename, info, os.path.splitext(base)[1].lower()))
+    os.makedirs(out_dir, exist_ok=True)
+    out = collections.defaultdict(list)
+    for (permit, kind), items in sorted(groups.items()):
+        items.sort(key=lambda t: t[0])  # numbering must not depend on the zip's order
+        for n, (_, info, ext) in enumerate(items, 1):
+            suffix = kind + ("" if len(items) == 1 else "_%d" % n) + ext
+            size = copy_member(zf, info, os.path.join(out_dir, "%s_%s" % (permit, suffix)))
+            if size is None:
+                log("w1images: one document of permit %s was left out (too large or not a document)" % permit)
+            else:
+                out[permit].append([suffix, size])
+    return dict(out)
+
+
+def _int(text):
+    try:
+        v = int(float(text))
+        return v if v > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def stage_surveys(zf, docs, out_dir, log=print):
+    """Copy the directional survey PDFs to out_dir as dir_survey_<id>.pdf (the pack's own names, which are only digits) and read the
+    pack's CSV for the well each belongs to. Returns [[api, county, 'M'|'O', from depth, to depth, start, end, lateral, id, bytes], ...]
+    ('M' is an MWD survey, 'O' any other kind; the county is the API number's first three digits)."""
+    meta = {}
+    for info in zf.infolist():
+        if info.filename.lower().endswith(".csv") and not info.is_dir() and info.file_size <= 5_000_000:
+            for r in csv.DictReader(io.StringIO(zf.read(info).decode("latin-1"))):
+                meta[(r.get("EXTERNAL_ATTACHMENT_ID") or "").strip()] = r
+            break
+    os.makedirs(out_dir, exist_ok=True)
+    out = []
+    for info, base in sorted(docs, key=lambda t: t[1]):
+        m = SURVEY_NAME.fullmatch(base)
+        if not m:
+            continue
+        r = meta.get(m.group(1), {})
+        api = (r.get("API_NO") or "").strip()
+        api = api if re.fullmatch(r"\d{8}", api) else None
+        size = copy_member(zf, info, os.path.join(out_dir, "dir_survey_%s.pdf" % m.group(1)))
+        if size is None:
+            log("dirsurveys: survey %s was left out (too large or not a PDF)" % m.group(1))
+            continue
+        day = lambda k: (r.get(k) or "").strip() if ISO_DAY.fullmatch((r.get(k) or "").strip()) else None  # noqa: E731
+        label = (r.get("LATERAL_LABEL") or "").strip()
+        out.append([api, api[:3] if api else None, "M" if "MWD" in (r.get("ATTACHMENT_TYPE_CODE") or "").upper() else "O",
+                    _int(r.get("FROM_DEPTH")), _int(r.get("TO_DEPTH")), day("SURVEY_START_DT"), day("SURVEY_END_DT"),
+                    label[:12] if re.fullmatch(r"[\w .-]{1,12}", label) else None, m.group(1), size])
+    out.sort(key=lambda row: (row[0] or "", row[8]))
+    return out
+
+
+def stage_pack(zip_path, ds, out_dir, log=print):
+    """Copy the publishable documents of a pack into out_dir. {'permits': ...} for the W-1 pack, {'surveys': ...} for the survey
+    pack, None for any other (completion images are never published)."""
+    if ds not in ("w1images", "dirsurveys"):
+        return None
+    with zipfile.ZipFile(zip_path) as zf:
+        docs = documents(zf)
+        if ds == "w1images":
+            return {"permits": stage_w1(zf, docs, out_dir, log)}
+        return {"surveys": stage_surveys(zf, docs, out_dir, log)}
 
 
 if __name__ == "__main__":

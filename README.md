@@ -13,6 +13,9 @@ external requests) plus the Python scripts that build its data files.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields.
 - **Daily report**: what the Railroad Commission's nightly files held, one report a day for the last 92 days. A simple version
   for the daily look, and a verbose one with permits, the pending queue, completions, image packs (sizes, and for days captured live a count of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and source health.
+  A **GPS map** plots each day's new-drill permits and directional surveys, and every point opens a **page with its own URL**
+  (`#daily?d=DAY&drill=PERMIT`) holding the well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and
+  survey, which the nightly job stores as the files of one GitHub release a day.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
@@ -26,6 +29,12 @@ applications, completions and three image packs); see `site/pipeline/NOTES_D7.md
 ## Privacy
 Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
 individuals. Operators are named only when they are corporations, LLCs or limited partnerships.
+
+**One deliberate exception (decided 2026-10-31).** The Daily report's drill pages link to the Railroad Commission's scanned
+W-1 permit letters, permit plats and directional surveys, published readable and unmodified as GitHub release files. They are
+public records, but they can carry the names, phone numbers and street addresses of individuals, and nothing is redacted. This
+repository and its site are public. Completion images stay blurred and unpublished. To go back, remove `--publish-docs` from
+`.github/workflows/daily-rrc-report.yml` and delete the `daily-*` releases; details are in `site/pipeline/NOTES_D7.md`.
 
 ## Run it
 ```
@@ -43,7 +52,8 @@ The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard lib
 `site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night, commits the result to `main` and
 publishes the site. A second schedule an hour later is a backup for a run GitHub skips: it does nothing when the first one
 already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily RRC
-report, Run workflow) and give the day in the `date` box. To fill the archive from the RRC's file history the first time:
+report, Run workflow) and give the day in the `date` box. The workflow runs with `--publish-docs`, which needs `contents: write` (it has it) for the release files; without that flag
+the job publishes only counts and blurred sheets. To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
 ## Publishing
