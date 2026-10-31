@@ -35,7 +35,7 @@ set). Permits: the newest issue date before the day. A past day captured later g
 With no options: capture today's report (Central time). --backfill N also rebuilds any missing day of the last N days
 from the RRC file history (a rebuilt day says so: kind "reconstructed"). The pending queue and the page's catalog check
 have no history, so a rebuilt day has no catalog check. Each dataset is independent: a failure marks that dataset and
-the rest still run; an existing day file is replaced only by a run that captured something.
+the rest still run; an existing day file is replaced only by a run that captured something and at least as much as the report already there.
 
 Privacy: operators are named only when they are corporations, LLCs or limited partnerships (the list in
 operators.json). Lease names, well numbers and everything about individuals are left out of what this script writes. The one exception
@@ -45,6 +45,7 @@ import argparse
 import collections
 import concurrent.futures
 import glob
+import html
 import html.parser
 import json
 import os
@@ -188,6 +189,28 @@ def read_json(path, default=None):
             return json.load(f)
     except (OSError, ValueError):
         return default
+
+
+def usable_day(rep):
+    """A day report this script can build on: an object with its date, its kind and a list of dataset entries. Anything else in the
+    archive (a truncated file, an empty one, another shape) is damaged: it is removed and rebuilt, and never crashes a night."""
+    return (isinstance(rep, dict) and isinstance(rep.get("date"), str) and rep.get("kind") in ("live", "reconstructed")
+            and isinstance(rep.get("datasets"), list) and all(isinstance(d, dict) for d in rep["datasets"]))
+
+
+def worth(rep):
+    """What a day report holds, for choosing between two of one day: the datasets it read, then whether its document links are there."""
+    return (sum(1 for d in rep.get("datasets", []) if not d.get("error")), 1 if rep.get("release") else 0)
+
+
+def clean_error(e, n=160):
+    """An error as one short line for a report: no web address, no server markup, no path on the machine that ran it. The data files
+    and the page never carry them; the log has the whole text."""
+    text = html.unescape(str(e))
+    text = re.sub(r"<[^>]*>", " ", text)  # a server's error page
+    text = re.sub(r"https?://[^\s\"'<>)\]]+", "<address>", text)
+    text = re.sub(r"(?<![\w<])/(?:[\w.-]+/)+[\w.-]*", "<path>", text)  # /home/runner/work/...
+    return " ".join(text.split())[:n]
 
 
 class Lookups:
@@ -737,7 +760,7 @@ def monthly_job(ctx):
                         "newer": bool(r and built and r["modified"] and r["modified"][:10] > built)})
         except (ShareError, OSError) as e:
             log("monthly %s: SKIPPED (%s)" % (spec["id"], e))
-            out.append({"id": spec["id"], "title": spec["title"], "error": str(e)[:160]})
+            out.append({"id": spec["id"], "title": spec["title"], "error": clean_error(e)})
     return out
 
 
@@ -778,7 +801,7 @@ def build_reports(ctx, jobs, cat, kind_by_date):
             job = jobs.get(did)
             entry = {"id": did, "title": spec["title"], "cadence": (cat.get(did) or {}).get("updated"), "dataDay": sec["day"] if sec else None}
             if job is None or isinstance(job, Exception):
-                entry.update({"error": str(job)[:200] if job else "not captured", "file": None})
+                entry.update({"error": clean_error(job, 200) if job else "not captured", "file": None})
             else:
                 live = kind_by_date[day] == "live"
                 entry.update({"error": None, "file": file_info(job["picked"].get(day)) if live else None, "files": job["files"] if live else None})
@@ -803,7 +826,7 @@ def update_states(live, out_dir):
     nothing landed that day) and 'first' when there is no live report to compare with."""
     prev_days = sorted(f[:-5] for f in os.listdir(out_dir) if DAY_FILE.fullmatch(f) and f[:-5] < live["date"])
     prev = read_json(os.path.join(out_dir, prev_days[-1] + ".json")) if prev_days else None
-    before = {d["id"]: d.get("file") for d in prev["datasets"]} if prev and prev.get("kind") == "live" else None
+    before = {d.get("id"): d.get("file") for d in prev["datasets"]} if usable_day(prev) and prev.get("kind") == "live" else None
     for d in live["datasets"]:
         if d.get("error"):
             d["state"] = "error"
@@ -825,8 +848,10 @@ def prune_images(out_dir):
     used = set()
     for f in os.listdir(out_dir):
         if DAY_FILE.fullmatch(f):
-            for block in ((read_json(os.path.join(out_dir, f)) or {}).get("images") or {}).values():
-                if block and block.get("sheet"):
+            day = read_json(os.path.join(out_dir, f))
+            images = day.get("images") if isinstance(day, dict) else None
+            for block in (images.values() if isinstance(images, dict) else ()):
+                if isinstance(block, dict) and isinstance(block.get("sheet"), dict) and block["sheet"].get("file"):
                     used.add(block["sheet"]["file"])
     for f in os.listdir(img):
         if f not in used:
@@ -960,7 +985,18 @@ def main():
             sys.exit(0)
     lk = Lookups()
 
-    have = {f[:-5] for f in os.listdir(a.out) if DAY_FILE.fullmatch(f)}
+    have = set()
+    for f in sorted(os.listdir(a.out)):
+        if not DAY_FILE.fullmatch(f):
+            continue
+        old = read_json(os.path.join(a.out, f))
+        if not usable_day(old):
+            log("%s is not a usable day report (damaged): removed, and built again if it falls within --backfill" % f)
+            os.remove(os.path.join(a.out, f))
+            continue
+        if old["kind"] == "reconstructed" and old.get("status") != "ok":
+            continue  # written while a file could not be read: built again now, when it may be; a live report is never rebuilt
+        have.add(f[:-5])
     todo = [R - timedelta(days=i) for i in range(a.backfill, 0, -1) if (R - timedelta(days=i)).isoformat() not in have]
     dates = todo + [R]
     kind_by_date = {d: ("live" if d == R else "reconstructed") for d in dates}
@@ -1024,14 +1060,24 @@ def main():
     if stage:
         repo = a.repo or d7_release.repo_name()
         released = attach_documents(ctx, jobs, live, repo)
-    if live["status"] == "failed" and os.path.exists(os.path.join(a.out, R.isoformat() + ".json")):
+    if live["status"] == "failed" and usable_day(read_json(os.path.join(a.out, R.isoformat() + ".json"))):
         log("nothing captured; keeping the existing report for %s" % R)
         del reports[R]
+    for d in sorted(reports):  # a capture that holds less than the report already there never replaces it (a backup run that read fewer files, a repair with the upload down)
+        old = read_json(os.path.join(a.out, d.isoformat() + ".json"))
+        if usable_day(old) and worth(reports[d]) < worth(old):
+            log("%s: this run holds less than the report already there (%d datasets read against %d, document links %s against %s): keeping that one" % (
+                d, worth(reports[d])[0], worth(old)[0], "yes" if worth(reports[d])[1] else "no", "yes" if worth(old)[1] else "no"))
+            del reports[d]
 
     # permits series: keep earlier days, take up the days the permit files cover
     keep_from = R - timedelta(days=a.keep - 1)
     ser_path = os.path.join(a.out, "permits-series.json")
-    old = read_json(ser_path, {"days": [], "total": [], "newDrill": [], "horizontal": []})
+    old = read_json(ser_path)
+    if not (isinstance(old, dict) and all(isinstance(old.get(k), list) for k in ("days", "total", "newDrill", "horizontal")) and len({len(old[k]) for k in ("days", "total", "newDrill", "horizontal")}) == 1):
+        if old is not None:
+            log("permits-series.json is not the file this script writes: starting it again from what the permit files cover")
+        old = {"days": [], "total": [], "newDrill": [], "horizontal": []}
     ledger = {d: [t, n, h] for d, t, n, h in zip(old["days"], old["total"], old["newDrill"], old["horizontal"])}
     pj = jobs.get("permits")
     if pj and not isinstance(pj, Exception):
@@ -1052,7 +1098,7 @@ def main():
             d7_release.prune(live["release"]["repo"], keep_from, log)
         except d7_release.ReleaseError as e:
             log("release: pruning old releases SKIPPED (%s)" % e)
-    rows = [headline(read_json(os.path.join(a.out, f))) for f in sorted(os.listdir(a.out)) if DAY_FILE.fullmatch(f)]
+    rows = [headline(r) for r in (read_json(os.path.join(a.out, f)) for f in sorted(os.listdir(a.out)) if DAY_FILE.fullmatch(f)) if usable_day(r)]
     write_json(os.path.join(a.out, "index.json"), {"generated": live["capturedAt"], "keep": a.keep, "days": rows})
     log("report %s: %s | %d of %d datasets | %d day files | %d connection resets absorbed" % (R, live["status"], got, len(DATASETS), len(rows), retries))
     problems = [] if a.only else validate(a.out, a.keep)

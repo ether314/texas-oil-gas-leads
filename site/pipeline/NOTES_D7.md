@@ -325,10 +325,28 @@ by running the script against a dead network), so a step puts `site/public/data/
 step fails the run so the night shows red. Before this a Texas failure stopped the whole job: no Oklahoma capture, no commit, no
 publish. The backup run an hour later tries the RRC again; to fill a missed day afterwards, run the workflow by hand with `date`.
 
+### Bad nights
+
+A fourth independent review (a fresh agent, offline, with repro scripts; the harness it built is now `tests/test_d7_nights.py`, which runs
+whole nights with every socket blocked and the shares faked) tried what the RRC's servers and files could do to an unattended night.
+What it found, and what the producer does now:
+- **The map service can no longer cost the night.** The GPS lookup (`d7_locate.py`) is the one network call made after every download is
+  done; a body cut short, a garbage status line or JSON that is not a result (`http.client`'s errors are neither `OSError` nor `ValueError`)
+  used to end the night with nothing written. Any failure is now one failed attempt, a lookup that fails is not tried again for the
+  other report days of the run (24 requests for 8 days became 3), and the report falls back to the permit file's own coordinates.
+- **A later capture never makes a day worse.** A capture that read fewer of the six files than the report already there for that day (the
+  backup run when the RRC is flaky), or that read as many but lost the document links (the release upload failed), keeps the report that
+  is there (`worth()`: files read, then links). A capture that read all it can, or more, replaces it; one that read nothing still keeps it.
+- **A rebuilt day written partial is built again** by the next `--backfill` (it was skipped for good before); a live report is never rebuilt.
+- **A damaged file in the archive cannot stop a night.** A day file that is truncated, empty or of another shape is removed and, inside the
+  backfill window, built again; `permits-series.json` of another shape is started again from what the permit files cover.
+- **A failure's text is published as one short line** (`clean_error`): no web address, no server markup (an error page), no path on the
+  runner. The log keeps the whole text.
+
 ### Repairing a day
 
-`--backfill` fills days that have no file and never replaces one that exists, so a report that is partial, or was captured
-too early, stays as it is until a run names that day. To repair one: Actions, Daily RRC report, Run workflow, put the day
+`--backfill` fills days that have no file, and builds again the rebuilt days that were written partial; it never replaces a live report or a
+complete rebuilt one, so a live report that is partial, or was captured too early, stays as it is until a run names that day. To repair one: Actions, Daily RRC report, Run workflow, put the day
 in `date` (YYYY-MM-DD, Central), leave `backfill` at 7. The run captures that day live (`kind` live, `capturedAt` the
 repair time) and, since a day shows what the shares had listed by its end, it gives the same report the evening run would
 have given, however late it runs (the day's own completions zip, listed the next morning, belongs to the next day's report).
