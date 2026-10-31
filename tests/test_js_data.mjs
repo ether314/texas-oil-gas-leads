@@ -162,5 +162,37 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
 }
 check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '001') === 'OK:001', 'daily-data.js re-exports the states and keys the Daily report\'s counties by state, Texas too');
 
+/* ---------- national-data.js ---------- */
+{
+  const Nt = await imp('national-data.js');
+  const mk = (id, measure, vals, extra = {}) => ({ id, name: id, measure, bands: { new: vals, inj: null, redrill: null, rework: null, amend: null, other: null }, p12: vals.filter((v) => v != null).slice(-12).reduce((a, b) => a + b, 0),
+    prev12: vals.filter((v) => v != null).slice(-24, -12).reduce((a, b) => a + b, 0), mix12: { new: 1 }, through: '2026-09-30', asOf: '2026-10-01', ...extra });
+  const months = Array.from({ length: 30 }, (_, i) => '2024-' + String(i % 12 + 1).padStart(2, '0'));
+  const flat = (n, v) => Array.from({ length: n }, () => v);
+  const doc = { months, states: [mk('TX', 'permits', flat(30, 10)), mk('ND', 'permits', flat(30, 4)), mk('BL', 'permits', flat(30, 3)), mk('NM', 'spuds', [...flat(28, 5), null, null]), mk('KS', 'permits', flat(30, 1))], gaps: [{ id: 'CO', name: 'Colorado' }] };
+  check(Nt.total(doc, 'permits') === 12 * (10 + 4 + 1) && Nt.total(doc, 'spuds') === 60, 'national: totals add within a measure, and the BLM (an overlapping line) is never in them');
+  check(Nt.rankBy(doc, 'permits').map((s) => s.id).join() === 'TX,ND,BL,KS' && Nt.rankBy(doc, 'spuds').map((s) => s.id).join() === 'NM', 'national: the ranking keeps measures apart and lists the BLM line');
+  check(Nt.sizeClass(0, 10) === 0 && Nt.sizeClass(1, 0) === 0 && Nt.sizeClass(10, 10) === 5 && Nt.sizeClass(5, 10) === 5 && Nt.sizeClass(2, 10) === 4 && Nt.sizeClass(1, 10) === 3 && Nt.sizeClass(0.3, 10) === 2 && Nt.sizeClass(0.01, 10) === 1, 'national: five size classes against the biggest, nothing for zero');
+  check(Nt.maxOf(doc, 'permits') === 120 && Nt.tileKind(doc, 'TX').kind === 'data' && Nt.tileKind(doc, 'CO').kind === 'gap' && Nt.tileKind(doc, 'GA').kind === 'quiet' && Nt.tileKind(doc, 'TX').size === 5, 'national: a tile is data, a gap or quiet');
+  check(Nt.change({ p12: 12, prev12: 10 }) === 0.2 && Nt.change({ p12: 5, prev12: 0 }) === null, 'national: the change is null, never infinity, when the 12 before are zero');
+  const st = Nt.stack(doc, 'permits');
+  check(st.series.map((s) => s.id).join() === 'TX,ND,other' && st.series.at(-1).count === 1 && st.totals.every((t) => t === 15) && st.months.length === 30, 'national: plotted states keep their color, the rest fold into Other states; the BLM is not stacked');
+  const sp = Nt.stack(doc, 'spuds');
+  check(sp.series.length === 1 && sp.series[0].id === 'NM' && sp.months.length === 28 && sp.end === months[27], 'national: the spuds chart ends at the newest month its plotted state has (nulls are not zeros)');
+  check(Nt.mix(doc.states[0]) === null && Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } }).length === 3 && Math.abs(Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } })[0].share - 0.6) < 1e-9, 'national: the mix needs two known bands, and shares add to one');
+  check(Nt.fluidMix({ fluid: null }) === null && Nt.fluidMix({ fluid: { oil: 3, gas: 1, both: 0, other: 0, unknown: 1 } }).sum === 5, 'national: fluid mix is null where the state records none');
+  check(Nt.listAnd(['a', 'b', 'c']) === 'a, b and c' && Nt.niceMax(0).top === 1 && Nt.niceMax(730).top >= 730 && Nt.niceMax(730).ticks[0] === 0, 'national: lists and axis scales');
+  const cov = Nt.coverage(doc, ['TX', 'CO']);
+  check(cov[0].status === 'permits' && cov[1].status === 'gap' && Nt.coverage(doc, ['NM'])[0].status === 'spuds', 'national: coverage rows say permits, spuds or not read yet');
+  // the committed file
+  const nat = read('national');
+  const tileIds = Object.keys(Nt.TILES);
+  const all = [...nat.states.map((s) => s.id), ...nat.gaps.map((g) => g.id)];
+  check(all.every((id) => tileIds.includes(id)) && new Set(Object.values(Nt.TILES).map((t) => t.join())).size === tileIds.length, 'national: every jurisdiction in national.json has a tile, and no two tiles share a square');
+  check(Object.values(Nt.TILES).every(([x, y]) => x >= 0 && x < Nt.COLS && y >= 0 && y < Nt.ROWS), 'national: every tile is inside the grid');
+  check(nat.states.every((s) => s.bands.new.length === nat.months.length) && Nt.total(nat, 'permits') === nat.totals.permits12 && Nt.total(nat, 'spuds') === nat.totals.spuds12, 'national: the committed bands span the axis and the totals agree with the Python builder');
+  check(nat.states.every((s) => Nt.change(s) === null || isFinite(Nt.change(s))) && Nt.stack(nat, 'permits').series.length >= 1, 'national: the committed file draws a stack with finite changes');
+}
+
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
 process.exit(fails ? 1 : 0);

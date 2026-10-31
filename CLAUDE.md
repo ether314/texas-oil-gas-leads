@@ -14,6 +14,15 @@ limits that stay in force, and what a new session needs to know about the projec
   Standing requests inside it: combine Oklahoma with Texas in every report and visual (not only the Daily report), and the site is the
   **Oil tracker**, not a Texas tracker.
 
+## Standing instruction from the owner, evening of 2026-10-31 (new brief, same permissions)
+
+The owner asked for, and answered the questions about (so they are decided, not open): a **national report** from each state-level agency for oil well permits with unified visuals and all the data together (`#national`);
+**every oil-producing state** (EIA's tables: the 30 states in `d11_nat_common.JURISDICTIONS`), **all permit activity** (new wells, injection and disposal, re-entries, reworks, amendments: the bands), and **onshore federal land
+(BLM's oil and gas permits)** as its own line, never added into the states; a report of **what metrics each state's permit captures** (form and open data: a matrix, `#fields`); a **separate Texas well-images visual**
+with click-downs (`#images`); and **a local database** (a SQLite file built by a script from the committed data, kept out of git, sent to the owner as a file). They are new tabs in the Oil tracker, shipped as separate PRs, national report and matrix first.
+Two owner decisions change guardrails below, and are made: (1) the privacy exception is widened for **Texas** images: every document in the RRC's image packs, completion images included, may be published readable
+(not Oklahoma's, and no contact list); (2) the Content-Security-Policy may allow GitHub's image hosts for `img-src` so the readable previews load inline. Neither is done until the PR that does it says so and updates README, Privacy.
+
 ## The loop
 
 Work on the designated branch only (the session names it; today `claude/trusting-planck-9sf7yz`). Never push to another branch,
@@ -88,12 +97,14 @@ The **Oil tracker**: a static dashboard of oil and gas drilling activity, produc
 for Texas, Oklahoma, New Mexico and the federal offshore (the Gulf of America), built only from public records (README has the full description and the known limits).
 
 - `site/public/`: the site (`index.html`, `app.css`, `js/*.js` modules, `data/*.json`). `main.js` is the hash router
-  (`#overview`, `#map`, `#operators`, `#companies`, `#daily`, `#about`) and owns the states bar; `states.js` lists the states (a new state is
+  (`#overview`, `#national`, `#map`, `#operators`, `#companies`, `#daily`, `#about`) and owns the states bar; `states.js` lists the states (a new state is
   one entry there plus its data files, a color token `--st-xx` in `app.css`, a dot skin in `hero.js` and `map.js`, and wording fields where it differs: `short`, `in`, `place`, `drill`,
   `noDaily`, `cadence`) and keeps the choice (`st=ok` or a list in the address, none is all); `overview-view.js` draws the Overview
   for the states shown from `overview-data.js` (pure merging, tested under Node); `daily*.js` are the Daily report; `geo.js` holds the
   projection (module state, Texas-fitted; each set of shapes carries its own `G.toWorld`, `buildGeoIsolated` builds the others) and the
   shapes and permit points for any set of states; `util.js` has `el()`/`svg()`/`load()`. County keys: Texas plain (`001`), others `OK:001` (the federal offshore's areas `FO:024`).
+- `site/pipeline/d11_*`: the national report (`NOTES_D11.md`): `d11_nat_common.py` (the shape of a state's file, the shared tally, validator and `run_producer`), `d11_nat_<st>.py` one producer per state, `d11_nat_build.py` (merges them and the four earlier jurisdictions into
+  `data/national.json`). The view is `national.js` + `national-data.js` (`#national`).
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`
   the monthly EIA series, also for New Mexico with `--state NM`), `d9_*` New Mexico (OCD: `d9_nm_monthly.py` the permit history as wells spudded, `d9_nm_daily.py` the Daily report from approvals), `d10_fo_monthly.py` the federal offshore (BSEE, Gulf of America: wells spudded, 63 protraction areas as its "counties", no Daily report: the source is weekly) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.

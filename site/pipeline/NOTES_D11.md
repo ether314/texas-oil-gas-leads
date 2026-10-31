@@ -1,0 +1,58 @@
+# NOTES_D11: the national report (every state agency's permits, side by side)
+
+Scripts: `site/pipeline/d11_nat_common.py` (what every state producer shares), `d11_nat_build.py` (the merge into `national.json`) and, per state,
+`d11_nat_<st>.py` (added in waves). The page: `site/public/js/national.js` (the view) and `national-data.js` (pure data code, tested under Node).
+Owner's brief (2026-10-31): a national report from each state-level agency's permits, unified visuals, all data together; every oil-producing state;
+all permit activity (not only new drills); onshore federal land (BLM) too.
+
+## What a state file is
+
+`site/public/data/nat/<ST>.json`, one per state, written by that state's producer through a `Tally` (shape documented at the top of `d11_nat_common.py`):
+
+- `measure`: `permits` (counted by the day the agency approved or issued the permit) or `spuds` (counted by spud date, for agencies that publish no approval
+  dates by well, as New Mexico and the federal offshore already do). Counts of the two measures are **never added together**.
+- `bands`: monthly counts by kind of permit: `new` (a new well to produce or explore), `inj` (a new injection, disposal or service well), `redrill` (re-entry,
+  deepening, sidetrack), `rework` (recompletion, plug-back, workover, conversion), `amend` (amendment, revision, extension, transfer), `other`. A permit is in exactly
+  one. **A band the source cannot tell is `null`, never zero**; `new` is always there. `band_of(work, purpose)` is the shared classifier (amendments are recognized
+  first, so an amendment of a new-drill permit is an amendment).
+- `fluid`: the last 12 months of new wells by recorded fluid (oil, gas, both, other, unknown), or `null` where the state records none. This is how "oil wells" is answered
+  without pretending every agency knows the fluid at approval time.
+- `counties` (top 15 places) and `operators` (top 15, **only corporations, LLCs and partnerships**: the one naming rule, `d8_ok_daily.nameable`, never a person's dba),
+  with `namedShare`, the share of the year's new wells whose operator may be named. No API number, lease or well name leaves a producer.
+- `months` run from 2019-01 to the last **complete** month (a spud-counting state ends by its lag, 60 days by default), `through` is that month's last day, `asOf` the newest record.
+
+`validate()` refuses a file that breaks the shape, names an operator the rule refuses, holds an e-mail, phone or ten-digit number (outside the source address), has one wildly
+large month (a parse error) or no new permit in 24 months (a producer that read nothing must not write a file). `write_doc` validates before writing, so a bad night leaves the
+committed file alone; `run_producer` is the one `main` every producer uses (exit 0 written, 1 failed, 2 refused by the server; `--check` reloads what is committed).
+
+## national.json
+
+`d11_nat_build.py` merges the state files and adapts the four earlier jurisdictions (Texas, Oklahoma, New Mexico, the federal offshore: their series, operator and county files
+become `new` only, the other bands are null) onto one axis (2019-01 to the newest month any state reaches; a state that ends earlier is padded with `null`, not zero). Each state
+gets `p12` and `prev12` (its own last 12 complete months and the 12 before), `mix12`, `fluid`, counties and operators. A jurisdiction with no data is a **gap** (with the research's agency,
+grade and reason once `permit-fields.json` exists), never a zero. `totals` add within a measure only, and **never include the BLM** (`OVERLAP`): the BLM approves permits for
+wells on federal land that the states also permit, so adding them would count the same wells twice. The BLM is a line of its own.
+
+## The view
+
+`#national` (it does not follow the states bar: the bar picks among four jurisdictions, this view is all of them). A tile map of the states (shaded by each state's size against the
+biggest state counting the same thing; underlined tiles count spuds; dashed tiles are producing states not read yet; plain tiles produce no oil), a panel for the chosen state (agency,
+12-month figure and change, 36-month sparkline, kinds of permits where the state can tell them, top counties and operators, source and, for Texas, Oklahoma, New Mexico and the offshore,
+a link to the full Overview), the months stacked by state (a toggle between permits and spuds; the axis ends at the newest month every plotted state has, so a late reporter does not read as
+a fall; the BLM is not stacked), a ranking, the mix of kinds of permits (only drawn once a state has one) and a coverage table of every jurisdiction. Colors follow the entity, not its rank:
+Texas, Oklahoma, New Mexico and the offshore keep their colors from the rest of the site; the other big producers take the next palette slots; the rest fold into "Other states".
+Addresses: `#national?s=ND&m=spuds` (state, count). Every chart has its table twin.
+
+## Known limits
+
+- Texas's monthly series is application type 01 only; it says nothing about the other bands (its Daily report holds only the last 92 days). Oklahoma's, New Mexico's and the offshore's the same.
+- The 12-month figures are each state's own last 12 complete months, so a spud-counting state's window ends two months before a permit-counting state's.
+- The tile map is a cartogram, not geography: no state outlines are loaded (no external requests).
+
+## Run
+
+```
+python3 -I site/pipeline/d11_nat_build.py            # rebuild national.json from the committed files
+python3 -I site/pipeline/d11_nat_build.py --check    # reload and validate it and every nat/<ST>.json
+python3 -I tests/run_all.py d11                      # the tests
+```
