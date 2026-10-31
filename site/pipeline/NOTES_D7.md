@@ -103,7 +103,8 @@ python3 -I site/pipeline/d7_daily.py --check          # only validate
 ```
 `.github/workflows/daily-rrc-report.yml` runs it at 03:15 UTC (10:15 PM CDT / 9:15 PM CST, after the evening files are
 out) with `--backfill 7`, so a missed night is filled from the RRC's history on the next one, then `--check`, then commits
-`site/public/data/daily/` to `main` and publishes `site/public` to the `gh-pages` branch that GitHub Pages serves (a copy plus
+`site/public/data/daily/` to `main` (titled with the report day, the newest day file, a Central-time date; the run's own UTC date is
+already tomorrow at 03:15) and publishes `site/public` to the `gh-pages` branch that GitHub Pages serves (a copy plus
 `.nojekyll`; an ordinary push, never a force push; it refuses to publish a copy without `index.html`, `js/main.js` and
 `data/meta.json`). The step used to request a Pages build through the API as well as pushing; on its first run GitHub started
 two builds for the published commit and cancelled the first, so the request was dropped and the push alone is relied on.
