@@ -19,6 +19,7 @@ Inputs are public RRC files, only parsed, never executed (run with `python3 -I`)
 
   python3 -I site/pipeline/d7_daily.py [--date YYYY-MM-DD] [--backfill N] [--out DIR] [--dl DIR] [--keep 92]
   python3 -I site/pipeline/d7_daily.py --check [--out DIR]     only reload and check what is already there
+  python3 -I site/pipeline/d7_daily.py --skip-if-captured      for a backup schedule: exit quietly if the evening run already did the day
 
 With no options: capture today's report (Central time). --backfill N also rebuilds any missing day of the last N days
 from the RRC file history (a rebuilt day says so: kind "reconstructed"). The pending queue and the page's catalog check
@@ -285,6 +286,17 @@ def kind_of(p):
     return "H" if p["horizontal"] else "D" if p["directional"] else "V"
 
 
+def merge_series(ledger, series, covered, keep_from):
+    """Take the day counts the permit files cover into the ledger ({'YYYY-MM-DD': [all, new-drill, horizontal]}). A day
+    only goes up: a file that holds part of a month must never undo a count a fuller file gave."""
+    for c0, c1 in covered:
+        d = max(c0, keep_from)
+        while d <= c1:
+            new, old = series.get(d, [0, 0, 0]), ledger.get(d.isoformat())
+            ledger[d.isoformat()] = new if old is None else [max(x, y) for x, y in zip(old, new)]
+            d += timedelta(days=1)
+
+
 def day_series(perms):
     """{day: [all types, new-drill, new-drill horizontal]} over the permits' issue dates."""
     out = collections.defaultdict(lambda: [0, 0, 0])
@@ -322,9 +334,32 @@ def permits_section(perms, day, lk):
     }
 
 
+def body_month(perms, today):
+    """(year, month) that a Daily File holds in full: the month of its newest issue date. The file also carries earlier
+    permits that had activity this month (on 2026-10-30: 50 from September, 57 from August, a few from 2015): stragglers,
+    not a month of permits, so only the body month is ever counted as covered. Dates after today are typos."""
+    dates = [p["issued"] for p in perms.values() if p["issued"] <= today]
+    return (max(dates).year, max(dates).month) if dates else None
+
+
+def months_between(first, last):
+    """(year, month) pairs from first to last, both included."""
+    out = []
+    while first <= last:
+        out.append(first)
+        first = (first[0] + (first[1] == 12), first[1] % 12 + 1)
+    return out
+
+
 def permits_job(ctx):
-    """Download the current daf420.dat (and month-end files when past days are rebuilt); return the permits and the
-    day ranges the files cover."""
+    """Download the current daf420.dat and, for every month it does not hold in full, the month-end file; return the
+    permits and the day ranges the files really cover.
+
+    The Daily File holds the month of its newest permit (the body) in full, through the previous business day, plus
+    stragglers. When it turns to a new month it starts almost empty (the dated snapshots turn on the 3rd), so in the first
+    days of a month it is mostly stragglers. So it covers only the report's own month, and only when that is its body
+    month; the months before it, which a day's section reaches back into (10 days), come from the End of Month share. A
+    month neither covers is left out, so a report has no permits section rather than one counted from stragglers."""
     sess = Session()
     sh = Share(ctx["guid"]["permits"], sess)
     sh.open()
@@ -332,26 +367,30 @@ def permits_job(ctx):
     if not cur:
         raise ShareError("daf420.dat is not on the share")
     perms = read_daf(sh.download("daf420.dat", os.path.join(ctx["dl"], "permits-%s" % ctx["R"])))
-    latest = max((p["issued"] for p in perms.values() if p["issued"] <= ctx["R"]), default=None)
-    covered = [(latest.replace(day=1), latest)] if latest else []
+    R, today = ctx["R"], ctx["today"]
+    own, body = (R.year, R.month), body_month(perms, today)
+    covered = []
+    if body == own:
+        latest = max((p["issued"] for p in perms.values() if (p["issued"].year, p["issued"].month) == own and p["issued"] <= R), default=None)
+        if latest:
+            covered.append((latest.replace(day=1), latest))
+    first = ctx["dates"][0] - timedelta(days=10)
+    months = [ym for ym in months_between((first.year, first.month), own) if not (ym == own and body == own)]
     retries = 0
-    if len(ctx["dates"]) > 1 and latest:  # rebuilding past days: the month-end files hold each earlier month
+    if months:
         eom = Share(EOM_GUID, Session())
         eom.open()
         listing = {r["name"]: r for r in eom.newest(30)}
-        lo = ctx["dates"][0] - timedelta(days=1)
-        y, m = lo.year, lo.month
-        while (y, m) < (latest.year, latest.month):
+        for y, m in reversed(months):  # newest first, so that for a permit in several files the newest file's record wins
             last = date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)
             name = "daf420.dat.%02d-%02d-%04d" % (last.month, last.day, last.year)
             if name in listing:
                 more = read_daf(eom.download(name, os.path.join(ctx["dl"], "permits-eom-%04d-%02d" % (y, m))))
                 for k, v in more.items():
-                    perms.setdefault(k, v)  # the newer file wins
+                    perms.setdefault(k, v)
                 covered.append((date(y, m, 1), last))
-            else:
-                log("permits: %s is not in the End of Month share, so that month is not rebuilt" % name)
-            y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+            elif last < today:  # a month that has not ended has no month-end file yet
+                log("permits: %s is not in the End of Month share, so that month is not covered" % name)
         retries += eom.s.retries
     return {"perms": perms, "series": day_series(perms), "file": cur, "files": sh.total, "covered": covered, "retries": retries + sess.retries}
 
@@ -698,6 +737,19 @@ def validate(out_dir, keep=KEEP_DAYS):
     return bad
 
 
+def captured_for_the_night(out_dir, R):
+    """When R's report was captured live, with every dataset read, at or after 03:00 UTC the next day (the evening run
+    writes at about 03:15). None otherwise. An earlier capture, such as a test or an early manual run, does not count,
+    and neither does a partial or rebuilt report."""
+    prior = read_json(os.path.join(out_dir, R.isoformat() + ".json"))
+    if not isinstance(prior, dict):
+        return None
+    cutoff = (datetime(R.year, R.month, R.day, tzinfo=timezone.utc) + timedelta(days=1, hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    at = prior.get("capturedAt")
+    ok = prior.get("kind") == "live" and prior.get("status") == "ok" and isinstance(at, str) and at >= cutoff
+    return at if ok else None
+
+
 def main():
     ap = argparse.ArgumentParser(description="D7: the daily RRC report (see the module docstring)")
     ap.add_argument("--date", help="report date, default today in Central time")
@@ -707,6 +759,8 @@ def main():
     ap.add_argument("--keep", type=int, default=KEEP_DAYS)
     ap.add_argument("--only", help="testing: comma list of datasets to read (needs --out somewhere else)")
     ap.add_argument("--check", action="store_true", help="only reload and check the files already in --out")
+    ap.add_argument("--skip-if-captured", action="store_true", help="do nothing when the report day was already captured live, "
+                    "reading every dataset, at or after 03:00 UTC the next day (for a backup schedule)")
     a = ap.parse_args()
     if a.check:
         problems = validate(a.out, a.keep)
@@ -716,8 +770,19 @@ def main():
         sys.exit(1 if problems else 0)
     if a.only and os.path.abspath(a.out) == DEFAULT_OUT:
         sys.exit("--only is for testing: give --out a scratch folder")
-    R = date.fromisoformat(a.date) if a.date else central_now().date()
+    today = central_now().date()
+    try:
+        R = date.fromisoformat(a.date) if a.date else today
+    except ValueError:
+        sys.exit("--date must be a real day like 2026-10-30")
+    if R > today:
+        sys.exit("--date cannot be a day that has not started yet in Central time (today is %s)" % today)
     os.makedirs(a.out, exist_ok=True)
+    if a.skip_if_captured:
+        when = captured_for_the_night(a.out, R)
+        if when:
+            log("report %s was already captured live at %s; nothing to do" % (R, when))
+            sys.exit(0)
     lk = Lookups()
 
     have = {f[:-5] for f in os.listdir(a.out) if DAY_FILE.fullmatch(f)}
@@ -741,7 +806,7 @@ def main():
     for u in unknown:
         log("catalog: the RRC page lists a nightly dataset this script does not read: %s" % u)
 
-    ctx = {"R": R, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid}
+    ctx = {"R": R, "today": today, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid}
     work = {"permits": permits_job, "pending": pending_job, "completions": completions_job,
             "w1images": lambda c: images_job(c, "w1images"), "dirsurveys": lambda c: images_job(c, "dirsurveys"),
             "complimages": lambda c: images_job(c, "complimages")}
@@ -781,18 +846,14 @@ def main():
         log("nothing captured; keeping the existing report for %s" % R)
         del reports[R]
 
-    # permits series: keep earlier days, replace the days the permit files cover
+    # permits series: keep earlier days, take up the days the permit files cover
     keep_from = R - timedelta(days=a.keep - 1)
     ser_path = os.path.join(a.out, "permits-series.json")
     old = read_json(ser_path, {"days": [], "total": [], "newDrill": [], "horizontal": []})
     ledger = {d: [t, n, h] for d, t, n, h in zip(old["days"], old["total"], old["newDrill"], old["horizontal"])}
     pj = jobs.get("permits")
     if pj and not isinstance(pj, Exception):
-        for c0, c1 in pj["covered"]:
-            d = max(c0, keep_from)
-            while d <= c1:
-                ledger[d.isoformat()] = pj["series"].get(d, [0, 0, 0])
-                d += timedelta(days=1)
+        merge_series(ledger, pj["series"], pj["covered"], keep_from)
     days = sorted(d for d in ledger if d >= keep_from.isoformat())
     write_json(ser_path, {"days": days, "total": [ledger[d][0] for d in days], "newDrill": [ledger[d][1] for d in days],
                           "horizontal": [ledger[d][2] for d in days],

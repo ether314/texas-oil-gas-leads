@@ -4,13 +4,20 @@ name: Daily RRC report
 
 on:
   schedule:
-    # 03:15 UTC = 10:15 PM CDT / 9:15 PM CST: after the RRC's evening files are out, still the same Central-time day
+    # 03:15 UTC = 10:15 PM CDT / 9:15 PM CST: after the last file the RRC posts that day (the 11 AM pending set is on the
+    # share by about 6 PM Central), and still the same Central-time day
     - cron: "15 3 * * *"
+    # a backup for a trigger GitHub skips (it can delay or drop scheduled runs). Still before Central midnight in daylight
+    # and standard time. It does nothing when the 03:15 run already captured the day (--skip-if-captured below).
+    - cron: "20 4 * * *"
   workflow_dispatch:
     inputs:
       backfill:
         description: "Also rebuild missing days of the last N days (the schedule uses 7; 91 fills a whole archive)"
         default: "7"
+      date:
+        description: "Report day to capture, YYYY-MM-DD in Central time; empty means today. Use it to repair a day that was missed or captured too early"
+        default: ""
 
 concurrency:
   group: daily-rrc-report
@@ -35,9 +42,20 @@ jobs:
       - name: Capture the report
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '7' }}
+          REPORT_DATE: ${{ github.event.inputs.date }}
+          EVENT: ${{ github.event_name }}
         run: |
           case "$BACKFILL" in ''|*[!0-9]*) echo "backfill must be a whole number"; exit 1;; esac
-          python3 -I site/pipeline/d7_daily.py --backfill "$BACKFILL"
+          args=(--backfill "$BACKFILL")
+          if [ -n "$REPORT_DATE" ]; then
+            case "$REPORT_DATE" in
+              [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) args+=(--date "$REPORT_DATE") ;;
+              *) echo "date must look like 2026-10-30"; exit 1 ;;
+            esac
+          fi
+          # a scheduled run is needed once a day: the backup stands down when the evening run already did the job
+          if [ "$EVENT" = "schedule" ]; then args+=(--skip-if-captured); fi
+          python3 -I site/pipeline/d7_daily.py "${args[@]}"
 
       - name: Check the archive
         run: python3 -I site/pipeline/d7_daily.py --check
