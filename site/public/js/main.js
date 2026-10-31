@@ -99,7 +99,7 @@ async function boot() {
   const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : 'all');
   const bar = segmented({
     label: 'States shown', tabs: false, prefix: 'sb', value: choice(),
-    options: [{ id: 'all', label: 'All' }, ...STATES.map((x) => ({ id: x.id, label: x.name }))],
+    options: [{ id: 'all', label: 'All', dot: 'st-all' }, ...STATES.map((x) => ({ id: x.id, label: x.name, dot: 'st-' + x.id.toLowerCase() }))],
     onChange: (id) => setStates(id === 'all' ? STATES.map((x) => x.id) : [id]),
   });
   $('#statebar-seg').append(bar.el);

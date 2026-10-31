@@ -9,7 +9,7 @@ export function segmented({ label, options, value, onChange, tabs = true, prefix
   const btns = options.map((o) => el('button', {
     type: 'button', 'data-id': o.id, id: prefix + '-' + o.id, role: tabs ? 'tab' : null,
     'aria-selected': tabs ? 'false' : null, 'aria-pressed': tabs ? null : 'false', 'aria-controls': o.controls || null, tabindex: tabs ? '-1' : null,
-  }, o.icon ? icon(o.icon, 15) : null, el('span', { text: o.label })));
+  }, o.icon ? icon(o.icon, 15) : null, o.dot ? el('i', { class: 'seg-dot ' + o.dot, 'aria-hidden': 'true' }) : null, el('span', { text: o.label })));
   const root = el('div', { class: 'seg', role: tabs ? 'tablist' : 'group', 'aria-label': label }, thumb, btns);
   let cur = null;
   const place = () => {

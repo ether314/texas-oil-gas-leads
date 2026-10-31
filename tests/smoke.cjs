@@ -116,6 +116,8 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForSelector('#hot-bars li', { timeout: 25000 });
       await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
       check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Overview and starts on All');
+      check((await page.locator('#statebar .seg-dot').count()) === 4 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1, 'each state wears its color in the bar (All the three together)');
+      check(/^Permits through Oct \d+ \(Texas\), Oct \d+ \(Oklahoma\) and Aug \d+ \(New Mexico\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'the hero names each state\'s last day once, with the year once');
       check(/\(Texas\).*\(Oklahoma\).*\(New Mexico\)/.test(await eyebrow()) && (await page.locator('#hot-bars .bars-h').count()) === 3, 'all states: the hero names each state\'s last day and the lists have a heading per state');
       await page.click('#statebar button[data-id="OK"]');
       await waitEyebrow(/Corporation Commission approvals through/);
