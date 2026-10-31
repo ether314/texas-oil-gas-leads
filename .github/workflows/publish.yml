@@ -1,0 +1,38 @@
+# Publishes the site to GitHub Pages (the gh-pages branch) after a push to main that CI passed, so a merged change reaches visitors
+# without a capture run and without touching the Railroad Commission or the OCC. The nightly capture publishes by itself after it
+# commits its data (that commit is pushed with the workflow's own token, which starts no other workflow, so it neither runs CI nor
+# this). If the two publish at the same moment, both retry (.github/scripts/publish_pages.sh). Run by hand (Actions, Publish the
+# site) to publish main as it is now.
+name: Publish the site
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-site
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    # a workflow_run starts whatever CI concluded: publish only a green push to main (a manual run always goes ahead)
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # the commit CI passed, or main as it is now for a manual run
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || 'main' }}
+
+      - name: Publish the site to GitHub Pages
+        run: |
+          git config user.name "publish-site"
+          git config user.email "actions@users.noreply.github.com"
+          bash .github/scripts/publish_pages.sh

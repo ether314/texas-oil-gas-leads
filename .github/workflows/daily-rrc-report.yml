@@ -149,26 +149,10 @@ jobs:
           git push origin "HEAD:$GITHUB_REF_NAME"
 
       # The live site is the gh-pages branch: a copy of the committed site/public plus the .nojekyll marker that stops
-      # Pages from running Jekyll. A plain push, never a force push, so the branch keeps its history.
+      # Pages from running Jekyll. A plain push, never a force push, so the branch keeps its history. The same script publishes
+      # after a green merge (publish.yml); if the two push at once, the one refused starts again from the branch's new tip.
       - name: Publish the site to GitHub Pages
-        run: |
-          set -euo pipefail
-          src="$(git rev-parse --short HEAD)"
-          dest="$RUNNER_TEMP/pages"
-          git fetch origin gh-pages
-          git worktree add -B gh-pages "$dest" origin/gh-pages
-          find "$dest" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          git archive HEAD site/public | tar -x --strip-components=2 -C "$dest"
-          touch "$dest/.nojekyll"
-          # a publish replaces the whole site, so refuse to go on if the copy is not a site
-          test -s "$dest/index.html" && test -s "$dest/js/main.js" && test -s "$dest/data/meta.json" \
-            || { echo "the copy of site/public is incomplete; not publishing"; exit 1; }
-          cd "$dest"
-          git add -A
-          if git diff --cached --quiet; then echo "the published site is already current"; exit 0; fi
-          git commit -m "Publish the site (from $src)"
-          # the push starts the Pages build by itself; requesting one as well only makes GitHub cancel the first
-          git push origin HEAD:gh-pages
+        run: bash .github/scripts/publish_pages.sh
 
       # The captures above carry on after an error so that what worked is committed and published; this is where the run still
       # fails, so a night on which the RRC or the OCC could not be read shows red in the Actions list and in GitHub's e-mail.
