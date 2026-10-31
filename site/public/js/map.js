@@ -8,7 +8,7 @@ import { areaChart, spark, delta, histChart } from './charts.js';
 import { icon } from './icons.js';
 import { shareButton, absoluteLink } from './ui.js';
 import { createTimelapse } from './timelapse.js';
-import { stateOf, measureOf, sameMeasure, measureLabel, listAnd, activeStates, statesKey, countyState, countyCode, pointState, pointCountyKey, inName, placeOf, placeTitle, placesWord, placesOr, spudsNote } from './states.js';
+import { stateOf, measureOf, sameMeasure, measureLabel, listAnd, activeStates, statesKey, countyState, countyCode, pointState, pointCountyKey, inName, placeOf, placeTitle, placesWord, placesOr, spudsNote, yearStart } from './states.js';
 import { countyPermits, stateOperatorRows, operatorExtras } from './overview-data.js';
 
 const NO_BLS = 'No data (suppressed by BLS)';
@@ -782,7 +782,7 @@ export function createMapView({ root, meta }) {
     S.endOf = (id) => monthLabel(S.through[id].slice(0, 7));
     if (states.length === 1) {
       const id = states[0]; const months = S.cp.monthsBy[id];
-      S.win = dayLabel(Date.parse(S.cp.asOfBy[id] + 'T00:00:00Z') - 365 * 864e5) + ' to ' + fmtDate(S.through[id]);
+      S.win = dayLabel(yearStart(id, S.cp.asOfBy[id])) + ' to ' + fmtDate(S.through[id]);
       S.chgWin = monthLabel(months[24]) + ' to ' + monthLabel(months[35]) + ' vs the 12 months before';
       S.permitEnd = S.endOf(id);
     } else {

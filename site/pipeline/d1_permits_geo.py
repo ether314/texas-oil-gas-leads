@@ -85,13 +85,18 @@ def month_label(idx):
     return "%04d-%02d" % (year, m0 + 1)
 
 
-def windows(asof):
-    """Day-window cuts as ordinals and month indexes. The current partial month is never part of a monthly series."""
+def windows(asof, calendar=False):
+    """Day-window cuts as ordinals and month indexes. The current partial month is never part of a monthly series.
+    calendar=True is for the files that end on a month end (New Mexico's and the federal offshore's, whose newest month is always a whole one): their 12 months
+    are 12 calendar months from the first day of the month, so a county's or an operator's 12 months add up to the months of the monthly series. Without it
+    (Texas, Oklahoma: the day of the newest permit) a year is the 365 days that end on asof, which at a month end takes in one day of the month before."""
     month_is_over = (asof + timedelta(days=1)).month != asof.month
     last = month_index(asof) - (0 if month_is_over else 1)
+    first_of = lambda idx: date(idx // 12, idx % 12 + 1, 1).toordinal()  # noqa: E731
+    cut12, cut24 = (first_of(last - 11), first_of(last - 23)) if calendar and month_is_over else ((asof - timedelta(days=365)).toordinal(), (asof - timedelta(days=730)).toordinal())
     return {"asof": asof, "asofo": asof.toordinal(),
-            "cut12": (asof - timedelta(days=365)).toordinal(),   # last 12 months: issue date >= cut12
-            "cut24": (asof - timedelta(days=730)).toordinal(),   # prior 12: cut24 <= date < cut12
+            "cut12": cut12,   # last 12 months: issue date >= cut12
+            "cut24": cut24,   # prior 12: cut24 <= date < cut12
             "last": last, "first36": last - 35, "first24": last - 23,
             "series0": SERIES_START[0] * 12 + SERIES_START[1] - 1,
             "keep_from": date(SERIES_START[0], SERIES_START[1], 1).toordinal()}

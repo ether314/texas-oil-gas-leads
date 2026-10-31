@@ -8,7 +8,7 @@ import { renderKpis, renderHot, renderTopOps, renderProducers, renderFreshness }
 import { loadMarketData, initMarkets } from './pulse.js';
 import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
-import { STATES, otherStates, stateOf, statesKey, spudStates, spudsNote, measureOf, sameMeasure, listAnd, inName, shortName } from './states.js';
+import { STATES, otherStates, stateOf, statesKey, spudStates, spudsNote, measureOf, sameMeasure, listAnd, inName, shortName, yearStart } from './states.js';
 import { permitSeries, countyPermits, operatorRows, activeWells } from './overview-data.js';
 
 const LEDE = {
@@ -123,7 +123,7 @@ export function createOverview(meta) {
     const ticker = $('#ticker');
     ov.markets = initMarkets({ ticker, card: $('#pulse-card'), raw: ov.raw, states });
     ticker.setAttribute('aria-busy', 'false');
-    const from = cp ? dayLabel(Date.parse(cp.asOf + 'T00:00:00Z') - 365 * 864e5) : '';
+    const from = cp && states.length === 1 && cp.asOfBy[states[0]] ? dayLabel(yearStart(states[0], cp.asOfBy[states[0]])) : cp ? dayLabel(Date.parse(cp.asOf + 'T00:00:00Z') - 365 * 864e5) : '';
     const win = !cp ? '' : states.length > 1 ? 'the last 12 months (to ' + datesPhrase(states, (id) => 'in ' + inName(id)) + ')'
       : from + ' to ' + fmtDate(through(states[0]));
     renderHot(cp, G, win, states);

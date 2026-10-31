@@ -39,7 +39,9 @@ The three states' other files count permits by approval date. For New Mexico tha
 
 - A well is one API number (`NN-NNN-NNNNN`) on its spud day; a repeat of the same well and day is skipped; the layer's placeholders for not spudded (year 9999
   and 1900) are not spuds. 13,942 wells since 2018; 1,759 in the 12 months to 2026-08-31 and 1,958 in the 12 before (the 12 months to Aug 2025). Recent months run about 110 to 200 wells.
-- **Windows** are the Texas ones (`d1_permits_geo.windows`) ending on 2026-08-31. **Bands** and "new to drilling" as in `NOTES_D8.md` (the first spud ever comes from a server-side
+- **Windows** are the Texas ones (`d1_permits_geo.windows`) ending on 2026-08-31, with `calendar=True` (the files end on a month end): the last 12 months are the 12 calendar months from Sep 1, so a county's or
+  an operator's 12 months add up to the months of the series (an independent review of the federal offshore found a well on Aug 31 of the year before in the counties' year and not in the series' one; the
+  Overview said 47 against 43 and the area hovers 47 against 44). The Texas and Oklahoma windows, whose files end on the newest permit's day, are still the 365 days that end on it. **Bands** and "new to drilling" as in `NOTES_D8.md` (the first spud ever comes from a server-side
   minimum over the layer, per OGRID).
 - **County** is the layer's county code (the FIPS code). **Locations** are the layer's latitude and longitude, rounded to 3 decimals (about 100 m); all of them fall in the state's box.
 - **Depth is not published.** The layer carries a depth for 3% of the wells spudded since 2024 (the rest are 0 until completion), so any mean would describe old verticals and
