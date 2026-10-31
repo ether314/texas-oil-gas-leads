@@ -92,12 +92,19 @@ New Mexico's drilling history (wells spudded by month, county counts, operators 
 Oklahoma's permit history (monthly series, county counts, operators and permit points, in the Texas files' shapes) is built by
 `site/pipeline/d8_ok_monthly.py` from the OCC's master permit workbook (154 MB, about 75 s): `python3 -I site/pipeline/d8_ok_monthly.py`.
 
-Oklahoma's reports are built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, in the same
-workflow run, after the Texas capture. The two captures are isolated from each other: if one fails (the RRC has refused GitHub's
-runners for hours at a time, and the OCC can have outages of its own), that state's changes are dropped before the commit, the other
-state is committed, the site is published, and the run then ends red so the failure shows. To fill its archive from the OCC's master
+Oklahoma's reports are built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, and New Mexico's by
+`site/pipeline/d9_nm_daily.py` into `site/public/data/daily-nm/` (two requests to the Division's well layer), in the same workflow run,
+after the Texas capture. The three captures are isolated from each other: if one fails (the RRC has refused GitHub's runners for hours
+at a time, and the OCC and the OCD can have outages of their own), that state's changes are dropped before the commit, the others are
+committed, the site is published, and the run then ends red so the failure shows. To fill Oklahoma's archive from the OCC's master
 files (230 MB, about 2 minutes): `python3 -I site/pipeline/d8_ok_daily.py --history`, or tick `oklahoma_history` when running the
-workflow by hand. Its monthly card (Oklahoma crude production) is refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py`.
+workflow by hand; for New Mexico's, `python3 -I site/pipeline/d9_nm_daily.py --history` or `new_mexico_history`. The monthly cards (Oklahoma
+and New Mexico crude production) are refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py [--state NM]`.
+
+The permit history of Oklahoma and New Mexico (the four `*-ok.json` and four `*-nm.json` files that the Overview, the Map and the Operators
+page read) is refreshed once a week by `.github/workflows/refresh-monthly.yml` (Mondays 05:40 UTC, or by hand): New Mexico's in a few seconds,
+Oklahoma's from the 154 MB master workbook. The two refreshes are isolated like the captures (a failed one's files are put back as committed),
+and the workflow shares the nightly capture's concurrency group, so the two never run at once. Texas's monthly files are rebuilt by hand.
 
 ## Publishing
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
