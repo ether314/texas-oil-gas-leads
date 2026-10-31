@@ -679,7 +679,8 @@ ul.plain li { margin-bottom: var(--sp-2); }
   .grid th, .grid td { padding: 9px 11px; }
   .ticker { gap: var(--sp-2); }
   .tchip-in { padding: 12px 12px 11px; }
-  .tchip-top { letter-spacing: 0.08em; }
+  .tchip-top { letter-spacing: 0.08em; align-items: flex-start; }
+  .tchip-top span { white-space: normal; line-height: 1.25; } /* "New Mexico crude" wraps instead of ending in an ellipsis */
   .tchip-val strong { font-size: 1.6rem; }
   .fresh-grid { grid-template-columns: 1fr; }
   .bcard-kpis { gap: 8px 12px; }

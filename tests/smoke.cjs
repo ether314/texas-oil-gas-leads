@@ -260,6 +260,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
       const kpis = await page.locator('#daily-root .dr-kpis .dr-kpi').allInnerTexts();
       check(/Oil Conservation Division report/i.test(await eyebrow()) && kpis.length === 3 && /Horizontal wells/.test(kpis[1]) && !(await page.locator('#statebar-note').innerText()).trim(), 'New Mexico alone: its own report (three cards, the horizontal share), and the bar has nothing to say about it');
+      check(/still filling in/.test(kpis[0]) && !/vs the 20-day average/.test(kpis[0]), 'its newest day is not set against an average of days that have filled in: it says it is still filling in');
       check((await page.locator('#daily-root .dr-rb.nm').count()) > 30 && (await page.locator('#daily-root .dr-bar.nm').count()) > 0, 'its ribbon and pace chart are drawn in its color, with its 33 counties on the map');
       check(/fill in later/.test(await page.locator('#daily-root .dr-story').innerText()), 'the story says the layer is entered late, so the newest days run low');
       await page.goto(base + '#daily?st=nm&v=full', { waitUntil: 'load' });
@@ -269,6 +270,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.click('#statebar button[data-id="all"]');
       await page.waitForFunction(() => /Texas, Oklahoma and New Mexico report/i.test(document.querySelector('#daily-root .dr-hero .eyebrow').textContent), null, { timeout: 25000 });
       check((await page.locator('#daily-root .dr-dot.nm').count()) > 0 && (await page.locator('#daily-root .dr-mapwrap path.dr-county').count()) === 364 && /New Mexico: 1 of 1/.test(await page.locator('.dr-pills').innerText()), 'all three together: one map of 364 counties, New Mexico\'s files read named in the pills, its color in the legends');
+      check(/New Mexico is still filling in/.test(await page.locator('#daily-root .dr-kpis .dr-kpi').first().innerText()), 'and the combined comparison says New Mexico\'s newest days are still filling in');
     } catch (e) {
       check(false, 'the New Mexico Daily report: ' + e.message.split('\n')[0].slice(0, 200));
     }
