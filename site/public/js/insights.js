@@ -4,7 +4,7 @@ import { el, fmt, halves, signed, monthLabel, lastIdx, toObjects, fmtDate } from
 import { icon } from './icons.js';
 import { opsLink } from './overview.js';
 import { countyLabel } from './overview-data.js';
-import { stateOf, countyState, measureOf, sameMeasure, inName, placesWord } from './states.js';
+import { stateOf, countyState, measureOf, sameMeasure, inName, placesWord, ucFirst } from './states.js';
 
 const a = (text, href) => el('a', { href, text });
 const btn = (text, fn) => el('button', { type: 'button', class: 'link', onclick: fn, text });
@@ -92,11 +92,11 @@ export function renderInsights(card, { cp, G, B, ops, extras, meta, prod, R, sel
       const i = lastIdx(ser.v); const j = i - 12;
       if (i >= 12 && ser.v[j]) {
         const f = ser.v[i] / ser.v[j] - 1;
-        push('drop', col, q.name + ' produced ', btn(fmt.format(Math.round(ser.v[i] / 1e3)) + ' thousand barrels', () => selectGroup('production')), ' of crude oil in ' + monthLabel(ymOf(ser.t[i])) + ', '
+        push('drop', col, ucFirst(inName(id)) + ' produced ', btn(fmt.format(Math.round(ser.v[i] / 1e3)) + ' thousand barrels', () => selectGroup('production')), ' of crude oil in ' + monthLabel(ymOf(ser.t[i])) + ', '
           + (Math.abs(f) < 0.005 ? 'level with' : f > 0 ? 'up ' + Math.round(f * 100) + '% from' : 'down ' + Math.round(-f * 100) + '% from') + ' a year earlier (the EIA’s estimate, which it revises).');
       }
     }
-    if (wells[id]) push('rig', col, 'The ' + q.agency + '’s well inventory lists ', a(fmt.format(wells[id].n), '#daily?st=' + id.toLowerCase()), ' active wells in ' + q.name + ' on ' + fmtDate(wells[id].day) + '.');
+    if (wells[id]) push('rig', col, 'The ' + q.agency + '’s well inventory lists ', a(fmt.format(wells[id].n), '#daily?st=' + id.toLowerCase()), ' active wells in ' + inName(id) + ' on ' + fmtDate(wells[id].day) + '.');
   }
   const list = card.querySelector('#ins-list');
   if (!items.length) { card.hidden = true; return; }

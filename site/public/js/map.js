@@ -8,7 +8,7 @@ import { areaChart, spark, delta, histChart } from './charts.js';
 import { icon } from './icons.js';
 import { shareButton, absoluteLink } from './ui.js';
 import { createTimelapse } from './timelapse.js';
-import { stateOf, measureOf, sameMeasure, measureLabel, listAnd, activeStates, statesKey, countyState, countyCode, pointState, pointCountyKey, inName, placeOf, placeTitle, placesWord, placesOr, spudsNote, yearStart } from './states.js';
+import { stateOf, measureOf, sameMeasure, measureLabel, countWord, listAnd, activeStates, statesKey, statesIn, countyState, countyCode, pointState, pointCountyKey, inName, placeOf, placeTitle, placesOne, placesWord, placesOr, spudsNote, spudCaveat, yearStart, ucFirst, everyOf, dotName, chgMinOf, chgMinPhrase } from './states.js';
 import { countyPermits, stateOperatorRows, operatorExtras } from './overview-data.js';
 
 const NO_BLS = 'No data (suppressed by BLS)';
@@ -236,7 +236,7 @@ export function createMapView({ root, meta }) {
     if (hasNone) kids.push(el('div', { class: 'lg-nodata' }, nd, el('span', { text: m.nodata + (S.multi && m.tx ? '; not available outside Texas' : '') })));
     // with several states the dots take their state's color, so the legend says which is which
     if (S.multi && state.layers.has('permits')) {
-      kids.push(el('div', { class: 'lg-states', role: 'group', 'aria-label': 'Permit dots by state' }, S.states.map((id) => el('span', { class: 'lg-st st-' + id.toLowerCase() },
+      kids.push(el('div', { class: 'lg-states', role: 'group', 'aria-label': ucFirst(dotName(S.states)) + 's by state' }, S.states.map((id) => el('span', { class: 'lg-st st-' + id.toLowerCase() },
         el('i', { 'aria-hidden': 'true' }), stateOf(id).name + (measureOf(id).id === 'spuds' ? ' (spuds)' : '')))));
     }
     if (['oil12', 'gas12', 'prodchg'].includes(m.id)) kids.push(el('div', { class: 'lg-basin lg-note' }, el('span', { text: 'County volumes are the RRC’s allocation of multi-county leases: an estimate.' })));
@@ -259,7 +259,7 @@ export function createMapView({ root, meta }) {
       const h = S.prodHalves[i];
       return h.b === 0 ? 'New production (none in the prior 12 months)' : signed(h.f) + ' (' + compactFmt.format(h.a) + ' vs ' + compactFmt.format(h.b) + ' bbl)';
     }
-    return m.fmt(v) + (m.id === 'p12' ? ' ' + w : m.unit && m.id !== 'depth' && m.id !== 'owage' ? ' ' + m.unit : m.id === 'owage' ? ' a week' : '');
+    return m.fmt(v) + (m.id === 'p12' ? ' ' + countWord(cst, v) : m.unit && m.id !== 'depth' && m.id !== 'owage' ? ' ' + m.unit : m.id === 'owage' ? ' a week' : '');
   }
   const permitDate = (i) => dayLabel(S.P.t0 + S.P.t[i] * 864e5);
   const facCap = (l, it) => (it.cap == null ? 'Capacity not published' : fmt.format(it.cap) + ' ' + l.unit);
@@ -444,8 +444,10 @@ export function createMapView({ root, meta }) {
           el('a', { class: 'plist-name', href: opsLink(name), text: name, title: name }),
           el('span', { class: 'plist-n', text: fmt.format(n) }),
           S.opIdx.has(num) ? el('a', { class: 'pill-link', href: '#map?op=' + num, 'aria-label': 'Show ' + name + ' on the map', text: 'Map' }) : null)))) : null,
+      // no dot is either no location published for what happened here, or nothing happened here (most offshore areas have no well): say which, since only the first is a claim about the agency
       el('p', { class: 'fine', text: dots ? fmt.format(dots) + ' located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots in this ' + placeOf(cst).one + ' over 24 months. Counts above include every ' + meas.one + '.'
-        : 'No located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots here: ' + (own ? 'the RRC published no surface location for these permits.' : 'the ' + stateOf(cst).agency + ' published no location for these ' + meas.short + '.') }),
+        : h.a + h.b === 0 ? 'No ' + (meas.id === 'spuds' ? 'wells were spudded' : 'new-drill permits were approved') + ' in this ' + placeOf(cst).one + ' in the last 24 months, so there is nothing to draw.'
+          : 'No located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots here: ' + (own ? 'the RRC published no surface location for these permits.' : 'the ' + stateOf(cst).agency + ' published no location for these ' + meas.short + '.') }),
       el('div', { class: 'psec-actions' }, own ? el('a', { class: 'btn sm primary', href: '#companies?county=' + c.f, text: 'List companies' }) : null, btn('Zoom to ' + placeOf(cst).one, () => fitCounty(i))));
   }
 
@@ -508,13 +510,15 @@ export function createMapView({ root, meta }) {
 
   function glanceSection() {
     const m = current.m; const bs = state.basin ? S.B.byId.get(state.basin) : null;
-    const order = m.vals.map((v, i) => [v, i]).filter((q) => q[0] != null && (m.kind !== 'seq' || q[0] !== 0) && (!bs || bs.set.has(q[1])) && (m.id !== 'chg' || (q[0] < 9 && S.halvesBy[q[1]].a >= 20))
+    // a place is ranked on its change when it had enough in the last 12 months for a percentage to mean something: 20 permits or spuds, or 5 offshore, where 14 is the most any area has had
+    const enough = (i) => S.halvesBy[i].a >= chgMinOf(countyState(S.G.counties[i].f));
+    const order = m.vals.map((v, i) => [v, i]).filter((q) => q[0] != null && (m.kind !== 'seq' || q[0] !== 0) && (!bs || bs.set.has(q[1])) && (m.id !== 'chg' || (q[0] < 9 && enough(q[1])))
       && (m.id !== 'prodchg' || (q[0] < 9 && S.prodHalves[q[1]].a >= 1e6))).sort((a, b) => b[0] - a[0]).slice(0, 8);
     const max = order.length ? Math.max(1, order[0][0]) : 1;
-    const where = listAnd(S.states.map((id) => stateOf(id).name));
-    return el('section', { class: 'psec' }, secHead(bs ? bs.name + ' at a glance' : where + ' at a glance', bs ? bs.fips.length + ' counties, outlined on the map. Click one for details.' : 'Click ' + an(placesOr(S.states)) + ', a permit dot' + (S.tx ? ', a plant or a ZIP bubble' : '') + ' for details.'),
+    const where = ucFirst(statesIn(S.states));
+    return el('section', { class: 'psec' }, secHead(bs ? bs.name + ' at a glance' : where + ' at a glance', bs ? bs.fips.length + ' counties, outlined on the map. Click one for details.' : 'Click ' + an(placesOr(S.states)) + ', a ' + dotName(S.states) + (S.tx ? ', a plant or a ZIP bubble' : '') + ' for details.'),
       bs ? el('div', { class: 'psec-actions' }, btn(S.multi ? 'Show every state' : 'Show all of Texas', () => setBasin(null))) : null,
-      el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Top ' + placesWord(S.states) + (bs ? ' in the basin' : '') + ': ' + m.label.toLowerCase() + (m.id === 'chg' ? ' (20+ permits)' : m.id === 'prodchg' ? ' (1M+ barrels)' : '') }),
+      el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Top ' + placesWord(S.states) + (bs ? ' in the basin' : '') + ': ' + m.label.toLowerCase() + (m.id === 'chg' ? ' (' + chgMinPhrase(S.states) + ')' : m.id === 'prodchg' ? ' (1M+ barrels)' : '') }),
         el('ol', { class: 'mini-bars' }, order.map(([v, i]) => {
           const bar = el('span', { class: 'bar' }); bar.style.setProperty('--p', String(m.kind === 'seq' ? v / max : 0.001));
           return el('li', {}, el('button', { type: 'button', class: 'mini-row', onclick: () => selectCounty(S.G.counties[i].f, { fit: true }) },
@@ -523,7 +527,9 @@ export function createMapView({ root, meta }) {
             el('span', { class: 'bar-value', text: m.kind === 'div' ? signed(v) : m.fmt(v) })));
         })),
         // nothing to rank because no county has the figure at all (New Mexico publishes no depth): say so, not an empty list
-        m.vals.every((v) => v == null) ? el('p', { class: 'fine', text: 'No ' + placesOr(S.states) + ' has a figure for this: ' + m.nodata.charAt(0).toLowerCase() + m.nodata.slice(1) + '.' }) : null),
+        m.vals.every((v) => v == null) ? el('p', { class: 'fine', text: 'No ' + placesOr(S.states) + ' has a figure for this: ' + m.nodata.charAt(0).toLowerCase() + m.nodata.slice(1) + '.' })
+          // a list with nothing in it, said: no place had enough to be ranked on its change (an empty heading reads as a broken page)
+          : !order.length && m.id === 'chg' ? el('p', { class: 'fine', text: 'No ' + placesOr(S.states) + (bs ? ' in the basin' : '') + ' had ' + chgMinPhrase(S.states) + ' in the last 12 months, so none is ranked on its change.' }) : null),
       el('p', { class: 'fine', text: 'Drag to pan, scroll or pinch to zoom, double-click to zoom in. Keyboard: focus the map, then use the arrow keys, plus, minus and 0.' }));
   }
   function renderPanel() {
@@ -550,14 +556,14 @@ export function createMapView({ root, meta }) {
     });
     const items = [
       el('p', { class: 'map-note' }, el('strong', { text: 'Reading the map. ' }),
-        'County shading, counts and trends use every ' + (sameMeasure(ids) ? measureOf(ids[0]).one : 'permit and every spud') + '. Dots show only ' + S.word + ' with a recorded ' + (ids.length === 1 && ids[0] === 'TX' ? 'surface ' : '') + 'location: '
+        ucFirst(placesOne(ids)) + ' shading, counts and trends use ' + everyOf(ids) + '. Dots show only ' + S.word + ' with a recorded ' + (ids.length === 1 && ids[0] === 'TX' ? 'surface ' : '') + 'location: '
         + per.join('; ') + '. Brighter dots are the last 12 months.'),
     ];
     // what each state counts, and how far its data runs (they end on different days)
     if (S.multi || ids.some((id) => measureOf(id).id === 'spuds')) {
       const spud = spudsNote(ids);
       items.push(el('p', { class: 'map-note' }, el('strong', { text: 'What is counted. ' }),
-        (spud ? spud + '; spud dates are reported about two months late' + (S.multi ? ', and these counts are never added to permits' : '') + '. ' : '')
+        (spud ? spud + '; spud dates are reported about two months late' + (S.multi ? ', and these counts are never added to permits' : '') + '. ' + (spudCaveat(ids) ? spudCaveat(ids) + ' ' : '') : '')
         + (S.multi ? 'Data runs to ' + listAnd(ids.map((id) => fmtDate(S.through[id]) + ' (' + stateOf(id).name + ')')) + '.' : '')));
     }
     const mTx = S.byId.get(state.metric);
@@ -604,7 +610,7 @@ export function createMapView({ root, meta }) {
       p12: S.multi ? S.mLabel + ' (12 mo)' : S.word.replace(/^./, (ch) => ch.toUpperCase()) + ' (12 mo to ' + S.permitEnd + ')', chg: 'Change', depth: 'Avg depth', oil12: 'Oil (12 mo to ' + S.prodEnd + ')', gas12: 'Gas (12 mo to ' + S.prodEnd + ')', prodchg: 'Oil change to ' + S.prodEnd, oemp: 'Oil & gas jobs', semp: 'Services jobs',
       owage: 'O&G weekly wage', e213: 'Service estabs', e211: 'Extraction estabs', co: 'Companies', mineral: 'Mineral value',
     };
-    const table = el('table', { class: 'grid' }, el('caption', { class: 'sr-only', text: listAnd(S.states.map((id) => stateOf(id).name)) + ' ' + placesWord(S.states) + ' with the map metrics. Sorted by ' + (mSort ? mSort.label : placesOr(S.states) + ' name') + '.' }),
+    const table = el('table', { class: 'grid' }, el('caption', { class: 'sr-only', text: ucFirst(placesWord(S.states)) + ' of ' + statesIn(S.states) + ' with the map metrics. Sorted by ' + (mSort ? mSort.label : placesOr(S.states) + ' name') + '.' }),
       el('thead', {}, el('tr', {}, th('name', cap(placesOr(S.states)), false), S.multi ? el('th', { scope: 'col', text: 'State' }) : null, ms.map((m) => th(m.id, short[m.id] || m.label, true)))),
       el('tbody', {}, rows.map((i) => el('tr', {},
         el('th', { scope: 'row' }, el('button', { type: 'button', class: 'link', text: cs[i].n, onclick: () => { setTable(false); selectCounty(cs[i].f, { fit: true }); } })),
@@ -705,7 +711,7 @@ export function createMapView({ root, meta }) {
       el('button', { type: 'button', class: 'ibtn sheet-close', 'aria-label': 'Close details', onclick: clearAll }, '✕'), ui.panelBody);
     ui.stage = el('div', {
       class: 'map-stage', tabindex: '0', role: 'group', 'aria-roledescription': 'map',
-      'aria-label': 'Map of ' + listAnd(S.states.map((id) => stateOf(id).name)) + ' ' + placesWord(S.states) + ', ' + (S.tx ? 'permits and facilities' : S.word) + '. Arrow keys pan, plus and minus zoom, zero resets the view. Use Table view for a text version.',
+      'aria-label': 'Map of the ' + placesWord(S.states) + ' of ' + statesIn(S.states) + ', ' + (S.tx ? 'permits and facilities' : S.word) + '. Arrow keys pan, plus and minus zoom, zero resets the view. Use Table view for a text version.',
     }, ui.canvas, el('div', { class: 'map-zoom' }, ui.zin, ui.zout, ui.zhome), ui.legend, ui.live);
     ui.tableWrap = el('div', { class: 'table-wrap map-table', hidden: true, tabindex: '0', role: 'region', 'aria-label': cap(placesOr(S.states)) + ' table, the text version of the map' });
     ui.notes = el('div', { class: 'map-notes' });

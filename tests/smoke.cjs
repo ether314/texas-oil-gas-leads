@@ -121,9 +121,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
       check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Overview and starts on All');
       check((await page.locator('#statebar .seg-dot').count()) === 5 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1 && (await page.locator('#statebar .seg-dot.st-fo').count()) === 1, 'each state wears its color in the bar (All the four together)');
-      check(/^Permits through Oct \d+ \(Texas\), Oct \d+ \(Oklahoma\), Aug \d+ \(New Mexico\) and Aug \d+ \(Offshore\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'the hero names each state\'s last day once, with the year once');
+      check(/^Permits and spuds through Oct \d+ \(Texas\), Oct \d+ \(Oklahoma\), Aug \d+ \(New Mexico\) and Aug \d+ \(Offshore\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'the hero names each state\'s last day once, with the year once, and says permits and spuds where the states count both');
       check(/\(Texas\).*\(Oklahoma\).*\(New Mexico\).*\(Offshore\)/.test(await eyebrow()) && (await page.locator('#hot-bars .bars-h').count()) === 4 && (await page.locator('#hot-h').textContent()) === 'Hot counties and areas', 'all states: the hero names each state\'s last day, the lists have a heading per state and the card says counties and areas');
       check(/New Mexico and the federal offshore count wells spudded, not permits \(their regulators publish no approval dates by well\)/.test(await page.locator('#hero-note').textContent()), 'and the note under the map says which states count wells spudded, once');
+      check(/In the federal offshore a well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted\./.test(await page.locator('#hero-note').textContent()), 'and that a sidetrack offshore is not counted as a new well');
       await page.click('#statebar button[data-id="OK"]');
       await waitEyebrow(/Corporation Commission approvals through/);
       check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma', 'choosing Oklahoma puts st=ok in the address');
@@ -238,6 +239,19 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await mapFor('FO', /^Wells spudded, /);
       check((await counties()) === 63 && /st=fo/.test(await page.evaluate(() => location.hash)) && (await page.locator('.map-actions').innerText()).includes('the Gulf drill') && /^Area activity/.test(await page.locator('#map-lede').innerText())
         && (await page.locator('.lchip-body', { hasText: 'Wells spudded' }).count()) === 1 && /top areas/i.test(await panel()), 'the federal offshore alone: 63 areas, the dots and the replay say wells spudded, "Watch the Gulf drill", "Top areas"');
+      // the sentences that explain the map say what the offshore counts: spuds, well dots, areas, and what a sidetrack is
+      check(/^Area activity and spud locations across the federal offshore\. Shading and counts use every spud; dots show the ones with a recorded location\./.test(await page.locator('#map-lede').innerText()), 'the offshore\'s map lede says spud locations and areas, not permit locations');
+      const notes = (await page.locator('.map-note').allInnerTexts()).join(' ').replace(/\s+/g, ' ');
+      check(/Area shading, counts and trends use every spud\./.test(notes) && /A well counts once, on its first borehole; sidetracks and bypasses/.test(notes) && !/County shading/.test(notes), 'and its notes say "Area shading ... every spud" and what a sidetrack is: ' + notes.slice(0, 140));
+      await page.goto(base + '?debug#map?st=fo&metric=chg', { waitUntil: 'load' });
+      await page.waitForFunction(() => /top areas: change/i.test(document.querySelector('.map-panel .panel-body')?.innerText || ''), null, { timeout: 25000 });
+      const chgPanel = await panel();
+      check(/top areas: change vs prior 12 mo \(5\+ spuds\)/i.test(chgPanel) && (await page.locator('.map-panel .mini-row').count()) >= 3 && /an area, a well dot/.test(chgPanel) && !/permit dot|20\+ permits/i.test(chgPanel),
+        'the offshore\'s change list ranks the areas with 5 or more spuds (not the 20 permits no area has), is not empty, and says "a well dot": ' + chgPanel.slice(0, 200));
+      await page.goto(base + '?debug#map?st=fo&county=FO:049', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Sabine Pass/.test(document.querySelector('.map-panel .panel-body')?.textContent || ''), null, { timeout: 25000 });
+      const idle = await panel();
+      check(/No wells were spudded in this area in the last 24 months/.test(idle) && !/published no location/.test(idle), 'an area with no wells says none were spudded, and does not blame the agency for a location: ' + idle.slice(-160));
       await page.goto(base + '?debug#map?st=fo&county=FO:024', { waitUntil: 'load' });
       await page.waitForFunction(() => /Green Canyon area/.test(document.querySelector('.map-panel .panel-body')?.textContent || ''), null, { timeout: 25000 });
       check(/Green Canyon area Protraction area/.test(await panel()) && !/FIPS/.test(await panel()) && /Zoom to area/.test(await panel()) && /not available for the federal offshore/.test(await panel()), 'an offshore area opens by its key (county=FO:024) as "Green Canyon area", with no FIPS code, and names what the offshore has no figure for: ' + (await panel()).slice(0, 120));
@@ -664,18 +678,27 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForTimeout(300);
       const wide = await bar();
       check(wide.shown.join() === 'All,Texas,Oklahoma,New Mexico,Offshore', 'on a wide screen the full names show again: ' + wide.shown.join(' '));
+      // no width clips the bar: the short labels take over below 463 px (the full names need 429 px) and below 340 px the buttons give up some padding
+      const clipped = [];
+      for (const w of [320, 330, 340, 390, 440, 441, 450, 460, 462, 463, 470, 520, 768, 1280]) {
+        await page.setViewportSize({ width: w, height: 800 });
+        await page.waitForTimeout(120);
+        const b = await bar();
+        if (b.room > 1) clipped.push(w + ' px (' + b.room + ' px)');
+      }
+      check(!clipped.length, 'the states bar is never clipped, at any width from 320 to 1280 px' + (clipped.length ? ': ' + clipped.join(', ') : ''));
       // the Daily report: no report for the offshore, and it says why (its file is weekly)
       await page.goto(base + '#daily?st=fo', { waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
       await page.waitForTimeout(300);
       const note = await page.locator('#statebar-note').innerText();
-      check(/^Federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico instead\./.test(note), 'the Daily report for the offshore alone says it has none and why, and shows the three that have one: ' + note);
+      check(/^The federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico instead\./.test(note), 'the Daily report for the offshore alone says it has none and why, and shows the three that have one: ' + note);
       await page.goto(base + '#daily', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
       await page.click('#statebar button[data-id="all"]');
       await page.waitForTimeout(400);
-      check(/^Federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico\.$/.test(await page.locator('#statebar-note').innerText()), 'with all four chosen the Daily report shows the three and names the one with none');
+      check(/^The federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico\.$/.test(await page.locator('#statebar-note').innerText()), 'with all four chosen the Daily report shows the three and names the one with none');
       // Companies are the Texas Comptroller's: with the offshore alone the page says so in a sentence
       await page.goto(base + '#companies?st=fo', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
@@ -689,6 +712,51 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const rows = await page.locator('#ops-root tbody tr').count();
       check(rows === 16 && heads.includes('Top area') && !heads.includes('State') && !heads.includes('Top county') && !heads.includes('Location') && !heads.includes('Avg depth (ft)'), 'Operators with the offshore alone: 16 rows, "Top area", no State, Location or depth column: ' + rows + ' rows, ' + heads.join(' | '));
       check(/wells spudded/.test(await page.locator('#ops-what').innerText()) && /Aug \d+, \d{4}/.test(await page.locator('#ops-through').innerText()), 'and its lede says what is ranked and where the offshore\'s own data ends');
+      check(/ A well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted\.$/.test(await page.locator('#ops-what').innerText()), 'and what a sidetrack is (an operator that sidetracks old wells ranks with none)');
+      // what a band and the last-date column mean is said in the row's own measure: spuds, never permits
+      const chipTitles = await page.locator('#ops-root tbody .chip').evaluateAll((els) => els.map((e) => e.title));
+      check(chipTitles.length >= 16 && chipTitles.every((t) => /wells spudded/.test(t) && !/permit/i.test(t)) && chipTitles.some((t) => /^No wells spudded in the last 12 months, but some in the 12 before$/.test(t)) && heads.includes('Last spud') && !heads.includes('Last permit'),
+        'the offshore\'s bands are described in wells spudded (band C had some in the 12 before) and the date column is "Last spud": ' + [...new Set(chipTitles)].join(' | ') + ' · ' + heads.filter((h) => /^Last/.test(h)).join());
+      // the bands of a mixed list say permits for Texas rows and spuds for the offshore's
+      await page.goto(base + '#operators?st=tx,fo&band=all', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#ops-root table tbody tr', { timeout: 25000 });
+      const mixedHeads = (await page.locator('#ops-root thead th:visible').allInnerTexts()).map((t) => t.trim());
+      const mixedTitles = new Set(await page.locator('#ops-root tbody .chip').evaluateAll((els) => els.map((e) => e.title)));
+      check(mixedHeads.includes('Last permit or spud') && mixedTitles.has('10 or more new-well permits in the last 12 months') && mixedTitles.has('10 or more wells spudded in the last 12 months'), 'a list of Texas and the offshore describes each row\'s band in its own measure and calls the date "Last permit or spud": ' + mixedHeads.filter((h) => /^Last/.test(h)).join());
+      // the Production note keeps a space between two states' sentences (they ran together when Texas was not shown) and names the offshore as a sentence does
+      await page.goto(base + '#overview?st=nm,fo', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#pg-production', { timeout: 25000 });
+      await page.click('#pg-production');
+      const foot = (await page.locator('#pulse-root .pulse-foot').allInnerTexts()).join(' ');
+      check(/here\. The federal offshore’s line is the EIA’s monthly estimate/.test(foot) && !/here\.[A-Z]/.test(foot) && /The federal offshore has no area or operator production file here/.test(foot), 'the Production note keeps a space between two states\' sentences and names the offshore as a sentence does: ' + foot.slice(-260));
+      check(/^Wells spudded through Aug \d+ \(New Mexico\) and Aug \d+ \(Offshore\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'two states that both count spuds say "Wells spudded through ...", not "Permits": ' + (await page.locator('#hero-eyebrow').textContent()));
+      // a state named inside a sentence is "the federal offshore"; a state with no well inventory at all is "not counted", not "none yet"
+      await page.goto(base + '#overview?st=ok,fo', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#kpis .kpi-chip', { timeout: 25000 });
+      await page.waitForTimeout(900);
+      const foChips = await page.evaluate(() => [...document.querySelectorAll('#kpis .kpi-chip-note')].map((n) => n.textContent).join(' || '));
+      check(/not counted for the federal offshore/.test(foChips) && !/none yet for/.test(foChips) && /first spud in the federal offshore/.test(foChips) && !/[a-z,] Federal offshore/.test(foChips), 'the chips name the offshore as a sentence does, and say its inventory is not counted: ' + foChips.slice(0, 260));
+      await page.goto(base + '#overview?st=fo', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
+      const foIns = await page.evaluate(() => [...document.querySelectorAll('#ins-list li.insight')].map((n) => n.textContent).join(' || '));
+      check(/The federal offshore produced [\d,]+ thousand barrels of crude oil in/.test(foIns) && !/[a-z,] Federal offshore/.test(foIns), 'an insight that starts with the offshore capitalizes it, and none names it "Federal offshore" mid-sentence: ' + foIns.slice(0, 200));
+      check(/^A well counts once|The federal offshore counts wells spudded, not permits \(its regulator publishes no approval dates by well\), and ends two months back because spud dates arrive late\. A well counts once, on its first borehole;/.test(await page.locator('#hero-note').textContent()), 'with the offshore alone the note under the map says what a sidetrack is without repeating its name');
+      await page.goto(base + '#overview?st=tx,fo', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#statebar-note', { timeout: 25000 });
+      await page.waitForTimeout(300);
+      check(/^Showing Texas and the federal offshore\./.test(await page.locator('#statebar-note').innerText()), 'the bar\'s note says "Showing Texas and the federal offshore"');
+      // the Sources page's offshore figures are filled from its files (the date the data ends, the year's wells, the operators, the EIA's month), none left empty
+      await page.goto(base + '#about', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-fill^="fo"]')].length === 6 && [...document.querySelectorAll('[data-fill^="fo"]')].every((n) => n.textContent.trim()), null, { timeout: 25000 });
+      const fills = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-fill^="fo"]')].map((n) => [n.dataset.fill, n.textContent.trim()])));
+      check(/^[A-Z][a-z]{2} \d{4}$/.test(fills.foSince) && /^[A-Z][a-z]{2} \d+, \d{4}$/.test(fills.foThrough) && /^\d+$/.test(fills.foYear) && /^\d+$/.test(fills.foOps) && /^[A-Z][a-z]{2} \d{4}$/.test(fills.foEiaThrough) && /^about \d+ million barrels in [A-Z][a-z]{2} \d{4}$/.test(fills.foEiaNow),
+        'the Sources page fills the offshore\'s date, wells, operators and EIA month from its files: ' + JSON.stringify(fills));
     } catch (e) {
       check(false, 'the federal offshore: ' + e.message.split('\n')[0].slice(0, 200));
     }

@@ -11,7 +11,9 @@
 // files count wells spudded (NOTES_D9.md, NOTES_D10.md). Figures are only added across states that count the same thing.
 // Optional fields: `short` (the label in the states bar), `in` (how a sentence says "in" the state), `place` (what its counties are called: the
 // federal offshore is divided into protraction areas), `drill` (the name of its time-lapse: "Watch the Gulf drill"), `noDaily` (why there is no
-// Daily report: a state with a `dir` has one), `cadence` (how often its source publishes, when the series file does not say: the Overview's freshness list).
+// Daily report: a state with a `dir` has one), `cadence` (how often its source publishes, when the series file does not say: the Overview's freshness list),
+// `caveat` (what its count leaves out, said wherever the counts are explained), `chgMin` (the least a place must have in the last 12 months to be
+// ranked on its change from the 12 before; the map's "at a glance" list; 20 where a state does not say).
 const PERMITS = { id: 'permits', noun: 'new-drill permits', short: 'permits', one: 'permit', verb: 'Approved' };
 const SPUDS = { id: 'spuds', noun: 'wells spudded', short: 'spuds', one: 'spud', verb: 'Spuds counted' };
 const COUNTY = { one: 'county', many: 'counties', suffix: ' County' };
@@ -30,6 +32,10 @@ export const STATES = [
     // the Gulf of America's federal waters (BSEE). Its "counties" are the 63 protraction areas; its file is weekly, so it has no Daily report
     id: 'FO', name: 'Federal offshore', short: 'Offshore', in: 'the federal offshore', fips: null, agency: 'Bureau of Safety and Environmental Enforcement', measure: SPUDS, place: AREA, drill: 'the Gulf drill',
     noDaily: 'BSEE’s file is weekly', cadence: 'weekly',
+    // a sidetrack or bypass is drilling, but not a new well (NOTES_D10.md): the well that was sidetracked ten times shows no new well, so a page that ranks operators says so
+    caveat: 'a well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted',
+    chgMin: 5, // about 45 wells a year in 63 areas: the busiest area has 14, so the 20 that ranks a land county would rank none
+
     files: { geo: 'counties-fo.geo', series: 'series-permits-fo', county: 'county-permits-fo', operators: 'operators-fo', points: 'permits-fo', crude: 'series-fo' },
   },
 ];
@@ -51,6 +57,25 @@ export const stateOf = (id) => STATES.find((s) => s.id === id);
 // the label in the states bar, and how a sentence says "in" the state: "in New Mexico", "in the federal offshore"
 export const shortName = (id) => stateOf(id).short || stateOf(id).name;
 export const inName = (id) => stateOf(id).in || stateOf(id).name;
+// the first letter capitalized: a name that starts a sentence ("the federal offshore" → "The federal offshore")
+export const ucFirst = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+// one count, and one dot, named for the states shown: "permit" / "spud" / "permit and spud" (a count) and "permit dot" / "well dot" / "permit or well dot"
+// "1 spud", "2 spuds", "1 permit": the unit after a count of one state's own measure
+export const countWord = (id, n) => (n === 1 ? measureOf(id).one : measureOf(id).short);
+export const measureAnd = (ids) => (sameMeasure(ids) ? measureOf(ids[0]).one : 'permit and spud');
+export const everyOf = (ids) => (sameMeasure(ids) ? 'every ' + measureOf(ids[0]).one : 'every permit and every spud');
+export const dotName = (ids) => (sameMeasure(ids) ? (measureOf(ids[0]).id === 'spuds' ? 'well' : 'permit') : 'permit or well') + ' dot';
+// what the states shown say their count leaves out: "In the federal offshore a well counts once, ..." (with the offshore alone: "A well counts once, ..."); '' when none of them has anything to say
+export const spudCaveat = (ids) => ids.filter((id) => stateOf(id).caveat).map((id) => (ids.length === 1 ? ucFirst(stateOf(id).caveat) : 'In ' + inName(id) + ' ' + stateOf(id).caveat) + '.').join(' ');
+// the least a place must have had in the last 12 months to be ranked on its change from the 12 before, and how a heading says it:
+// "20+ permits", "5+ spuds", or "20+ permits or spuds (5+ in the federal offshore)" where the states differ
+export const CHG_MIN = 20;
+export const chgMinOf = (id) => stateOf(id).chgMin || CHG_MIN;
+export function chgMinPhrase(ids) {
+  const mins = [...new Set(ids.map(chgMinOf))].sort((a, b) => b - a);
+  const lower = mins.slice(1).map((n) => n + '+ in ' + listAnd(ids.filter((id) => chgMinOf(id) === n).map(inName)));
+  return mins[0] + '+ ' + (sameMeasure(ids) ? measureOf(ids[0]).short : 'permits or spuds') + (lower.length ? ' (' + lower.join(', ') + ')' : '');
+}
 // what a state's counties are called: "Midland County" and "counties", but "Green Canyon area" and "areas" offshore. For several states: "counties and areas"
 export const placeOf = (id) => stateOf(id).place || COUNTY;
 export const placeTitle = (id, name) => name + placeOf(id).suffix;

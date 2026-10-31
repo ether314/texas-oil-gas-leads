@@ -94,7 +94,16 @@ Gulf box, small), and, with `FO_REAL_FILES` set to a folder of the three BSEE zi
 Its other fields are what makes the shared pages read right: `place` (a protraction area where the others have a county: "Green Canyon area", "Top areas", no FIPS code in the
 panel), `in` ("in the federal offshore" inside a sentence), `drill` ("Watch the Gulf drill") and `cadence` (the freshness list says "Publishes weekly"). Its color is a rose (`--st-fo`: #c93b8f light,
 #e05aa6 dark) chosen for distance from the other three in normal vision and the common color blindnesses (it is used for dots, bars and lines, never as the color of words). The bar shows
-TX, OK, NM and Offshore on a phone below 440 px so all five fit; each button keeps its full name for a screen reader. The graticule extends east for the Gulf's shapes (`geo.js`).
+TX, OK, NM and Offshore on a page narrower than 463 px so all five fit (the full names need 429 px, the short ones 301; below 340 px the buttons also give up 3 px of padding on a side: swept from 300 to 520 px,
+nothing clipped); each button keeps its full name for a screen reader. The graticule extends east for the Gulf's shapes (`geo.js`).
+
+Two more fields keep the pages honest about what the offshore counts. `caveat` is what its count leaves out ("a well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but
+are not counted"), and `spudCaveat(ids)` says it, naming the state unless it is the only one shown, on the Overview's note under the map, the Map's notes, the Operators lede, the Activity chart's note and the Sources
+page: an operator that sidetracks old wells (Cantium, ten times in a year) shows band C and no new well, which would otherwise read as idle. `chgMin` is the least an area needs in the last 12 months to be ranked on its change
+from the 12 before (5, where a land county needs 20): the busiest area has 14 spuds, so the map's "Top areas: change" list would be empty at 20. The rest of the wording follows what each state counts, through
+`measureAnd`, `everyOf`, `dotName`, `countWord` and `ucFirst` in `states.js` (a spud dot is a "well dot", a count of one is "1 spud", a state inside a sentence is "the federal offshore", and a sentence that starts with it
+capitalizes it); an area with no wells says none were spudded there, and never that the Bureau published no location. The Sources page's figures for the offshore (the date the data ends, the last 12 months' wells, the
+number of operators, the EIA's latest month) are filled from its files (`fillOffshore` in `main.js`), so the weekly refresh moves them with the data.
 
 ## Crude oil, and the weekly refresh
 
