@@ -1,6 +1,7 @@
 # Runs the repository's tests on every pull request and on every push to main: the Python tests (pipeline rules, workflow steps,
-# data validators, privacy checks), the JavaScript data tests (which states are shown, what the Overview merges from them) and the browser smoke
-# test (every JS module imports, every view loads clean, no sideways scroll on a phone, the states bar). Nothing here touches the Railroad Commission or the OCC: the tests use synthetic data and the committed files.
+# data validators, privacy checks), the JavaScript data tests (which states are shown, what the Overview merges from them), the browser smoke
+# test (every JS module imports, every view loads clean, no sideways scroll on a phone, the states bar) and the accessibility test (text contrast
+# in both themes, keyboard focus). Nothing here touches the Railroad Commission or the OCC: the tests use synthetic data and the committed files.
 name: CI
 
 on:
@@ -57,3 +58,6 @@ jobs:
 
       - name: Browser smoke test
         run: node tests/smoke.cjs
+
+      - name: Accessibility test (contrast and keyboard)
+        run: node tests/a11y.cjs

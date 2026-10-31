@@ -47,6 +47,8 @@ on = wf["_on"]
 run = on["workflow_run"]
 check(run["workflows"] == [ci["name"]] and run["types"] == ["completed"] and run["branches"] == ["main"], "it follows the workflow named %r finishing on main" % ci["name"])
 check("push" in ci["_on"] and ci["_on"]["push"]["branches"] == ["main"], "and CI does run on every push to main, so there is always a CI run to follow")
+ci_runs = " ".join(st.get("run", "") for j in ci["jobs"].values() for st in j["steps"])
+check(all(c in ci_runs for c in ("tests/run_all.py", "tests/test_js_data.mjs", "tests/smoke.cjs", "tests/a11y.cjs")), "and CI runs every test the docs list: the Python tests, the JavaScript data tests, the smoke test and the accessibility test")
 check(set(on) == {"workflow_run", "workflow_dispatch"}, "the only triggers are that and a manual run (no schedule, no push of its own): %s" % sorted(on))
 check(wf["concurrency"]["group"] == "publish-site" and wf["concurrency"]["cancel-in-progress"] is False and nightly["concurrency"]["group"] != "publish-site",
       "publishes queue behind each other, apart from the nightly capture's group (a publish never cancels a capture)")

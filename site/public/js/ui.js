@@ -112,8 +112,17 @@ export function navIndicator(nav) {
     nav.style.setProperty('--nx', a.offsetLeft + 'px'); nav.style.setProperty('--nw', a.offsetWidth + 'px');
     ind.classList.add('on');
     if (nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, a.offsetLeft - 40);
+    edges();
     requestAnimationFrame(() => ind.classList.remove('snap'));
   };
+  // where the tabs scroll sideways (a phone), a fade at an edge with more behind it says so
+  function edges() {
+    const room = nav.scrollWidth - nav.clientWidth;
+    const more = room > 2 && nav.scrollLeft < room - 2;
+    const before = room > 2 && nav.scrollLeft > 2;
+    nav.dataset.more = more ? (before ? 'both' : 'end') : (before ? 'start' : 'none');
+  }
+  nav.addEventListener('scroll', edges, { passive: true });
   if ('ResizeObserver' in window) new ResizeObserver(place).observe(nav);
   return place;
 }

@@ -271,10 +271,39 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /Texas, Oklahoma and New Mexico report/i.test(document.querySelector('#daily-root .dr-hero .eyebrow').textContent), null, { timeout: 25000 });
       check((await page.locator('#daily-root .dr-dot.nm').count()) > 0 && (await page.locator('#daily-root .dr-mapwrap path.dr-county').count()) === 364 && /New Mexico: 2 of 2/.test(await page.locator('.dr-pills').innerText()), 'all three together: one map of 364 counties, New Mexico\'s files read named in the pills, its color in the legends');
       check(/New Mexico is still filling in/.test(await page.locator('#daily-root .dr-kpis .dr-kpi').first().innerText()), 'and the combined comparison says New Mexico\'s newest days are still filling in');
+      // and the Companies table's Segment cell is a table cell (its class once collided with the segmented control's, which made each one a pill)
+      await page.goto(base + '#companies?st=tx', { waitUntil: 'load' });
+      await page.waitForSelector('#co-root td.segcell', { timeout: 25000 });
+      check(await page.evaluate(() => getComputedStyle(document.querySelector('#co-root td.segcell')).display === 'table-cell'), 'the Companies table\'s Segment column is plain table cells, not the segmented control\'s pills');
+      await page.goto(base + '#daily?st=nm&v=full', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
+      check(!/Completion data/.test(await page.locator('#daily-root').innerText()), 'New Mexico alone has no completions card (the Division publishes none)');
     } catch (e) {
       check(false, 'the New Mexico Daily report: ' + e.message.split('\n')[0].slice(0, 200));
     }
     check(!errs.length, 'the New Mexico Daily report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 6. the tabs scroll sideways on a phone: a fade at an edge with more behind it (data-more), none where they all fit
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const more = () => page.evaluate(() => document.querySelector('.nav').dataset.more);
+    try {
+      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.waitForSelector('.nav a[aria-current="page"]', { timeout: 25000 });
+      await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'end', null, { timeout: 10000 });
+      check((await more()) === 'end', 'on a phone the tabs fade at the right edge while Sources is out of sight');
+      await page.goto(base + '#about', { waitUntil: 'load' });
+      await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'start', null, { timeout: 10000 });
+      check((await more()) === 'start', 'and at the left edge once the current tab has been brought into view');
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'none', null, { timeout: 10000 });
+      check((await more()) === 'none', 'and not at all where the tabs all fit');
+    } catch (e) {
+      check(false, 'the tabs on a phone: ' + e.message.split('\n')[0].slice(0, 200));
+    }
     await ctx.close();
   }
 

@@ -6,6 +6,7 @@ Everything here runs without network access, on synthetic data and the committed
 python3 -I tests/run_all.py            # every Python test, one process each (add a name fragment to run some: ... run_all.py d8)
 node tests/test_js_data.mjs            # the pure JavaScript data code: which states are shown, what the Overview merges, the permit points merge
 node tests/smoke.cjs                   # browser smoke test: every JS module imports, every view loads clean, no sideways scroll on a phone, the states bar
+node tests/a11y.cjs                    # browser accessibility test: text contrast in both themes at both widths, keyboard focus, page language and titles
 ```
 
 - `test_d7_*.py`: the Texas Daily report producer (`d7_daily.py`, `d7_packs.py`, `rrc_share.py`): the one rule (a report shows what landed
@@ -36,6 +37,10 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   The Map is driven the same way: each state alone and all together (counties, legend, dot colors, the table twin, a hover and a click on a dot, the replay),
   and a county or an operator opened by its state-prefixed key. The Daily report is driven for New Mexico alone (three cards, its color, its 33 counties, no tile for what
   it does not publish) and with all three states (one map of 364 counties); the states-bar block stubs New Mexico's index away so a state with no report is still exercised.
+- `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to
+  WCAG 4.5:1 (3:1 for large text), against what is behind it (a gradient counts at its worst stop; disabled controls are exempt). Keyboard: Tab through six views;
+  every stop has a name and shows a focus ring and none sticks; one `main`, one visible `h1`, a language and a title per view. A state's own color (orange, purple, green) is
+  under 4.5:1 on the page, so it is used for dots, bars and lines and never for words. Changing a color token means running this.
 
 Optional: `OK_REAL_FILES=<folder holding the OCC daily .xlsx files and rbdms-wells.csv>` adds two checks against the real files (the two
 workbook readers agree; no operator the naming rule refuses appears in the archive); with the master `ITD-wells-formations-base.xlsx` and
