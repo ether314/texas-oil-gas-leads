@@ -30,15 +30,21 @@ export function transfersSection(rep) {
       el('div', {}, el('h3', { text: 'Kinds of well' }), stack(t.types.map(([k, n]) => ({ label: k, value: n }))))));
 }
 
+// the inventory section's words for each state that has one: where the counts come from and what is said when a rebuilt day has none
+const WELLS_TEXT = {
+  OK: { name: 'Oklahoma', unread: 'The well inventory could not be read for this report.', rebuilt: 'The Commission publishes only the current well inventory, so a report rebuilt for an earlier day has none. Days captured live do.',
+    source: 'The Commission\'s nightly well file' },
+  NM: { name: 'New Mexico', unread: 'The well inventory could not be read for this report.', rebuilt: 'The Division\'s well layer holds only the current inventory, so a report rebuilt for an earlier day has none. Days captured live do.',
+    source: 'The Division\'s well layer' },
+};
+
 export function wellsSection(rep) {
-  const w = rep.wells;
+  const w = rep.wells; const T = WELLS_TEXT[rep.state] || WELLS_TEXT.OK;
   if (!w) {
-    return card('dr-sec', head('rig', 'Inventory · Oklahoma', 'Wells in the state'), el('p', { class: 'empty', text: rep.kind === 'live'
-      ? 'The well inventory could not be read for this report.'
-      : 'The Commission publishes only the current well inventory, so a report rebuilt for an earlier day has none. Days captured live do.' }));
+    return card('dr-sec', head('rig', 'Inventory · ' + T.name, 'Wells in the state'), el('p', { class: 'empty', text: rep.kind === 'live' ? T.unread : T.rebuilt }));
   }
   const ch = w.change; const since = (k) => (ch ? signed(ch[k]) + ' since ' + fmtMd(ch.since) : '');
-  return card('dr-sec', head('rig', 'Inventory · Oklahoma', 'Every well in the state', 'The Commission\'s nightly well file, as of ' + fmtDow(w.asOf) + '. The wells are counted, never listed: no name, number or location of any well is kept here.'),
+  return card('dr-sec', head('rig', 'Inventory · ' + T.name, 'Every well in the state', T.source + ', as of ' + fmtDow(w.asOf) + '. The wells are counted, never listed: no name, number or location of any well is kept here.'),
     tiles([{ label: 'Active wells', value: num(w.active), note: since('active') || pctOf(w.active, w.total) + ' of the records' }, { label: 'Plugged', value: num(w.plugged), note: since('plugged') || pctOf(w.plugged, w.total) + ' of the records' },
       { label: 'Records in all', value: num(w.total), note: ch ? signed(ch.total) + ' since ' + fmtMd(ch.since) : 'every status' }, { label: 'Counties with active wells', value: num(w.countyCount), note: w.counties[0] ? w.counties[0][1] + ' led' : '' },
       { label: 'Operators on record', value: num(w.operatorCount), note: 'with an active well' }]),
