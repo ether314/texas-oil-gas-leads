@@ -257,7 +257,7 @@ function operatorsConfig(ctx) {
         key: 'trend', label: 'Trend', hint: 'Permits in the last 12 full calendar months against the 12 before (New Mexico: wells spudded). "new" means none in the prior 12.',
         cls: 'trend', render: trendCell, desc: true, sort: (r) => (r.x && r.h.f != null ? (r.h.f === Infinity ? 1e9 : r.h.f) : null),
       },
-      { key: 'm24', label: '24 months', hint: 'Monthly new-drill permits, last 24 full months', render: (r) => (r.x ? spark(r.x.m24, { w: 84, h: 24, label: 'Monthly new-drill permits, last 24 months' }) : null) },
+      { key: 'm24', label: '24 months', hint: 'Monthly new-drill permits, last 24 full months', render: (r) => (r.x ? spark(r.x.m24, { w: 84, h: 24, label: 'Monthly ' + (r.st && measureOf(r.st).id === 'spuds' ? 'wells spudded' : 'new-drill permits') + ', last 24 months', color: r.st && r.st !== 'TX' ? 'var(--st-' + r.st.toLowerCase() + ')' : undefined }) : null) },
       {
         key: 'oil12', label: 'Oil (12 mo)', hint: 'Crude oil plus condensate in barrels reported to the RRC over the latest 12 complete months. Blank: no production figure for this operator.',
         align: 'right', desc: true, render: (r) => (r.p ? fmt.format(r.p.o12) : null), sort: (r) => (r.p ? r.p.o12 : null), filled: (r) => r.p,

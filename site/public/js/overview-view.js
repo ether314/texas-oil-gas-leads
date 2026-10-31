@@ -8,7 +8,7 @@ import { renderKpis, renderHot, renderTopOps, renderProducers, renderFreshness }
 import { loadMarketData, initMarkets } from './pulse.js';
 import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
-import { STATES, otherStates, stateOf, statesKey, measureOf, sameMeasure } from './states.js';
+import { STATES, otherStates, stateOf, statesKey, measureOf, sameMeasure, listAnd } from './states.js';
 import { permitSeries, countyPermits, operatorRows, activeWells } from './overview-data.js';
 
 const LEDE = {
@@ -31,10 +31,16 @@ export function createOverview(meta) {
   const through = (id) => (id === 'TX' ? meta.sources.latest_permit : ov.docs.series[id] ? ov.docs.series[id].through : meta.sources.latest_permit);
 
   /* ---------- text that depends on the states ---------- */
+  // each state's own last day: "Oct 7 (Texas), Oct 30 (Oklahoma) and Aug 31 (New Mexico), 2026", the year once when it is the same for all
+  const datesPhrase = (ids, tag = (id) => '(' + stateOf(id).name + ')') => {
+    const years = new Set(ids.map((id) => through(id).slice(0, 4)));
+    const day = (id) => (years.size > 1 ? fmtDate(through(id)) : fmtDate(through(id)).replace(/, \d{4}$/, ''));
+    return listAnd(ids.map((id) => day(id) + ' ' + tag(id))) + (years.size > 1 ? '' : ', ' + [...years][0]);
+  };
   function texts() {
     const many = states.length > 1;
     $('#hero-eyebrow').textContent = many
-      ? 'Permits through ' + states.map((id) => fmtDate(through(id)) + ' (' + stateOf(id).name + ')').join(' and ')
+      ? 'Permits through ' + datesPhrase(states)
       : SOURCE[states[0]] + ' through ' + fmtDate(through(states[0]));
     $('#hero-lede').textContent = (many ? LEDE.MANY : LEDE[states[0]]) + ' Public records only, built ' + fmtDate(meta.built) + '.';
     $('#view-overview').dataset.states = statesKey(states);
@@ -55,9 +61,11 @@ export function createOverview(meta) {
       if (hero) hero.update(G, P); else hero = createHero(canvas, host, G, P);
       const cov = (id) => (pm.coverageBy ? pm.coverageBy[id] : pm.coverage);
       const share = (id) => { const c = cov(id); return pct(c.share24) + ' of the last 24 months, ' + pct(c.share12) + ' of the last 12'; };
-      note.textContent = 'Dots are ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded surface location: ' + (states.length > 1 ? states.map((id) => stateOf(id).name + ' ' + share(id)).join('; ') : share(states[0]))
-        + '. Brighter dots are the last 12 months. Counts and trends use every one.'
-        + (states.some((id) => measureOf(id).id === 'spuds') ? ' New Mexico counts wells spudded, not permits (its regulator publishes no approval dates), and ends two months back because spud dates arrive late.' : '');
+      const nm = states.some((id) => measureOf(id).id === 'spuds') ? ' New Mexico counts wells spudded, not permits (its regulator publishes no approval dates), and ends two months back because spud dates arrive late.' : '';
+      note.textContent = states.length > 1
+        ? 'Dots show the ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded location (share of the last 12 months: ' + states.map((id) => stateOf(id).name + ' ' + pct(cov(id).share12)).join(', ')
+          + '). Brighter dots are the last 12 months; counts and trends use every one.' + nm
+        : 'Dots are ' + measureOf(states[0]).noun + ' with a recorded surface location: ' + share(states[0]) + '. Brighter dots are the last 12 months. Counts and trends use every one.' + nm;
       host.classList.add('has-map');
     } catch (err) { note.textContent = 'The map backdrop could not be loaded.'; }
   }
@@ -108,7 +116,7 @@ export function createOverview(meta) {
     ov.markets = initMarkets({ ticker, card: $('#pulse-card'), raw: ov.raw, states });
     ticker.setAttribute('aria-busy', 'false');
     const from = cp ? dayLabel(Date.parse(cp.asOf + 'T00:00:00Z') - 365 * 864e5) : '';
-    const win = !cp ? '' : states.length > 1 ? 'the last 12 months (to ' + states.map((id) => fmtDate(through(id)) + ' in ' + stateOf(id).name).join(', ') + ')'
+    const win = !cp ? '' : states.length > 1 ? 'the last 12 months (to ' + datesPhrase(states, (id) => 'in ' + stateOf(id).name) + ')'
       : from + ' to ' + fmtDate(through(states[0]));
     renderHot(cp, G, win, states);
     renderTopOps(rows, states);
