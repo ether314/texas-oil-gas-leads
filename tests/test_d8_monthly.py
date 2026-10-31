@@ -102,6 +102,23 @@ def run_checks(M, quiet=False):
     check(M.build(M.collect(rows() + [future], today=date(2027, 1, 1)), COUNTIES)[1]["asof"] == date(2026, 12, 1) and "dated in the future" not in M.collect(rows() + [future], today=date(2027, 1, 1))["stats"],
           "the same row is a permit once its day has come (the rule is about today, not about the row)")
 
+    # ---- a stray office city or state costs the operator its city, never the refresh: the builder blanks what the validator would refuse
+    odd = rows()
+    for r_ in odd:
+        if r_["API_Number"] == api("017", 60):  # ACME's newest permit, the one its office is read from
+            r_["City"], r_["State"] = "N/A (918) 555-0100", "OKLAHOMA"
+    d2, _ = M.build(M.collect(odd, today=date(2026, 10, 31)), COUNTIES)
+    acme = [dict(zip(d2["operators-ok.json"]["cols"], x)) for x in d2["operators-ok.json"]["rows"] if x[2] == "ACME OIL LLC"][0]
+    odd_out = os.path.join(TMP, "odd")
+    shutil.rmtree(odd_out, ignore_errors=True)
+    os.makedirs(odd_out)
+    for name_, doc_ in d2.items():
+        M.write_json(os.path.join(odd_out, name_), doc_)
+    check(acme["city"] == "" and acme["state"] == "" and M.validate(odd_out, COUNTIES) == [],
+          "an office city that is not a place name and a state that is not two letters are published blank, and the files still validate: %r %r" % (acme["city"], acme["state"]))
+    check(M.office_place("Oklahoma  City", "ok") == ("OKLAHOMA CITY", "OK") and M.office_place("ST. LOUIS", "MO") == ("ST. LOUIS", "MO") and M.office_place("O'FALLON", "IL") == ("O'FALLON", "IL")
+          and M.office_place("123 MAIN ST", "OK") == ("", "OK") and M.office_place("918-555-0100", "") == ("", "") and M.office_place(None, None) == ("", ""), "office_place: names are kept (upper case), streets, numbers and blanks are not")
+
     # ---- the series: complete months only, one count per API number and approval day
     got = dict(zip(series["months"], series["permits"]))
     want = {"2025-02": 1, "2025-03": 2, "2025-10": 1, "2026-01": 12, "2026-02": 3, "2026-03": 3}
@@ -192,7 +209,7 @@ def run_checks(M, quiet=False):
 
 def mutants():
     fails = []
-    real = {"nameable": M.D.nameable, "central_day": M.D.central_day, "window_of": M.window_of, "collect": M.collect, "validate": M.validate}
+    real = {"nameable": M.D.nameable, "central_day": M.D.central_day, "window_of": M.window_of, "collect": M.collect, "validate": M.validate, "office_place": M.office_place}
 
     def run(name, patch):
         patch()
@@ -201,7 +218,7 @@ def mutants():
         except Exception as e:  # noqa: BLE001 - a mutant may break the build outright: that is noticed too
             got = ["raised %r" % e]
         finally:
-            M.D.nameable, M.D.central_day, M.window_of, M.collect, M.validate = real["nameable"], real["central_day"], real["window_of"], real["collect"], real["validate"]
+            M.D.nameable, M.D.central_day, M.window_of, M.collect, M.validate, M.office_place = real["nameable"], real["central_day"], real["window_of"], real["collect"], real["validate"], real["office_place"]
         ok = bool(got)
         print(("ok   " if ok else "FAIL ") + "mutant caught: %s (%d checks failed)" % (name, len(got)))
         if not ok:
@@ -236,6 +253,7 @@ def mutants():
             return real["collect"](kept, today)
         M.collect = collect
     run("a well approved twice is counted once", once_per_api)
+    run("a stray office city is published as it is", lambda: setattr(M, "office_place", lambda city, state: (M.clean(city).upper(), M.clean(state).upper())))
     run("an approval dated in the future is a permit", lambda: setattr(M, "collect", lambda rows_, today=None: real["collect"](rows_, date(2100, 1, 1))))
 
     def lax_validate(out, county_names=None, spec=None):  # the validator before: no phone numbers, no shape for a city or a state

@@ -61,6 +61,17 @@ OK_SPEC = {
     "src": lambda asof, modified: ("Oklahoma Corporation Commission, intents to drill (%s and the daily file%s): application type DR, one count per API number "
                                    "and approval day (Central), by approval month; approvals through %s" % (MASTER, ", made " + modified[:10] if modified else "", asof.isoformat())),
 }
+CITY_OK = re.compile(r"[A-Z][A-Z .'&-]{1,29}")  # an office city is a place name: no digits, no slash, no phone number or street (the validator holds every file to this)
+STATE_OK = re.compile(r"[A-Z]{2}")
+
+
+def office_place(city, state):
+    """(city, state) as the operator table publishes them: upper case, and blank when the file's value is not a place name or a two-letter
+    state. A stray value (N/A, a street, a phone number) costs the operator its city, never the whole refresh."""
+    city, state = clean(city).upper(), clean(state).upper()
+    return (city if CITY_OK.fullmatch(city) else "", state if STATE_OK.fullmatch(state) else "")
+
+
 OP_COLS = ["band", "num", "name", "type", "city", "state", "new12", "prev12", "all12", "all24", "last", "depth", "county", "counties", "newDrill", "m24"]
 PT_COLS = ["lat", "lon", "op", "t", "depth", "fips"]
 ASOF_KEYS = ("series-permits-ok.json", "county-permits-ok.json", "operators-ok.json", "permits-ok.json")
@@ -237,7 +248,7 @@ def build(coll, county_names, asof=None, modified=None, spec=None):
         latest = max(allp, key=lambda r: (r["day"], r["name"]))
         top_c = max(cty.items(), key=lambda kv: (kv[1], -int(kv[0])))[0] if cty else ""
         fd = first_dr.get(op)
-        rows.append(["A" if n12 >= 10 else "B" if n12 >= 1 else "C", op, name, org_type(name), clean(latest["city"]).upper(), clean(latest["state"]).upper(),
+        rows.append(["A" if n12 >= 10 else "B" if n12 >= 1 else "C", op, name, org_type(name), *office_place(latest["city"], latest["state"]),
                      n12, pv, a12, len(allp), max(r["day"] for r in allp).isoformat(), int(sum(ds) / len(ds) + 0.5) if ds else 0, top_c, len(cty),
                      1 if fd is not None and fd.toordinal() >= w["cut24"] else 0, m24])
     rows.sort(key=lambda x: (-x[6], -x[9], x[1]))
@@ -389,7 +400,7 @@ def validate(out, county_names=None, spec=None):
             ok = ok and isinstance(r["m24"], list) and len(r["m24"]) == 24 and sum(r["m24"]) <= r["new12"] + r["prev12"]
             ok = ok and re.fullmatch(r"\d{4}-\d\d-\d\d", r["last"] or "") and (r["county"] == "" or r["county"] in valid)
             # the office city and state come straight from the file: a city is a place name and a state two letters, never an address, a phone number or a person
-            ok = ok and re.fullmatch(r"([A-Z][A-Z .'&-]{1,29})?", r["city"] or "") and re.fullmatch(r"([A-Z]{2})?", r["state"] or "")
+            ok = ok and (not r["city"] or CITY_OK.fullmatch(r["city"])) and (not r["state"] or STATE_OK.fullmatch(r["state"]))
             key = (-r["new12"], -r["all24"], r["num"])
             ok = ok and (prev_key is None or key >= prev_key)
             prev_key = key
