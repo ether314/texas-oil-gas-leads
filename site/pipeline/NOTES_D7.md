@@ -88,7 +88,9 @@ report, `same` when not, `first` when the previous report was rebuilt (nothing t
 3. A full 92-day rebuild into an empty folder matches the committed archive: 92 of 94 files byte-identical, the other two differ
    only in `capturedAt`/`retries`/`generated`. Rebuilding two deleted days gave byte-identical files too, and a run on the
    next night marks every unchanged file `same`.
-4. `--check` reloads every file and verifies: index rows = day files, six datasets in order, counts nest, pending total =
+4. The publish step was run against a throwaway remote: with nothing new it makes no commit; with a new day file it commits
+   only that file and keeps `.nojekyll`; a failed Pages-build request is a warning, not a failure.
+5. `--check` reloads every file and verifies: index rows = day files, six datasets in order, counts nest, pending total =
    sum of its sets, series arrays aligned and in order, size budgets. It was run against a deliberately corrupted copy
    (five faults, all reported).
 
@@ -101,7 +103,10 @@ python3 -I site/pipeline/d7_daily.py --check          # only validate
 ```
 `.github/workflows/daily-rrc-report.yml` runs it at 03:15 UTC (10:15 PM CDT / 9:15 PM CST, after the evening files are
 out) with `--backfill 7`, so a missed night is filled from the RRC's history on the next one, then `--check`, then commits
-`site/public/data/daily/`. It does not deploy anything. Raw downloads go to `dl/daily/` (gitignored).
+`site/public/data/daily/` to `main` and publishes `site/public` to the `gh-pages` branch that GitHub Pages serves (a copy plus
+`.nojekyll`; an ordinary push, never a force push; it refuses to publish a copy without `index.html`, `js/main.js` and
+`data/meta.json`). A push made with the workflow's own token may not start a Pages build, so the step also requests one and
+only warns if that request fails. Raw downloads go to `dl/daily/` (gitignored).
 
 Known limits: a rebuilt day has no catalog check, file states or monthly watch; the pending queue is only as old as the
 share keeps it; image packs are measured by size only; permit coordinates are ignored here (only part of recent permits have
