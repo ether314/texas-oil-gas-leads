@@ -51,11 +51,13 @@ One sentence.
   console error or failed request, and look at a screenshot of what you changed on a desktop and a phone width (390 px).
   **`node --check` does not catch syntax errors in ES modules** (one that did break the whole site slipped through on 2026-10-31):
   use the browser.
-- **Any `site/pipeline` change:** run the producer's `--check` and the unit tests; a producer change that alters data needs the data
-  regenerated and validated, and the page checked.
+- **Any `site/pipeline` change:** `python3 -I tests/run_all.py` (add a name fragment such as `d8` to run some), the producer's `--check`;
+  a producer change that alters data needs the data regenerated and validated, and the page checked.
 - **Any `.github/workflows` change:** extract the `run:` scripts and execute them against a throwaway clone with a local bare repo as
   `origin`; evaluate the `if:` conditions; remember a bad workflow breaks the nightly capture and publish while nobody is watching.
-- The repository's own tests and CI (`tests/`, `.github/workflows/ci.yml`) once they exist: they must be green.
+- **Always:** `node tests/smoke.cjs` (browser: every module imports, every view loads clean at desktop and phone width) and
+  `python3 -I tests/run_all.py` must pass locally, and CI (`.github/workflows/ci.yml`, the same two commands) must be green on the PR
+  before you merge it. `tests/README.md` says what each test covers; a change to behavior comes with a test.
 
 ## Guardrails that stay in force
 
@@ -116,7 +118,7 @@ manual run of the workflow does, and so can the by-hand procedure in the README.
 2. Oklahoma in the Overview, Map, Operators and Sources: county permits and trend, permit dots (the OCC permit file has coordinates),
    operators named by the corporate rule, active wells by county and operator, EIA crude. Not available yet: Oklahoma jobs (BLS),
    rig counts (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
-3. Tests and CI on every PR; publish the site automatically after a merge that is green, without touching the RRC.
+3. Publish the site automatically after a merge that is green, without touching the RRC (tests and CI are in place).
 4. Visual polish and simplification pass; phone layouts; keyboard and contrast checks.
 
 ### Run log

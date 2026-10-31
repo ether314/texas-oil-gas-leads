@@ -53,6 +53,10 @@ python3 -m http.server 8000 --directory site/public
 ```
 Then open http://localhost:8000. Any static host works.
 
+## Tests
+`python3 -I tests/run_all.py` runs the Python tests (pipeline rules, validators, the nightly workflow's own steps) and `node tests/smoke.cjs`
+loads every view in a real browser at desktop and phone width; `.github/workflows/ci.yml` runs both on every pull request. See `tests/README.md`.
+
 ## Rebuild the data
 The scripts in `site/pipeline/` (`d1` to `d6`) and `site/build_data.py` write the JSON files in `site/public/data/`
 (Python 3, standard library only). Some downloads are large (the RRC production dump is 3.7 GB). `build_data.py` reads

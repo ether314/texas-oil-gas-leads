@@ -1,0 +1,56 @@
+# Runs the repository's tests on every pull request and on every push to main: the Python tests (pipeline rules, workflow steps,
+# data validators, privacy checks) and the browser smoke test (every JS module imports, every view loads clean, no sideways scroll on a
+# phone). Nothing here touches the Railroad Commission or the OCC: the tests use synthetic data and the committed files.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Pillow draws the synthetic packs and poppler's pdftoppm renders their pages (test_d7_packs); PyYAML reads the workflow
+      - name: Install what the tests need
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+          python3 -m pip install --quiet pillow pyyaml
+
+      - name: Python tests
+        run: python3 -I tests/run_all.py
+
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Browser smoke test
+        run: node tests/smoke.cjs
