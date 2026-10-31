@@ -271,6 +271,13 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /Texas, Oklahoma and New Mexico report/i.test(document.querySelector('#daily-root .dr-hero .eyebrow').textContent), null, { timeout: 25000 });
       check((await page.locator('#daily-root .dr-dot.nm').count()) > 0 && (await page.locator('#daily-root .dr-mapwrap path.dr-county').count()) === 364 && /New Mexico: 2 of 2/.test(await page.locator('.dr-pills').innerText()), 'all three together: one map of 364 counties, New Mexico\'s files read named in the pills, its color in the legends');
       check(/New Mexico is still filling in/.test(await page.locator('#daily-root .dr-kpis .dr-kpi').first().innerText()), 'and the combined comparison says New Mexico\'s newest days are still filling in');
+      // and the Companies table's Segment cell is a table cell (its class once collided with the segmented control's, which made each one a pill)
+      await page.goto(base + '#companies?st=tx', { waitUntil: 'load' });
+      await page.waitForSelector('#co-root td.segcell', { timeout: 25000 });
+      check(await page.evaluate(() => getComputedStyle(document.querySelector('#co-root td.segcell')).display === 'table-cell'), 'the Companies table\'s Segment column is plain table cells, not the segmented control\'s pills');
+      await page.goto(base + '#daily?st=nm&v=full', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
+      check(!/Completion data/.test(await page.locator('#daily-root').innerText()), 'New Mexico alone has no completions card (the Division publishes none)');
     } catch (e) {
       check(false, 'the New Mexico Daily report: ' + e.message.split('\n')[0].slice(0, 200));
     }

@@ -336,7 +336,7 @@ function companiesConfig(m, ctx) {
     note: (v) => (v.county !== 'all' ? '. County comes from the center of each ZIP code, so counts can differ from the map, which uses the Comptroller county code.' : ''),
     cols: [
       { key: 'name', label: 'Company', cls: 'name', render: (r) => r.name, sort: (r) => r.name.toLowerCase() },
-      { key: 'seg', label: 'Segment', cls: 'seg', render: (r) => r.seg, sort: (r) => r.seg },
+      { key: 'seg', label: 'Segment', cls: 'segcell', render: (r) => r.seg, sort: (r) => r.seg },
       {
         key: 'loc', label: 'Location', cls: 'loc', sort: (r) => (r.state + r.city).toLowerCase(),
         render: (r) => el('span', { class: 'op-name' }, place(r), r.state === 'TX' && ctx.zipSet.has(r.zip) ? mapLink('#map?zip=' + r.zip, 'Show ZIP ' + r.zip + ' on the map') : null),

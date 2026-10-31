@@ -451,7 +451,7 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .grid td.name { min-width: 240px; font-weight: 560; }
 .grid td.loc, .grid td.trend { white-space: nowrap; }
 .grid td.notes { min-width: 200px; }
-.grid td.seg { min-width: 150px; }
+.grid td.segcell { min-width: 150px; } /* not "seg": that is the segmented control's class, and made these cells look like its pills */
 .op-name { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px 0; }
 .sort { font: inherit; font-weight: 620; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
 .sort:hover { color: var(--ink); }
