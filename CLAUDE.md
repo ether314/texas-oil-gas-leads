@@ -50,14 +50,14 @@ One sentence.
   (Playwright's Chromium is installed here: `require('playwright')` works). Every JS module must import, every view must load with no
   console error or failed request, and look at a screenshot of what you changed on a desktop and a phone width (390 px).
   **`node --check` does not catch syntax errors in ES modules** (one that did break the whole site slipped through on 2026-10-31):
-  use the browser. A color, token or layout change also needs `node tests/a11y.cjs` (text contrast in both themes, keyboard focus, nothing cut off at 360 px): a state's own color is
+  use the browser. A color, token or layout change also needs `node tests/a11y.cjs` (text contrast in both themes, keyboard focus, nothing cut off and no control under 24 px at 360 px): a state's own color is
   under 4.5:1 as text, so it colors dots, bars and lines and never words.
 - **Any `site/pipeline` change:** `python3 -I tests/run_all.py` (add a name fragment such as `d8` to run some), the producer's `--check`;
   a producer change that alters data needs the data regenerated and validated, and the page checked.
 - **Any `.github/workflows` change:** extract the `run:` scripts and execute them against a throwaway clone with a local bare repo as
   `origin`; evaluate the `if:` conditions; remember a bad workflow breaks the nightly capture and publish while nobody is watching.
 - **Always:** `node tests/smoke.cjs` (browser: every module imports, every view loads clean at desktop and phone width),
-  `node tests/a11y.cjs` (browser: contrast, keyboard, nothing cut off at 360 px) and `python3 -I tests/run_all.py` must pass locally, and CI (`.github/workflows/ci.yml`, the same commands) must be green on the PR
+  `node tests/a11y.cjs` (browser: contrast, keyboard, nothing cut off and no control under 24 px at 360 px) and `python3 -I tests/run_all.py` must pass locally, and CI (`.github/workflows/ci.yml`, the same commands) must be green on the PR
   before you merge it. `tests/README.md` says what each test covers; a change to behavior comes with a test.
 
 ## Guardrails that stay in force
@@ -162,3 +162,4 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: the Daily report on a phone: one pill per state (the time its files were read is inside it), sparklines and notes that fit a half-width card (a note was cut off, a sparkline ran past the card), and a card never left alone in half a row.
 - 2026-10-31: the Operators CSV no longer turns a negative number into text (a fall of -14.4 had a spreadsheet guard's apostrophe), and `a11y.cjs` gained a reflow check at 360 px that found the Daily cards' clipped notes.
 - 2026-10-31: a walk through the archive's days found "NaN%" in the verbose report on a day with an empty Texas queue (Aug 9, Sep 7), and a random-click run found "NaN ft" in the Map's legend for New Mexico's depth (it publishes none: the legend and the list now say so); fixed, and smoke now walks the archive and every map metric under three state sets for NaN, undefined, null and Infinity. The browser's own bar takes the page's color (`theme-color`, kept in step with the theme).
+- 2026-10-31: touch targets: the Map chips, the column sort buttons and the "Open the map" links were 20 to 22 px high on a phone; all controls are 24 px or more (WCAG 2.2) and `a11y.cjs` checks it.

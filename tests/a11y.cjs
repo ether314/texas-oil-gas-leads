@@ -10,6 +10,8 @@
 // 3. Reflow: at 360 px wide (the narrowest phone) no content is cut off by an overflow:hidden box (without an ellipsis) and no box sticks out
 //    past the right edge outside a scroller, on every view and every set of states. It found a note and a sparkline cut off in the Daily report's
 //    half-width cards (the card's one column had grown to the sparkline's fixed 160 px).
+// 4. Target size: at the same width every button, field, tab and chip is at least 24 x 24 px (WCAG 2.2, 2.5.8; a checkbox counts with its label; links
+//    inside text and in table cells are left out: spacing exempts them).
 //
 // Run: node tests/a11y.cjs
 // Needs Playwright (preinstalled in the Claude sandbox; installed by .github/workflows/ci.yml).
@@ -152,6 +154,21 @@ function reflow() {
   return out;
 }
 
+// runs in the page: controls under 24 x 24 CSS px
+function targets() {
+  const out = [];
+  for (const el of document.querySelectorAll('button, select, input:not([type=hidden]), textarea, [role=tab], a.pill-link, a.more-link, a.btn')) {
+    if (el.closest('[hidden], [aria-hidden="true"], .sr-only') || el.disabled) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+    let r = el.getBoundingClientRect();
+    if (el.matches('input[type=checkbox], input[type=radio]') && el.labels && el.labels[0]) r = el.labels[0].getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    if (r.width < 24 - 0.5 || r.height < 24 - 0.5) out.push(el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '') + ' is ' + Math.round(r.width) + ' x ' + Math.round(r.height) + ': "' + (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24) + '"');
+  }
+  return out;
+}
+
 (async () => {
   const { server, base } = await serve();
   const browser = await chromium.launch();
@@ -199,17 +216,20 @@ function reflow() {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light' });
     const page = await ctx.newPage();
     const bad = [];
+    const small = [];
     for (const [name, hash, ready] of REFLOW) {
       try {
         await page.goto(base + hash, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
         await page.waitForTimeout(600);
         for (const f of await page.evaluate(reflow)) bad.push(name + ': ' + f);
+        for (const f of await page.evaluate(targets)) small.push(name + ': ' + f);
       } catch (e) {
         check(false, 'reflow, ' + name + ' did not draw: ' + e.message.split('\n')[0].slice(0, 160));
       }
     }
     check(!bad.length, 'at 360 px on ' + REFLOW.length + ' views nothing is cut off and nothing runs past the edge' + (bad.length ? '\n       ' + [...new Set(bad)].slice(0, 12).join('\n       ') : ''));
+    check(!small.length, 'at 360 px every button, field, tab and chip is at least 24 x 24 px' + (small.length ? '\n       ' + [...new Set(small)].slice(0, 12).join('\n       ') : ''));
     await ctx.close();
   }
 
