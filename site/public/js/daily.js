@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 import { segmented, shareButton, absoluteLink } from './ui.js';
 import { spark, delta } from './charts.js';
 import { opsLink } from './overview.js';
-import { trendBars, countyMap, ribbon, calendar, ring, stack, histogram, rankList, isWeekend, fmtMd, fmtDow, fmtLong, addDays, mb } from './daily-viz.js';
+import { trendBars, countyMap, gpsMap, ribbon, calendar, ring, stack, histogram, rankList, isWeekend, fmtMd, fmtDow, fmtLong, addDays, mb } from './daily-viz.js';
 
 const TITLES = { permits: 'Drilling permits', pending: 'Permits pending approval', completions: 'Completion data', w1images: 'W-1 permit images', dirsurveys: 'Directional surveys', complimages: 'Completion images' };
 const ICONS = { permits: 'pin', pending: 'clock', completions: 'drop', w1images: 'layers', dirsurveys: 'rig', complimages: 'building' };
@@ -14,8 +14,8 @@ const WHAT = {
   permits: 'New permits issued, from the nightly Drilling Permit Master and Trailer file (daf420.dat).',
   pending: 'W-1 applications submitted and not yet approved, from the twice-daily pending set.',
   completions: 'Completion forms (W-2, G-1, P-4 and others) submitted or approved that day.',
-  w1images: 'Zipped images of every W-1 approved that day, by RRC district. The size is captured; live days also count the documents.',
-  dirsurveys: 'Zipped directional survey images submitted that day. The size is captured; live days also count the documents.',
+  w1images: 'Zipped images of every W-1 approved that day, by RRC district. The size is captured; live days also count the documents, and the W-1 letters and plats of the day\'s new-drill permits are published for each drill\'s page.',
+  dirsurveys: 'Zipped directional survey images submitted that day. The size is captured; live days also count the documents and publish the surveys, each with its own page.',
   complimages: 'Zipped completion form images. The size is captured; live days also count the documents.',
 };
 const KIND = { H: 'Horizontal', D: 'Directional', V: 'Vertical' };
@@ -36,7 +36,7 @@ const METRICS = {
 };
 
 export function createDailyView({ root }) {
-  const S = { index: null, series: null, G: null, rep: null, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false };
+  const S = { index: null, series: null, G: null, rep: null, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, sel: null, open: null, gpsEl: null };
   const h1 = el('h1', { id: 'dr-h1', class: 'dr-title', tabindex: '-1' });
   root.replaceChildren(h1, el('p', { class: 'empty', text: 'Loading the daily report…' }));
 
@@ -204,6 +204,124 @@ export function createDailyView({ root }) {
     return card('dr-mapcard', head('pin', 'Where', 'Texas, by county', 'Bubbles grow with the count; hover a county for its number.'), el('div', { class: 'dr-maptools' }, seg.el), wrap, list);
   }
 
+  /* ---------- the GPS map, and a page (a URL) for each well with its filings ---------- */
+  const fmtApi = (a) => '42-' + a.slice(0, 3) + '-' + a.slice(3); // state 42, county, well
+  const hashFor = (day, mode, sel) => {
+    const q = new URLSearchParams();
+    if (day !== S.index.days[S.index.days.length - 1].d) q.set('d', day);
+    if (mode === 'full') q.set('v', 'full');
+    if (sel) q.set(sel.t === 'p' ? 'drill' : 'survey', sel.id);
+    return '#daily' + (q.toString() ? '?' + q : '');
+  };
+  // the release a report links to is validated before it becomes a link: names come from a data file
+  const relOk = (r) => !!r && /^[\w.-]+\/[\w.-]+$/.test(r.repo) && /^daily-\d{4}-\d\d-\d\d$/.test(r.tag);
+  const fileUrl = (rep, name) => (relOk(rep.release) && /^[\w.-]+$/.test(name) ? 'https://github.com/' + rep.release.repo + '/releases/download/' + rep.release.tag + '/' + name : null);
+  const releaseUrl = (rep) => (relOk(rep.release) ? 'https://github.com/' + rep.release.repo + '/releases/tag/' + rep.release.tag : null);
+  const gpsText = (lat, lon) => lat.toFixed(5) + ', ' + lon.toFixed(5);
+  const mapsUrl = (lat, lon) => 'https://www.google.com/maps/search/?api=1&query=' + lat.toFixed(5) + ',' + lon.toFixed(5);
+  function docLabel(suffix) {
+    const m = /^(W1|Plat)(?:_(\d+))?\.(\w+)$/.exec(suffix);
+    if (!m) return { label: 'Document', type: '' };
+    return { label: (m[1] === 'W1' ? 'Approved W-1 permit' : 'Permit plat') + (m[2] ? ' ' + m[2] : ''), type: m[3].toUpperCase() };
+  }
+  const docList = (items) => el('ul', { class: 'dr-docs' }, items.map((d) => el('li', {}, d.href
+    ? el('a', { class: 'btn dr-doc', href: d.href, rel: 'noopener noreferrer' }, icon('layers', 15), el('span', { text: d.label }), d.type ? el('small', { text: d.type }) : null)
+    : el('span', { class: 'dr-doc off', text: d.label }))));
+
+  function drillPanel(rep, sel, { close }) {
+    const pr = rep.permits; const sv = rep.surveys;
+    const row = sel.t === 'p' && pr ? pr.rows.find((r) => r[0] === sel.id) : null;
+    const srow = sel.t === 's' && sv ? sv.rows.find((r) => r[8] === sel.id) : null;
+    const closeBtn = el('button', { type: 'button', class: 'btn sm', onclick: close }, icon('close', 14), 'Close');
+    if (!row && !srow) {
+      return el('div', { class: 'dr-drill missing' }, el('p', { text: 'That drill is not in the report for ' + fmtDow(rep.date) + '. A page exists for each new-drill permit of the day and for each directional survey filed that day.' }), closeBtn);
+    }
+    const head2 = (title, sub) => el('div', { class: 'dr-drill-head' },
+      el('div', {}, el('p', { class: 'eyebrow' }, icon('pin', 15), 'Drill page'), el('h3', { text: title }), el('p', { class: 'sub', text: sub })),
+      el('div', { class: 'dr-drill-act' }, shareButton(() => absoluteLink(hashFor(S.day, S.mode, sel)), 'Copy link'), closeBtn));
+    const lat = row ? row[8] : srow[9]; const lon = row ? row[9] : srow[10];
+    const gps = lat != null ? { label: 'GPS (NAD83)', value: gpsText(lat, lon), note: 'surface location, RRC map' } : { label: 'GPS', value: 'No point', note: 'the RRC map has none for this well' };
+    const where = lat != null ? el('p', { class: 'fine' }, el('a', { href: mapsUrl(lat, lon), rel: 'noopener noreferrer', text: 'Open this point in a maps app' }), ' (leaves this site).') : null;
+    const more = releaseUrl(rep) ? el('a', { href: releaseUrl(rep), rel: 'noopener noreferrer', text: 'All of this day\'s filings on GitHub' }) : null;
+    const privacy = el('p', { class: 'fine', text: 'These are the Railroad Commission\'s scans, unmodified. They are public records and can carry the names, phone numbers and addresses of individuals.' });
+    if (row) {
+      const own = (row[10] || []).map((suffix) => Object.assign(docLabel(suffix), { href: fileUrl(rep, row[0] + '_' + suffix) }));
+      const surveys = row[7] && sv ? sv.rows.filter((r) => r[0] === row[7]).map((r) => ({ label: 'Directional survey ' + r[8], type: 'PDF', href: fileUrl(rep, 'dir_survey_' + r[8] + '.pdf') })) : [];
+      const docs = own.concat(surveys).filter((d) => d.href);
+      return el('div', { class: 'dr-drill' }, head2('Permit ' + row[0], (row[4] || 'Operator #' + row[3]) + ' · ' + countyName(row[1]) + ' County · District ' + row[2]),
+        tiles([{ label: 'Planned depth', value: row[5] ? num(row[5]) + ' ft' : '—', note: KIND[row[6]] + ' well' }, { label: 'Permit issued', value: fmtDow(pr.day), note: 'new-drill permit' },
+          row[7] ? { label: 'API number', value: fmtApi(row[7]), note: 'state · county · well' } : null, gps]),
+        where,
+        el('h4', { class: 'dr-h4', text: 'Filings for this drill' }),
+        docs.length ? [docList(docs), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
+          : el('p', { class: 'fine', text: 'No filings are published for this drill. They are copied on the night a report is captured live, so a day rebuilt afterward, or captured before publishing was switched on, has none.' }));
+    }
+    const twin = pr && srow[0] ? pr.rows.find((r) => r[7] === srow[0]) : null;
+    return el('div', { class: 'dr-drill' }, head2('Directional survey ' + srow[8], srow[1] ? countyName(srow[1]) + ' County · API ' + fmtApi(srow[0]) : 'Well not identified'),
+      tiles([{ label: 'Survey', value: srow[2] === 'M' ? 'MWD' : 'Other', note: 'directional survey' }, { label: 'Depth surveyed', value: srow[3] && srow[4] ? num(srow[3]) + '–' + num(srow[4]) + ' ft' : '—', note: srow[7] ? 'lateral ' + srow[7] : '' },
+        { label: 'Survey dates', value: srow[5] && srow[6] ? fmtMd(srow[5]) + ' to ' + fmtMd(srow[6]) : '—', note: srow[6] ? srow[6].slice(0, 4) : '' }, { label: 'Filed', value: fmtDow(sv.day || rep.date), note: 'survey pack' }, gps]),
+      where,
+      twin ? el('p', { class: 'fine' }, 'The same well was permitted this day: ', el('a', { href: hashFor(S.day, S.mode, { t: 'p', id: twin[0] }), onclick: (e) => { e.preventDefault(); S.open({ t: 'p', id: twin[0] }); }, text: 'permit ' + twin[0] }), '.') : null,
+      el('h4', { class: 'dr-h4', text: 'Filing' }),
+      fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') ? [docList([{ label: 'Directional survey', type: 'PDF', href: fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') }]), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
+        : el('p', { class: 'fine', text: 'This survey\'s file is not published.' }));
+  }
+
+  function gpsCard(rep) {
+    S.open = null; S.gpsEl = null;
+    const pr = rep.permits; const sv = rep.surveys;
+    const prows = pr ? pr.rows : []; const srows = sv ? sv.rows : [];
+    const prow = prows.filter((r) => r.length >= 10 && r[8] != null); const srow = srows.filter((r) => r[9] != null);
+    if (!S.G || (!prow.length && !srow.length)) return null;
+    const pts = [
+      ...prow.map((r) => ({ key: 'p' + r[0], layer: 'permits', f: r[1], lat: r[8], lon: r[9], aria: 'Permit ' + r[0] + ', ' + countyName(r[1]) + ' County. Press Enter for its page.',
+        tip: [['Permit ' + r[0], countyName(r[1]) + ' County'], [r[4] || 'Operator #' + r[3], ''], [r[5] ? num(r[5]) + ' ft' : 'Depth not given', KIND[r[6]].toLowerCase()]] })),
+      ...srow.map((r) => ({ key: 'w' + r[8], layer: 'surveys', f: r[1], lat: r[9], lon: r[10], aria: 'Directional survey ' + r[8] + ', ' + countyName(r[1]) + ' County. Press Enter for its page.',
+        tip: [['Directional survey', countyName(r[1]) + ' County'], ['API ' + fmtApi(r[0]), ''], [r[3] && r[4] ? num(r[3]) + '–' + num(r[4]) + ' ft' : 'Depth not given', '']] })),
+    ];
+    const keyOf = (sel) => (sel ? (sel.t === 'p' ? 'p' : 'w') + sel.id : null);
+    const host = el('div', { class: 'dr-drill-host', 'aria-live': 'polite' });
+    const map = gpsMap(S.G, pts, { onPick: (key) => pick({ t: key[0] === 'p' ? 'p' : 's', id: key.slice(1) }) });
+    const paint = () => host.replaceChildren(...[S.sel ? drillPanel(rep, S.sel, { close: () => pick(null) }) : null].filter(Boolean));
+    function pick(sel, { fly = false } = {}) {
+      S.sel = sel; map.mark(keyOf(sel));
+      if (fly && sel) map.focusOn(keyOf(sel));
+      paint();
+      history.replaceState(null, '', hashFor(S.day, S.mode, sel)); // in-page picks do not add history entries, like the Map tab
+      if (sel) host.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
+    }
+    const on = { permits: true, surveys: true };
+    const layerBtn = (id, label, n) => (n ? el('button', { type: 'button', class: 'btn sm dr-lay', 'aria-pressed': 'true', onclick: (e) => {
+      on[id] = !on[id]; e.currentTarget.setAttribute('aria-pressed', String(on[id])); map.setLayer(id, on[id]); map.fit();
+    } }, el('i', { class: 'dr-sw ' + id, 'aria-hidden': 'true' }), label + ' · ' + n) : null);
+    const tools = el('div', { class: 'dr-gps-tools' },
+      el('div', { class: 'dr-gps-layers', role: 'group', 'aria-label': 'Layers' }, layerBtn('permits', 'New-drill permits', prow.length), layerBtn('surveys', 'Directional surveys', srow.length)),
+      el('div', { class: 'dr-gps-zoom', role: 'group', 'aria-label': 'Map view' },
+        el('button', { type: 'button', class: 'btn sm', onclick: map.fit }, 'Zoom to wells'), el('button', { type: 'button', class: 'btn sm', onclick: map.all }, 'All Texas'),
+        el('button', { type: 'button', class: 'btn sm', 'aria-label': 'Zoom in', onclick: map.zoomIn, text: '+' }), el('button', { type: 'button', class: 'btn sm', 'aria-label': 'Zoom out', onclick: map.zoomOut, text: '−' })));
+    const link = (sel, text) => el('a', { href: hashFor(S.day, S.mode, sel), text, onclick: (e) => { e.preventDefault(); S.open(sel); } });
+    const gpsCell = (a, b) => (a != null ? gpsText(a, b) : '—');
+    const tables = [];
+    if (prows.length) {
+      tables.push(table([{ t: 'Permit' }, { t: 'County' }, { t: 'Operator' }, { t: 'Depth (ft)', num: true }, { t: 'Well' }, { t: 'GPS' }, { t: 'Filings', num: true }],
+        prows.map((r) => [link({ t: 'p', id: r[0] }, r[0]), countyName(r[1]), opNode(r[3], r[4]), r[5] ? num(r[5]) : null, KIND[r[6]], gpsCell(r[8], r[9]), r[10] ? num(r[10].length) : '—'])));
+    }
+    if (srows.length) {
+      tables.push(el('h3', { class: 'dr-h3-gap', text: 'Directional surveys filed' }),
+        table([{ t: 'Survey' }, { t: 'API' }, { t: 'County' }, { t: 'Kind' }, { t: 'Depth (ft)' }, { t: 'GPS' }],
+          srows.map((r) => [link({ t: 's', id: r[8] }, r[8]), r[0] ? fmtApi(r[0]) : null, r[1] ? countyName(r[1]) : null, r[2] === 'M' ? 'MWD' : 'Other', r[3] && r[4] ? num(r[3]) + '–' + num(r[4]) : null, gpsCell(r[9], r[10])])));
+    }
+    const card2 = card('dr-gps-card', head('pin', 'GPS map', 'Where the wells are', 'Surface locations from the Railroad Commission\'s public map service, matched by API number. Select a point to open that drill\'s page and its filings.'),
+      tools, map.el,
+      el('p', { class: 'fine', text: num(prow.length) + ' of ' + num(prows.length) + ' new-drill permits have a point' + (srows.length ? ' and ' + num(srow.length) + ' of ' + num(srows.length) + ' surveys' : '') + '. Drag to pan; Ctrl or ⌘ plus scroll, a trackpad pinch or the buttons zoom.' }),
+      host,
+      el('details', { class: 'dr-details' }, el('summary', { text: 'The same wells as a table' + (rep.release ? ', with a page for each' : '') }), ...tables));
+    S.gpsEl = card2;
+    S.open = (sel) => { pick(sel, { fly: true }); card2.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); };
+    if (S.sel) { map.mark(keyOf(S.sel)); map.focusOn(keyOf(S.sel)); paint(); }
+    return card2;
+  }
+
   /* ---------- what changed: plain-English bullets ---------- */
   function storyCard(rep) {
     const out = []; const p = rep.permits; const q = rep.pending; const c = rep.completions;
@@ -280,7 +398,7 @@ export function createDailyView({ root }) {
       el('div', {}, el('h3', { text: 'Operators' }), rankList(opItems(p.operators), { color: 'var(--s2)' }), el('h3', { class: 'dr-h3-gap', text: 'RRC districts' }), rankList(p.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s2)' }))));
     pending.push(el('details', { class: 'dr-details' }, el('summary', { text: 'All ' + num(p.rows.length) + ' new-drill permits' + (p.newDrill > p.rows.length ? ' (the first ' + p.rows.length + ')' : '') }),
       table([{ t: 'Permit' }, { t: 'County' }, { t: 'District' }, { t: 'Operator' }, { t: 'Depth (ft)', num: true }, { t: 'Well' }],
-        p.rows.map((r) => [r[0], countyName(r[1]), r[2], opNode(r[3], r[4]), r[5] ? num(r[5]) : null, KIND[r[6]]]))));
+        p.rows.map((r) => [S.open ? el('a', { href: hashFor(S.day, S.mode, { t: 'p', id: r[0] }), onclick: (e) => { e.preventDefault(); S.open({ t: 'p', id: r[0] }); }, text: r[0] }) : r[0], countyName(r[1]), r[2], opNode(r[3], r[4]), r[5] ? num(r[5]) : null, KIND[r[6]]]))));
     return card('dr-sec', head('pin', 'Permits', 'Drilling permits issued ' + fmtDow(p.day), 'From the nightly Drilling Permit Master and Trailer file. No permits are issued on weekends, so Saturday, Sunday and Monday reports show Friday.'), ...pending);
   }
 
@@ -359,7 +477,7 @@ export function createDailyView({ root }) {
       return el('div', { class: 'dr-pack' }, info, fig);
     });
     if (!rows.length) return null;
-    return card('dr-sec', head('layers', 'Inside the packs', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. The pages are shrunk and blurred on purpose so that nothing can be read: the filings carry lease names, well numbers and the names of individuals, which this site leaves out. Days before previews began show sizes only.'), ...rows);
+    return card('dr-sec', head('layers', 'Inside the packs', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. These sheets are shrunk and blurred on purpose so that nothing can be read, and the completion images are never published. The W-1 letters and plats of the day\'s new-drill permits and the day\'s directional surveys are different: they are published readable, each on its drill\'s page (GPS map above). Days before previews began show sizes only.'), ...rows);
   }
 
   function healthSection(rep) {
@@ -409,10 +527,10 @@ export function createDailyView({ root }) {
     return card('dr-sec dr-notes', head('bulb', 'How to read this', 'Notes and limits'), el('ul', { class: 'plain' },
       li(strong('What a day shows. '), 'A report holds what landed on each RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. Each card says which day its data is from.'),
       li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt from the RRC\'s file history by the same rule: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day. The catalog check and file states only exist for days captured live.'),
-      li(strong('Permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. Only some recent permits carry surface coordinates.'),
+      li(strong('Permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. GPS points come from the Railroad Commission\'s public map service (its Well Locations layer, matched by API number), so a permit can have none until the RRC maps it.'),
       li(strong('Pending queue. '), 'Each set holds W-1s submitted since the previous run that were still waiting; it is not a running total, and a permit leaves it when approved.'),
       li(strong('Times. '), 'File times are shown as the RRC share lists them, which is Central time. The report date is the Central-time day the capture ran.'),
-      li(strong('Privacy. '), 'Operators are named only when they are corporations, LLCs or limited partnerships. Lease names, well numbers and anything about individuals are left out.')));
+      li(strong('Privacy. '), 'Operators are named only when they are corporations, LLCs or limited partnerships, and this site\'s own pages leave out lease names, well numbers and anything about individuals. One deliberate exception: each drill\'s page links to the Railroad Commission\'s scanned W-1 letter, plat and directional survey, published unmodified as GitHub release files. They are public records and can carry the names, phone numbers and addresses of individuals; nothing is redacted. Completion images stay blurred and unpublished.')));
   }
 
   /* ---------- page ---------- */
@@ -420,7 +538,7 @@ export function createDailyView({ root }) {
     const rep = S.rep;
     const ae = document.activeElement;
     const keep = ae && root.contains(ae) ? (ae.id || (ae.dataset && ae.dataset.act) || null) : null;
-    const kids = [hero(rep), ribbonCard(), kpiRow(rep), el('div', { class: 'dr-grid2' }, el('div', { class: 'dr-col' }, trendCard(rep), storyCard(rep)), mapCard(rep)), statusStrip(rep)];
+    const kids = [hero(rep), ribbonCard(), kpiRow(rep), el('div', { class: 'dr-grid2' }, el('div', { class: 'dr-col' }, trendCard(rep), storyCard(rep)), mapCard(rep)), gpsCard(rep), statusStrip(rep)];
     if (S.mode === 'simple') {
       kids.push(el('p', { class: 'dr-more' }, el('button', { type: 'button', class: 'btn', onclick: () => go(S.day, 'full') }, 'Open the verbose report', icon('arrow', 15))));
     } else {
@@ -441,6 +559,7 @@ export function createDailyView({ root }) {
     if (seq !== S.seq) return;
     S.rep = rep;
     render();
+    if (S.sel && S.gpsEl) requestAnimationFrame(() => S.gpsEl.scrollIntoView({ block: 'start', behavior: 'auto' })); // a shared drill link opens on its page
     document.title = fmtLong(day).replace(/, \d{4}$/, '') + ' · Daily report · Texas Oil & Gas Leads';
     const i = S.index.days.findIndex((r) => r.d === day);
     [i - 1, i + 1].forEach((k) => { if (S.index.days[k]) loadOpt('daily/' + S.index.days[k].d); });
@@ -448,11 +567,8 @@ export function createDailyView({ root }) {
 
   function go(day, mode) {
     S.mode = mode;
-    const latest = S.index.days[S.index.days.length - 1].d;
-    const q = new URLSearchParams();
-    if (day !== latest) q.set('d', day);
-    if (mode === 'full') q.set('v', 'full');
-    const hash = '#daily' + (q.toString() ? '?' + q : '');
+    if (day !== S.day) S.sel = null; // a drill belongs to its day; switching between the simple and verbose report keeps it
+    const hash = hashFor(day, mode, S.sel);
     if (location.hash !== hash) history.pushState(null, '', hash);
     return show(day);
   }
@@ -469,6 +585,8 @@ export function createDailyView({ root }) {
       const want = params.get('d'); const days = S.index.days;
       const day = days.some((r) => r.d === want) ? want : days[days.length - 1].d;
       S.mode = params.get('v') === 'full' ? 'full' : 'simple';
+      const dr = params.get('drill'); const sv = params.get('survey');
+      S.sel = dr && /^\d{7}$/.test(dr) ? { t: 'p', id: dr } : sv && /^\d{1,12}$/.test(sv) ? { t: 's', id: sv } : null;
       await show(day);
     },
   };

@@ -48,14 +48,19 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends poppler-utils
           python3 -m pip install --quiet pillow
 
+      # --publish-docs also publishes the day's W-1 letters, plats and directional surveys, readable and unmodified, as the files of
+      # one GitHub release (tag daily-YYYY-MM-DD, pre-release) that each drill's page links to, and removes the releases of days
+      # that have left the 92-day archive. GH_TOKEN is what lets the gh CLI do that (contents: write, above). See the README
+      # (Privacy) for why this is a deliberate choice; delete the flag to go back to blurred contact sheets only.
       - name: Capture the report
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '7' }}
           REPORT_DATE: ${{ github.event.inputs.date }}
           EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "$BACKFILL" in ''|*[!0-9]*) echo "backfill must be a whole number"; exit 1;; esac
-          args=(--backfill "$BACKFILL" --packs)
+          args=(--backfill "$BACKFILL" --packs --publish-docs)
           if [ -n "$REPORT_DATE" ]; then
             case "$REPORT_DATE" in
               [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) args+=(--date "$REPORT_DATE") ;;
