@@ -15,6 +15,16 @@ export function segmented({ label, options, value, onChange, tabs = true, prefix
   el('span', { class: o.abbr ? 'seg-l has-abbr' : null, text: o.label }), o.abbr ? el('span', { class: 'seg-a', 'aria-hidden': 'true', text: o.abbr }) : null));
   const root = el('div', { class: 'seg', role: tabs ? 'tablist' : 'group', 'aria-label': label }, thumb, btns);
   let cur = null;
+  // a bar whose labels have short forms ("OK" for Oklahoma) shows the full labels while they fit and, when they do not, the short ones, then tighter buttons.
+  // It measures instead of guessing from the page's width: the same words are wider in one system font than in another (the full names need 429 px in one, 466 in another)
+  const hasAbbr = options.some((o) => o.abbr);
+  function fit() {
+    if (!hasAbbr) return;
+    for (const f of ['full', 'short', 'tight']) {
+      root.dataset.fit = f;
+      if (root.scrollWidth <= root.clientWidth + 1) break;
+    }
+  }
   const place = () => {
     const b = btns.find((x) => x.dataset.id === cur);
     if (!b || !b.offsetWidth) return;
@@ -43,7 +53,10 @@ export function segmented({ label, options, value, onChange, tabs = true, prefix
     e.preventDefault();
     set(btns[(to + btns.length) % btns.length].dataset.id, true, true);
   });
-  if ('ResizeObserver' in window) new ResizeObserver(place).observe(root);
+  const refit = () => { fit(); place(); };
+  if ('ResizeObserver' in window) new ResizeObserver(refit).observe(root);
+  if (hasAbbr) window.addEventListener('resize', refit); // the bar's own size does not change when the page grows wide enough for the full names again
+  fit();
   set(value, false);
   return { el: root, set, place, buttons: btns, get value() { return cur; } };
 }

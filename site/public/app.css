@@ -130,12 +130,12 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .statebar-note:empty { display: none; }
 #statebar-seg { min-width: 0; max-width: 100%; }
 @media (max-width: 520px) { .statebar .seg button { padding: 0 9px; gap: 5px; } }
-/* the bar's five choices do not fit a narrow phone with full names: TX, OK, NM, Offshore (the button's name stays "Texas (TX)").
-   The full names need 429 px, which a page 462 px wide or more has (its 16 px gutters take 32); the short ones need 301, which a 340 px page has, and below that the
-   buttons' padding gives up 3 px a side (swept 300 to 520 px: nothing clipped, no sideways scroll) */
+/* the bar's five choices do not always fit with full names: TX, OK, NM, Offshore (the button's name stays "Texas (TX)"). ui.js measures the bar and sets data-fit: full while the
+   names fit (429 px in one system font, 466 in another), short when they do not, tight (3 px less padding a side) when even those do not (swept 300 to 1280 px: nothing clipped) */
 .seg-a { display: none; }
-@media (max-width: 462px) { .statebar .seg-l.has-abbr { display: none; } .statebar .seg-a { display: inline; } }
-@media (max-width: 339px) { .statebar .seg button { padding: 0 6px; gap: 4px; } }
+.statebar .seg[data-fit="short"] .seg-l.has-abbr, .statebar .seg[data-fit="tight"] .seg-l.has-abbr { display: none; }
+.statebar .seg[data-fit="short"] .seg-a, .statebar .seg[data-fit="tight"] .seg-a { display: inline; }
+.statebar .seg[data-fit="tight"] button { padding: 0 6px; gap: 4px; }
 .view-head { padding-block: var(--sp-7) var(--sp-2); }
 .view-head.compact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; padding-block: var(--sp-5) 0; }
 .view-head.compact .lede { margin: 0; font-size: var(--fs-md); flex: 1 1 360px; }

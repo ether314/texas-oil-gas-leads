@@ -94,8 +94,9 @@ Gulf box, small), and, with `FO_REAL_FILES` set to a folder of the three BSEE zi
 Its other fields are what makes the shared pages read right: `place` (a protraction area where the others have a county: "Green Canyon area", "Top areas", no FIPS code in the
 panel), `in` ("in the federal offshore" inside a sentence), `drill` ("Watch the Gulf drill") and `cadence` (the freshness list says "Publishes weekly"). Its color is a rose (`--st-fo`: #c93b8f light,
 #e05aa6 dark) chosen for distance from the other three in normal vision and the common color blindnesses (it is used for dots, bars and lines, never as the color of words). The bar shows
-TX, OK, NM and Offshore on a page narrower than 463 px so all five fit (the full names need 429 px, the short ones 301; below 340 px the buttons also give up 3 px of padding on a side: swept from 300 to 520 px,
-nothing clipped); each button keeps its full name for a screen reader. The graticule extends east for the Gulf's shapes (`geo.js`).
+TX, OK, NM and Offshore when the full names do not fit: `segmented` in `ui.js` measures the bar (`data-fit` full, short or tight, the last with 3 px less padding on a side) instead of guessing from the page's width, because the
+same words are 8% wider in one system font than in another (the full names need 429 px in one, 466 in another; a fixed breakpoint passed here and clipped in CI); swept from 320 to 1280 px, nothing clipped.
+Each button keeps its full name for a screen reader. The graticule extends east for the Gulf's shapes (`geo.js`).
 
 Two more fields keep the pages honest about what the offshore counts. `caveat` is what its count leaves out ("a well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but
 are not counted"), and `spudCaveat(ids)` says it, naming the state unless it is the only one shown, on the Overview's note under the map, the Map's notes, the Operators lede, the Activity chart's note and the Sources

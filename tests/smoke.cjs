@@ -680,15 +680,17 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForTimeout(300);
       const wide = await bar();
       check(wide.shown.join() === 'All,Texas,Oklahoma,New Mexico,Offshore', 'on a wide screen the full names show again: ' + wide.shown.join(' '));
-      // no width clips the bar: the short labels take over below 463 px (the full names need 429 px) and below 340 px the buttons give up some padding
-      const clipped = [];
+      // no width clips the bar, in whatever font the machine has: the bar measures itself and shows the full names while they fit, then the short ones, then tighter buttons
+      const clipped = []; const fits = {};
       for (const w of [320, 330, 340, 390, 440, 441, 450, 460, 462, 463, 470, 520, 768, 1280]) {
         await page.setViewportSize({ width: w, height: 800 });
-        await page.waitForTimeout(120);
+        await page.waitForTimeout(250);
         const b = await bar();
+        fits[w] = await page.evaluate(() => document.querySelector('#statebar .seg').dataset.fit);
         if (b.room > 1) clipped.push(w + ' px (' + b.room + ' px)');
       }
       check(!clipped.length, 'the states bar is never clipped, at any width from 320 to 1280 px' + (clipped.length ? ': ' + clipped.join(', ') : ''));
+      check(fits[1280] === 'full' && fits[320] !== 'full' && fits[390] !== 'full', 'the full names show on a wide screen and give way to the short ones on a phone (data-fit by width: ' + JSON.stringify(fits) + ')');
       // the Daily report: no report for the offshore, and it says why (its file is weekly)
       await page.goto(base + '#daily?st=fo', { waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
