@@ -25,7 +25,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   number and every city is a place name.
 - `test_d10_fo.py`: the federal offshore's files (`d10_fo_monthly.py`, from BSEE's borehole and company files): a well is the first ten digits of the API number on its earliest spud, a sidetrack is not another well, the 63 areas and their numbering,
   the 60-day lag, blank and placeholder dates, a spud after today, a location outside the Gulf, an individual or an unknown operator number named by no one, no API number, lease or platform published, the readers refusing an error page or a handful of companies, the validator
-  against five faults, five mutants and the committed files; with `FO_REAL_FILES` set to a folder holding BSEE's three zips it reads the real ones.
+  against five faults, five mutants and the committed files, and the EIA's offshore crude series (`series-fo.json`: its plausible range, units, the page parser refusing Texas's, the Pacific offshore's and a per-day page); with `FO_REAL_FILES` set to a folder holding BSEE's three zips it reads the real ones.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, the
   validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,
@@ -33,7 +33,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the three captures, the `if:` conditions for every
   combination of outcomes (64), a time limit on each capture that leaves the job room to commit and publish, and the workflow's own `run:` scripts
   executed against a throwaway clone with a local bare `origin` (needs git and PyYAML).
-- `test_workflow_monthly.py`: `.github/workflows/refresh-monthly.yml` the same way (isolation, the 16 outcome combinations, the drop, commit and last
+- `test_workflow_monthly.py`: `.github/workflows/refresh-monthly.yml` the same way (isolation of the three refreshes, the 64 outcome combinations, the drop, commit and last
   steps run against a clone; only the eight files it names are ever committed, and it shares the nightly's concurrency group).
 - `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it steps aside when main has moved on since the commit CI passed, that it cannot reach the agencies)
   and `.github/scripts/publish_pages.sh`, which the nightly capture shares: run against a throwaway clone with a local bare `origin` that has

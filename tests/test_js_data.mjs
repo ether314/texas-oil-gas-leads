@@ -136,6 +136,11 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
     const gk = new Set(files[q.id].geo.features.map((f) => S.countyKey(q.id, f.properties.f)));
     check(rows.length > 0 && rows.every((r) => r.county === '' || gk.has(r.county)) && new Set(rows.map((r) => r.num)).size === rows.length, q.name + ': ' + rows.length + ' operators, each top county on the map, numbers unique');
   }
+  // a state with a crude file has it committed, under the key the page reads (okCrude, nmCrude, foCrude), one value a month
+  for (const q of S.otherStates.filter((x) => x.files.crude)) {
+    const f = read(q.files.crude); const v = f[q.id.toLowerCase() + 'Crude'];
+    check(Array.isArray(v) && v.length === f.months.length && v.every((x) => x === null || (typeof x === 'number' && x > 0)) && f.latest === f.months[f.months.length - 1], q.name + ': ' + q.files.crude + ' has ' + q.id.toLowerCase() + 'Crude, a positive number for each of its ' + f.months.length + ' months (to ' + f.latest + ')');
+  }
   const pm = O.mergePoints(ids.map((id) => ({ id, pm: files[id].points })));
   const keyOk = pm.pts.every((p) => geoKeys.has(S.pointCountyKey(p[5])));
   check(pm.pts.length === ids.reduce((t, id) => t + files[id].points.pts.length, 0) && keyOk, 'the merged permit points (' + pm.pts.length + ') all fall in a county on the map');

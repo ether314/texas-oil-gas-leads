@@ -282,6 +282,43 @@ if all(os.path.exists(os.path.join(DATA, n)) for n in N.NAMES):
 else:
     print("skip  the files are not committed yet")
 
+# the EIA's monthly estimate of the federal offshore's crude oil (d8_ok_context.py --state FO), the offshore's one figure of production
+sys.path.insert(0, PIPE)
+ctx_spec = importlib.util.spec_from_file_location("ctx", os.path.join(PIPE, "d8_ok_context.py"))
+C = importlib.util.module_from_spec(ctx_spec)
+ctx_spec.loader.exec_module(C)
+import d3_markets_infra as D3  # noqa: E402
+fo_eia = json.load(open(os.path.join(DATA, "series-fo.json")))
+check(C.validate(fo_eia, "FO") == [], "series-fo.json (the EIA's federal offshore crude) is clean: %s" % C.validate(fo_eia, "FO"))
+check(any("plausible range" in x for x in C.validate(dict(fo_eia, foCrude=[v * 100 for v in fo_eia["foCrude"]]), "FO")) and any("plausible range" in x for x in C.validate(dict(fo_eia, foCrude=[v // 100 for v in fo_eia["foCrude"]]), "FO")),
+      "a series in the wrong units (per day, or a hundred times too big) is caught")
+nm_eia = json.load(open(os.path.join(DATA, "series-nm.json")))
+check(C.validate(fo_eia, "NM") != [] and C.validate(nm_eia, "FO") != [] and C.validate(fo_eia, "OK") != [], "the offshore's file is not taken for another state's, nor theirs for it")
+check(C.STATE_SPECS["FO"]["SPEC"]["sid"] == "MCRFP3FM1" and C.STATE_SPECS["FO"]["key"] == "foCrude" and C.STATE_SPECS["FO"]["out"].endswith("series-fo.json")
+      and C.STATE_SPECS["FO"]["SPEC"]["lo"] < min(v for v in fo_eia["foCrude"]) and max(fo_eia["foCrude"]) < C.STATE_SPECS["FO"]["SPEC"]["hi"], "its series, key, file and plausible range (every month since 2019 inside it)")
+
+
+def eia_page(title, rows):
+    body = "".join("<tr><td>%s</td>%s</tr>" % (y, "".join("<td>%s</td>" % v for v in vals)) for y, vals in rows)
+    hdr = "<tr><td>Year</td>%s</tr>" % "".join("<td>%s</td>" % m for m in D3.MONTHS)
+    return "<html><head><title>%s</title></head><body><table>%s%s</table><p>Release Date: 10/30/2026</p></body></html>" % (title, hdr, body)
+
+
+page_ok = os.path.join(TMP, "eia-ok.html")
+open(page_ok, "w").write(eia_page("Federal Offshore--Gulf of America Field Production of Crude Oil (Thousand Barrels)", [(2026, ["63,853", "55,561", "61,684", "NA", "", "", "", "", "", "", "", ""])]))
+title, values, release = D3.parse_eia_monthly(page_ok, C.STATE_SPECS["FO"]["SPEC"])
+check(values[(2026, 1)] == 63853.0 and values[(2026, 4)] is None and release == "2026-10-30", "the parser reads an offshore page of the EIA's shape (thousands separators, a month with no value yet, the release date)")
+for label, ttl in (("Texas", "Texas Field Production of Crude Oil (Thousand Barrels)"), ("the Pacific offshore", "Federal Offshore--Pacific Field Production of Crude Oil (Thousand Barrels)"),
+                   ("the per-day series", "Federal Offshore--Gulf of America Field Production of Crude Oil (Thousand Barrels per Day)")):
+    page_bad = os.path.join(TMP, "eia-bad.html")
+    open(page_bad, "w").write(eia_page(ttl, [(2026, ["1"] * 12)]))
+    try:
+        D3.parse_eia_monthly(page_bad, C.STATE_SPECS["FO"]["SPEC"])
+        refused = False
+    except SystemExit as e:
+        refused = "unexpected series title" in str(e)
+    check(refused, "a page for %s is refused" % label)
+
 real = os.environ.get("FO_REAL_FILES", "")
 if real and all(os.path.exists(os.path.join(real, f)) for f in ("5010delimit.zip", "compalldelimit.zip")):
     print("\n-- the real files")

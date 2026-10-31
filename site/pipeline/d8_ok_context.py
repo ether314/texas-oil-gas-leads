@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""D8 context: Oklahoma's monthly figures, for the monthly figures card on the Daily report.
+"""D8 context: Oklahoma's monthly figures, for the monthly figures card on the Daily report (and the same EIA series for New Mexico and the federal offshore).
 
 Reads one EIA series, Oklahoma field production of crude oil (MCRFPOK1, thousand barrels a month), by the same fetch and the same
 page parser the Texas market series use (d3_markets_infra.py), and writes site/public/data/series-ok.json. The two prices on the card
@@ -33,14 +33,19 @@ SPEC = dict(name="eia_okcrude_monthly", sid="MCRFPOK1", url="https://www.eia.gov
             must=("Oklahoma Field Production of Crude Oil", "Thousand Barrels"), never=("per Day",), lo=5000.0, hi=30000.0,
             label="EIA, Oklahoma field production of crude oil, thousand barrels per month")
 KEYS = ["asOf", "latest", "release", "months", "okCrude", "units", "src"]
-# Another state is the same series under its own code: --state NM writes series-nm.json from MCRFPNM1 (key nmCrude). The plausible range is
-# wide enough for the whole history since 2019 and narrow enough to catch a per-day series or the wrong state.
+# Another state is the same series under its own code: --state NM writes series-nm.json from MCRFPNM1 (key nmCrude), --state FO writes series-fo.json from
+# MCRFP3FM1 (key foCrude), the Gulf of America's federal offshore (about 55 to 65 million barrels a month, 32 at the lowest, in a 2021 hurricane). The plausible range
+# is wide enough for the whole history since 2019 and narrow enough to catch a per-day series or the wrong state.
 STATE_SPECS = {
     "OK": dict(SPEC=SPEC, key="okCrude", out=OUT, noun="Oklahoma"),
     "NM": dict(SPEC=dict(name="eia_nmcrude_monthly", sid="MCRFPNM1", url="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=MCRFPNM1&f=M",
                          must=("New Mexico Field Production of Crude Oil", "Thousand Barrels"), never=("per Day",), lo=10000.0, hi=120000.0,
                          label="EIA, New Mexico field production of crude oil, thousand barrels per month"),
                key="nmCrude", out=os.path.join(SITE, "public", "data", "series-nm.json"), noun="New Mexico"),
+    "FO": dict(SPEC=dict(name="eia_focrude_monthly", sid="MCRFP3FM1", url="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=MCRFP3FM1&f=M",
+                         must=("Federal Offshore--Gulf of America Field Production of Crude Oil", "Thousand Barrels"), never=("per Day",), lo=20000.0, hi=100000.0,
+                         label="EIA, Federal Offshore--Gulf of America field production of crude oil, thousand barrels per month"),
+               key="foCrude", out=os.path.join(SITE, "public", "data", "series-fo.json"), noun="the federal offshore"),
 }
 log = D3.log
 
@@ -67,7 +72,7 @@ def build(dl_root, as_of, state="OK"):
 
 
 def validate(doc, state="OK"):
-    """The problems found in a series-ok.json (or series-nm.json) document (empty when all is well)."""
+    """The problems found in a series-ok.json (or series-nm.json, series-fo.json) document (empty when all is well)."""
     st = STATE_SPECS[state]; spec, key = st["SPEC"], st["key"]
     keys = ["asOf", "latest", "release", "months", key, "units", "src"]
     bad = []

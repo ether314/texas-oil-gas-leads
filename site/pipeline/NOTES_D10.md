@@ -74,7 +74,18 @@ panel), `in` ("in the federal offshore" inside a sentence), `drill` ("Watch the 
 #e05aa6 dark) chosen for distance from the other three in normal vision and the common color blindnesses (it is used for dots, bars and lines, never as the color of words). The bar shows
 TX, OK, NM and Offshore on a phone below 440 px so all five fit; each button keeps its full name for a screen reader. The graticule extends east for the Gulf's shapes (`geo.js`).
 
+## Crude oil, and the weekly refresh
+
+The EIA publishes a monthly estimate of the federal offshore's crude oil production (series `MCRFP3FM1`, "Federal Offshore--Gulf of America Field Production of Crude Oil", thousand barrels a month: 64.3 million in
+Aug 2026, 31.8 at its lowest since 2019, in a 2021 hurricane). It is the offshore's one figure of production here, built by the producer the other two states use (`python3 -I site/pipeline/d8_ok_context.py --state FO`
+writes `series-fo.json`, key `foCrude`, one request to EIA's page; the page's title and units are checked, and a value outside 20 to 100 million barrels fails the build). It is refreshed by hand when EIA publishes, about the
+end of each month. BSEE's own production files are not used.
+
+`.github/workflows/refresh-monthly.yml` runs `d10_fo_monthly.py` every Monday at 05:40 UTC as a third isolated refresh (with its own check and drop steps; BSEE makes its file on Sundays): a failure puts back the four files
+as committed, the other two refreshes go ahead, and the run ends red after the publish. It never rebuilds the map of areas (`--areas` is by hand). The producer has been run from this machine against the real BSEE files only; the
+first scheduled run is the first from a GitHub runner.
+
 ## Not available
 
-Permits by approval date (an online query only), depth, production by area or operator (the EIA's monthly offshore crude series is planned for the monthly card), jobs, rig counts, a Daily report (BSEE's file is weekly,
+Permits by approval date (an online query only), depth, production by area or operator (the EIA's state-wide offshore series is all there is), jobs, rig counts, a Daily report (BSEE's file is weekly,
 so there is no day to report). The pages say "not available", never zero.
