@@ -25,6 +25,7 @@ from datetime import datetime
 TAG = re.compile(r"daily-(\d{4}-\d\d-\d\d)")
 BATCH = 40  # files per `gh release upload`
 ATTEMPTS = 3
+DEADLINE = None  # time.time() after which no gh call is started, and the one running is cut off (set by the capture, with a margin for writing the report)
 
 
 class ReleaseError(RuntimeError):
@@ -69,8 +70,11 @@ def _gh(args, timeout=300, retry=True):
     """Run gh, retrying a failure a couple of times (uploads of many files do hit the occasional reset). Returns stdout."""
     err = ""
     for k in range(ATTEMPTS if retry else 1):
+        left = None if DEADLINE is None else DEADLINE - time.time()
+        if left is not None and left < 20:
+            raise ReleaseError("gh %s: the capture ran out of time" % " ".join(args[:2]))
         try:
-            r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout if left is None else min(timeout, left))
         except (OSError, subprocess.SubprocessError) as e:
             err = str(e)
         else:

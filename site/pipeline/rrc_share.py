@@ -57,6 +57,9 @@ def parse_modified(text):
         return None
 
 
+DEADLINE = None  # time.time() after which no request is started (set by the capture: a hung server must not use up the whole night); None means no limit
+
+
 class Session:
     """One keep-alive HTTPS connection to the share host with a cookie jar and retry-with-reconnect."""
 
@@ -123,6 +126,8 @@ class Session:
         for _hop in range(6):
             last = None
             for i in range(self.attempts):
+                if DEADLINE is not None and time.time() > DEADLINE:
+                    raise ShareError("%s %s: the capture ran out of time before the share answered" % (method, path.split("?")[0]))
                 try:
                     status, hdrs, body = self._once(method, path, data, headers, sink)
                     break
@@ -186,6 +191,8 @@ class Share:
         rows = parse_rows(page)
         count = re.search(r"rowCount:(\d+)", page)
         self.total = int(count.group(1)) if count else len(rows)
+        if self.total == 0 and not rows:  # every share this project reads holds files: a table of nothing is a page that is not the share
+            raise ShareError("share %s lists no files" % self.guid)
         self.links = {r["name"]: r["link"] for r in rows if r["link"]}
         self.page = 0
         return rows
@@ -223,6 +230,11 @@ class Share:
             rows += got
             first += PAGE_ROWS
         rows = rows[:count]
+        times = [r["modified"] for r in rows if r["modified"]]
+        if rows and not times:  # the callers pick files by the day they were listed: with no time they would pick nothing and say all is well
+            raise ShareError("share %s: none of the %d listed files has a time this script can read (the listing's format has changed)" % (self.guid, len(rows)))
+        if len(times) >= 2 and times[0] < times[-1]:  # asked for newest first: oldest first means the sort did not apply, and the first rows are not the newest
+            raise ShareError("share %s: the listing did not come back newest first (the sort did not apply)" % self.guid)
         self.links = {r["name"]: r["link"] for r in rows if r["link"]}  # ids are positions in this sorted view
         return rows
 

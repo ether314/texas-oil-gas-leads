@@ -14,7 +14,9 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_d8.py`, `test_d8_context.py`, `test_ok_xlsx.py`: the Oklahoma producer, its monthly series and its workbook reader: rules,
   Central-time days across both clock changes, validation of the committed archive (with deliberate faults), privacy checks.
 - `test_d7_nights.py`: whole nights of the Texas producer with every socket blocked and the RRC's shares faked (synthetic permit file, pending sets, completions zip, pack names): the map service
-  answering badly, a backup run that read less (or lost the document links), rebuilt days written partial, a damaged archive, the text of a failure, and nine mutants that put the old behavior back.
+  answering badly, a backup run that read less (or lost the document links), rebuilt days written partial, a damaged archive, the text of a failure, stray file names and dates, files that are
+  delivered but are not the file (empty, an HTML page, a renamed column, a layout change), the real share client on listings that are not listings, the repair of an old day, the capture's time limit,
+  and 25 mutants that put the old behavior back (about 20 s).
 - `test_d8_nights.py`: whole nights of the Oklahoma producer with the network faked: a permit with no county, an inventory that is an error page, empty,
   header-only, renamed, cut short or starts with a byte-order mark, a backup run that read less than the report it would replace, a master file that
   cannot be read, a rebuilt day left partial, no web address in a failure's text, and eleven mutants that put the old behavior back.

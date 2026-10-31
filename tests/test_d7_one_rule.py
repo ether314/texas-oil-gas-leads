@@ -96,7 +96,7 @@ class LK:
         return [n, None]
 
 
-def fake_read_delimited(path, delim):
+def fake_read_delimited(path, delim, need=()):
     name = path.split("|", 1)[1]
     stamp = name[-18:-4]
     if name.startswith("dp_drilling_permit"):
