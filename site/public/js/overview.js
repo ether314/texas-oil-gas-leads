@@ -1,38 +1,50 @@
 // Overview: hero KPI strip, hot counties, top operators, top producers, segments, data freshness.
-import { $, el, fmt, compactFmt, stat, pct, share, fmtDate, monthLabel, countUp, sum, toObjects } from './util.js';
+import { $, el, fmt, compactFmt, stat, pct, share, fmtDate, monthLabel, countUp, toObjects } from './util.js';
 import { barList, delta, spark } from './charts.js';
 import { hideTip, showTip, tipRow } from './tip.js';
 import { icon } from './icons.js';
+import { permitTotals, countyLabel, topBy, newToDrilling } from './overview-data.js';
+import { stateOf, countyState } from './states.js';
 
 export const opsLink = (name) => '#operators?' + new URLSearchParams({ q: name, band: 'all' });
 const hide = (node) => { const c = node.closest('[data-card]'); (c || node).hidden = true; };
 
-export function fillMeta(m) {
+export function fillMeta(m, extra = {}) {
   const values = {
     built: fmtDate(m.built), p5: fmtDate(m.sources.p5), permits: fmtDate(m.sources.permits), latest_permit: fmtDate(m.sources.latest_permit),
-    comptroller: fmtDate(m.sources.comptroller), registered: fmt.format(m.operators.registered), opsShown: fmt.format(m.operators.shown),
+    comptroller: fmtDate(m.sources.comptroller), registered: fmt.format(m.operators.registered), opsShown: fmt.format(m.operators.shown), ...extra,
   };
   document.querySelectorAll('[data-fill]').forEach((n) => { n.textContent = values[n.dataset.fill] || ''; });
 }
 
-/* hero KPI strip: each chip opens the records behind its number */
-export function renderKpis(m, sp) {
+/* hero KPI strip: each chip opens the records behind its number. `ctx`: states shown, meta, sp (the permit series of those states), rows (the
+   operators of the other states, as objects), wells (each other state's active wells, or null). A figure a state cannot give says so: the
+   company pool is the Texas Comptroller's, so it is Texas only, and a single state without Texas shows what its own files hold instead. */
+export function renderKpis({ states, meta: m, sp, rows = [], wells = {} }) {
+  const tx = states.includes('TX'); const multi = states.length > 1;
   const o = m.operators; const c = m.companies;
   const chips = [];
   if (sp) {
-    const n = sp.permits.length;
-    const last = sum(sp.permits, n - 12, n); const prior = sum(sp.permits, n - 24, n - 12);
+    const t = permitTotals(sp);
     chips.push({
-      label: 'New-drill permits, last 12 months', value: last, hero: true, href: '#map',
-      note: [delta(prior ? last / prior - 1 : null), ' vs the 12 months before'],
-      sub: monthLabel(sp.months[n - 12]) + ' to ' + monthLabel(sp.months[n - 1]),
+      label: 'New-drill permits, last 12 months', value: t.last, hero: true, href: '#map',
+      note: [delta(t.prior ? t.last / t.prior - 1 : null), ' vs the 12 months before'],
+      sub: monthLabel(t.from) + ' to ' + monthLabel(t.to),
     });
   }
-  chips.push(
-    { label: 'Operators drilling now', value: (o.bands.A || 0) + (o.bands.B || 0), note: 'band A or B: new-well permits in the last 12 months', href: '#operators?band=ab' },
-    { label: 'Companies in the pool', value: c.shown, note: pct(c.texas, c.shown) + ' with Texas addresses', href: '#companies?seg=all' },
-    { label: 'New entities', value: c.newEntities, note: 'chartered in the last 24 months', href: '#companies?isNew=1' },
-  );
+  const mine = rows.filter((r) => states.includes(r.st) && r.st !== 'TX');
+  const drilling = (tx ? (o.bands.A || 0) + (o.bands.B || 0) : 0) + mine.filter((r) => r.band === 'A' || r.band === 'B').length;
+  chips.push({ label: 'Operators drilling now', value: drilling, note: (multi ? 'band A or B in every state shown' : 'band A or B') + ': new-well permits in the last 12 months', href: '#operators?band=ab' });
+  if (tx) {
+    chips.push(
+      { label: 'Companies in the pool', value: c.shown, note: pct(c.texas, c.shown) + ' with Texas addresses' + (multi ? ' · Texas only' : ''), href: '#companies?seg=all' },
+      { label: 'New entities', value: c.newEntities, note: 'chartered in the last 24 months' + (multi ? ' · Texas only' : ''), href: '#companies?isNew=1' },
+    );
+  } else {
+    chips.push({ label: 'New to drilling', value: newToDrilling(mine), note: 'operators whose first drilling permit came in the last 24 months', href: '#operators?band=all' });
+    const w = states.map((id) => wells[id]).filter(Boolean);
+    if (w.length) chips.push({ label: 'Active wells', value: w.reduce((t, x) => t + x.n, 0), note: 'in the Commission’s well inventory, ' + fmtDate(w[0].day), href: '#daily' });
+  }
   const small = chips.length - (sp ? 1 : 0);
   $('#kpis').replaceChildren(...chips.map((k, i) => {
     const num = el('strong', { class: 'kpi-num', 'aria-hidden': 'true', title: fmt.format(k.value) });
@@ -45,30 +57,41 @@ export function renderKpis(m, sp) {
   }));
 }
 
-/* hot counties and top operators */
-export function renderHot(cp, G, win) {
+/* hot counties and top operators. One state: the top 10. Several: the top few of each under its own heading, on one scale, so no state hides
+   the others behind its size. */
+const PER = (states) => (states.length === 1 ? 10 : states.length === 2 ? 5 : 4); // 10 for one state, then 5 or 4 each, so the card stays about as long
+function grouped(rows, states, key, build) {
+  if (states.length < 2) return topBy(rows, key, PER(states)).map(build);
+  return states.flatMap((id) => [{ heading: stateOf(id).name, st: id }, ...topBy(rows.filter((r) => r.st === id), key, PER(states)).map(build)]);
+}
+export function renderHot(cp, G, win, states = ['TX']) {
   const ul = $('#hot-bars');
   if (!cp || !G) { hide(ul); return; }
-  const rows = Object.entries(cp.counties).map(([f, v]) => ({ f, v, c: G.byFips.get(f) })).filter((r) => r.c)
-    .sort((a, b) => b.v.p12 - a.v.p12).slice(0, 10);
-  barList(ul, rows.map((r) => ({
-    label: r.c.n, value: r.v.p12, href: '#map?county=' + r.f, aria: r.c.n + ' County: ' + fmt.format(r.v.p12) + ' new-drill permits. Open on the map.',
-    r,
-  })), {
-    tipFor: (it) => [tipRow(fmt.format(it.value), 'new-drill permits, ' + it.label + ' County'),
+  const multi = states.length > 1;
+  const rows = Object.entries(cp.counties).map(([f, v]) => ({ f, v, c: G.byFips.get(f), p12: v.p12, _i: 0, st: countyState(f) })).filter((r) => r.c);
+  const items = grouped(rows, states, 'p12', (r) => ({
+    label: r.c.n, value: r.v.p12, href: '#map?county=' + r.f, aria: r.c.n + ' County' + (multi ? ', ' + r.st : '') + ': ' + fmt.format(r.v.p12) + ' new-drill permits. Open on the map.', r, st: r.st,
+  }));
+  barList(ul, items, {
+    max: Math.max(1, ...rows.map((r) => r.p12)),
+    tipFor: (it) => [tipRow(fmt.format(it.value), 'new-drill permits, ' + countyLabel(it.label, it.st, multi) + ' County'),
       tipRow(fmt.format(it.r.v.p12prev), 'in the prior 12 months'), tipRow('Click to open the map', '')],
   });
-  $('#hot-sub').textContent = 'Top 10 counties by new-drill permits, ' + win + '. Click a bar to open it on the map.';
+  $('#hot-sub').textContent = (multi ? 'Top ' + PER(states) + ' counties of each state' : 'Top 10 counties') + ' by new-drill permits, ' + win + '. Click a bar to open it on the map.';
 }
-export function renderTopOps(ops) {
+// rows: the operators of the states shown, as objects (overview-data.operatorRows)
+export function renderTopOps(rows, states = ['TX']) {
   const ul = $('#top-ops');
-  if (!ops) { hide(ul); return; }
-  const rows = toObjects(ops).sort((a, b) => b.new12 - a.new12).slice(0, 10);
-  barList(ul, rows.map((r) => ({
-    label: r.name, value: r.new12, href: opsLink(r.name), aria: r.name + ': ' + fmt.format(r.new12) + ' new-well permits. Open in Operators.', r,
-  })), {
-    tipFor: (it) => [tipRow(fmt.format(it.value), 'new-well permits, ' + it.label), tipRow(it.r.city ? it.r.city + ', ' + it.r.state : '', 'Band ' + it.r.band), tipRow('Click to open the record', '')],
+  if (!rows || !rows.length) { hide(ul); return; }
+  const multi = states.length > 1;
+  const items = grouped(rows, states, 'new12', (r) => ({
+    label: r.name, value: r.new12, href: opsLink(r.name), aria: r.name + (multi ? ' (' + r.st + ')' : '') + ': ' + fmt.format(r.new12) + ' new-well permits. Open in Operators.', r, st: r.st,
+  }));
+  barList(ul, items, {
+    max: Math.max(1, ...rows.map((r) => r.new12)),
+    tipFor: (it) => [tipRow(fmt.format(it.value), 'new-well permits, ' + it.label), tipRow(it.r.city ? it.r.city + ', ' + it.r.state : '', 'Band ' + it.r.band + (multi ? ' · ' + stateOf(it.st).name : '')), tipRow('Click to open the record', '')],
   });
+  $('#top-sub').textContent = (multi ? 'Top ' + PER(states) + ' of each state' : 'Top 10') + ' by new-well permits in the last 12 months. Click a bar to open the record.';
 }
 
 /* top producers: operators by crude oil and condensate over the newest 12 complete months of RRC reports. The file names every producing

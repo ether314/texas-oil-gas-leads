@@ -1,33 +1,19 @@
 // Boot, hash routing and wiring. Every data-dependent block degrades on its own if its file is missing.
-import { $, $$, el, load, loadOpt, parseHash, dayLabel, fmt, fmtDate, monthLabel, lastIdx, reduced } from './util.js';
+import { $, $$, el, load, loadOpt, parseHash, replaceHash, fmt, monthLabel, reduced } from './util.js';
 import { initTheme } from './theme.js';
 import { hideTip } from './tip.js';
-import { getGeo, getPoints, getBasins } from './geo.js';
-import { createHero } from './hero.js';
-import { fillMeta, renderKpis, renderHot, renderTopOps, renderSegments, renderProducers, renderFreshness } from './overview.js';
-import { loadMarketData, initMarkets } from './pulse.js';
-import { renderBasins, basinRigs } from './basins.js';
-import { renderInsights } from './insights.js';
+import { fillMeta, renderSegments } from './overview.js';
+import { createOverview } from './overview-view.js';
 import { createMapView } from './map.js';
 import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { icon } from './icons.js';
-import { initReveal, navIndicator } from './ui.js';
+import { initReveal, navIndicator, segmented } from './ui.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam } from './states.js';
 
 const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
-
-function startHero() {
-  const canvas = $('#hero-canvas'); const host = $('#hero');
-  Promise.all([getGeo(), getPoints()]).then(([G, { P, pm }]) => {
-    createHero(canvas, host, G, P);
-    const cv = pm.coverage;
-    $('#hero-note').textContent = 'Dots are permits with a recorded surface location: ' + Math.round(cv.share24 * 100) + '% of the last 24 months, '
-      + Math.round(cv.share12 * 100) + '% of the last 12. Brighter dots are the last 12 months. Counts and trends use every permit.';
-    host.classList.add('has-map');
-  }).catch(() => { $('#hero-note').textContent = 'The map backdrop could not be loaded.'; });
-}
-
-const ov = { meta: null, raw: null, markets: null, ops: null, cp: null, ex: null, G: null, B: null, prod: null, opProd: null, extra: {}, lazy: false, daily: null };
+// the views that follow the Both / Texas / Oklahoma choice; the others show what they showed before (Texas) and hide the choice
+const STATE_VIEWS = new Set(['overview', 'daily']);
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -44,76 +30,9 @@ async function fillProdNote() {
   li.hidden = false; $('#src-prod2').hidden = false; $('#src-p5').hidden = !opr;
 }
 
-function freshnessItems() {
-  const { meta, raw, extra, prod, opProd } = ov; const last = (arr) => arr[lastIdx(arr)];
-  // cadence is how often the source publishes (from the pipeline notes), not how often this static site is rebuilt
-  const items = [{ icon: 'pin', label: 'Permits, monthly master (Railroad Commission)', value: 'Issued to ' + fmtDate(meta.sources.latest_permit), cadence: 'monthly' }];
-  const dl = ov.daily && ov.daily.days[ov.daily.days.length - 1];
-  if (dl && dl.dd) items.push({ icon: 'pin', label: 'Permits, nightly file (Daily report)', value: 'Issued to ' + fmtDate(dl.dd), cadence: 'nightly' });
-  const sr = raw['series-production']; const pf = prod || opProd || sr;
-  if (pf) {
-    const thru = pf.completeThrough || pf.months[pf.months.length - 1];
-    items.push({ icon: 'drop', label: 'Production (Railroad Commission)', value: 'Complete to ' + monthLabel(thru) + (pf.newest && pf.newest > thru ? '; newer months still filling in' : ''), cadence: 'monthly' });
-  }
-  const rg = raw['series-rigs']; if (rg) items.push({ icon: 'rig', label: 'Rig counts (Baker Hughes)', value: 'Week of ' + fmtDate(rg.through), cadence: 'weekly' });
-  const sm = raw['series-markets'];
-  if (sm && sm.wti) items.push({ icon: 'chart', label: 'WTI and Henry Hub (EIA)', value: 'Monthly, to ' + monthLabel(sm.months[lastIdx(sm.wti)]), cadence: 'monthly' });
-  if (sm && sm.txCrude) items.push({ icon: 'pipe', label: 'Texas crude estimate (EIA)', value: 'Estimates to ' + monthLabel(sm.months[lastIdx(sm.txCrude)]), cadence: 'monthly' });
-  const ol = raw['series-outlook']; if (ol) items.push({ icon: 'trend', label: 'Price outlook (EIA forecast)', value: 'Issued ' + monthLabel(ol.issued) + ', to ' + monthLabel(ol.months[ol.months.length - 1]), cadence: 'monthly' });
-  const tx = raw['series-tax']; if (tx) items.push({ icon: 'dollar', label: 'Production tax (Comptroller)', value: 'Collected to ' + monthLabel(tx.months[tx.months.length - 1]), cadence: 'monthly' });
-  const jb = raw['series-jobs']; if (jb) items.push({ icon: 'jobs', label: 'Oil and gas jobs (BLS)', value: 'To ' + monthLabel(jb.latest || last(jb.months)) + ', first print', cadence: 'monthly' });
-  if (extra.lab) items.push({ icon: 'jobs', label: 'County jobs and wages (BLS)', value: 'Annual averages, ' + extra.lab.year, cadence: 'annually' });
-  if (extra.cbp) items.push({ icon: 'building', label: 'Establishments (Census)', value: 'County Business Patterns ' + extra.cbp.year, cadence: 'annually' });
-  if (extra.min) items.push({ icon: 'gem', label: 'Mineral values (Comptroller)', value: 'Tax year ' + extra.min.year, cadence: 'annually' });
-  items.push({ icon: 'building', label: 'Company records (Comptroller)', value: 'Updated ' + fmtDate(meta.sources.comptroller) });
-  return items;
-}
-
-async function loadOverview(meta) {
-  ov.meta = meta;
-  const sp = await loadOpt('series-permits');
-  renderKpis(meta, sp);
-  const [raw, ops, cp, ex, G, B, daily] = await Promise.all([loadMarketData(), loadOpt('operators'), loadOpt('county-permits'), loadOpt('operator-extras'),
-    getGeo().catch(() => null), getBasins().catch(() => null), loadOpt('daily/index')]);
-  Object.assign(ov, { raw, ops, cp, ex, G, B, daily });
-  const ticker = $('#ticker');
-  const markets = initMarkets({ ticker, card: $('#pulse-card'), raw });
-  ticker.setAttribute('aria-busy', 'false');
-  ov.markets = markets;
-  const win = cp ? dayLabel(Date.parse(cp.asOf + 'T00:00:00Z') - 365 * 864e5) + ' to ' + fmtDate(meta.sources.latest_permit) : '';
-  renderHot(cp, G, win);
-  renderTopOps(ops);
-  const paint = () => renderInsights($('#insights'), { cp, G, B, ops, extras: ex, meta, prod: ov.prod, R: markets.registry || {}, selectGroup: (id) => markets.select(id, true) });
-  paint();
-  renderFreshness($('#fresh-list'), freshnessItems());
-
-  // second wave: the larger production files, the basin cards and the county files that only name a year
-  async function wave() {
-    if (ov.lazy) return;
-    ov.lazy = true;
-    const [opProd, prod, lab, cbp, min] = await Promise.all([loadOpt('operator-production'), loadOpt('county-production'), loadOpt('county-labor'), loadOpt('county-business'), loadOpt('county-minerals')]);
-    Object.assign(ov, { opProd, prod, extra: { lab, cbp, min } });
-    const pts = await getPoints().catch(() => null);
-    renderProducers($('#prod-card'), opProd, ops, new Set(pts ? pts.pm.opNums : []));
-    renderBasins({ section: $('#basins'), B, G, cp, prod, rigs: markets.registry ? basinRigs(markets.registry) : {}, permitsThrough: monthLabel(meta.sources.latest_permit.slice(0, 7)) });
-    $('#basin-cap').textContent = B ? 'Counties from the EIA Drilling Productivity Report; Barnett from the Railroad Commission.' : '';
-    paint();
-    renderFreshness($('#fresh-list'), freshnessItems());
-    fillProdNote();
-  }
-  ov.wave = wave;
-  // start when the first card below the fold nears the viewport, or after a pause so slow scrollers still get everything
-  const sentinel = $('#pulse-card');
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); wave(); } }, { rootMargin: '700px 0px' });
-    io.observe(sentinel);
-  }
-  setTimeout(wave, 5000);
-}
-
 // Sources & method is long: a sticky "on this page" list on wide screens. Buttons, not links, so the hash router is left alone.
 function buildToc() {
-  const prose = $('#about .prose');
+  const prose = $('#view-about .prose');
   if (!prose) return;
   const heads = $$('h2, h3', prose);
   const nav = el('nav', { class: 'toc', 'aria-label': 'On this page' }, el('p', { class: 'eyebrow', text: 'On this page' }),
@@ -143,8 +62,7 @@ async function boot() {
   }
   fillMeta(meta);
   renderSegments(meta);
-  startHero();
-  loadOverview(meta).catch(() => { /* each block already hides itself when its file is missing */ });
+  const overview = createOverview(meta);
 
   const tables = createTables(meta);
   const map = createMapView({ root: $('#map-root'), meta });
@@ -157,6 +75,22 @@ async function boot() {
     item.t.load().catch(() => { item.started = false; item.t.ex.fail('Could not load the data. Reload the page to try again.'); });
   }
 
+  /* ---------- the states shown: one choice for every view that follows it, kept in the address as st=tx or st=ok ---------- */
+  const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : 'all');
+  const bar = segmented({
+    label: 'States shown', tabs: false, prefix: 'sb', value: choice(),
+    options: [{ id: 'all', label: 'All' }, ...STATES.map((x) => ({ id: x.id, label: x.name }))],
+    onChange: (id) => setStates(id === 'all' ? STATES.map((x) => x.id) : [id]),
+  });
+  $('#statebar-seg').append(bar.el);
+  // keeps the address bar in step with the choice without firing hashchange: st is only in it when the choice is not both
+  function syncAddress() {
+    const { view, params } = parseHash();
+    const sp = stateParam(activeStates());
+    if (sp) params.set('st', sp); else params.delete('st');
+    replaceHash(view, params);
+  }
+
   let shown = '';
   function show(moveFocus) {
     let { view, params, hasQuery } = parseHash();
@@ -167,8 +101,15 @@ async function boot() {
       view = 'daily'; hasQuery = true;
     }
     const id = Object.prototype.hasOwnProperty.call(VIEWS, view) ? view : 'overview';
+    // an address that names the states sets the choice (quietly: this view is about to be drawn for it); one that does not keeps
+    // the choice, and says so in the address
+    if (params.has('st')) { if (setStates(parseStates(params.get('st')), true)) overview.stale(); } else if (stateParam(activeStates())) syncAddress();
+    bar.set(choice(), false);
+    const rest = new URLSearchParams(params); rest.delete('st');
+    hasQuery = rest.toString() !== '';
+    $('#statebar').hidden = !STATE_VIEWS.has(id);
     hideTip();
-    Object.keys(VIEWS).forEach((v) => { $('#' + v).hidden = v !== id; });
+    Object.keys(VIEWS).forEach((v) => { $('#view-' + v).hidden = v !== id; });
     $$('.nav a').forEach((a) => {
       if (a.getAttribute('href') === '#' + id) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
@@ -179,20 +120,29 @@ async function boot() {
     if (hasQuery && lazy[id]) lazy[id].t.ex.apply(params);
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
     ensure(id);
-    if (id === 'daily') daily.activate(params);
+    if (id === 'overview') overview.show(activeStates());
+    if (id === 'daily') daily.activate(params).then(() => bar.set(choice(), false));
     if (id === 'about') fillProdNote();
     if (moveFocus) {
       if (shown !== id || hasQuery) window.scrollTo(0, 0);
-      const h = $('#' + id + ' h1');
+      const h = $('#view-' + id + ' h1');
       h.setAttribute('tabindex', '-1');
       h.focus({ preventScroll: true });
     }
     shown = id;
   }
+  // the choice changed on the page (the bar): the address follows, and the view on screen is drawn again
+  onStates((ids) => {
+    bar.set(choice(), false);
+    syncAddress();
+    overview.stale();
+    if (shown === 'overview') overview.show(ids);
+    else if (shown === 'daily') daily.setStates(ids);
+  });
   window.addEventListener('hashchange', () => show(true));
   show(false);
   document.documentElement.classList.add('ready');
-  if (new URLSearchParams(location.search).has('debug')) window.__app = { fmt, ov };
+  if (new URLSearchParams(location.search).has('debug')) window.__app = { fmt, ov: overview.ov };
 }
 
 boot();

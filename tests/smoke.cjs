@@ -37,7 +37,7 @@ const VIEWS = [
   ['#daily?st=ok', '#daily-root .dr-hero', async (page) => (await page.locator('#daily-root path.dr-county').count()) === 77 ? null : 'the Oklahoma map should have 77 counties'],
   ['#daily?st=ok&v=full', '#daily-root .dr-sec'],
   ['#oklahoma', '#daily-root .dr-hero', async (page) => (/st=ok/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open #daily?st=ok')],
-  ['#about', '#about h1'],
+  ['#about', '#view-about h1'],
 ];
 const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
 
@@ -88,6 +88,57 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(!all.length, label.padEnd(7) + hash.padEnd(21) + (all.length ? all.join(' | ') : 'loads clean'));
       await page.close();
     }
+    await ctx.close();
+  }
+
+  // 3. the states shown: one choice in a bar above the views that follow it, kept in the address, and followed by the Overview and the Daily report
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const pressed = () => page.locator('#statebar button[aria-pressed="true"]').innerText();
+    const hash = () => page.evaluate(() => location.hash);
+    const eyebrow = () => page.locator('#hero-eyebrow').textContent(); // innerText would be the capitals the page's CSS makes of it
+    const dailyEyebrow = (re) => page.waitForFunction((src) => { const e = document.querySelector('#daily-root .dr-hero .eyebrow'); return !!e && new RegExp(src, 'i').test(e.textContent); }, re.source, { timeout: 25000 });
+    const waitEyebrow = (re) => page.waitForFunction((src) => new RegExp(src).test(document.querySelector('#hero-eyebrow').textContent), re.source, { timeout: 20000 });
+    try {
+      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.waitForSelector('#hot-bars li', { timeout: 25000 });
+      await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
+      check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Overview and starts on All');
+      check(/\(Texas\).*\(Oklahoma\)/.test(await eyebrow()) && (await page.locator('#hot-bars .bars-h').count()) === 2, 'all states: the hero names each state\'s last day and the lists have a heading per state');
+      await page.click('#statebar button[data-id="OK"]');
+      await waitEyebrow(/Corporation Commission approvals through/);
+      check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma', 'choosing Oklahoma puts st=ok in the address');
+      check((await page.locator('#kpis').innerText()).includes('Active wells') && !(await page.locator('#seg-chart').isVisible()), 'Oklahoma alone: its own figures, and the cards only Texas can fill step aside');
+      await page.click('#statebar button[data-id="TX"]');
+      await waitEyebrow(/^Railroad Commission permits through/);
+      check(/st=tx/.test(await hash()) && (await page.locator('#seg-chart').isVisible()) && (await page.locator('#hot-bars .bars-h').count()) === 0, 'Texas alone: the original Overview, st=tx in the address');
+      await page.click('#statebar button[data-id="all"]');
+      await waitEyebrow(/\(Oklahoma\)/);
+      check(!/st=/.test(await hash()), 'choosing All takes st out of the address');
+      await page.click('#statebar button[data-id="OK"]');
+      await waitEyebrow(/Corporation Commission/);
+      await page.click('.nav a[href="#daily"]');
+      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
+      await page.waitForTimeout(800);
+      check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma' && (await page.locator('#daily-root path.dr-county').count()) === 77, 'going to the Daily report keeps the choice: Oklahoma\'s 77 counties, st=ok in the address');
+      await page.click('.nav a[href="#operators"]');
+      await page.waitForSelector('#ops-root table', { timeout: 25000 });
+      check(!(await page.locator('#statebar').isVisible()) && /st=ok/.test(await hash()), 'a view that does not follow the choice hides the bar and keeps it in the address');
+      await page.goto(base + '#daily?st=tx', { waitUntil: 'load' });
+      await dailyEyebrow(/Railroad Commission report/);
+      check((await pressed()) === 'Texas', 'an address with st=tx opens the Daily report on Texas alone, and the bar says so');
+      await page.click('#statebar button[data-id="all"]');
+      await dailyEyebrow(/Texas and Oklahoma report/);
+      check(!/st=/.test(await hash()) && (await pressed()) === 'All', 'choosing All on the Daily report shows the states together and leaves st out of the address');
+    } catch (e) {
+      check(false, 'the states bar: ' + e.message.split('\n')[0].slice(0, 160));
+    }
+    check(!errs.length, 'the states bar loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

@@ -1,6 +1,10 @@
 // Albers equal-area conic centered on Texas, plus every geometry the map and hero draw.
-// World units: the state is 1000 wide, y grows southward. Views are transforms on these units.
+// World units: the shapes are 1000 wide, y grows southward. Views are transforms on these units.
+// Each set of shapes (Texas, Oklahoma, both) is fitted to its own box and carries its own projection (G.toWorld); the module's
+// toWorld is the Texas-fitted one that the Daily report's GPS map uses.
 import { load, loadOpt, once } from './util.js';
+import { POINT_BLOCK, stateOf, statesKey, countyKey } from './states.js';
+import { mergePoints } from './overview-data.js';
 
 const D2R = Math.PI / 180;
 const L1 = 27.5; const L2 = 35; const L0 = 31; const LON0 = -100;
@@ -21,6 +25,16 @@ export function toWorld(lon, lat, out = [0, 0]) {
   out[0] = (tmp[0] - T.minX) * T.s;
   out[1] = (T.maxY - tmp[1]) * T.s;
   return out;
+}
+// the same projection with its box fixed now, so shapes built later for another state cannot move it
+function projector(box) {
+  const { minX, maxY, s } = box;
+  return (lon, lat, out = [0, 0]) => {
+    albers(lon, lat, tmp);
+    out[0] = (tmp[0] - minX) * s;
+    out[1] = (maxY - tmp[1]) * s;
+    return out;
+  };
 }
 
 const HUBS = [
@@ -69,6 +83,7 @@ export function buildGeo(gj) {
   }
   T.minX = minX; T.maxY = maxY; T.s = 1000 / (maxX - minX);
   const W = 1000; const H = (maxY - minY) * T.s;
+  const project = projector(T);
 
   const counties = []; const byFips = new Map();
   const outline = new Path2D(); const border = new Path2D();
@@ -83,7 +98,7 @@ export function buildGeo(gj) {
       const n = ring.length - (ring[0][0] === last[0] && ring[0][1] === last[1] ? 1 : 0);
       const xy = new Float32Array(n * 2);
       for (let j = 0; j < n; j++) {
-        toWorld(ring[j][0], ring[j][1], o);
+        project(ring[j][0], ring[j][1], o);
         xy[2 * j] = o[0]; xy[2 * j + 1] = o[1];
         if (o[0] < bb[0]) bb[0] = o[0];
         if (o[1] < bb[1]) bb[1] = o[1];
@@ -120,18 +135,18 @@ export function buildGeo(gj) {
   const grat = new Path2D();
   for (let lat = 24; lat <= 38; lat += 2) {
     for (let lon = -110; lon <= -90; lon += 0.5) {
-      toWorld(lon, lat, o);
+      project(lon, lat, o);
       if (lon === -110) grat.moveTo(o[0], o[1]); else grat.lineTo(o[0], o[1]);
     }
   }
   for (let lon = -108; lon <= -92; lon += 2) {
     for (let lat = 23; lat <= 39; lat += 0.5) {
-      toWorld(lon, lat, o);
+      project(lon, lat, o);
       if (lat === 23) grat.moveTo(o[0], o[1]); else grat.lineTo(o[0], o[1]);
     }
   }
-  const hubs = HUBS.map(([n, lat, lon], pri) => { toWorld(lon, lat, o); return { n, x: o[0], y: o[1], pri }; });
-  return { counties, byFips, outline, border, grat, hubs, W, H };
+  const hubs = HUBS.map(([n, lat, lon], pri) => { project(lon, lat, o); return { n, x: o[0], y: o[1], pri }; });
+  return { counties, byFips, outline, border, grat, hubs, W, H, toWorld: project };
 }
 
 /* permits: parallel typed arrays, a recency flag and a spatial grid for hit-testing */
@@ -155,7 +170,7 @@ export function buildPoints(pm, G) {
   const n = pm.pts.length;
   const a = {
     n, x: new Float32Array(n), y: new Float32Array(n), op: new Int16Array(n), t: new Int16Array(n),
-    depth: new Uint16Array(n), fips: new Uint16Array(n), rec: new Uint8Array(n),
+    depth: new Uint16Array(n), fips: new Uint16Array(n), rec: new Uint8Array(n), st: new Uint8Array(n),
   };
   const day = 864e5;
   const t0 = Date.parse(pm.t0 + 'T00:00:00Z');
@@ -163,9 +178,11 @@ export function buildPoints(pm, G) {
   const o = [0, 0];
   for (let i = 0; i < n; i++) {
     const p = pm.pts[i];
-    toWorld(p[1] / 1e4, p[0] / 1e4, o);
+    G.toWorld(p[1] / 1e4, p[0] / 1e4, o);
     a.x[i] = o[0]; a.y[i] = o[1]; a.op[i] = p[2]; a.t[i] = p[3]; a.depth[i] = p[4]; a.fips[i] = p[5];
-    a.rec[i] = p[3] >= cut ? 1 : 0;
+    // a merged set (both states) says per point whether it is recent, against its own state's last day; a single file against its asOf
+    a.rec[i] = p.length > 6 ? p[6] : p[3] >= cut ? 1 : 0;
+    a.st[i] = Math.floor(p[5] / POINT_BLOCK); // the state's number (states.js)
   }
   return { ...finishPoints(a, G), t0, cut };
 }
@@ -173,20 +190,20 @@ export function buildPoints(pm, G) {
 export function stressPoints(P, total, G) {
   const a = {
     n: total, x: new Float32Array(total), y: new Float32Array(total), op: new Int16Array(total), t: new Int16Array(total),
-    depth: new Uint16Array(total), fips: new Uint16Array(total), rec: new Uint8Array(total),
+    depth: new Uint16Array(total), fips: new Uint16Array(total), rec: new Uint8Array(total), st: new Uint8Array(total),
   };
   for (let i = 0; i < total; i++) {
     const s = i % P.n;
     a.x[i] = P.x[s] + (((i * 7919) % 97) / 97 - 0.5) * 6; a.y[i] = P.y[s] + (((i * 104729) % 89) / 89 - 0.5) * 6;
-    a.op[i] = P.op[s]; a.t[i] = P.t[s]; a.depth[i] = P.depth[s]; a.fips[i] = P.fips[s]; a.rec[i] = P.rec[s];
+    a.op[i] = P.op[s]; a.t[i] = P.t[s]; a.depth[i] = P.depth[s]; a.fips[i] = P.fips[s]; a.rec[i] = P.rec[s]; a.st[i] = P.st[s];
   }
   return { ...finishPoints(a, G), t0: P.t0, cut: P.cut };
 }
 
-export function buildZips(zc) {
+export function buildZips(zc, G) {
   const o = [0, 0];
   const list = zc.rows.map((r) => {
-    toWorld(r[2], r[1], o);
+    G.toWorld(r[2], r[1], o);
     return { zip: r[0], x: o[0], y: o[1], total: r[3], likely: r[4], isNew: r[5], rrc: r[6] };
   }).sort((a, b) => b.total - a.total);
   return { list, max: list.length ? list[0].total : 1, byZip: new Map(list.map((z, i) => [z.zip, i])) };
@@ -197,7 +214,7 @@ export function buildInfra(inf, G) {
   return (inf.layers || []).filter((l) => l.items && l.items.length).map((l) => ({
     id: l.id, label: l.label, unit: l.unit,
     items: l.items.map((it) => {
-      toWorld(it.lon, it.lat, o);
+      G.toWorld(it.lon, it.lat, o);
       const ci = countyAt(G, o[0], o[1]);
       return { n: it.n, c: it.c, cap: it.cap, x: o[0], y: o[1], fips: ci < 0 ? '' : G.counties[ci].f };
     }),
@@ -235,10 +252,32 @@ export function buildBasins(b, G) {
   return { src: b.src, list, byId: new Map(list.map((x) => [x.id, x])), byFips: new Map(list.flatMap((x) => x.fips.map((f) => [f, x]))) };
 }
 
-/* memoized loaders shared by the hero, the map and the tables */
-export const getGeo = () => once('geo', async () => buildGeo(await load('counties.geo')));
-export const getPoints = () => once('pts', async () => {
-  const [pm, G] = await Promise.all([load('permits'), getGeo()]);
+/* shapes and permit points for a set of states. Texas alone is the original (plain county codes, the Texas-fitted box). With another state
+   in, its counties are keyed OK:001, its points carry county codes offset by 1000 times its number and operator numbers prefixed OK:, and
+   the shapes are fitted to whatever is shown without moving the Texas projection (states.js says where each state's files are). */
+const TEXAS = ['TX'];
+const texasOnly = (states) => states.length === 1 && states[0] === 'TX';
+const geoName = (id) => (id === 'TX' ? 'counties.geo' : stateOf(id).files.geo);
+const pointsName = (id) => (id === 'TX' ? 'permits' : stateOf(id).files.points);
+async function shapesFor(states) {
+  const features = [];
+  for (const id of states) {
+    const gj = await load(geoName(id));
+    for (const f of gj.features) features.push({ type: 'Feature', properties: { f: countyKey(id, f.properties.f), n: f.properties.n, s: id }, geometry: f.geometry });
+  }
+  return { type: 'FeatureCollection', features };
+}
+async function pointsFor(states) {
+  if (texasOnly(states)) return load('permits');
+  const got = await Promise.all(states.map((id) => load(pointsName(id))));
+  return mergePoints(states.map((id, i) => ({ id, pm: got[i] })));
+}
+
+/* memoized loaders shared by the hero, the map and the tables. The Texas ones are the default; a set of states is built once. */
+export const getGeo = (states = TEXAS) => once(texasOnly(states) ? 'geo' : 'geo:' + statesKey(states), async () => (
+  texasOnly(states) ? buildGeo(await load('counties.geo')) : buildGeoIsolated(await shapesFor(states))));
+export const getPoints = (states = TEXAS) => once(texasOnly(states) ? 'pts' : 'pts:' + statesKey(states), async () => {
+  const [pm, G] = await Promise.all([pointsFor(states), getGeo(states)]);
   return { pm, P: buildPoints(pm, G) };
 });
 export const getZips = () => once('zips', async () => {

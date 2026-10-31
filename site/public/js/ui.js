@@ -1,6 +1,7 @@
 // Shared UI pieces: segmented tabs with a sliding thumb, toast, clipboard + share button, reveal-on-scroll, nav indicator.
 import { $, $$, el, reduced } from './util.js';
 import { icon } from './icons.js';
+import { activeStates, stateParam } from './states.js';
 
 /* segmented control. tabs=true: an ARIA tablist (arrow keys, roving tabindex); tabs=false: toggle buttons (aria-pressed) */
 export function segmented({ label, options, value, onChange, tabs = true, prefix = 'seg' }) {
@@ -79,7 +80,12 @@ export function shareButton(getUrl, label = 'Share this view') {
     },
   }, icon('share', 16), el('span', { text: label.split(' ')[0] }), label.includes(' ') ? el('span', { class: 'hide-sm', text: ' ' + label.split(' ').slice(1).join(' ') }) : null);
 }
-export const absoluteLink = (hash) => location.origin + location.pathname + hash;
+// a link to a hash that reopens what is on screen, the states shown included
+export function absoluteLink(hash) {
+  const sp = stateParam(activeStates());
+  if (sp && !/[?&]st=/.test(hash)) hash += (hash.includes('?') ? '&' : '?') + 'st=' + sp;
+  return location.origin + location.pathname + hash;
+}
 
 /* reveal-on-scroll: sections fade up once. Without IntersectionObserver or with reduced motion they simply show. */
 export function initReveal() {

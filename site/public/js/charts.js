@@ -113,8 +113,9 @@ export function histChart(values, classes, { w = 300, h = 86, color = 'var(--s1)
 
 /* bar list: label, bar capped at 24px with a rounded data end, value at the tip; each row is a link */
 export function barList(ul, items, { max, tipFor } = {}) {
-  const top = max || Math.max(1, ...items.map((i) => i.value));
+  const top = max || Math.max(1, ...items.filter((i) => !i.heading).map((i) => i.value));
   ul.replaceChildren(...items.map((it) => {
+    if (it.heading) return el('li', { class: 'bars-h' + (it.st && it.st !== 'TX' ? ' st-' + it.st.toLowerCase() : ''), text: it.heading });
     const bar = el('span', { class: 'bar' });
     bar.style.setProperty('--p', String(it.value / top));
     const row = el('a', { class: 'bar-row', href: it.href, 'aria-label': it.aria || null },
@@ -128,7 +129,7 @@ export function barList(ul, items, { max, tipFor } = {}) {
     row.addEventListener('pointerleave', hideTip);
     row.addEventListener('focus', open);
     row.addEventListener('blur', hideTip);
-    return el('li', {}, row);
+    return el('li', { class: it.st && it.st !== 'TX' ? 'st-' + it.st.toLowerCase() : null }, row); // each other state's rows take its color wherever a list shows them (Texas's is the list's own)
   }));
 }
 
