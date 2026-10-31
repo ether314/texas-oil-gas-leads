@@ -9,10 +9,12 @@ says horizontal, vertical or directional) and the OCD district. No filing dates,
 are published, and the report says so by leaving them out, never by showing a zero.
 
   - A day's count is the approvals that are still open: a well drops out of status New once it is cancelled or has moved on, so a day
-    rebuilt later can lose a few. A day captured live the night after is complete to that night. Rebuilt days are marked so.
+    rebuilt later can lose a few. Rebuilt days are marked so.
   - The layer is entered some days after an approval (the newest two or three days run well under the 17 to 22 a business day of the weeks
-    before and fill in later), so a report names the day its permits are from and the time of the layer's newest edit, and the pace chart
-    reads permits-series.json, which every night's run rewrites from the layer as it stands, so a day's bar settles as the layer catches up.
+    before and fill in later), so a report names the day its permits are from and the time of the layer's newest edit. Every night's run
+    rewrites permits-series.json (the pace chart) from the layer as it stands AND recounts the permits of the reports already written whose
+    day it can still see (LOOKBACK + 1 days back), so a day's figures settle as the layer catches up, in the report, the index and the chart
+    alike. Nothing else in an earlier report is touched: its inventory, its file times and its capture time stay as they were.
   - Nothing names a well, a lease or an API number (an API number is used only to count a well once). Operators are named only when the
     corporate rule says so (d8_ok_daily.nameable), never a person's dba.
   - The inventory (wells by status, and for the active wells their kinds, counties and operators) is counted by the server in four more
@@ -105,13 +107,32 @@ def fetch_inventory():
         if doc.get("exceededTransferLimit"):
             raise RuntimeError("a count by %s is longer than the server's page" % fields)
         return [f["attributes"] for f in doc.get("features", [])]
-    status = {(a.get("status") or ""): a["n"] for a in groups("1=1", "status")}
-    types = {(a.get("type") or ""): a["n"] for a in groups("status = 'Active'", "type")}
-    counties = [(a.get("county_code"), " ".join((a.get("county") or "").split()), a["n"]) for a in groups("status = 'Active'", "county_code,county")]
-    ops = [(a.get("ogrid"), " ".join((a.get("ogrid_name") or "").split()), a["n"]) for a in groups("status = 'Active'", "ogrid,ogrid_name")]
+    # groups are added, never overwritten: a county under two spellings, or a status that is missing and one that is empty, is one group
+    status = collections.Counter()
+    for a in groups("1=1", "status"):
+        status[(a.get("status") or "")] += a["n"]
+    types = collections.Counter()
+    for a in groups("status = 'Active'", "type"):
+        types[(a.get("type") or "")] += a["n"]
+    counties = {}
+    for a in groups("status = 'Active'", "county_code,county"):
+        c = counties.setdefault(a.get("county_code"), ["", 0])
+        c[0] = c[0] or " ".join((a.get("county") or "").split())
+        c[1] += a["n"]
+    ops = {}
+    for a in groups("status = 'Active'", "ogrid,ogrid_name"):
+        k = (a.get("ogrid"), " ".join((a.get("ogrid_name") or "").split()))
+        ops[k] = ops.get(k, 0) + a["n"]
     if not status or not sum(status.values()):
         raise RuntimeError("the layer returned no wells")
-    return {"status": status, "types": types, "counties": counties, "ops": ops}
+    # the four counts were asked one after another: each way of splitting the active wells must add up to them (within a few wells, in case the layer
+    # was edited between two requests), or one answer was cut short or empty and the inventory is not to be believed
+    active = status.get("Active", 0)
+    slack = max(10, active // 200)
+    for label, got in (("kind", sum(types.values())), ("county", sum(c[1] for c in counties.values())), ("operator", sum(ops.values()))):
+        if abs(got - active) > slack:
+            raise RuntimeError("the active wells counted by %s (%d) do not add up to the active wells (%d)" % (label, got, active))
+    return {"status": dict(status), "types": dict(types), "counties": [(k, v[0], v[1]) for k, v in counties.items()], "ops": [(k[0], k[1], n) for k, n in ops.items()]}
 
 
 def central_digits(utc):
@@ -126,9 +147,10 @@ def central_digits(utc):
 
 # ------------------------------------------------------------------------------------------------ the records
 
-def to_rows(attrs, today):
+def to_rows(attrs, today, known=None):
     """The layer's records as one row per well: its approval day, operator, county, kind, direction and district. A well is counted once
-    (by API number, which is read for that and never kept); a record with no real approval day or no usable API number is left out."""
+    (by API number, which is read for that and never kept); a record with no real approval day or no usable API number is left out. A county
+    code that is not one of `known` (the state's 33) is no county: the well is counted, never placed in one."""
     rows, seen = [], set()
     for a in attrs:
         eff = a.get("effective_date")
@@ -140,9 +162,12 @@ def to_rows(attrs, today):
             continue
         seen.add(api)
         code = a.get("county_code")
+        county = "%03d" % code if isinstance(code, int) and 0 < code < 1000 else ""
+        if known is not None and county not in known:
+            county = ""
         rows.append({
             "day": day, "op": str(a["ogrid"]) if a.get("ogrid") is not None else "", "opname": " ".join((a.get("ogrid_name") or "").split()),
-            "county": "%03d" % code if isinstance(code, int) and 0 < code < 1000 else "", "cname": " ".join((a.get("county") or "").split()),
+            "county": county, "cname": " ".join((a.get("county") or "").split()),
             "type": " ".join((a.get("type") or "").split()) or "Other", "dir": (a.get("directional_status") or "").strip().upper(),
             "district": " ".join((a.get("district") or "").split()),
         })
@@ -199,7 +224,11 @@ def wells_section(inv, as_of, lk):
         kinds[k if k in ("Oil", "Gas") else "Injection, disposal and other"] += n
     ranked = sorted(inv["ops"], key=lambda o: (-o[2], o[1]))
     shown = [[D.pretty(name), n] for _, name, n in ranked if name and D.nameable(name)][:12]
-    counties = {"%03d" % code: (name, n) for code, name, n in inv["counties"] if isinstance(code, int) and 0 < code < 1000}
+    counties = {}
+    for code, name, n in inv["counties"]:
+        f = "%03d" % code if isinstance(code, int) and 0 < code < 1000 else ""
+        if f in lk.county:  # a code that is not one of the state's counties is no county (its wells are still in the totals)
+            counties[f] = (counties[f][0] or name, counties[f][1] + n) if f in counties else (name, n)
     return {
         "asOf": as_of, "total": sum(status.values()), "active": active, "plugged": sum(n for k, n in status.items() if k in PLUGGED),
         "status": status_mix(status), "activeTypes": D.top(kinds, 4),
@@ -301,6 +330,34 @@ def update_series(out_dir, by_day, since, last, keep=KEEP_DAYS):
     doc = {"asOf": last.isoformat(), "days": days, "newDrill": [cells[x][0] for x in days], "total": [cells[x][1] for x in days], "horizontal": [cells[x][2] for x in days]}
     D.write_json(path, doc)
     return doc
+
+
+def settle_permits(out_dir, by_day, since, lk, skip=()):
+    """Recount the permits of the reports already written, from the layer as it stands now: the layer is entered some days after an approval, so
+    a report written on the night shows a low count that the layer then fills in (the pace chart settles the same way). A report keeps the day its
+    permits are from; only the figures for that day are replaced, and only for the days the run has read (`since` and later) that still have
+    approvals. Nothing else in the report changes. `skip` holds the dates this run has just written. Returns the dates recounted."""
+    changed = []
+    for f in sorted(x for x in os.listdir(out_dir) if DAY_FILE.fullmatch(x)):
+        if f[:-5] in skip:
+            continue
+        path = os.path.join(out_dir, f)
+        rep = D.read_json(path)
+        p = rep.get("permits") if isinstance(rep, dict) else None
+        if not p:
+            continue
+        try:
+            day = date.fromisoformat(p["day"])
+        except (KeyError, ValueError):
+            continue
+        if day < since or not by_day.get(day):
+            continue
+        fresh = permits_section(day, by_day[day], lk)
+        if fresh != p:
+            rep["permits"] = fresh
+            D.write_json(path, rep)
+            changed.append(f[:-5])
+    return changed
 
 
 def validate(out_dir, keep=KEEP_DAYS):
@@ -422,7 +479,7 @@ def main():
     except Exception as e:  # noqa: BLE001
         log("permits       SKIPPED (%s)" % e)
         sys.exit(1)
-    rows = to_rows(attrs, today)
+    rows = to_rows(attrs, today, set(lk.county))
     log("permits       ok (%d approvals read, the layer last edited %s UTC)" % (len(rows), edit.strftime("%Y-%m-%d %H:%M") if edit else "at a time it does not say"))
     if not rows:
         log("the layer returned no approvals in the window: nothing written")
@@ -438,6 +495,13 @@ def main():
     live = reports[R]
     live["status"] = "ok" if inv else "partial"
     live["capturedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # a second capture of the same day (a run by hand in the morning, the night's run in the evening) must not lose an inventory it cannot read again:
+    # the earlier one is kept, and the report stays partial so that the backup run tries again
+    earlier = D.read_json(os.path.join(a.out, R.isoformat() + ".json"))
+    if "wells" not in live and isinstance(earlier, dict) and earlier.get("kind") == "live" and earlier.get("wells"):
+        live["wells"] = earlier["wells"]
+        live["datasets"][1] = earlier["datasets"][1]
+        log("wells         the inventory of the earlier capture of this day is kept")
     for d, rep in reports.items():
         if d != R:
             rep["status"] = "ok"
@@ -449,6 +513,9 @@ def main():
     keep_from = R - timedelta(days=a.keep - 1)
     for d, rep in sorted(reports.items()):
         D.write_json(os.path.join(a.out, d.isoformat() + ".json"), rep)
+    settled = settle_permits(a.out, group_by_day(rows), fetched_from, lk, {d.isoformat() for d in reports})
+    if settled:
+        log("permits       recounted from the layer as it stands for %d earlier report(s): %s" % (len(settled), ", ".join(settled)))
     for f in os.listdir(a.out):
         if DAY_FILE.fullmatch(f) and f[:-5] < keep_from.isoformat():
             os.remove(os.path.join(a.out, f))

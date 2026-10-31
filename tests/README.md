@@ -22,7 +22,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   (needs git and PyYAML).
 - `test_workflow_monthly.py`: `.github/workflows/refresh-monthly.yml` the same way (isolation, the 16 outcome combinations, the drop, commit and last
   steps run against a clone; only the eight files it names are ever committed, and it shares the nightly's concurrency group).
-- `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it cannot reach the agencies)
+- `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it steps aside when main has moved on since the commit CI passed, that it cannot reach the agencies)
   and `.github/scripts/publish_pages.sh`, which the nightly capture shares: run against a throwaway clone with a local bare `origin` that has
   a gh-pages branch (publishes exactly the site, never rewrites history, says so when current, refuses an incomplete copy, retries a refused
   push and gives up after four; needs git and PyYAML).

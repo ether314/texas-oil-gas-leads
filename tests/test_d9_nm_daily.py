@@ -205,13 +205,67 @@ def run_checks(quiet=False):
     chk(len(dts) == N.SAFE_BACKFILL + 1 and capped, "without --history a backfill reaches back at most %d days, and says it was capped" % N.SAFE_BACKFILL)
     dts, capped = N.plan_dates(date(2026, 10, 31), 92, 0, True, set())
     chk(len(dts) == 92 and dts[0] == date(2026, 8, 1) and not capped, "--history rebuilds the whole archive: 92 days from Aug 1")
+    # a county code that is not one of the state's 33 (a typo in the layer) is no county: the well is counted, never placed in one
+    typo = [rec("30-025-70001", date(2026, 10, 29), county=99, cname="Typo"), rec("30-025-70002", date(2026, 10, 29))]
+    known = {"025", "015", "045"}
+    chk([r["county"] for r in N.to_rows(typo, TODAY, known)] == ["", "025"], "a county code that is not one of the state's is no county, the well still counted")
+    chk([r["county"] for r in N.to_rows(typo, TODAY)] == ["099", "025"], "and without a list of the state's counties every code passes (the rule is the caller's)")
+    lk_ = N.Lookups()
+    sec = N.permits_section(date(2026, 10, 29), N.to_rows(typo, TODAY, set(lk_.county)), lk_)
+    chk(sec["total"] == 2 and sum(n for _, _, n in sec["counties"]) == 1 and sec["countyCount"] == 1, "so the day counts both permits and lists one county")
+    inv_typo = dict(INV, counties=INV["counties"] + [(99, "Typo", 1)])
+    w = N.wells_section(inv_typo, "2026-10-29", lk_)
+    chk(all(c != "099" for c, _, _ in w["counties"]) and w["active"] == 100, "an inventory county that is not one of the state's is left out of the county list, not out of the totals")
     return fails
+
+
+# ---- the inventory's four counts -------------------------------------------------------------------------------------------------------
+
+def inventory_checks():
+    def asked(table):
+        def q(params, retries=4):
+            return {"features": [{"attributes": a} for a in table[params["groupByFieldsForStatistics"]]]}
+        return q
+
+    def good(**over):
+        t = {"status": [{"status": "Active", "n": 100}, {"status": "Plugged (site released)", "n": 40}],
+             "type": [{"type": "Oil", "n": 60}, {"type": "Gas", "n": 40}],
+             "county_code,county": [{"county_code": 25, "county": "Lea", "n": 70}, {"county_code": 15, "county": "Eddy", "n": 30}],
+             "ogrid,ogrid_name": [{"ogrid": 7377, "ogrid_name": "EOG RESOURCES INC", "n": 80}, {"ogrid": None, "ogrid_name": None, "n": 20}]}
+        t.update(over)
+        return t
+
+    def fetch(table):
+        saved = N.query
+        N.query = asked(table)
+        try:
+            return N.fetch_inventory(), None
+        except RuntimeError as e:
+            return None, str(e)
+        finally:
+            N.query = saved
+    inv, err = fetch(good())
+    check(inv and sum(inv["status"].values()) == 140 and sum(n for _, _, n in inv["counties"]) == 100, "an inventory whose parts add up to the active wells is accepted")
+    # a county under two spellings is one county; a missing status and an empty one are one status
+    inv, err = fetch(good(**{"county_code,county": [{"county_code": 25, "county": "Lea", "n": 30}, {"county_code": 25, "county": "LEA ", "n": 40}, {"county_code": 15, "county": "Eddy", "n": 30}],
+                             "status": [{"status": None, "n": 3}, {"status": "", "n": 4}, {"status": "Active", "n": 100}]}))
+    lea = [n for c, _, n in (inv or {"counties": []})["counties"] if c == 25]
+    check(inv and lea == [70] and inv["status"].get("") == 7 and sum(inv["status"].values()) == 107, "groups are added, not overwritten: a county under two spellings reports 70 (not 40), an empty and a missing status 7 (not 4)")
+    inv, err = fetch(good(type=[]))
+    check(inv is None and err and "kind" in err, "an answer with no kinds at all (HTTP 200, no features) is refused, so the report is partial: %s" % err)
+    inv, err = fetch(good(**{"county_code,county": [{"county_code": 25, "county": "Lea", "n": 60}]}))
+    check(inv is None and err and "county" in err, "counties that add up to 60 of 100 active wells are refused: %s" % err)
+    inv, err = fetch(good(**{"ogrid,ogrid_name": [{"ogrid": 7377, "ogrid_name": "EOG RESOURCES INC", "n": 80}]}))
+    check(inv is None and err and "operator" in err, "operators that add up to 80 of 100 active wells are refused: %s" % err)
+    inv, err = fetch(good(type=[{"type": "Oil", "n": 60}, {"type": "Gas", "n": 45}]))
+    check(inv is not None, "a few wells of difference (an edit between two requests) are tolerated")
 
 
 # ---- a whole run with the network faked ------------------------------------------------------------------------------------------------
 
-def run_main(out, argv, records, edit=None, fail=False, no_inventory=False):
-    """Drive main() against a scratch folder, with the two requests answered from `records` (or failing); returns (exit code, log text)."""
+def run_main(out, argv, records, edit=None, fail=False, no_inventory=False, now=None):
+    """Drive main() against a scratch folder, with the two requests answered from `records` (or failing); returns (exit code, log text).
+    `now` is the Central wall clock of the run (default: 22:15 on Saturday Oct 31)."""
     saved = (N.fetch_approvals, N.fetch_layer_edit, N.fetch_inventory, N.D.central_now, sys.argv)
     N.fetch_approvals = lambda since: list(records)
     N.fetch_layer_edit = lambda: edit
@@ -220,7 +274,7 @@ def run_main(out, argv, records, edit=None, fail=False, no_inventory=False):
         def boom(since):
             raise RuntimeError("could not read the New Mexico wells layer: timeout")
         N.fetch_approvals = boom
-    N.D.central_now = lambda: datetime(2026, 10, 31, 22, 15, tzinfo=timezone(timedelta(hours=-5)))
+    N.D.central_now = lambda: now or datetime(2026, 10, 31, 22, 15, tzinfo=timezone(timedelta(hours=-5)))
     sys.argv = ["d9_nm_daily.py", "--out", out] + argv
     buf = io.StringIO()
     code = 0
@@ -276,12 +330,27 @@ def whole_run():
     code, text = run_main(out, ["--date", "2026-10-31", "--skip-if-captured"], recs, edit)
     check(code == 0 and "nothing to do" in text, "--skip-if-captured does skip a day already captured live at or after 03:00 UTC the next day")
 
+    # one permit with a county code that is not one of the 33 does not stop the night
+    badc = os.path.join(TMP, "badcounty")
+    shutil.rmtree(badc, ignore_errors=True)
+    code, text = run_main(badc, ["--history", "--keep", "12", "--date", "2026-10-30"], recs + [rec("30-025-99999", date(2026, 10, 28), county=99, cname="Typo")], edit)
+    bc = D.read_json(os.path.join(badc, "2026-10-30.json"))
+    check(code == 0 and bc["permits"]["total"] == D.read_json(os.path.join(out, "2026-10-30.json"))["permits"]["total"] + 1 and all(c != "099" for c, _, _ in bc["permits"]["counties"]),
+          "a permit with a county code that is not one of the 33 is counted, placed in no county, and does not fail the check: exit %s" % code)
     part = os.path.join(TMP, "partial")
     shutil.rmtree(part, ignore_errors=True)
     code, text = run_main(part, [], recs, edit, no_inventory=True)
     pr = D.read_json(os.path.join(part, "2026-10-31.json"))
     check(code == 0 and pr["status"] == "partial" and "wells" not in pr and pr["permits"] and pr["datasets"][1]["error"], "an inventory that cannot be read leaves the permits as a partial report (the backup run will try again); exit %s" % code)
     check(N.captured_for_the_night(part, date(2026, 10, 31)) is None, "and a partial report does not count as captured for the night")
+    # a second capture of the same day that cannot read the inventory keeps the one the first captured
+    code, text = run_main(part, [], recs, edit)
+    first = D.read_json(os.path.join(part, "2026-10-31.json"))
+    code2, text2 = run_main(part, [], recs, edit, no_inventory=True)
+    again = D.read_json(os.path.join(part, "2026-10-31.json"))
+    check(code == 0 and first["status"] == "ok" and code2 == 0 and again["status"] == "partial" and again["wells"] == first["wells"] and again["datasets"][1]["error"] is None and again["capturedAt"] >= first["capturedAt"],
+          "a second capture of a day that cannot read the inventory keeps the first one's (the report is partial, so the backup run tries again)")
+    check(D.read_json(os.path.join(part, "index.json"))["days"][-1]["w"] == 100 and not N.validate(part, 92), "the index still shows its active wells, and the files check")
     quiet = os.path.join(TMP, "quiet")
     shutil.rmtree(quiet, ignore_errors=True)
     code, text = run_main(quiet, [], recs, edit, fail=True)
@@ -324,14 +393,59 @@ def whole_run():
     fault("a day file that is not JSON", lambda d: open(os.path.join(d, "2026-10-29.json"), "w").write("{"), "not JSON")
 
 
+def settle_scenario(quiet=False):
+    """Three nights against a layer that is entered late: the figures of the reports already written settle as it catches up (report, index and chart
+    alike), the day a report shows and everything else in it stay as captured, and a report older than the window is left alone."""
+    fails = []
+
+    def chk(cond, msg):
+        if not quiet:
+            print(("ok   " if cond else "FAIL ") + msg)
+        if not cond:
+            fails.append(msg)
+
+    def layer(counts):
+        out, n = [], 0
+        for d, k in sorted(counts.items()):
+            for _ in range(k):
+                n += 1
+                out.append(rec("30-025-%05d" % (80000 + n), d))
+        return out
+    base = {date(2026, 10, 19) + timedelta(days=i): 20 for i in (0, 1, 2, 3, 4, 7, 8, 9)}  # Oct 19 to 23 and 26 to 28: twenty approvals a business day
+    out = os.path.join(TMP, "settle")
+    shutil.rmtree(out, ignore_errors=True)
+    utc = timezone.utc
+    code1, _ = run_main(out, ["--history", "--keep", "20"], layer({**base, date(2026, 10, 29): 5}), datetime(2026, 10, 30, 16, 31, tzinfo=utc))
+    first = D.read_json(os.path.join(out, "2026-10-31.json"))
+    old_bytes = open(os.path.join(out, "2026-10-21.json"), "rb").read()
+    chk(code1 == 0 and first["permits"]["day"] == "2026-10-29" and first["permits"]["total"] == 5, "night one: Saturday's report shows Thursday's approvals as the layer has them so far (5)")
+    cst = timezone(timedelta(hours=-6))
+    code2, text2 = run_main(out, ["--date", "2026-11-01", "--keep", "20"], layer({**base, date(2026, 10, 29): 12, date(2026, 10, 30): 3}), datetime(2026, 10, 31, 16, 31, tzinfo=utc), now=datetime(2026, 11, 1, 21, 15, tzinfo=cst))
+    mid = D.read_json(os.path.join(out, "2026-10-31.json"))
+    chk(code2 == 0 and mid["permits"]["total"] == 12 and "recounted" in text2, "night two: the layer has caught up to 12, and Saturday's report is recounted to 12")
+    # the layer also loses the approvals of Oct 20 (they moved on): a report older than the window must not notice
+    code3, text3 = run_main(out, ["--date", "2026-11-02", "--keep", "20"], layer({**base, date(2026, 10, 20): 7, date(2026, 10, 29): 20, date(2026, 10, 30): 14}), datetime(2026, 11, 1, 16, 31, tzinfo=utc), now=datetime(2026, 11, 2, 21, 15, tzinfo=cst))
+    last = D.read_json(os.path.join(out, "2026-10-31.json"))
+    chk(code3 == 0 and last["permits"]["day"] == "2026-10-29" and last["permits"]["total"] == 20 and last["permits"]["newDrill"] == 20, "night three: settled at 20, and the report still shows Thursday (the day does not move)")
+    chk({k: v for k, v in last.items() if k != "permits"} == {k: v for k, v in first.items() if k != "permits"}, "everything else in that report is as captured on night one: its inventory, its file times, its capture time")
+    idx = {r["d"]: r for r in D.read_json(os.path.join(out, "index.json"))["days"]}
+    chk(idx["2026-10-31"]["pn"] == 20 and idx["2026-10-31"]["p"] == 20 and idx["2026-11-01"]["pn"] == 14 and idx["2026-10-30"]["pn"] == 20, "the index rows (the ribbon) follow: 20, 14 and the rebuilt day before it 20")
+    ser = D.read_json(os.path.join(out, "permits-series.json"))
+    cells = dict(zip(ser["days"], ser["newDrill"]))
+    chk(cells["2026-10-29"] == 20 and cells["2026-10-30"] == 14, "and so does the pace chart's series, so the three agree")
+    chk(open(os.path.join(out, "2026-10-21.json"), "rb").read() == old_bytes, "a report older than the window is byte for byte as it was, though the layer now says otherwise about its day")
+    chk(not N.validate(out, 20), "all of it checks")
+    return fails
+
+
 def mutants():
     """Patch one rule at a time; the checks (quietly) must notice every one."""
     orig = (N.to_rows, D.nameable, N.newest_day)
 
-    def no_dedupe(attrs_, today):  # every record on its own, so no well is seen twice
+    def no_dedupe(attrs_, today, known=None):  # every record on its own, so no well is seen twice
         out = []
         for a in attrs_:
-            out += orig[0]([a], today)
+            out += orig[0]([a], today, known)
         return out
 
     def own_day(by, day, lookback=None):
@@ -360,13 +474,28 @@ def mutants():
         else:
             print("FAIL a mutant survived: %s" % label)
             fails.append("a mutant survived: " + label)
+    saved = N.settle_permits
+    N.settle_permits = lambda *a, **k: []
+    try:
+        got = settle_scenario(quiet=True)
+    finally:
+        N.settle_permits = saved
+    if got:
+        print("ok   a mutant is caught: no recount of the earlier reports")
+    else:
+        print("FAIL a mutant survived: no recount of the earlier reports")
+        fails.append("a mutant survived: no recount")
     return fails
 
 
 print("-- the rules")
 FAILS += run_checks()
+print("\n-- the inventory's four counts")
+inventory_checks()
 print("\n-- a whole run, the network faked")
 whole_run()
+print("\n-- the layer fills in late")
+FAILS += settle_scenario()
 
 print("\n-- the committed archive")
 arch = os.path.join(DATA, "daily-nm")

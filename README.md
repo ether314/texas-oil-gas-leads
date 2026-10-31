@@ -112,7 +112,7 @@ and the workflow shares the nightly capture's concurrency group, so the two neve
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
 file. Two workflows publish it, with one script (`.github/scripts/publish_pages.sh`: an ordinary push, retried if the other workflow
 pushed first): `.github/workflows/publish.yml` runs after CI has passed on a push to `main`, so a merged change goes live in a few
-minutes without touching the Railroad Commission or the OCC, and the nightly capture publishes after it commits its data. To publish
+minutes without touching the Railroad Commission or the OCC (it steps aside when main has moved on since the commit CI passed, as the nightly's data commit does: that commit's own publish includes it), and the nightly capture publishes after it commits its data. To publish
 `main` as it is now, run "Publish the site" by hand (Actions). To publish without a workflow, replace the branch's contents with
 `git archive main site/public` (extracted without the two leading folders), add `.nojekyll`, commit and push.
 
@@ -128,7 +128,7 @@ minutes without touching the Railroad Commission or the OCC, and the nightly cap
   list and no production by county. Its permit history (series, counties, operators, permit points) is in the Overview, the Operators
   page and the Map.
 - New Mexico's part of the Daily report is read from the Division's well layer, which is entered some days after an approval: the newest two or three days
-  run low and fill in (the pace chart is rewritten from the layer each night), a rebuilt day counts only the approvals still in status New, and the Division
+  run low and fill in (the pace chart is rewritten from the layer each night and the earlier reports' permits are recounted), a rebuilt day counts only the approvals still in status New, and the Division
   publishes no planned depth, filing date, completion or transfer by day (`site/pipeline/NOTES_D9.md`).
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
