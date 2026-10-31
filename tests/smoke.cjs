@@ -301,6 +301,14 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'none', null, { timeout: 10000 });
       check((await more()) === 'none', 'and not at all where the tabs all fit');
+      // the browser's bar takes the page's color in the theme chosen here (one tag once a theme is set; both themes' colors are the --page tokens)
+      const bar = () => page.evaluate(() => [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join(' '));
+      await page.click('[data-theme-set="dark"]');
+      const dark = await bar();
+      await page.click('[data-theme-set="light"]');
+      const light = await bar();
+      const tokens = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.cssText = 'color: var(--page); position: absolute'; document.body.append(probe); const c = getComputedStyle(probe).color; probe.remove(); return c; });
+      check(dark === '#0d0d0d' && light === '#f9f9f7' && tokens === 'rgb(249, 249, 247)', 'the browser bar follows the theme: dark ' + dark + ', light ' + light + ' (the light page color is ' + tokens + ')');
     } catch (e) {
       check(false, 'the tabs on a phone: ' + e.message.split('\n')[0].slice(0, 200));
     }
@@ -365,6 +373,68 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(!/(^|,)'-?\d/.test(text), 'no number was turned into text by the spreadsheet guard (a fall such as -14.4 has no apostrophe)');
     } catch (e) {
       check(false, 'the Operators CSV: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
+  // 9. the archive's days render no "NaN", "undefined", "null" or "Infinity": the newest and oldest day, every tenth, and each day on which Texas's queue was empty
+  // (a share of an empty queue was NaN%); read from the committed index files, so the days follow the archive as it rolls
+  {
+    const read = (dir) => { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', dir, 'index.json'), 'utf8')); return j.days || j; };
+    const tx = read('daily');
+    const every = [...new Set([].concat(read('daily'), read('daily-ok'), read('daily-nm')).map((r) => r.d))].sort();
+    const picks = new Set([every[0], every[every.length - 1], ...every.filter((d, i) => i % 10 === 5), ...tx.filter((r) => r.q === 0).map((r) => r.d)]);
+    const emptyDays = tx.filter((r) => r.q === 0).length;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const bad = [];
+    let seen = 0;
+    try {
+      for (const d of picks) {
+        for (const q of ['', '&st=tx']) {
+          await page.goto(base + '#daily?d=' + d + '&v=full' + q, { waitUntil: 'load' });
+          await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
+          await page.waitForTimeout(150);
+          const text = await page.locator('#daily-root').innerText();
+          seen++;
+          const m = text.match(/\b(NaN|undefined|null|Infinity)\b|\[object/);
+          if (m) bad.push(d + q + ': "' + text.slice(Math.max(0, m.index - 30), m.index + 30).replace(/\s+/g, ' ') + '"');
+        }
+      }
+    } catch (e) {
+      check(false, 'the archive walk: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(seen >= 8 && !bad.length, seen + ' archive pages (' + emptyDays + ' with an empty Texas queue) show no NaN, undefined, null or Infinity' + (bad.length ? ': ' + bad.slice(0, 4).join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 10. a map metric no county has a figure for (New Mexico publishes no depth) says so: no scale of "NaN ft", no empty list; and no metric of any state shows a NaN in its legend or panel
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#map?st=tx,ok,nm', { waitUntil: 'load' });
+      await page.waitForSelector('#map-root canvas', { timeout: 25000 });
+      const metrics = await page.$$eval('#map-metric option', (os) => os.map((o) => o.value)); // every metric the menu has (all states)
+      const bad = [];
+      for (const st of ['nm', 'ok', 'tx,ok,nm']) {
+        for (const id of metrics) {
+          await page.goto(base + '#map?metric=' + id + '&st=' + st, { waitUntil: 'load' });
+          await page.waitForSelector('#map-root canvas', { timeout: 25000 });
+          await page.waitForTimeout(120);
+          const text = await page.evaluate(() => ((document.querySelector('.map-legend') || {}).innerText || '') + ' ' + ((document.querySelector('.psec') || {}).innerText || ''));
+          if (/NaN|undefined|Infinity/.test(text)) bad.push(st + '/' + id);
+        }
+      }
+      check(metrics.length >= 10 && !bad.length, 'every map metric under New Mexico, Oklahoma and all three states has a legend and a panel with no NaN (' + metrics.length + ' metrics)' + (bad.length ? ': ' + bad.join(', ') : ''));
+      await page.goto(base + '#map?metric=depth&st=nm', { waitUntil: 'load' });
+      await page.waitForSelector('#map-root canvas', { timeout: 25000 });
+      await page.waitForTimeout(200);
+      const lg = await page.locator('.map-legend').innerText();
+      const panel = await page.locator('.psec').first().innerText();
+      check(/No reported depth/.test(lg) && !(await page.locator('.map-legend .lg-ramp').count()) && /No county has a figure/.test(panel), 'New Mexico\'s depth map says no depth is reported: no scale, and the list says why it is empty');
+    } catch (e) {
+      check(false, 'the map metrics: ' + e.message.split('\n')[0].slice(0, 200));
     }
     await ctx.close();
   }

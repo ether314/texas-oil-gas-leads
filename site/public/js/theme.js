@@ -4,7 +4,17 @@ import { $$ } from './util.js';
 const THEMES = ['auto', 'light', 'dark'];
 const sysDark = matchMedia('(prefers-color-scheme: dark)');
 let current = 'auto';
-const fire = () => window.dispatchEvent(new Event('themechange'));
+// the browser's own bar (a phone's address bar) takes the page's color: --page in each theme. Two tags pick it by the system scheme before the script
+// runs; once a theme is chosen here one tag holds the answer.
+const PAGE = { light: '#f9f9f7', dark: '#0d0d0d' };
+function barColor() {
+  const tags = [...document.querySelectorAll('meta[name="theme-color"]')];
+  if (!tags.length) return;
+  tags.slice(1).forEach((t) => t.remove());
+  tags[0].removeAttribute('media');
+  tags[0].setAttribute('content', isDark() ? PAGE.dark : PAGE.light);
+}
+const fire = () => { barColor(); window.dispatchEvent(new Event('themechange')); };
 
 export function applyTheme(t, persist = true) {
   current = THEMES.includes(t) ? t : 'auto';

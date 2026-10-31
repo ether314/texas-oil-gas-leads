@@ -9,7 +9,7 @@ import { shareButton, absoluteLink } from './ui.js';
 import { spark } from './charts.js';
 import { opsLink } from './overview.js';
 import { gpsMap, rankList, stack, fmtMd, fmtDow, mb } from './daily-viz.js';
-import { num, card, head, tiles, table } from './daily-kit.js';
+import { num, card, head, tiles, table, pctOf } from './daily-kit.js';
 
 export const TX_TITLES = { permits: 'Drilling permits', pending: 'Permits pending approval', completions: 'Completion data', w1images: 'W-1 permit images', dirsurveys: 'Directional surveys', complimages: 'Completion images' };
 export const TX_ICONS = { permits: 'pin', pending: 'clock', completions: 'drop', w1images: 'layers', dirsurveys: 'rig', complimages: 'building' };
@@ -36,8 +36,8 @@ export function texasParts(ctx) {
     if (!q) return card('dr-sec', head('clock', 'Queue · Texas', 'Permits pending approval'), el('p', { class: 'empty', text: 'No pending-approval set reached the RRC share on this day. The RRC copies a set to the share after 11 AM and after 5 PM, and skips some holidays.' }));
     const opItems = (list) => list.map(([op, name, n]) => ({ label: name || 'Operator #' + op, value: n, href: name ? opsLink(name) : null }));
     return card('dr-sec', head('clock', 'Queue · Texas', 'Applications waiting for approval', 'W-1s submitted since the previous run that were still pending when each set was written (' + q.sets.map((s) => (s.at.slice(0, 10) === rep.date ? '' : fmtDow(s.at.slice(0, 10)).split(',')[0] + ' ') + s.label + ': ' + s.n).join(', ') + ').'),
-      tiles([{ label: 'Waiting', value: num(q.total), note: 'from ' + q.operatorCount + ' operators' }, { label: 'Flagged to expedite', value: num(q.expedite), note: Math.round((q.expedite / q.total) * 100) + '% of the queue' },
-        { label: 'Horizontal', value: num(q.horizontal), note: Math.round((q.horizontal / q.total) * 100) + '%' }, { label: 'Amendments', value: num(q.amendments), note: 'changes to earlier permits' },
+      tiles([{ label: 'Waiting', value: num(q.total), note: 'from ' + q.operatorCount + ' operators' }, { label: 'Flagged to expedite', value: num(q.expedite), note: q.total ? pctOf(q.expedite, q.total) + ' of the queue' : '' },
+        { label: 'Horizontal', value: num(q.horizontal), note: q.total ? pctOf(q.horizontal, q.total) : '' }, { label: 'Amendments', value: num(q.amendments), note: 'changes to earlier permits' },
         { label: 'Median planned depth', value: q.depth ? num(q.depth.median) + ' ft' : '—', note: q.depth ? 'deepest ' + num(q.depth.max) + ' ft' : '' }]),
       el('div', { class: 'dr-cols' },
         el('div', {}, el('h3', { text: 'RRC districts' }), rankList(q.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s1)' })),
