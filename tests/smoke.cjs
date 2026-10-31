@@ -77,6 +77,9 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         await page.waitForTimeout(1200);
         const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
         if (dims.sw > dims.cw) problem = 'sideways scroll (' + dims.sw + ' of ' + dims.cw + ' px)';
+        // the site is the Oil tracker: the name is in the tab title and the header on every view
+        const brand = await page.evaluate(() => ({ title: document.title, name: (document.querySelector('.brand-name') || {}).textContent }));
+        if (!problem && (!/Oil tracker$/.test(brand.title) || brand.name !== 'Oil tracker')) problem = 'the site is not named Oil tracker (title "' + brand.title + '", header "' + brand.name + '")';
         if (!problem && extra) problem = await extra(page);
       } catch (e) {
         problem = 'did not draw: ' + e.message.split('\n')[0].slice(0, 140);

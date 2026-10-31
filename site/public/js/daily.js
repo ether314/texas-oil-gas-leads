@@ -621,7 +621,7 @@ export function createDailyView({ root }) {
     if (!Object.keys(S.reps).length) { root.replaceChildren(h1, el('p', { class: 'empty', text: 'That day\'s report could not be loaded. Reload the page to try again.' })); return; }
     render();
     if (S.sel && S.gpsEl) requestAnimationFrame(() => S.gpsEl.scrollIntoView({ block: 'start', behavior: 'auto' })); // a shared drill link opens on its page
-    document.title = fmtLong(day).replace(/, \d{4}$/, '') + ' · Daily report · Texas Oil & Gas Leads';
+    document.title = fmtLong(day).replace(/, \d{4}$/, '') + ' · Daily report · Oil tracker';
     const i = S.days.findIndex((e) => e.d === day);
     [i - 1, i + 1].forEach((k) => { if (S.days[k]) S.states.forEach((id) => { if (S.days[k].r[id]) loadOpt(stateOf(id).dir + '/' + S.days[k].d); }); });
   }

@@ -174,7 +174,7 @@ async function boot() {
       else a.removeAttribute('aria-current');
     });
     placeNav();
-    document.title = (id === 'overview' ? '' : VIEWS[id] + ' · ') + 'Texas Oil & Gas Leads';
+    document.title = (id === 'overview' ? '' : VIEWS[id] + ' · ') + 'Oil tracker';
     // a link with a query (a bar or tile on the overview) restarts that view from its defaults plus the query
     if (hasQuery && lazy[id]) lazy[id].t.ex.apply(params);
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();

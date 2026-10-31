@@ -1,8 +1,9 @@
-# Texas oil & gas leads
+# Oil tracker
 
-An interactive dashboard and map of Texas oil and gas drilling activity, producing operators and the companies that
-serve them, built only from public records, with a daily report for Oklahoma too. It is a static site (HTML, CSS and
-JavaScript modules, no build step, no external requests) plus the Python scripts that build its data files.
+An interactive dashboard and map of oil and gas drilling activity, producing operators and the companies that serve
+them, for Texas and Oklahoma, built only from public records. It is a static site (HTML, CSS and JavaScript modules, no
+build step, no external requests) plus the Python scripts that build its data files. (The repository and the live
+address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
