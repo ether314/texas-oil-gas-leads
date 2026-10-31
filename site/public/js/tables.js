@@ -240,7 +240,7 @@ function operatorNotes(r) {
 function operatorsConfig(ctx) {
   const cname = (f) => (ctx.G && ctx.G.byFips.has(f) ? ctx.G.byFips.get(f).n : '');
   return {
-    root: '#ops-root', view: 'operators', caption: 'Operators', csvName: 'operators', placeholder: 'Search name, city, ZIP or operator number',
+    root: '#ops-root', view: 'operators', caption: 'Operators', csvName: 'operators', placeholder: 'Name, city, ZIP or operator number',
     note: (v) => (v.top ? '. Top 100 by oil among the operators listed here; some of the largest producers hold expired registrations, so they show on the Overview but not on this page.' : ''),
     text: (r) => [r.name, r.city, r.state, r.zip, r.num].join(' '),
     cols: [
@@ -331,7 +331,7 @@ function companyNotes(r) {
 function companiesConfig(m, ctx) {
   const segments = [['all', 'All segments']].concat(m.companies.bySegment.map(([s]) => [s, s]));
   return {
-    root: '#co-root', view: 'companies', caption: 'Companies', csvName: 'companies', placeholder: 'Search name, city, ZIP, segment or NAICS code',
+    root: '#co-root', view: 'companies', caption: 'Companies', csvName: 'companies', placeholder: 'Name, city, ZIP, segment or NAICS code',
     text: (r) => [r.name, r.city, r.state, r.zip, r.seg, r.naics, r.word].join(' '),
     note: (v) => (v.county !== 'all' ? '. County comes from the center of each ZIP code, so counts can differ from the map, which uses the Comptroller county code.' : ''),
     cols: [

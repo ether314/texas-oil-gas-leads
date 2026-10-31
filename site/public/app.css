@@ -46,7 +46,7 @@
   --st-ok: var(--s7);
   --st-nm: var(--s3);
   --up: light-dark(#006300, #0ca30c);
-  --down: light-dark(#d03b3b, #e66767);
+  --down: light-dark(#bd2f2f, #e66767); /* as text on a card it must reach 4.5:1: the lighter red (#d03b3b) was 4.3 */
   /* interaction */
   --link: light-dark(#1c5cab, #86b6ef);
   --accent: #256abf;
@@ -173,13 +173,14 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 6%, var(--surface)); border-color: var(--ink-2); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 92%, #fff), var(--accent)); border-color: transparent; color: #fff; box-shadow: 0 1px 0 rgb(255 255 255 / 0.22) inset, 0 8px 18px -10px var(--accent); }
-.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 100%, #fff), var(--accent-hover)); border-color: transparent; }
+/* white text on the blue: the whole gradient stays at 4.5:1 or better in both themes (it was 3.5 to 4.6), and hover goes deeper, not lighter */
+.btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 94%, #fff), color-mix(in srgb, var(--accent) 92%, #000)); border-color: transparent; color: #fff; box-shadow: 0 1px 0 rgb(255 255 255 / 0.22) inset, 0 8px 18px -10px var(--accent); }
+.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #000), color-mix(in srgb, var(--accent) 80%, #000)); border-color: transparent; }
 .btn.lg { height: 46px; padding: 0 22px; font-size: 15px; border-radius: var(--r-md); }
 .btn.sm { height: 32px; padding: 0 12px; font-size: var(--fs-sm); }
 .btn[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 9%, var(--surface)); border-color: var(--ink-2); }
 .btn .ico { margin-left: -2px; }
-.input::placeholder { color: var(--ink-2); opacity: 0.75; }
+.input::placeholder { color: var(--ink-2); opacity: 1; }
 select.input { padding-right: 8px; }
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3) 14px; margin: var(--sp-5) 0 var(--sp-2); }
 .field { display: grid; gap: var(--sp-1); min-width: 0; }
@@ -361,7 +362,9 @@ svg .hbar.on { filter: brightness(1.15); }
 /* Oklahoma's rows take its color wherever a list holds them, and a list of both states says which is which */
 .bars li.st-ok { --bar: var(--st-ok); }
 .bars li.st-nm { --bar: var(--st-nm); }
-.bars li.bars-h { margin-top: var(--sp-3); padding: 0 6px; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--bar, var(--ink-2)); }
+/* a state's heading keeps its color in a dot: the words stay ink, because a state's color on the page is under 4.5:1 as text */
+.bars li.bars-h { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding: 0 6px; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.bars li.bars-h::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--bar, var(--ink-2)); }
 .bars li.bars-h:first-child { margin-top: 0; }
 .bar-row { display: grid; grid-template-columns: minmax(110px, 220px) 1fr; align-items: center; gap: var(--sp-3); min-height: 34px; padding: 3px 6px; border-radius: var(--r-sm); color: inherit; text-decoration: none; transition: background var(--dur-1); }
 .bar-row:hover, .bar-row:focus-visible { background: color-mix(in srgb, var(--bar, var(--s1)) 10%, transparent); }
@@ -425,7 +428,7 @@ svg .hbar.on { filter: brightness(1.15); }
 .fresh-grid .ico { color: var(--muted); margin-top: 2px; }
 .fresh-grid b { display: block; font-size: var(--fs-xs); font-weight: 650; }
 .fresh-grid span { font-size: var(--fs-xs); color: var(--ink-2); }
-.fresh-cad { display: block; width: fit-content; margin-top: 3px; padding: 1px 8px; border: 1px solid var(--grid); border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); }
+.fresh-cad { display: block; width: fit-content; margin-top: 3px; padding: 1px 8px; border: 1px solid var(--grid); border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 600; color: var(--ink-2); }
 .src-cad { display: inline-block; margin: 0 6px 0 0; vertical-align: 1px; }
 
 /* tooltip */
@@ -448,11 +451,12 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .grid th.num, .grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid td.num.on { font-weight: 650; }
 .grid tbody th { font-weight: 560; }
-.grid td.name { min-width: 240px; font-weight: 560; }
+.grid td.name { min-width: 260px; font-weight: 560; }
 .grid td.loc, .grid td.trend { white-space: nowrap; }
 .grid td.notes { min-width: 200px; }
 .grid td.segcell { min-width: 150px; } /* not "seg": that is the segmented control's class, and made these cells look like its pills */
-.op-name { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px 0; }
+/* inline, not a wrapping flex row: the Map chip stays at the end of the name's last line, so a long name does not push it under itself and make the row taller */
+.op-name { display: inline; }
 .sort { font: inherit; font-weight: 620; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
 .sort:hover { color: var(--ink); }
 th[aria-sort="ascending"] .sort::after { content: " \25B2"; font-size: 9px; }
@@ -641,6 +645,10 @@ ul.plain li { margin-bottom: var(--sp-2); }
   .top-row { grid-template-columns: 1fr auto; padding-top: 6px; gap: 2px var(--sp-3); }
   .nav { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding-bottom: 6px; }
   .nav::-webkit-scrollbar { display: none; }
+  /* the tabs scroll sideways here: a fade at an edge that has more behind it (ui.js sets data-more) */
+  .nav[data-more="end"] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); }
+  .nav[data-more="start"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 26px); mask-image: linear-gradient(90deg, transparent, #000 26px); }
+  .nav[data-more="both"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 26px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, transparent, #000 26px, #000 calc(100% - 26px), transparent); }
   .nav-ind { bottom: 9px; }
   .nav a { padding: 6px 11px; font-size: 13.5px; }
   .brand-sub { display: none; }

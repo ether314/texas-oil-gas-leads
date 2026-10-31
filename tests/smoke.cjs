@@ -285,6 +285,28 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 6. the tabs scroll sideways on a phone: a fade at an edge with more behind it (data-more), none where they all fit
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const more = () => page.evaluate(() => document.querySelector('.nav').dataset.more);
+    try {
+      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.waitForSelector('.nav a[aria-current="page"]', { timeout: 25000 });
+      await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'end', null, { timeout: 10000 });
+      check((await more()) === 'end', 'on a phone the tabs fade at the right edge while Sources is out of sight');
+      await page.goto(base + '#about', { waitUntil: 'load' });
+      await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'start', null, { timeout: 10000 });
+      check((await more()) === 'start', 'and at the left edge once the current tab has been brought into view');
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'none', null, { timeout: 10000 });
+      check((await more()) === 'none', 'and not at all where the tabs all fit');
+    } catch (e) {
+      check(false, 'the tabs on a phone: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));
