@@ -63,8 +63,9 @@ the job publishes only counts and blurred sheets. To fill the archive from the R
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
 The Oklahoma report is built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, in the same
-workflow run, after the Texas capture. Its steps cannot stop the run: if the Oklahoma capture or its check fails, its changes are
-dropped before the commit and the Texas report is committed and published as usual. To fill its archive from the OCC's master
+workflow run, after the Texas capture. The two captures are isolated from each other: if one fails (the RRC has refused GitHub's
+runners for hours at a time, and the OCC can have outages of its own), that state's changes are dropped before the commit, the other
+state is committed, the site is published, and the run then ends red so the failure shows. To fill its archive from the OCC's master
 files (230 MB, about 2 minutes): `python3 -I site/pipeline/d8_ok_daily.py --history`, or tick `oklahoma_history` when running the
 workflow by hand. Its monthly card (Oklahoma crude production) is refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py`.
 
