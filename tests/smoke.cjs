@@ -460,6 +460,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       // an older day is not "the newest report", so it carries no warning
       const older = days[Math.max(0, days.length - 10)];
       await page.goto(base + '#daily?d=' + older, { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' }); // a change of hash alone is not a new page: without this the check could run before the view has redrawn (it flaked once)
       await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
       check((await page.locator('#daily-root .dr-stale').count()) === 0, 'and a day that is not the newest carries none');
     } catch (e) {
@@ -559,6 +560,25 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(m && (!m[2] || +m[1].replace(/,/g, '') <= +m[2].replace(/,/g, '')), 'a Map operator panel never says it shows more than the operator has: "' + (m ? m[0] : shown.slice(0, 60)) + '"');
     } catch (e) {
       check(false, 'what a state does not publish: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
+  // 15. a button's words are one piece: a label split into two flex items ("Share" and "this view") gets the icon's gap between them, which reads as a double space
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    try {
+      for (const v of ['#map', '#operators', '#companies', '#daily', '#map?st=nm']) {
+        await page.goto(base + v, { waitUntil: 'load' });
+        await page.waitForFunction(() => [...document.querySelectorAll('.btn')].some((b) => b.offsetParent), null, { timeout: 25000 }); // the first .btn in the page may sit in a view that is hidden
+        await page.waitForTimeout(500);
+        const split = await page.evaluate(() => [...document.querySelectorAll('.btn')].filter((b) => b.offsetParent).map((b) => ({ text: b.textContent.trim().replace(/\s+/g, ' '),
+          pieces: [...b.children].filter((c) => c.tagName.toLowerCase() !== 'svg').length })).filter((b) => b.pieces > 1));
+        check(split.length === 0, 'every button on ' + v + ' draws its words as one piece' + (split.length ? ': ' + split.map((b) => '"' + b.text + '"').join(', ') : ''));
+      }
+    } catch (e) {
+      check(false, 'button labels: ' + e.message.split('\n')[0].slice(0, 200));
     }
     await ctx.close();
   }
