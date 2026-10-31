@@ -54,6 +54,13 @@ KEEP_FROM = 2018  # permits older than the series start are only read for each o
 T0 = date(2024, 1, 1)  # the day count of a point starts here, as in the Texas permits.json
 LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = 33.5, 37.1, -103.1, -94.3  # Oklahoma
 KINDS = ("DR", "RC", "RE", "DP")  # application types counted as permits; AM (amendment) changes one that is already counted
+# What differs between states in build() and validate(): the file names, the box the points must fall in, which kind of record is a
+# new-drill permit, how a record's county is found, and the source line. New Mexico passes its own (d9_nm_monthly.py).
+OK_SPEC = {
+    "names": NAMES, "box": (LAT_MIN, LAT_MAX, LON_MIN, LON_MAX), "new_kind": "DR", "county_of": lambda r: D.api_county(r["api"]),
+    "src": lambda asof, modified: ("Oklahoma Corporation Commission, intents to drill (%s and the daily file%s): application type DR, one count per API number "
+                                   "and approval day (Central), by approval month; approvals through %s" % (MASTER, ", made " + modified[:10] if modified else "", asof.isoformat())),
+}
 OP_COLS = ["band", "num", "name", "type", "city", "state", "new12", "prev12", "all12", "all24", "last", "depth", "county", "counties", "newDrill", "m24"]
 PT_COLS = ["lat", "lon", "op", "t", "depth", "fips"]
 ASOF_KEYS = ("series-permits-ok.json", "county-permits-ok.json", "operators-ok.json", "permits-ok.json")
@@ -137,8 +144,10 @@ def name_of(permits_of_op):
     return max(permits_of_op, key=lambda r: (r["day"], r["name"]))["name"]
 
 
-def build(coll, county_names, asof=None, modified=None):
+def build(coll, county_names, asof=None, modified=None, spec=None):
     """The four documents, built from collect()'s result. county_names: {fips: name} of the state's counties."""
+    spec = spec or OK_SPEC
+    new_kind, county_of, (lat_lo, lat_hi, lon_lo, lon_hi) = spec["new_kind"], spec["county_of"], spec["box"]  # noqa: F841
     permits, first_dr = coll["permits"], coll["first_dr"]
     through = max((r["day"] for r in permits.values()), default=None)
     if through is None:
@@ -151,7 +160,7 @@ def build(coll, county_names, asof=None, modified=None):
         if r["op"]:
             by_op[r["op"]].append(r)
     named = {op: name_of(rs) for op, rs in by_op.items() if D.nameable(name_of(rs))}
-    news = [r for r in permits.values() if r["kind"] == "DR" and r["day"].toordinal() <= asofo]
+    news = [r for r in permits.values() if r["kind"] == new_kind and r["day"].toordinal() <= asofo]
     valid = set(county_names)
 
     # ---- the statewide series
@@ -161,9 +170,7 @@ def build(coll, county_names, asof=None, modified=None):
         k = D1.month_index(r["day"]) - w["series0"]
         if 0 <= k < n_all:
             counts[k] += 1
-    src = ("Oklahoma Corporation Commission, intents to drill (%s and the daily file%s): application type DR, one count per API number "
-           "and approval day (Central), by approval month; approvals through %s"
-           % (MASTER, ", made " + modified[:10] if modified else "", asof.isoformat()))
+    src = spec["src"](asof, modified)
     series = {"asOf": asof.isoformat(), "through": asof.isoformat(), "months": [D1.month_label(w["series0"] + i) for i in range(n_all)], "permits": counts, "src": src}
 
     # ---- the counties
@@ -173,7 +180,7 @@ def build(coll, county_names, asof=None, modified=None):
     no_county = 0
     for r in news:
         iso = r["day"].toordinal()
-        fips = D.api_county(r["api"])
+        fips = county_of(r)
         mi = D1.month_index(r["day"])
         if fips not in valid:
             no_county += 1 if 0 <= mi - w["first36"] < n36 else 0
@@ -206,9 +213,9 @@ def build(coll, county_names, asof=None, modified=None):
     rows = []
     for op, name in named.items():
         mine = [r for r in by_op[op] if r["day"].toordinal() <= asofo]
-        drills = [r for r in mine if r["kind"] == "DR"]
+        drills = [r for r in mine if r["kind"] == new_kind]
         new24 = [r for r in drills if r["day"].toordinal() >= w["cut24"]]
-        others = [r for r in mine if r["kind"] != "DR" and r["day"].toordinal() >= w["cut24"]]
+        others = [r for r in mine if r["kind"] != new_kind and r["day"].toordinal() >= w["cut24"]]
         allp = new24 + others
         if not allp:
             continue
@@ -216,7 +223,7 @@ def build(coll, county_names, asof=None, modified=None):
         pv = len(new24) - n12
         a12 = n12 + sum(1 for r in others if r["day"].toordinal() >= w["cut12"])
         ds = [r["depth"] for r in new24 if r["depth"] > 0]
-        cty = collections.Counter(D.api_county(r["api"]) for r in new24 if D.api_county(r["api"]) in valid)
+        cty = collections.Counter(county_of(r) for r in new24 if county_of(r) in valid)
         m24 = [0] * n24
         for r in new24:
             k = D1.month_index(r["day"]) - w["first24"]
@@ -241,7 +248,7 @@ def build(coll, county_names, asof=None, modified=None):
             month_total[k] += 1
         if iso < w["cut24"]:
             continue
-        fips = D.api_county(r["api"])
+        fips = county_of(r)
         cov24[0] += 1
         cov12[0] += iso >= w["cut12"]
         if r["lat"] is None or fips not in valid:
@@ -261,7 +268,7 @@ def build(coll, county_names, asof=None, modified=None):
                 "share12": round(cov12[1] / cov12[0], 3) if cov12[0] else 0.0, "share24": round(cov24[1] / cov24[0], 3) if cov24[0] else 0.0}
     points_doc = {"asOf": asof.isoformat(), "t0": T0.isoformat(), "ops": [named[op] for op in order], "opNums": order, "cols": PT_COLS, "pts": pts, "coverage": coverage}
 
-    docs = dict(zip(NAMES, (series, county_doc, ops_doc, points_doc)))
+    docs = dict(zip(spec["names"], (series, county_doc, ops_doc, points_doc)))
     report = {"asof": asof, "through": through, "new": len(news), "p12": sum(p12.values()), "p12prev": sum(prev.values()), "no_county": no_county,
               "operators": len(rows), "named_share12": None, "points": len(pts), "stats": coll["stats"]}
     t12 = sum(1 for r in news if r["day"].toordinal() >= w["cut12"])
@@ -277,8 +284,11 @@ def write_json(path, obj):
     return os.path.getsize(path)
 
 
-def validate(out, county_names=None):
+def validate(out, county_names=None, spec=None):
     """Reload the four files from `out` and return the problems found (empty when all is well)."""
+    spec = spec or OK_SPEC
+    NAMES = spec["names"]  # noqa: N806 - this state's four files
+    LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = spec["box"]  # noqa: N806
     bad = []
     if county_names is None:
         county_names = D.Lookups().county
@@ -294,7 +304,7 @@ def validate(out, county_names=None):
         except (OSError, ValueError) as e:
             bad.append("%s: cannot be read (%s)" % (name, e))
             continue
-        if size > BUDGET[name]:
+        if size > BUDGET[OK_SPEC["names"][NAMES.index(name)]]:
             bad.append("%s is over its budget: %d bytes" % (name, size))
         if re.search(r"\d{10,}|@|https?:", text):
             bad.append("%s holds something like an API number, an e-mail address or a link" % name)

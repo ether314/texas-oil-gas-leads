@@ -12,6 +12,8 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   on the shares that day), month-safe permit coverage, pack previews, download deadlines. The pack test needs Pillow and `pdftoppm`.
 - `test_d8.py`, `test_d8_context.py`, `test_ok_xlsx.py`: the Oklahoma producer, its monthly series and its workbook reader: rules,
   Central-time days across both clock changes, validation of the committed archive (with deliberate faults), privacy checks.
+- `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, the
+  validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,
   the windows, the naming rule, rounded locations, the validator against deliberate faults, mutants, and the committed files.
 - `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the two captures, the `if:` conditions for every

@@ -94,7 +94,7 @@ for Texas and Oklahoma, built only from public records (README has the full desc
   shapes and permit points for any set of states; `util.js` has `el()`/`svg()`/`load()`. County keys: Texas plain (`001`), others `OK:001`.
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`
-  the monthly EIA series) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
+  the monthly EIA series, also for New Mexico with `--state NM`), `d9_*` New Mexico (OCD: `d9_nm_monthly.py`) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
 - `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
   `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
 - `.github/workflows/publish.yml` and `.github/scripts/publish_pages.sh`: the publish after a green merge (and, by the same script, the
@@ -139,5 +139,7 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: Oklahoma permit history files (`d8_ok_monthly.py`). Privacy fix found while reading the operator list: two reports had named two
   sole proprietors ("... DBA ..."); the rule now refuses a dba and the two days were rebuilt (live within the hour of PR #18).
 - 2026-10-31: `publish.yml`: a green merge to `main` is published to `gh-pages` without a capture run (first use: the privacy fix above).
+- 2026-10-31: New Mexico's data (`d9_nm_monthly.py`, `NOTES_D9.md`): wells spudded, because the OCD publishes no approval dates by well; its files end 60 days back
+  (spud dates arrive late). The views take it up next.
 - 2026-10-31: the states bar (All, Texas, Oklahoma) and Oklahoma in the Overview (`states.js`, `overview-data.js`, `overview-view.js`); the owner then asked
   for New Mexico in every view too, so the state layer is built for any number of states (a new state is an entry in `states.js` plus its files).
