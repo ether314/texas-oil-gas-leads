@@ -5,8 +5,14 @@ import { delta, fluidSpark, seriesGroup, seriesTables, dayLabelT } from './chart
 import { icon } from './icons.js';
 import { segmented } from './ui.js';
 import { hideTip } from './tip.js';
+import { permitSeries } from './overview-data.js';
+import { otherStates, stateOf } from './states.js';
 
-const FILES = ['series-permits', 'series-markets', 'series-rigs', 'series-jobs', 'series-tax', 'series-outlook', 'series-production'];
+// Texas's own files, and each other state's permit series and (where it has one) the EIA's crude oil production for it
+const FILES = ['series-permits', 'series-markets', 'series-rigs', 'series-jobs', 'series-tax', 'series-outlook', 'series-production',
+  ...otherStates.flatMap((s) => [s.files.series, s.files.crude].filter(Boolean))];
+const stColor = (id) => 'var(--st-' + id.toLowerCase() + ')';
+const stName = (id) => stateOf(id).name;
 export async function loadMarketData() {
   const got = await Promise.all(FILES.map((n) => loadOpt(n)));
   return Object.fromEntries(FILES.map((n, i) => [n, got[i]]));
@@ -30,15 +36,28 @@ function yoyInfo(ser, i) {
 }
 
 /* ---------- registry ---------- */
-function registry(raw) {
-  const R = {};
-  const sp = raw['series-permits']; const sm = raw['series-markets']; const rg = raw['series-rigs'];
-  const jb = raw['series-jobs']; const tx = raw['series-tax']; const ol = raw['series-outlook']; const pr = raw['series-production'];
-  if (sp) R.permits = mser(sp.months, sp.permits);
+function registry(raw, states = ['TX']) {
+  const R = { states };
+  const T = states.includes('TX');
+  // Texas's rigs, jobs, taxes and production series are Texas's: with Oklahoma alone they are not drawn (Oklahoma has none of them)
+  const sm = raw['series-markets']; const rg = T && raw['series-rigs'];
+  const jb = T && raw['series-jobs']; const tx = T && raw['series-tax']; const ol = raw['series-outlook']; const pr = T && raw['series-production'];
+  const sp = permitSeries(states, { TX: raw['series-permits'], ...Object.fromEntries(otherStates.map((q) => [q.id, raw[q.files.series]])) });
+  if (sp) {
+    R.permits = mser(sp.months, sp.permits);
+    R.permitsBy = sp.ids.length > 1 ? Object.fromEntries(sp.ids.map((id) => [id, mser(sp.months, sp.by[id])])) : null;
+    R.permitIds = sp.ids;
+  }
   if (sm) {
     if (sm.wti) R.wti = mser(sm.months, sm.wti);
     if (sm.henryHub) R.hh = mser(sm.months, sm.henryHub);
-    if (sm.txCrude) R.eia = mser(sm.months, sm.txCrude.map((v) => (v == null ? null : v * 1000)));
+    if (T && sm.txCrude) R.eia = mser(sm.months, sm.txCrude.map((v) => (v == null ? null : v * 1000)));
+  }
+  // the EIA's monthly crude oil production for each other state shown (it gives thousand barrels; the file's key is okCrude, nmCrude ...)
+  R.crude = {};
+  for (const q of otherStates) {
+    const f = states.includes(q.id) && q.files.crude && raw[q.files.crude]; const v = f && f[q.id.toLowerCase() + 'Crude'];
+    if (v) R.crude[q.id] = mser(f.months, v.map((x) => (x == null ? null : x * 1000)));
   }
   if (rg) {
     const t = rg.weeks.map(dayMs);
@@ -81,7 +100,11 @@ function chipDefs(R, raw) {
     id: 'prm', group: 'activity', icon: 'rig', color: 'var(--s2)', label: 'Permian rigs', ser: R.rigPermian, fmt: (v) => fmt.format(v), unit: 'rigs in Texas counties', src: 'Baker Hughes', weekly: true,
     note: R.rigPermianAll ? fmt.format(R.rigPermianAll.v[lastIdx(R.rigPermianAll.v)]) + ' basin-wide, incl. New Mexico' : '',
   });
-  add({ id: 'permits', group: 'activity', icon: 'pin', color: 'var(--s2)', label: 'New permits', ser: R.permits, fmt: (v) => fmt.format(v), unit: 'new-drill, in the month', src: 'RRC' });
+  const ids = R.permitIds || [];
+  const AGENCY = { TX: 'RRC', OK: 'OCC', NM: 'OCD' };
+  add({ id: 'permits', group: 'activity', icon: 'pin', color: ids.length === 1 ? stColor(ids[0]) : 'var(--st-tx)', label: 'New permits', ser: R.permits, fmt: (v) => fmt.format(v),
+    unit: 'new-drill, in the month' + (ids.length > 1 ? ', ' + ids.map(stName).join(' and ') : ''), src: ids.map((id) => AGENCY[id]).join(' and ') });
+  for (const [id, ser] of Object.entries(R.crude)) add({ id: id.toLowerCase() + 'crude', group: 'production', icon: 'pipe', color: stColor(id), label: stName(id) + ' crude', ser, fmt: (v) => compactFmt.format(v), unit: 'barrels a month', src: 'EIA est.' });
   add({
     id: 'jobs', group: 'jobs', icon: 'jobs', color: 'var(--s7)', label: 'Oil & gas jobs', ser: R.jobsAll, fmt: (v) => compactFmt.format(v * 1000), unit: 'jobs', src: 'BLS',
     note: R.jobsOil ? compactFmt.format(R.jobsOil.v[lastIdx(R.jobsOil.v)] * 1000) + ' extraction, ' + compactFmt.format(R.jobsSup.v[lastIdx(R.jobsSup.v)] * 1000) + ' field services' : '', prelim: true,
@@ -142,9 +165,12 @@ function makeGroups(R, raw) {
 
   if (R.permits || R.rigTx) {
     const panels = [];
+    const ids = R.permitIds || []; const one = ids.length === 1 ? ids[0] : null;
     if (R.permits) panels.push({
-      id: 'permits', title: 'New-drill permits a month', icon: 'pin', color: 'var(--s2)', zero: true, fmtTick: tickK, events: [{ t: monthMs('2020-04'), label: 'COVID-19' }],
-      series: [S({ id: 'permits', name: 'Permits', unit: 'a month', color: 'var(--s2)', ...R.permits, fmtVal: (v) => fmt.format(v) })],
+      id: 'permits', title: 'New-drill permits a month' + (one && one !== 'TX' ? ', ' + stName(one) : ''), icon: 'pin', color: one ? stColor(one) : 'var(--st-tx)', zero: true, fmtTick: tickK, events: [{ t: monthMs('2020-04'), label: 'COVID-19' }],
+      // several states: one line each (the sum is mostly Texas), so every state's own course shows
+      series: R.permitsBy ? ids.map((id) => S({ id: 'permits' + id, name: stName(id), unit: 'a month', color: stColor(id), ...R.permitsBy[id], fmtVal: (v) => fmt.format(v) }))
+        : [S({ id: 'permits', name: 'Permits', unit: 'a month', color: one ? stColor(one) : 'var(--st-tx)', ...R.permits, fmtVal: (v) => fmt.format(v) })],
     });
     if (R.rigTx) {
       const series = [S({ id: 'rigTx', name: 'Texas', unit: 'rigs', color: 'var(--s2)', ...R.rigTx, fmtVal: (v) => fmt.format(v), dateFmt: dayLabelT, tol: WEEK })];
@@ -156,42 +182,51 @@ function makeGroups(R, raw) {
       id: 'activity', label: 'Activity', icon: 'rig',
       spec: () => ({ label: 'Drilling activity', domain: [monthMs('2019-01'), Math.max(...ends)], panels }),
       notes: [(R.rigTx ? 'Rig counts are Baker Hughes weekly counts through ' + fmtDate(R.rigAsOf) + ' (the workbooks come from Internet Archive copies of Baker Hughes’ public files). "Permian, Texas counties" is the Texas part of Baker Hughes’ Permian basin; the basin-wide count also includes southeastern New Mexico.' : '')
-        + (R.permits ? ' Permits are Railroad Commission new-drill permits by issue month.' : '')],
+        + (R.permits ? (ids.includes('TX') ? ' Texas permits are Railroad Commission new-drill permits by issue month.' : '')
+          + (ids.includes('OK') ? ' Oklahoma permits are Oklahoma Corporation Commission new-drill permits by approval month, one per well and day.' : '')
+          + (ids.includes('NM') ? ' New Mexico’s are wells added to the Oil Conservation Division’s well layer when an application to drill is approved, by month added.' : '') : '')],
     });
   }
 
-  if (R.prodOil || R.eia) {
+  if (R.prodOil || R.eia || Object.keys(R.crude).length) {
     const panels = []; let cross = '';
     const oilSer = [];
     const unitO = 'barrels a month';
-    if (R.prodOil) {
-      oilSer.push(S({ id: 'rrcO', name: 'RRC reports', unit: unitO, color: 'var(--s3)', ...R.prodOil, fmtVal: (v) => compactFmt.format(v), fmtEnd: (v) => compactFmt.format(v) }));
-      if (R.eia) oilSer.push(S({ id: 'eia', name: 'EIA estimate, newer months', unit: unitO, color: 'var(--ink-2)', ref: true, after: true, ...R.eia, fmtVal: (v) => compactFmt.format(v) }));
-      // cross-check: the newest month both sources report
-      if (R.eia) {
-        for (let i = R.eia.v.length - 1; i >= 0; i--) {
-          const j = R.prodOil.t.indexOf(R.eia.t[i]);
-          if (R.eia.v[i] != null && j >= 0 && R.prodOil.v[j] != null) { cross = monthT(R.eia.t[i]) + ': RRC reports ' + compactFmt.format(R.prodOil.v[j]) + ' barrels, EIA estimates ' + compactFmt.format(R.eia.v[i]) + ' (' + pctText(R.prodOil.v[j], R.eia.v[i]) + ').'; break; }
+    if (R.prodOil || R.eia) {
+      if (R.prodOil) {
+        oilSer.push(S({ id: 'rrcO', name: 'RRC reports', unit: unitO, color: 'var(--s3)', ...R.prodOil, fmtVal: (v) => compactFmt.format(v), fmtEnd: (v) => compactFmt.format(v) }));
+        if (R.eia) oilSer.push(S({ id: 'eia', name: 'EIA estimate, newer months', unit: unitO, color: 'var(--ink-2)', ref: true, after: true, ...R.eia, fmtVal: (v) => compactFmt.format(v) }));
+        // cross-check: the newest month both sources report
+        if (R.eia) {
+          for (let i = R.eia.v.length - 1; i >= 0; i--) {
+            const j = R.prodOil.t.indexOf(R.eia.t[i]);
+            if (R.eia.v[i] != null && j >= 0 && R.prodOil.v[j] != null) { cross = monthT(R.eia.t[i]) + ': RRC reports ' + compactFmt.format(R.prodOil.v[j]) + ' barrels, EIA estimates ' + compactFmt.format(R.eia.v[i]) + ' (' + pctText(R.prodOil.v[j], R.eia.v[i]) + ').'; break; }
+          }
         }
-      }
-    } else oilSer.push(S({ id: 'eia', name: 'EIA estimate', unit: unitO, color: 'var(--s3)', ...R.eia, fmtVal: (v) => compactFmt.format(v), fmtEnd: (v) => compactFmt.format(v), prelim: null }));
-    panels.push({
-      id: 'oil', title: R.prodOil ? 'Texas crude oil and condensate' : 'Texas crude oil (EIA)', icon: 'drop', color: 'var(--s3)', zero: false,
-      fmtTick: (v) => compactFmt.format(v), series: oilSer,
-    });
-    if (R.prodGas) panels.push({
-      id: 'gas', title: 'Texas natural gas', icon: 'flame', color: 'var(--s3)', zero: false, fmtTick: (v) => String(Math.round(v / 1e6)),
-      series: [S({ id: 'gas', name: 'RRC reports', unit: 'Bcf a month (gas well plus casinghead)', color: 'var(--s3)', ...R.prodGas, fmtVal: (v) => fmt.format(Math.round(v / 1e6)) + ' Bcf', fmtEnd: (v) => fmt.format(Math.round(v / 1e6)) })],
+      } else oilSer.push(S({ id: 'eia', name: 'EIA estimate', unit: unitO, color: 'var(--s3)', ...R.eia, fmtVal: (v) => compactFmt.format(v), fmtEnd: (v) => compactFmt.format(v), prelim: null }));
+      panels.push({
+        id: 'oil', title: R.prodOil ? 'Texas crude oil and condensate' : 'Texas crude oil (EIA)', icon: 'drop', color: 'var(--s3)', zero: false,
+        fmtTick: (v) => compactFmt.format(v), series: oilSer,
+      });
+      if (R.prodGas) panels.push({
+        id: 'gas', title: 'Texas natural gas', icon: 'flame', color: 'var(--s3)', zero: false, fmtTick: (v) => String(Math.round(v / 1e6)),
+        series: [S({ id: 'gas', name: 'RRC reports', unit: 'Bcf a month (gas well plus casinghead)', color: 'var(--s3)', ...R.prodGas, fmtVal: (v) => fmt.format(Math.round(v / 1e6)) + ' Bcf', fmtEnd: (v) => fmt.format(Math.round(v / 1e6)) })],
+      });
+    }
+    for (const [id, ser] of Object.entries(R.crude)) panels.push({
+      id: id.toLowerCase() + 'Oil', title: stName(id) + ' crude oil (EIA)', icon: 'drop', color: stColor(id), zero: false, fmtTick: (v) => compactFmt.format(v),
+      series: [S({ id: id.toLowerCase() + 'O', name: 'EIA estimate', unit: unitO, color: stColor(id), ...ser, fmtVal: (v) => compactFmt.format(v), fmtEnd: (v) => compactFmt.format(v) })],
     });
     const ends = panels.map((p) => Math.max(...p.series.map((s) => s.t[s.t.length - 1])));
     const first = Math.min(...panels.flatMap((p) => p.series.map((s) => s.t[0])));
     groups.push({
       id: 'production', label: 'Production', icon: 'drop',
-      spec: () => ({ label: 'Texas production', domain: [first, Math.max(...ends)], panels }),
-      notes: [(R.prodOil ? 'Statewide totals from the Railroad Commission’s production reports (oil is crude plus condensate; gas is gas-well plus casinghead gas), shown through ' + monthLabel(R.prodMeta.through) + ', the newest month that is complete. '
+      spec: () => ({ label: R.states.map(stName).join(' and ') + ' production', domain: [first, Math.max(...ends)], panels }),
+      notes: [(R.prodOil || R.eia ? (R.prodOil ? 'Statewide totals from the Railroad Commission’s production reports (oil is crude plus condensate; gas is gas-well plus casinghead gas), shown through ' + monthLabel(R.prodMeta.through) + ', the newest month that is complete. '
         + (R.prodMeta.partial.length ? 'Reports for ' + monthLabel(R.prodMeta.partial[0]) + ' to ' + monthLabel(R.prodMeta.partial[R.prodMeta.partial.length - 1]) + ' are still being filled in and run below the EIA estimate, so they are left out. ' : '')
         + (cross ? 'Cross-check against the EIA’s own estimate, ' + cross : '')
-        : 'The Railroad Commission production file is not loaded, so this shows the EIA’s monthly estimate of Texas crude production only; the newest months are not yet published.')],
+        : 'The Railroad Commission production file is not loaded, so this shows the EIA’s monthly estimate of Texas crude production only; the newest months are not yet published.') : '')
+        + Object.entries(R.crude).map(([id, ser]) => (R.prodOil || R.eia ? ' ' : '') + stName(id) + ' is the EIA’s monthly estimate of field production of crude oil, through ' + monthLabel(ymOf(ser.t[lastIdx(ser.v)])) + '; its newest months are estimates that the EIA revises. ' + stName(id) + ' has no county or operator production file here.').join('')],
     });
   }
 
@@ -218,8 +253,10 @@ function makeGroups(R, raw) {
 }
 
 /* ---------- wiring ---------- */
-export function initMarkets({ ticker, card, raw }) {
-  const R = registry(raw);
+let live = null; // the pulse card on the page: called again when the states shown change, it replaces its tabs and chart
+export function initMarkets({ ticker, card, raw, states = ['TX'] }) {
+  if (live) { live.tabs.el.remove(); live.cleanup(); live = null; }
+  const R = registry(raw, states);
   const groups = makeGroups(R, raw);
   const gl = new Map(groups.map((g) => [g.id, g.label]));
   const defs = chipDefs(R, raw);
@@ -227,9 +264,11 @@ export function initMarkets({ ticker, card, raw }) {
   if (!defs.length) ticker.closest('section').hidden = true;
   else ticker.replaceChildren(...defs.map((c) => chipNode(c, (gl.get(c.group) || 'market').toLowerCase(), (g) => api.select(g, true))));
   if (!groups.length) { card.hidden = true; return api; }
+  card.hidden = false;
 
   const root = $('#pulse-root'); const tableWrap = $('#pulse-table-wrap'); const toggle = $('#pulse-toggle'); const src = $('#pulse-src');
   let current = null; let tableOn = false; let chart = null;
+  toggle.setAttribute('aria-pressed', 'false'); toggle.textContent = 'View as table';
   const tabs = segmented({
     label: 'Market pulse group', value: groups[0].id, prefix: 'pg', options: groups.map((g) => ({ id: g.id, label: g.label, icon: g.icon, controls: 'pulse-root' })),
     onChange: (id) => show(id),
@@ -247,14 +286,18 @@ export function initMarkets({ ticker, card, raw }) {
     tableWrap.setAttribute('aria-label', g.label + ' values by date, newest first');
     root.hidden = tableOn; tableWrap.hidden = !tableOn;
   }
-  toggle.addEventListener('click', () => {
+  const flip = () => {
     tableOn = toggle.getAttribute('aria-pressed') !== 'true';
     toggle.setAttribute('aria-pressed', String(tableOn)); toggle.textContent = tableOn ? 'Chart view' : 'View as table';
     root.hidden = tableOn; tableWrap.hidden = !tableOn; hideTip();
     if (!tableOn && chart) chart.render();
-  });
+  };
+  toggle.addEventListener('click', flip);
+  live = { tabs, cleanup: () => toggle.removeEventListener('click', flip) };
   show(groups[0].id);
-  src.textContent = 'Each group has its own latest date; see "Data freshness" below and Sources and method for what each series is.';
+  src.textContent = 'Each group has its own latest date; see "Data freshness" below and Sources and method for what each series is.'
+    + (!states.includes('TX') ? ' ' + states.map(stName).join(' and ') + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here: their sources could not be read when the site was built.'
+      : states.length > 1 ? ' Rigs, jobs and taxes are Texas’s: ' + states.filter((id) => id !== 'TX').map(stName).join(' and ') + ' ' + (states.length > 2 ? 'have' : 'has') + ' none of them here.' : '');
   api = {
     select(id, scroll) {
       if (!groups.some((g) => g.id === id)) return;

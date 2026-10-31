@@ -1,4 +1,6 @@
 // Shared helpers: DOM building (text only, never innerHTML), formatting, data loading, small utilities.
+import { activeStates, stateParam } from './states.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -160,8 +162,10 @@ export function parseHash() {
     hasQuery: cut >= 0,
   };
 }
-// keeps the address bar in step with the map without firing hashchange
+// keeps the address bar in step with the map without firing hashchange. The states shown (st=tx or st=ok, none for both) stay in it.
 export function replaceHash(view, params) {
+  const sp = stateParam(activeStates());
+  if (sp && !params.has('st')) { params = new URLSearchParams(params); params.set('st', sp); }
   const q = params.toString().replace(/%2C/g, ',');
   const next = '#' + view + (q ? '?' + q : '');
   if (location.hash !== next) history.replaceState(null, '', next);

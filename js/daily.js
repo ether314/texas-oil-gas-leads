@@ -12,7 +12,8 @@ import { tipRow } from './tip.js';
 import { opsLink } from './overview.js';
 import { trendBars, countyMap, ribbon, ring, calendar, stack, histogram, rankList, fmtMd, fmtDow, fmtLong, addDays, mb } from './daily-viz.js';
 import { num, strong, listed, central, compare, rel, card, head, tiles, table, chip, kpi, pl, signed, pctOf } from './daily-kit.js';
-import { STATES, stateOf, parseStates, stateParam, ck, prepIndex, mergeDays, permitSeries, bizSeries, avgBefore, monthToDate, mergeRank, mergedCounties, sumOf } from './daily-data.js';
+import { STATES, stateOf, stateParam, ck, prepIndex, mergeDays, permitSeries, bizSeries, avgBefore, monthToDate, mergeRank, mergedCounties, sumOf } from './daily-data.js';
+import { activeStates, setStates as setGlobalStates } from './states.js';
 import { texasParts, TX_TITLES, TX_ICONS, TX_WHAT, PERMIT_TYPE } from './daily-tx.js';
 import { transfersSection, wellsSection, OK_TITLES, OK_ICONS, OK_WHAT } from './daily-ok.js';
 
@@ -106,7 +107,6 @@ export function createDailyView({ root }) {
       S.day === latest() ? null : el('button', { type: 'button', class: 'btn sm primary', 'data-act': 'latest', onclick: () => go(latest(), S.mode) }, 'Latest'),
       shareButton(() => absoluteLink(location.hash || '#daily'), 'Copy link'));
     const seg = segmented({ label: 'Report version', options: [{ id: 'simple', label: 'Simple' }, { id: 'full', label: 'Verbose' }], value: S.mode, tabs: false, prefix: 'drv', onChange: (id) => go(S.day, id) });
-    const which = S.avail.length > 1 ? segmented({ label: 'States shown', options: [{ id: 'all', label: 'Both states' }, ...S.avail.map((id) => ({ id, label: sname(id) }))], value: multi() ? 'all' : S.states[0], tabs: false, prefix: 'drs', onChange: setStates }) : null;
     h1.textContent = fmtLong(S.day).replace(/, \d{4}$/, '');
     const eyebrow = multi() ? 'Daily Texas and Oklahoma report' : only() === 'TX' ? 'Daily Railroad Commission report' : 'Daily Oklahoma Corporation Commission report';
     const them = multi() ? 'the Railroad Commission of Texas and the Oklahoma Corporation Commission' : only() === 'TX' ? 'the Railroad Commission' : 'the Oklahoma Corporation Commission';
@@ -117,7 +117,7 @@ export function createDailyView({ root }) {
         h1,
         el('p', { class: 'dr-lede', text: S.mode === 'simple' ? 'The daily look: what ' + them + ' published overnight, in a minute.' : 'Everything ' + them + ' list' + (multi() ? '' : 's') + ' as nightly, twice daily or daily, captured and read.' }),
         el('div', { class: 'dr-pills' }, pills)),
-      el('div', { class: 'dr-controls' }, which ? which.el : null, seg.el, nav));
+      el('div', { class: 'dr-controls' }, seg.el, nav));
   }
 
   function ribbonTip(e) {
@@ -634,19 +634,21 @@ export function createDailyView({ root }) {
     return show(day);
   }
 
-  // "Show": both states, or one. The days listed are the days those states have, so the selected day stays when it is still there
-  function setStates(key) {
-    const next = key === 'all' ? S.avail.slice() : [key];
-    if (next.join() === S.states.join()) return;
+  // the states shown (the site-wide choice in the bar above the page): both states, or one. The days listed are the days those states
+  // have, so the selected day stays when it is still there
+  function applyStates(ids) {
+    const next = S.avail.filter((id) => ids.includes(id));
+    if (!S.ready || !next.length || next.join() === S.states.join()) return Promise.resolve();
     S.states = next; setDays();
     if (!S.states.includes('TX')) S.sel = null;
     const day = S.days.some((e) => e.d === S.day) ? S.day : latest();
     const hash = hashFor(day, S.mode, S.sel);
-    if (location.hash !== hash) history.pushState(null, '', hash);
+    if (location.hash !== hash) history.replaceState(null, '', hash);
     return show(day);
   }
 
   return {
+    setStates: applyStates,
     async activate(params) {
       if (!S.ready) {
         try { await boot(); } catch (e) {
@@ -657,8 +659,10 @@ export function createDailyView({ root }) {
       }
       const dr = params.get('drill'); const sv = params.get('survey');
       S.sel = dr && /^\d{7}$/.test(dr) ? { t: 'p', id: dr } : sv && /^\d{1,12}$/.test(sv) ? { t: 's', id: sv } : null;
-      let want = parseStates(params.get('st')).filter((id) => S.avail.includes(id));
-      if (!want.length || (S.sel && S.avail.includes('TX') && !want.includes('TX'))) want = S.avail.slice(); // a well is a Texas one: show Texas with it
+      let want = activeStates().filter((id) => S.avail.includes(id)); // the router has set the choice from the address
+      if (!want.length || (S.sel && S.avail.includes('TX') && !want.includes('TX'))) { // a well is a Texas one: show Texas with it
+        want = S.avail.slice(); setGlobalStates(want, true);
+      }
       S.states = want; setDays();
       const d = params.get('d');
       S.mode = params.get('v') === 'full' ? 'full' : 'simple';
