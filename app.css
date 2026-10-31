@@ -715,18 +715,22 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-ribbon { display: block; width: 100%; min-width: 760px; height: auto; }
 .dr-rb { fill: color-mix(in srgb, var(--st-tx) 42%, transparent); pointer-events: none; transition: fill var(--dur-2); }
 .dr-rb.ok { fill: color-mix(in srgb, var(--st-ok) 42%, transparent); }
+.dr-rb.nm { fill: color-mix(in srgb, var(--st-nm) 42%, transparent); }
 .dr-rbg.live .dr-rb { fill: color-mix(in srgb, var(--st-tx) 72%, transparent); }
 .dr-rbg.live .dr-rb.ok { fill: color-mix(in srgb, var(--st-ok) 72%, transparent); }
+.dr-rbg.live .dr-rb.nm { fill: color-mix(in srgb, var(--st-nm) 72%, transparent); }
 .dr-rbg .dr-rb.off { fill: color-mix(in srgb, var(--ink) 15%, transparent); }
 .dr-rbg.partial .dr-rb { stroke: var(--ink-2); stroke-width: 1px; stroke-dasharray: 2 2; }
 .dr-rbhit { fill: transparent; cursor: pointer; }
 .dr-rbg:hover .dr-rb:not(.off), .dr-rbg.sel .dr-rb:not(.off) { fill: var(--st-tx); }
 .dr-rbg:hover .dr-rb.ok:not(.off), .dr-rbg.sel .dr-rb.ok:not(.off) { fill: var(--st-ok); }
+.dr-rbg:hover .dr-rb.nm:not(.off), .dr-rbg.sel .dr-rb.nm:not(.off) { fill: var(--st-nm); }
 .dr-rbsel { fill: none; stroke: var(--ink); stroke-width: 1.6px; pointer-events: none; opacity: 0; }
 .dr-rbg.sel .dr-rbsel { opacity: 1; }
 .dr-rbg.sel { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--st-tx) 70%, transparent)); }
 
 .dr-kpis { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.dr-kpis.three { grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr)); }
 .dr-ctx { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
 .dr-kpi { position: relative; display: grid; align-content: start; gap: 4px; padding: 18px 18px 16px; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--kc) 8%, var(--surface)), var(--surface) 72%); box-shadow: var(--elev-1); }
 .dr-kpi::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--kc), transparent 72%); }
@@ -757,10 +761,14 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-bar.horiz, .dr-bar.tx { fill: var(--st-tx); }
 .dr-bar.ok { fill: var(--st-ok); }
 .dr-bar.okrest { fill: color-mix(in srgb, var(--st-ok) 34%, transparent); }
+.dr-bar.nm { fill: var(--st-nm); }
+.dr-bar.nmrest { fill: color-mix(in srgb, var(--st-nm) 34%, transparent); }
 .dr-barg.on .dr-bar.rest { fill: color-mix(in srgb, var(--s2) 58%, transparent); }
 .dr-barg.on .dr-bar.okrest { fill: color-mix(in srgb, var(--st-ok) 58%, transparent); }
+.dr-barg.on .dr-bar.nmrest { fill: color-mix(in srgb, var(--st-nm) 58%, transparent); }
 .dr-barg.on .dr-bar.horiz, .dr-barg.on .dr-bar.tx { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--st-tx) 75%, transparent)); }
 .dr-barg.on .dr-bar.ok { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--st-ok) 75%, transparent)); }
+.dr-barg.on .dr-bar.nm { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--st-nm) 75%, transparent)); }
 .dr-hit { fill: transparent; }
 .dr-hit:hover { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
 .dr-legend-inline { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); font-size: var(--fs-sm); color: var(--ink-2); }
@@ -769,6 +777,8 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-dot.horiz, .dr-dot.tx { background: var(--st-tx); }
 .dr-dot.ok { background: var(--st-ok); }
 .dr-dot.okrest { background: color-mix(in srgb, var(--st-ok) 34%, transparent); }
+.dr-dot.nm { background: var(--st-nm); }
+.dr-dot.nmrest { background: color-mix(in srgb, var(--st-nm) 34%, transparent); }
 .dr-dot.rest { background: color-mix(in srgb, var(--s2) 34%, transparent); }
 
 .dr-maptools { margin: 0 0 var(--sp-3); }
@@ -904,7 +914,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 @media (max-width: 980px) {
   .dr-hero { grid-template-columns: minmax(0, 1fr); }
   .dr-controls, .dr-nav { justify-items: start; justify-content: flex-start; }
-  .dr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dr-kpis, .dr-kpis.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dr-kpi.lead { grid-column: 1 / -1; }
   .dr-grid2 { grid-template-columns: minmax(0, 1fr); }
   .dr-col { display: contents; }

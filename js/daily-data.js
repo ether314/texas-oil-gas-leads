@@ -1,8 +1,8 @@
 // Merging the two states' Daily reports into one dataset. Pure functions: no DOM, no fetch, so they run under Node as well.
 //
-// The two reports are built by separate nightly jobs (Texas: d7_daily.py, Oklahoma: d8_ok_daily.py) and either can be missing
-// for a day (the workflow lets the Oklahoma capture fail without stopping Texas), so nothing here assumes both are there.
-// County FIPS codes repeat across the two states and so do 8 county names, so every county key carries its state (ck).
+// The reports are built by separate nightly jobs (Texas: d7_daily.py, Oklahoma: d8_ok_daily.py, New Mexico: d9_nm_daily.py) and any can
+// be missing for a day (the workflow lets one capture fail without stopping the others), so nothing here assumes all are there.
+// County FIPS codes repeat across the states and so do some county names, so every county key carries its state (ck).
 import { addDays, isWeekend } from './daily-dates.js';
 
 import { STATES } from './states.js';
@@ -50,15 +50,16 @@ export function mergeDays(idxs, active) {
   return days;
 }
 
-// Permits by the day they were issued, for one state: get(day) is { n: new-drill, total: all kinds, h: horizontal (Texas) or
-// planned 12,000 ft or deeper (Oklahoma) }, a zero for a day inside the state's window with none (a weekend or a holiday), and
-// null for a day outside it, which is "no data", not "no permits".
-export function permitSeries(id, idx, texas) {
+// Permits by the day they were issued, for one state: get(day) is { n: new-drill, total: all kinds, h: horizontal (Texas, New Mexico)
+// or planned 12,000 ft or deeper (Oklahoma) }, a zero for a day inside the state's window with none (a weekend or a holiday), and
+// null for a day outside it, which is "no data", not "no permits". `series` is the state's own file of permits by day when it has one
+// (Texas's and New Mexico's, the same shape), else the days come from the report index.
+export function permitSeries(id, idx, series) {
   const m = new Map();
   let lo = null; let hi = null;
-  if (id === 'TX' && texas && texas.days && texas.days.length) {
-    texas.days.forEach((d, i) => m.set(d, { n: texas.newDrill[i], total: texas.total[i], h: texas.horizontal[i] }));
-    lo = texas.days[0]; hi = texas.days[texas.days.length - 1];
+  if (series && series.days && series.days.length) {
+    series.days.forEach((d, i) => m.set(d, { n: series.newDrill[i], total: series.total[i], h: series.horizontal[i] }));
+    lo = series.days[0]; hi = series.days[series.days.length - 1];
   } else if (idx) {
     idx.days.forEach((r) => { if (r.dd && !m.has(r.dd)) m.set(r.dd, { n: r.pn || 0, total: r.p || 0, h: r.pd || 0 }); });
     const keys = [...m.keys()].sort();

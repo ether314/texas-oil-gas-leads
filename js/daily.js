@@ -1,8 +1,9 @@
-// Daily report: what the Railroad Commission of Texas and the Oklahoma Corporation Commission published overnight, one report per
-// day for the last 92 days, the two states as one dataset. A simple version for the daily look and a verbose one with everything.
-// "Show" narrows it to one state. Each block hides itself if its data is missing, and a day one state has no report for is
-// said so, never counted as zero. The merging itself is in daily-data.js; the parts only one state has are in daily-tx.js
-// (pending queue, image packs, GPS map) and daily-ok.js (transfers, well inventory).
+// Daily report: what the Railroad Commission of Texas, the Oklahoma Corporation Commission and New Mexico's Oil Conservation Division
+// published overnight, one report per day for the last 92 days, the states as one dataset. A simple version for the daily look and a
+// verbose one with everything. The states bar narrows it to some of them. Each block hides itself if its data is missing, and a day
+// one state has no report for is said so, never counted as zero. The merging itself is in daily-data.js; the parts only one state has
+// are in daily-tx.js (pending queue, image packs, GPS map), daily-ok.js (transfers, well inventory) and daily-nm.js (its one dataset).
+// A report holds only what its state publishes: a figure a state does not have is a key it does not carry, and is left out here.
 import { el, loadOpt, reduced, monthLabel } from './util.js';
 import { getGeo, buildGeoIsolated } from './geo.js';
 import { icon } from './icons.js';
@@ -16,18 +17,26 @@ import { STATES, stateOf, stateParam, ck, prepIndex, mergeDays, permitSeries, bi
 import { activeStates, setStates as setGlobalStates } from './states.js';
 import { texasParts, TX_TITLES, TX_ICONS, TX_WHAT, PERMIT_TYPE } from './daily-tx.js';
 import { transfersSection, wellsSection, OK_TITLES, OK_ICONS, OK_WHAT } from './daily-ok.js';
+import { NM_TITLES, NM_ICONS, NM_WHAT } from './daily-nm.js';
+import { listAnd } from './states.js';
 
-const TITLES = { TX: TX_TITLES, OK: OK_TITLES };
-const ICONS = { TX: TX_ICONS, OK: OK_ICONS };
-const WHAT = { TX: TX_WHAT, OK: OK_WHAT };
-const FILES = { TX: 'nightly', OK: 'daily' }; // what each commission calls the files the report reads
-const HISTORY = { TX: 'RRC file history', OK: 'Commission file history' };
-const WORDS = { TX: { permits: 'new-drill permits issued', completions: 'completions approved' }, OK: { permits: 'new-drill permits approved', completions: 'completion filings' } };
+const TITLES = { TX: TX_TITLES, OK: OK_TITLES, NM: NM_TITLES };
+const ICONS = { TX: TX_ICONS, OK: OK_ICONS, NM: NM_ICONS };
+const WHAT = { TX: TX_WHAT, OK: OK_WHAT, NM: NM_WHAT };
+const FILES = { TX: 'nightly', OK: 'daily', NM: 'daily' }; // what each commission calls the files the report reads
+const HISTORY = { TX: 'RRC file history', OK: 'Commission file history', NM: 'OCD well layer' };
+const WORDS = { TX: { permits: 'new-drill permits issued', completions: 'completions approved' }, OK: { permits: 'new-drill permits approved', completions: 'completion filings' },
+  NM: { permits: 'new-drill permits approved', completions: 'completions' } };
+const THEM = { TX: 'the Railroad Commission of Texas', OK: 'the Oklahoma Corporation Commission', NM: 'the New Mexico Oil Conservation Division' };
+// where a state's permits come from (the sentence under the permits section)
+const PERMIT_FROM = { TX: 'the nightly Drilling Permit Master and Trailer file', OK: 'the Commission\'s daily intent-to-drill file', NM: 'the Oil Conservation Division\'s well layer (permits to drill)' };
+const HORIZ = new Set(['TX', 'NM']); // the states whose permits say which wells are horizontal; the other only has a planned depth
+const SERIES = { TX: 'daily/permits-series', NM: 'daily-nm/permits-series' }; // the states that keep a file of permits by day, rewritten each night
 const DEEP = 'Deep, 12,000 ft or more';
 
 export function createDailyView({ root }) {
   const S = {
-    idx: { TX: null, OK: null }, series: { TX: null, OK: null }, avail: [], states: STATES.filter((s) => s.dir).map((s) => s.id), days: [], G: null, gTx: null, sok: null, mk: null,
+    idx: {}, series: {}, gj: {}, gCache: {}, avail: [], states: STATES.filter((s) => s.dir).map((s) => s.id), days: [], G: null, gTx: null, sok: null, snm: null, mk: null,
     reps: {}, miss: {}, day: null, mode: 'simple', layer: 'permits', metric: 'permits', seq: 0, ready: false, sel: null, open: null, gpsEl: null, rb: null,
   };
   const h1 = el('h1', { id: 'dr-h1', class: 'dr-title', tabindex: '-1' });
@@ -36,8 +45,8 @@ export function createDailyView({ root }) {
   const multi = () => S.states.length > 1;
   const only = () => (multi() ? null : S.states[0]);
   const sname = (id) => stateOf(id).name;
-  const place = () => S.states.map(sname).join(' and ');
-  const issued = () => (only() === 'OK' ? 'approved' : 'issued');
+  const place = () => listAnd(S.states.map(sname));
+  const issued = () => (only() === 'OK' || only() === 'NM' ? 'approved' : 'issued');
   // a county's name from the shapes (every county is keyed by state and FIPS), and as a label: "Martin, TX" when both states show
   const cname = (id, f) => { const c = S.G && S.G.byFips.get(ck(id, f)); return c ? c.n : f || 'Unknown'; };
   const clabel = (id, name) => name + (multi() ? ', ' + id : '');
@@ -57,14 +66,24 @@ export function createDailyView({ root }) {
     S.avail = have.map((s) => s.id).filter((id, i) => raw[i] && raw[i].days && raw[i].days.length);
     if (!S.avail.length) throw new Error('no daily data');
     S.avail.forEach((id) => { S.idx[id] = prepIndex(raw[have.findIndex((s) => s.id === id)]); });
-    const [txSeries, gTx, gjTx, gjOk, sok, mk] = await Promise.all([loadOpt('daily/permits-series'), getGeo().catch(() => null), loadOpt('counties.geo'), loadOpt('counties-ok.geo'), loadOpt('series-ok'), loadOpt('series-markets')]);
-    S.series.TX = S.idx.TX ? permitSeries('TX', S.idx.TX, txSeries) : null;
-    S.series.OK = S.idx.OK ? permitSeries('OK', S.idx.OK, null) : null;
-    S.gTx = gTx; S.sok = sok; S.mk = mk;
-    // both states' counties in one set of shapes, built against their own box so the Texas map (hero, Map view, GPS map) keeps its projection
-    const parts = [S.avail.includes('TX') && gjTx && { id: 'TX', gj: gjTx }, S.avail.includes('OK') && gjOk && { id: 'OK', gj: gjOk }].filter(Boolean);
-    try { S.G = parts.length ? buildGeoIsolated(mergedCounties(parts)) : null; } catch (e) { S.G = null; }
+    const withShapes = have.filter((s) => S.avail.includes(s.id));
+    const [gTx, gjs, sers, sok, snm, mk] = await Promise.all([getGeo().catch(() => null), Promise.all(withShapes.map((s) => loadOpt(s.files ? s.files.geo : 'counties.geo'))),
+      Promise.all(withShapes.map((s) => (SERIES[s.id] ? loadOpt(SERIES[s.id]) : null))), loadOpt('series-ok'), loadOpt('series-nm'), loadOpt('series-markets')]);
+    withShapes.forEach((s, i) => { S.series[s.id] = permitSeries(s.id, S.idx[s.id], sers[i]); S.gj[s.id] = gjs[i]; });
+    S.gTx = gTx; S.sok = sok; S.snm = snm; S.mk = mk;
     S.ready = true;
+  }
+  // The counties of the states shown in one set of shapes, built against their own box so the Texas map (hero, Map view, GPS map) keeps its
+  // projection. Texas and Oklahoma keep the shapes of both whichever of the two is shown, as the page always drew them; New Mexico's are
+  // drawn with the states shown when it is one of them.
+  function useShapes() {
+    const ids = S.states.includes('NM') ? S.states : S.avail.filter((id) => id !== 'NM');
+    const key = ids.join('+');
+    if (!(key in S.gCache)) {
+      const parts = ids.map((id) => S.gj[id] && { id, gj: S.gj[id] }).filter(Boolean);
+      try { S.gCache[key] = parts.length ? buildGeoIsolated(mergedCounties(parts)) : null; } catch (e) { S.gCache[key] = null; }
+    }
+    S.G = S.gCache[key];
   }
   const setDays = () => { S.days = mergeDays(S.idx, S.states); };
   // the day a report opens on: the newest one every state shown has a report for, so a night when one state's capture failed does
@@ -109,8 +128,8 @@ export function createDailyView({ root }) {
       shareButton(() => absoluteLink(location.hash || '#daily'), 'Copy link'));
     const seg = segmented({ label: 'Report version', options: [{ id: 'simple', label: 'Simple' }, { id: 'full', label: 'Verbose' }], value: S.mode, tabs: false, prefix: 'drv', onChange: (id) => go(S.day, id) });
     h1.textContent = fmtLong(S.day).replace(/, \d{4}$/, '');
-    const eyebrow = multi() ? 'Daily Texas and Oklahoma report' : only() === 'TX' ? 'Daily Railroad Commission report' : 'Daily Oklahoma Corporation Commission report';
-    const them = multi() ? 'the Railroad Commission of Texas and the Oklahoma Corporation Commission' : only() === 'TX' ? 'the Railroad Commission' : 'the Oklahoma Corporation Commission';
+    const eyebrow = multi() ? 'Daily ' + listAnd(S.states.map(sname)) + ' report' : 'Daily ' + stateOf(only()).agency + ' report';
+    const them = multi() ? listAnd(S.states.map((id) => THEM[id])) : only() === 'TX' ? 'the Railroad Commission' : THEM[only()];
     return el('header', { class: 'dr-hero' },
       el('div', { class: 'dr-radar', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')),
       el('div', { class: 'dr-hero-in' },
@@ -140,7 +159,7 @@ export function createDailyView({ root }) {
     const rb = ribbon({ days: S.days, ids: S.states, selected: S.day, onPick: (d) => go(d, S.mode), tip: ribbonTip });
     S.rb = rb; // positioned again once it is in the page, so a phone opens on the selected day
     return card('dr-ribbon-card', el('div', { class: 'dr-ribbon-head' }, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'Last 3 months'),
-      el('small', { text: 'One bar per report day. Height is the new-drill permits ' + issued() + ' that business day' + (multi() ? ', both states stacked' : '') + '; weekends have none.' }), multi() ? stateKey() : null), rb.el);
+      el('small', { text: 'One bar per report day. Height is the new-drill permits ' + issued() + ' that business day' + (multi() ? ', ' + (S.states.length === 2 ? 'both' : 'all') + ' states stacked' : '') + '; weekends have none.' }), multi() ? stateKey() : null), rb.el);
   }
 
   function permitKpi() {
@@ -194,8 +213,17 @@ export function createDailyView({ root }) {
     return kpi({ ic: 'rig', label: 'Active wells in the state', value: w && w.active, color: 'var(--accent)',
       note: w ? (w.change ? signed(w.change.active) + ' since ' + fmtMd(w.change.since) : 'As of ' + fmtMd(w.asOf)) : 'The inventory is counted on the night of each live capture' });
   }
+  // New Mexico's permits say which wells are horizontal: that is what is added to its permit count and its files
+  function horizontalKpi() {
+    const p = S.reps.NM && S.reps.NM.permits;
+    return kpi({ ic: 'rig', label: 'Horizontal wells', value: p && p.newDrill ? Math.round((p.horizontal / p.newDrill) * 100) : null, format: (v) => v + '%', color: 'var(--s3)',
+      note: p ? num(p.horizontal) + ' of ' + num(p.newDrill) + ' permits' + (p.vertical || p.directional ? ' · ' + num(p.vertical + p.directional) + ' vertical or directional' : '') : 'No permit file was read for this day' });
+  }
   function kpiRow() {
-    return el('div', { class: 'dr-kpis' }, only() === 'OK' ? [permitKpi(), completionsKpi(), transfersKpi(), wellsKpi()] : [permitKpi(), waitingKpi(), completionsKpi(), filesKpi()]);
+    const o = only();
+    const cards = o === 'OK' ? [permitKpi(), completionsKpi(), transfersKpi(), wellsKpi()] : o === 'NM' ? [permitKpi(), horizontalKpi(), filesKpi()]
+      : [permitKpi(), S.states.includes('TX') ? waitingKpi() : null, completionsKpi(), filesKpi()].filter(Boolean);
+    return el('div', { class: 'dr-kpis' + (cards.length === 3 ? ' three' : '') }, cards);
   }
 
   /* ---------- permits per day and the map ---------- */
@@ -210,11 +238,11 @@ export function createDailyView({ root }) {
     if (ids.length > 1) {
       series = ids.map((id) => ({ label: sname(id), cls: id.toLowerCase(), values: bs.n[id] }));
       legend = ids.map((id) => [id.toLowerCase(), sname(id)]);
-    } else { // one state: its own split, horizontal against the rest in Texas, planned depth in Oklahoma
-      const id = ids[0]; const n = bs.n[id]; const h = bs.h[id]; const tx1 = id === 'TX';
-      const [c1, c2] = tx1 ? ['horiz', 'rest'] : ['ok', 'okrest']; // the state's own colour, solid for the first part and pale for the rest
-      series = [{ label: tx1 ? 'horizontal' : 'planned 12,000 ft or deeper', cls: c1, values: h }, { label: tx1 ? 'other' : 'shallower', cls: c2, values: n.map((v, i) => (v == null ? null : v - (h[i] || 0))) }];
-      legend = [[c1, tx1 ? 'Horizontal' : DEEP], [c2, tx1 ? 'Other' : 'Shallower']];
+    } else { // one state: its own split, horizontal against the rest in Texas and New Mexico, planned depth in Oklahoma
+      const id = ids[0]; const n = bs.n[id]; const h = bs.h[id]; const hz = HORIZ.has(id);
+      const [c1, c2] = id === 'TX' ? ['horiz', 'rest'] : [id.toLowerCase(), id.toLowerCase() + 'rest']; // the state's own colour, solid for the first part and pale for the rest
+      series = [{ label: hz ? 'horizontal' : 'planned 12,000 ft or deeper', cls: c1, values: h }, { label: hz ? 'other' : 'shallower', cls: c2, values: n.map((v, i) => (v == null ? null : v - (h[i] || 0))) }];
+      legend = [[c1, hz ? 'Horizontal' : DEEP], [c2, hz ? 'Other' : 'Shallower']];
     }
     return card('dr-trend', head('trend', 'Pace', 'New-drill permits per business day', 'Last 30 business days to ' + fmtMd(until) + '. Holidays show as empty days.'),
       el('div', { class: 'dr-legend-inline' }, legend.flatMap(([cls, text]) => [el('i', { class: 'dr-dot ' + cls }), el('span', { text })])),
@@ -232,9 +260,9 @@ export function createDailyView({ root }) {
       layers[id] = { map }; names[id] = nm;
       defs.push({ id, label: label + (st && multi() ? ' · ' + st : '') });
     };
-    const txR = S.reps.TX; const okR = S.reps.OK;
+    const txR = S.reps.TX; const okR = S.reps.OK; const nmR = S.reps.NM;
     const txCounties = (m) => [...m.entries()].map(([f, n]) => [f, cname('TX', f), n]);
-    lay('permits', 'Permits', [txR && txR.permits && { id: 'TX', rows: txCounties(tally(txR.permits.rows, 1)) }, okR && okR.permits && { id: 'OK', rows: okR.permits.counties }]);
+    lay('permits', 'Permits', [txR && txR.permits && { id: 'TX', rows: txCounties(tally(txR.permits.rows, 1)) }, okR && okR.permits && { id: 'OK', rows: okR.permits.counties }, nmR && nmR.permits && { id: 'NM', rows: nmR.permits.counties }]);
     lay('pending', 'Waiting', [txR && txR.pending && { id: 'TX', rows: txCounties(tally(txR.pending.rows, 2)) }], 'TX');
     lay('completions', 'Completions', [txR && txR.completions && { id: 'TX', rows: txR.completions.counties }, okR && okR.completions && { id: 'OK', rows: okR.completions.counties }]);
     lay('transfers', 'Transfers', [okR && okR.transfers && { id: 'OK', rows: okR.transfers.counties }], 'OK');
@@ -271,15 +299,16 @@ export function createDailyView({ root }) {
         note: unit + ' in ' + monthLabel(months[i]) + ' · EIA', extra: [delta(vals[i] / vals[i - 12] - 1), ' vs ' + monthLabel(months[i - 12])] }));
     };
     const million = (v) => (v / 1000).toFixed(1) + ' million bbl';
-    const mk = S.mk; const ok = S.sok;
+    const mk = S.mk; const ok = S.sok; const nm = S.snm;
     if (mk && S.states.includes('TX')) add({ ic: 'drop', label: 'Texas crude oil production', months: mk.months, vals: mk.txCrude, color: 'var(--s2)', format: million, unit: 'a month' });
     if (ok && S.states.includes('OK')) add({ ic: 'drop', label: 'Oklahoma crude oil production', months: ok.months, vals: ok.okCrude, color: 'var(--s3)', format: million, unit: 'a month' });
+    if (nm && S.states.includes('NM')) add({ ic: 'drop', label: 'New Mexico crude oil production', months: nm.months, vals: nm.nmCrude, color: 'var(--s3)', format: million, unit: 'a month' });
     if (mk) {
       add({ ic: 'dollar', label: 'WTI crude oil price', months: mk.months, vals: mk.wti, color: 'var(--s2)', format: (v) => '$' + v.toFixed(2), unit: 'a barrel' });
       add({ ic: 'flame', label: 'Henry Hub natural gas price', months: mk.months, vals: mk.henryHub, color: 'var(--s1)', format: (v) => '$' + v.toFixed(2), unit: 'per MMBtu' });
     }
     if (!items.length) return null;
-    return card('dr-ctx-card', head('chart', 'Monthly figures', 'Oil and gas around ' + (multi() ? 'the two states' : 'the state'), 'The latest monthly figures EIA has published. They are not for the day above, and they change once a month.'), el('div', { class: 'dr-ctx' }, items));
+    return card('dr-ctx-card', head('chart', 'Monthly figures', 'Oil and gas around ' + (multi() ? 'the ' + (S.states.length === 2 ? 'two' : 'three') + ' states' : 'the state'), 'The latest monthly figures EIA has published. They are not for the day above, and they change once a month.'), el('div', { class: 'dr-ctx' }, items));
   }
 
   /* ---------- what changed: plain-English bullets ---------- */
@@ -313,13 +342,15 @@ export function createDailyView({ root }) {
         }
         for (const { id, p } of ps) {
           if (!p.newDrill) continue;
-          if (id === 'TX') add('rig', 'var(--s2)', ...pre(id), strong(Math.round((p.horizontal / p.newDrill) * 100) + '% horizontal'), p.depth ? [' · median planned depth ', strong(num(p.depth.median) + ' ft'), ', deepest ' + num(p.depth.max) + ' ft'] : '', p.wait ? ' · median ' + p.wait.median + ' days from receipt to approval.' : '.');
+          if (HORIZ.has(id)) add('rig', 'var(--s2)', ...pre(id), strong(Math.round((p.horizontal / p.newDrill) * 100) + '% horizontal'), p.depth ? [' · median planned depth ', strong(num(p.depth.median) + ' ft'), ', deepest ' + num(p.depth.max) + ' ft'] : '', p.wait ? ' · median ' + p.wait.median + ' days from receipt to approval.' : '.');
           else add('rig', 'var(--s2)', ...pre(id), strong(pctOf(p.deep, p.newDrill) + ' planned 12,000 ft or deeper'), p.depth ? [' · median planned depth ', strong(num(p.depth.median) + ' ft'), ', deepest ' + num(p.depth.max) + ' ft'] : '', p.wait ? ' · median ' + p.wait.median + (p.wait.median === 1 ? ' day' : ' days') + ' from filing to approval.' : '.');
         }
       } else {
         add('pin', 'var(--s2)', 'No new-drill permits were ' + issued() + ' on ', strong(days.map(fmtDow).join(' or ')), '.');
       }
     }
+    // the Division's layer is entered some days after an approval: the newest days run low, and the line says so where the number is read
+    if (R().NM && R().NM.permits) add('clock', 'var(--s1)', ...pre('NM'), strong('The newest days fill in later. '), 'The Division\'s well layer is entered some days after an approval, so the last two or three days run low; the pace chart is rewritten from the layer each night.');
     const q = R().TX && R().TX.pending;
     if (q) {
       const d = q.districts[0];
@@ -410,39 +441,44 @@ export function createDailyView({ root }) {
     const stateTiles = [];
     if (ps.length === 1) {
       const { id, p } = ps[0];
-      stateTiles.push(id === 'TX'
+      stateTiles.push(HORIZ.has(id)
         ? { label: 'Horizontal', value: p.newDrill ? Math.round((p.horizontal / p.newDrill) * 100) + '%' : '—', note: num(p.horizontal) + ' of ' + num(p.newDrill) + (p.directional ? ' · ' + p.directional + ' directional' : '') }
-        : { label: 'Planned 12,000 ft or deeper', value: pctOf(p.deep, p.newDrill), note: num(p.deep) + ' of ' + num(p.newDrill) },
-      { label: 'Median planned depth', value: p.depth ? num(p.depth.median) + ' ft' : '—', note: p.depth ? 'deepest ' + num(p.depth.max) + ' ft' : '' },
-      { label: 'Days to approval', value: p.wait ? String(p.wait.median) : '—', note: p.wait ? 'median · longest ' + p.wait.max : id === 'TX' ? 'receipt to issue' : 'filing to approval' });
+        : { label: 'Planned 12,000 ft or deeper', value: pctOf(p.deep, p.newDrill), note: num(p.deep) + ' of ' + num(p.newDrill) });
+      // a state that publishes no planned depth or filing date has no such key, and no tile (never a dash that looks like a value)
+      if (p.depth !== undefined) stateTiles.push({ label: 'Median planned depth', value: p.depth ? num(p.depth.median) + ' ft' : '—', note: p.depth ? 'deepest ' + num(p.depth.max) + ' ft' : '' });
+      if (p.wait !== undefined) stateTiles.push({ label: 'Days to approval', value: p.wait ? String(p.wait.median) : '—', note: p.wait ? 'median · longest ' + p.wait.max : id === 'TX' ? 'receipt to issue' : 'filing to approval' });
     }
     const kids = [tiles([
       { label: 'New-drill permits', value: num(nd), note: (ps.length > 1 ? ps.map((x) => x.id + ' ' + num(x.p.newDrill)).join(' · ') + ' · ' : '') + 'of ' + num(total) + ' ' + (only() === 'OK' ? 'approved' : 'issued') + onlyNote(ids) },
       ...stateTiles,
       { label: 'Operators', value: num(sumOf(ps.map((x) => x.p.operatorCount))), note: share != null ? Math.round(share * 100) + '% can be named' : '' },
       { label: 'Counties', value: num(sumOf(ps.map((x) => x.p.countyCount))), note: top ? clabel(top.id, top.name) + ' led' : '' },
-      { label: 'Amended that day', value: num(sumOf(ps.map((x) => x.p.amended))), note: 'earlier permits changed' },
+      ps.some((x) => x.p.amended !== undefined) ? { label: 'Amended that day', value: num(sumOf(ps.map((x) => x.p.amended))), note: 'earlier permits changed' } : null,
       m ? { label: 'Month to date', value: num(m.a), note: m.b != null ? 'vs ' + num(m.b) + ' by the same date last month' : 'new-drill permits' } : null])];
     if (ps.length > 1) {
       // the two files do not measure the same things (Texas knows which wells are horizontal, Oklahoma only the planned depth), so side by side, not summed
       const cell = (id, fn) => { const x = ps.find((q) => q.id === id); return x ? fn(x.p) : '—'; };
       const rows = [
         ['Permit day', (p) => fmtDow(p.day)], ['New-drill permits', (p) => num(p.newDrill)], ['Other filings that day', (p) => num(p.total - p.newDrill)],
-        ['Horizontal, or planned 12,000 ft or deeper', (p, id) => (id === 'TX' ? pctOf(p.horizontal, p.newDrill) + ' horizontal' : pctOf(p.deep, p.newDrill) + ' deep')],
+        ['Horizontal, or planned 12,000 ft or deeper', (p) => (p.horizontal != null ? pctOf(p.horizontal, p.newDrill) + ' horizontal' : p.deep != null ? pctOf(p.deep, p.newDrill) + ' deep' : '—')],
         ['Median planned depth', (p) => (p.depth ? num(p.depth.median) + ' ft' : '—')], ['Days to approval, median', (p) => (p.wait ? String(p.wait.median) : '—')],
-        ['Operators', (p) => num(p.operatorCount) + (p.namedShare != null ? ' · ' + Math.round(p.namedShare * 100) + '% named' : '')], ['Counties', (p) => num(p.countyCount)], ['Amended that day', (p) => num(p.amended)]];
+        ['Operators', (p) => num(p.operatorCount) + (p.namedShare != null ? ' · ' + Math.round(p.namedShare * 100) + '% named' : '')], ['Counties', (p) => num(p.countyCount)], ['Amended that day', (p) => (p.amended != null ? num(p.amended) : '—')]];
       kids.push(table([{ t: 'By state' }, ...S.states.map((id) => ({ t: sname(id) }))], rows.map(([label, fn]) => [label, ...S.states.map((id) => cell(id, (p) => fn(p, id)))]), { cap: 'dr-table flat' }));
     }
     kids.push(byState(ps, ({ id, p }) => (id === 'TX'
       ? [[el('h3', { text: 'Application types' }), stack(p.types.map(([k, n]) => ({ label: PERMIT_TYPE[k] || 'Type ' + k, value: n })))],
         [el('h3', { text: 'Planned depth' }), histogram(p.rows.map((r) => r[5]).filter((v) => v > 0), [0, 5000, 7500, 10000, 12500, 15000], ['<5k', '5–7.5k', '7.5–10k', '10–12.5k', '12.5–15k', '15k+'], { unit: 'new-drill permits' })],
         [el('h3', { text: 'RRC districts' }), rankList(p.districts.map(([d, n]) => ({ label: 'District ' + d, value: n })), { color: 'var(--s2)' })]]
+      : id === 'NM'
+        ? [[el('h3', { text: 'Kinds of well' }), stack(p.types.map(([k, n]) => ({ label: k, value: n })))],
+          [el('h3', { text: 'Direction' }), stack([['Horizontal', p.horizontal], ['Vertical', p.vertical], ['Directional', p.directional]].filter((x) => x[1]).map(([k, n]) => ({ label: k, value: n })))],
+          [el('h3', { text: 'OCD districts' }), rankList(p.districts.map(([d, n]) => ({ label: d, value: n })), { color: 'var(--s2)' })]]
       : pair([[el('h3', { text: 'Kinds of filing' }), stack(p.types.map(([k, n]) => ({ label: k, value: n })))],
         [el('h3', { text: 'Planned depth' }), p.newDrill ? rankList(p.bands.map(([k, n]) => ({ label: k, value: n })), { color: 'var(--s2)', max: Math.max(1, ...p.bands.map((b) => b[1])) }) : el('p', { class: 'fine', text: 'No new-drill permits.' })],
         p.classes.length ? [el('h3', { text: 'Kinds of well' }), stack(p.classes.map(([k, n]) => ({ label: k, value: n })))] : null]))));
     kids.push(colsOf(['Counties', 'Operators'], counties(ps.map(({ id, p }) => ({ id, rows: p.counties })), 'var(--s2)'), operators(ps.map(({ id, p }) => ({ id, rows: p.operators })), 'var(--s2)')));
     if (R().TX && R().TX.permits && ids.includes('TX')) kids.push(tx.permitRows(R().TX));
-    const sub = 'From the nightly Drilling Permit Master and Trailer file' + (multi() ? ' (Texas) and the Commission\'s daily intent-to-drill file (Oklahoma)' : '') + '. No permits are issued on weekends, so Saturday, Sunday and Monday reports show Friday.';
+    const sub = 'From ' + (multi() ? listAnd(S.states.map((id) => PERMIT_FROM[id] + ' (' + sname(id) + ')')) : PERMIT_FROM[S.states[0]]) + '. No permits are issued on weekends, so Saturday, Sunday and Monday reports show Friday.';
     return card('dr-sec', head('pin', 'Permits', 'New-drill permits ' + issued() + ' ' + [...new Set(ps.map((x) => fmtDow(x.p.day)))].join(' and '), sub), ...kids);
   }
 
@@ -494,7 +530,7 @@ export function createDailyView({ root }) {
       : [[el('h3', { text: 'Kinds of well' }), stack(c.types.map(([k, n]) => ({ label: k, value: n })))],
         [el('h3', { text: 'Formations' }), c.formations.length ? rankList(c.formations.map(([k, n]) => ({ label: k, value: n })), { color: 'var(--s3)' }) : el('p', { class: 'fine', text: 'No formation is named on these filings.' })]])));
     kids.push(colsOf(['Counties', 'Operators'], counties(items.map(({ id, c }) => ({ id, rows: c.counties })), 'var(--s3)'), operators(items.map(({ id, c }) => ({ id, rows: c.operators })), 'var(--s3)')));
-    const sub = multi() ? 'Texas: forms (W-2, G-1, P-4, L-1, G-5, G-10, P-15, W-12) submitted or approved that day. Oklahoma: completion forms (1002A) filed that day, each well counted once per filing day. The two are counted differently, so they are shown side by side as well as added.'
+    const sub = items.length > 1 ? 'Texas: forms (W-2, G-1, P-4, L-1, G-5, G-10, P-15, W-12) submitted or approved that day. Oklahoma: completion forms (1002A) filed that day, each well counted once per filing day. The two are counted differently, so they are shown side by side as well as added.'
       : items[0].id === 'TX' ? 'Forms submitted or approved that day: W-2 (oil), G-1 (gas), P-4, L-1, G-5, G-10, P-15 and W-12.' : 'Completion forms (1002A) filed that day. The file holds a row for every casing string and test, so each well is counted once per filing day; amended filings are counted apart.';
     return card('dr-sec', head('drop', 'Completions', 'Completions ' + [...new Set(items.map((x) => fmtDow(x.c.day)))].join(' and '), sub), ...kids);
   }
@@ -569,16 +605,25 @@ export function createDailyView({ root }) {
 
   function notesSection() {
     const li = (...k) => el('li', {}, ...k);
-    const T = S.states.includes('TX'); const O = S.states.includes('OK');
+    const T = S.states.includes('TX'); const O = S.states.includes('OK'); const N = S.states.includes('NM');
     const items = [];
-    items.push(li(strong('What a day shows. '), 'A report holds what each commission published, and each card says which day its data is from. ' + (T ? 'Texas: what landed on the RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. ' : '') + (O ? 'Oklahoma: the newest day before the report on which the Commission\'s files hold anything, so Monday\'s report shows Friday\'s approvals, filings and transfers. Only whole days are shown: the Commission\'s daily files are made around 7:40 PM Central and end the day before, and a report captured before that evening\'s files exist fills the gap from the Commission\'s master files.' : '')));
+    items.push(li(strong('What a day shows. '), 'A report holds what each commission published, and each card says which day its data is from. ' + (T ? 'Texas: what landed on the RRC file share that day, Central time, judged by the time the share lists. Pending sets: the previous evening\'s 5 PM set, which is copied after midnight, and the day\'s 11 AM set. Completions and the image packs are posted the next morning (about 2:20 AM for completions and completion images, 7:55 for surveys, 10:20 for W-1 images), so a report shows the day before\'s, and a day on which nothing landed shows nothing (there is no W-1 pack for a weekend, so Sunday and Monday have none). Permits are the newest issue date before the day. ' : '') + (O ? 'Oklahoma: the newest day before the report on which the Commission\'s files hold anything, so Monday\'s report shows Friday\'s approvals, filings and transfers. Only whole days are shown: the Commission\'s daily files are made around 7:40 PM Central and end the day before, and a report captured before that evening\'s files exist fills the gap from the Commission\'s master files.' : '')
+      + (N ? (T || O ? ' ' : '') + 'New Mexico: the newest day before the report on which the Oil Conservation Division\'s well layer holds a permit approval, so Monday\'s report shows Friday\'s. The layer is entered some days after an approval, so the newest days run low and fill in.' : '')));
     if (multi()) {
-      items.push(li(strong('Both states together. '), 'Permits and completions are added across the states; everything is also shown by state, because the files differ. Texas says which permits are horizontal and Oklahoma only gives planned depth, so those two are never added. Texas counts completion forms approved that day, Oklahoma counts completion filings (one per well and day), so the total is a count of completion paperwork, not of wells. Two states can show different permit days on the same report (a state with no approvals on a day shows the one before). A county is always named with its state, because the two states share county names. If a state has no report for a day, that is said at the top and it is left out of every total, chart and average on the page, not counted as zero.'));
+      const pair2 = S.states.length === 2 && T && O;
+      items.push(li(strong(S.states.length === 2 ? 'Both states together. ' : 'The states together. '), pair2
+        ? 'Permits and completions are added across the states; everything is also shown by state, because the files differ. Texas says which permits are horizontal and Oklahoma only gives planned depth, so those two are never added. Texas counts completion forms approved that day, Oklahoma counts completion filings (one per well and day), so the total is a count of completion paperwork, not of wells. Two states can show different permit days on the same report (a state with no approvals on a day shows the one before). A county is always named with its state, because the two states share county names. If a state has no report for a day, that is said at the top and it is left out of every total, chart and average on the page, not counted as zero.'
+        : 'Permits are added across the states' + (T || O ? ' and so are completions, where a state has them' : '') + '; everything is also shown by state, because the files differ. Texas and New Mexico say which permits are horizontal and Oklahoma only gives planned depth, so those are never added. '
+          + (T && O ? 'Texas counts completion forms approved that day, Oklahoma counts completion filings (one per well and day), so the total is a count of completion paperwork, not of wells. ' : '')
+          + 'The states can show different permit days on the same report (a state with no approvals on a day shows the one before). A county is always named with its state, because the states share county names. If a state has no report for a day, that is said at the top and it is left out of every total, chart and average on the page, not counted as zero.'));
     }
-    items.push(li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt by the same rule from the commissions\' file history' + (T ? ' (Texas: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day' + (O ? '; ' : ')') : '') + (O ? (T ? '' : ' (') + 'Oklahoma: the master files of intents to drill and completions, and the transfer file for as far back as it goes, about a month. Its well inventory cannot be rebuilt: only days captured live have it)' : '') + '. The catalog check and file states only exist for days captured live.'));
+    items.push(li(strong('Rebuilt days. '), 'Days marked reconstructed were rebuilt by the same rule from the commissions\' file history' + (T ? ' (Texas: permits from the month-end and nightly files, completions, image packs and pending sets from what had landed on the share that day' + (O ? '; ' : ')') : '') + (O ? (T ? '' : ' (') + 'Oklahoma: the master files of intents to drill and completions, and the transfer file for as far back as it goes, about a month. Its well inventory cannot be rebuilt: only days captured live have it)' : '') + '.' + (N ? ' New Mexico\'s rebuilt days count the approvals still in status New, so an older day can have lost a few that were cancelled or moved on.' : '') + ' The catalog check and file states only exist for days captured live.'));
     if (T) {
       items.push(li(strong('Texas permits. '), 'New-drill means application type 01, counted once per permit number, the same rule as the rest of this site. Monthly totals here match the site\'s own monthly series to within one permit. GPS points come from the Railroad Commission\'s public map service (its Well Locations layer, matched by API number), so a permit can have none until the RRC maps it.'));
       items.push(li(strong('Texas pending queue. '), 'Each set holds W-1s submitted since the previous run that were still waiting; it is not a running total, and a permit leaves it when approved.'));
+    }
+    if (N) {
+      items.push(li(strong('New Mexico permits. '), 'A permit to drill is a well in status New in the Oil Conservation Division\'s well layer, counted once on the day it was approved (the layer\'s effective date); every one is for a new well. The Division publishes no filing date, planned depth, amendment, completion or transfer by day, so the report shows none of them rather than a zero. The layer is entered some days after an approval: the newest two or three days run low (against 17 to 22 a business day in the weeks before) and fill in, which is why the pace chart is rewritten from the layer each night. A well leaves status New when it is cancelled or moves on, so a rebuilt day can have lost a few.'));
     }
     if (O) {
       items.push(li(strong('Oklahoma permits. '), 'New-drill means application type DR with an approval date; rejected and deleted applications are left out. Times in the files are UTC and are turned into Central days. The file does not say which permits are horizontal, so the report shows planned depth instead and calls a well planned to 12,000 feet or more deep (about three in four of the new-drill permits in this archive). Oklahoma approves far fewer permits a day than Texas (about 3 against 31), so single days swing a lot; read the averages.'));
@@ -640,7 +685,7 @@ export function createDailyView({ root }) {
   function applyStates(ids) {
     const next = S.avail.filter((id) => ids.includes(id));
     if (!S.ready || !next.length || next.join() === S.states.join()) return Promise.resolve();
-    S.states = next; setDays();
+    S.states = next; setDays(); useShapes();
     if (!S.states.includes('TX')) S.sel = null;
     const day = S.days.some((e) => e.d === S.day) ? S.day : latest();
     const hash = hashFor(day, S.mode, S.sel);
@@ -666,7 +711,7 @@ export function createDailyView({ root }) {
       else if (S.sel && S.avail.includes('TX') && !want.includes('TX')) { // a well is a Texas one: show Texas with it
         want = S.avail.slice(); setGlobalStates(activeStates().includes('NM') ? STATES.map((x) => x.id) : want, true);
       }
-      S.states = want; setDays();
+      S.states = want; setDays(); useShapes();
       const d = params.get('d');
       S.mode = params.get('v') === 'full' ? 'full' : 'simple';
       await show(S.days.some((e) => e.d === d) ? d : latest());
