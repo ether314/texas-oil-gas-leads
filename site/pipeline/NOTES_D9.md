@@ -33,7 +33,7 @@ The three states' other files count permits by approval date. For New Mexico tha
   Sep 15, 107 on Oct 15; April 2026 at 33 of 146 on Jun 15, 119 on Jul 15, 146 at the end. A month is therefore in the files only when it ended at least
   `LAG_DAYS` = 60 days ago (about 95% of its dates are in by then), which is why New Mexico ends on 2026-08-31 while Texas and Oklahoma end in September
   and October. The page names the measure and the end date wherever it shows them.
-- The Daily report for New Mexico (later) uses the other date: the approval date of wells in status New, which is exact for the last days and weeks.
+- The Daily report for New Mexico uses the other date: the approval date of wells in status New (see the next section), which is exact for the last days and weeks.
 
 ## What is counted
 
@@ -50,11 +50,39 @@ The three states' other files count permits by approval date. For New Mexico tha
 - Crude oil production: the EIA's New Mexico series (MCRFPNM1, thousand barrels a month; 75,717 for August 2026), refreshed by hand with
   `python3 -I site/pipeline/d8_ok_context.py --state NM`. The OCD's own monthly totals (73.5 million barrels for August) agree within 3%.
 
+## The Daily report: `d9_nm_daily.py`
+
+Script: `site/pipeline/d9_nm_daily.py` (standard library only, `python3 -I`; two requests a run). Output: `site/public/data/daily-nm/` (`index.json`, one `YYYY-MM-DD.json` per
+report day, 92 kept, and `permits-series.json`), the same shapes as Oklahoma's so the Daily report reads them alike.
+
+- **Source:** the MapServer copy of the well layer, `OCDView/API_Export/MapServer/0` (fields `status`, `effective_date`, `last_edited_on`, `county_code`, `type`, `directional_status`,
+  `ogrid_name`, `district`). A well in status **New** with `effective_date` on a day is a permit to drill (APD) approved that day. `Wells_Public` has no `effective_date`.
+- **One rule, live or rebuilt:** a report shows the newest day before it (within 10 days) on which wells were approved; Monday's report shows Friday's. A report never shows its own day.
+- **What a day holds** (`permits`): permits (all are permits for new wells, so `total` = `newDrill`), kinds of well (Oil, Gas, Salt Water Disposal), horizontal / vertical / directional,
+  OCD districts, counties (the layer's county code), operators (named by the corporate rule only) and the share of permits that went to named ones. **Not published, so left out
+  and never a zero:** filing dates and days to approval, planned depth, amendments, completions, transfers, a pending queue. The inventory (wells by status) is not read yet.
+- **A well is counted once.** The layer holds some wells twice (a record per location: 10 records for 5 wells on 2026-10-29), so the API number is read to count a well once and is
+  never kept or published (`validate` fails a file that holds one).
+- **The layer is entered late.** The newest two or three days run well under the 17 to 22 permits a business day of the weeks before (5, 5 and 8 on 2026-10-29, -28 and -27 when this was
+  written) and fill in later; the layer's newest edit was 2026-10-29 16:31 UTC on Saturday 2026-10-31. A report names the day its permits are from and the layer's newest edit as its
+  file time (the page shows "No change since the last report" when the layer has not been edited). The pace chart reads `permits-series.json`, which every run **rewrites from the layer as it
+  stands** for the days it read (about 11 days back; older days stay as they were), over the last 122 days, with a day the layer has not caught up with **absent, not zero**.
+  The Texas file of the same name has the same shape, so the view's series code takes both.
+- **Rebuilt days** (`--history`, or `--backfill N` up to 7 missed nights) count only the approvals still in status New, so an old day can have lost a few that were cancelled or moved on;
+  they are marked reconstructed. A day captured live the night after is complete to that night. Nothing rebuilt ever overwrites a live report.
+- `--check` reloads and validates the folder; `--skip-if-captured` is for the backup schedule (exit quietly when the report day was captured live at or after 03:00 UTC the next day).
+  If the layer cannot be read (or answers with no approvals) nothing is written and the run exits 1, so the workflow can carry on without it.
+- Archive built 2026-10-31 with `--history`: 92 days, 1,338 approvals read.
+
 ## Checks
 
 `tests/test_d9_nm.py`: the lag rule (a month enters on the 60th day after it ended, across a year end), what a well becomes (placeholders, repeats, county, box, no depth,
 names), the files built from synthetic wells and the validator on them and on faults, the committed files, the EIA series with its validator, and four mutants (everyone or
 nobody named, no lag, a lag of 30 days). Run the producer: `python3 -I site/pipeline/d9_nm_monthly.py` (then `--check`). It is not in the nightly workflow yet.
+
+`tests/test_d9_nm_daily.py`: the rules (a well once, the real approval day, which day a report shows, what is named, what is left out), the reports, index rows and dataset states, the
+series (rewritten days, kept days, a day past the layer's last edit absent), planning, a whole run with the network faked (a first night with history, the next night leaving earlier
+reports byte for byte as they were, 'same' and 'new', the backup guard, a failure writing nothing), the validator on faults, five mutants and the committed archive.
 
 ## Not available
 

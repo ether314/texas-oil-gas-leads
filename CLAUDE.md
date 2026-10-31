@@ -94,7 +94,7 @@ for Texas and Oklahoma, built only from public records (README has the full desc
   shapes and permit points for any set of states; `util.js` has `el()`/`svg()`/`load()`. County keys: Texas plain (`001`), others `OK:001`.
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`
-  the monthly EIA series, also for New Mexico with `--state NM`), `d9_*` New Mexico (OCD: `d9_nm_monthly.py`) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
+  the monthly EIA series, also for New Mexico with `--state NM`), `d9_*` New Mexico (OCD: `d9_nm_monthly.py` the permit history as wells spudded, `d9_nm_daily.py` the Daily report from approvals) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
 - `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
   `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
 - `.github/workflows/publish.yml` and `.github/scripts/publish_pages.sh`: the publish after a green merge (and, by the same script, the
@@ -126,7 +126,7 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 
 1. One state choice across the whole site (Texas, Oklahoma, New Mexico). Done: the bar, the Overview, the Daily report (Texas and Oklahoma; the bar says New Mexico has
    none yet), Operators and Companies (Companies are Texas only and say so), the Map (rebuilt for the states shown; `map.js` `prepare`/`rebuild`). To do: Sources;
-   New Mexico's Daily report from the approval date of wells in status New (`NOTES_D9.md`) with the nightly workflow; refreshing the monthly files nightly. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
+   New Mexico's Daily report: data done (`d9_nm_daily.py`, 92 days in `daily-nm/`, from the approval date of wells in status New, `NOTES_D9.md`); to do: the view (`daily.js` is built for two states) and the nightly workflow; refreshing the monthly files nightly. Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it.
    Never add New Mexico's spuds to the other states' permits (`states.js` measures: `sameMeasure`).
 2. Oklahoma in Sources (the Overview, Operators and Map are done). Data done: `d8_ok_monthly.py` writes the permit series, county counts, operators and
    permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
@@ -147,3 +147,4 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
   for New Mexico in every view too, so the state layer is built for any number of states (a new state is an entry in `states.js` plus its files).
 - 2026-10-31: Operators and Companies follow the states bar (a State column, one ranking, each state's own date; the Texas-only columns and filters step aside).
 - 2026-10-31: the Map follows the states bar (one map for any set of states: shapes, dots colored per state, per-state legend, panels and links keyed by state; the Texas-only figures stay Texas only).
+- 2026-10-31: New Mexico's Daily report data (`d9_nm_daily.py`, `daily-nm/`): permits approved by day from the OCD layer, 92 days rebuilt; the view and the nightly step follow.
