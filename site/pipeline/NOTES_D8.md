@@ -146,7 +146,7 @@ master intent-to-drill workbook (154 MB, every application since 1999, about 75 
 - **Locations.** 99.5% of the last 24 months' permits carry a surface location (Texas: 70%), decimal degrees (the file does not name the datum; the common ones differ by less than a dot at map scale), rounded to 3 decimals. The
   last 12 months are 100% located. Points outside the state's box are dropped; the county always comes from the API number, never from the point.
 - **Privacy.** Operators are named only by the corporate rule (`nameable`); 98% of the last 12 months' permits went to named operators and the
-  rest are in every count and in no name. City and state are the operator's office on its newest permit: never a street, a signer or a phone.
+  rest are in every count and in no name. City and state are the operator's office on its newest permit: never a street, a signer or a phone (a value that is not a place name or two letters is published blank, `office_place`: it costs that operator its city, never the weekly refresh).
   `--check` fails a file that holds an API-like number, an e-mail address, a link or a phone number, or an operator whose city is not a place name or whose
   state is not two letters.
 - **Checks.** `tests/test_d8_monthly.py`: synthetic rows for every rule above, the validator against twelve deliberate faults, six mutants

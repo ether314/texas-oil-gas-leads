@@ -610,6 +610,18 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => document.querySelector('#daily-root .dr-kpi-top') && [...document.querySelectorAll('#daily-root .dr-kpi-top')].some((k) => /^Completions$/.test(k.textContent.trim())), null, { timeout: 25000 });
       const all = await notes();
       check(/Completions \|[^|]*Texas could not be read/.test(all), 'with all three states the completions card says which state could not be read: ' + all.slice(0, 200));
+      // Oklahoma's transfers file, the same way
+      const okDays = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily-ok', 'index.json'), 'utf8')).days.map((r) => r.d).sort();
+      const okDay = okDays[okDays.length - 1];
+      const okBroken = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily-ok', okDay + '.json'), 'utf8'));
+      for (const d of okBroken.datasets) if (d.id === 'transfers') { d.error = 'could not be read'; d.file = null; d.dataDay = null; d.state = 'error'; }
+      delete okBroken.transfers; okBroken.status = 'partial';
+      await page.route('**/data/daily-ok/' + okDay + '.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(okBroken) }));
+      await page.goto(base + '#daily?d=' + okDay + '&st=ok', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpi', { timeout: 25000 });
+      const okNotes = await notes();
+      check(/Wells changing operator \| The transfer file could not be read/.test(okNotes) && !/No transfers on file/.test(okNotes), 'Oklahoma with its transfers file unread says so, not "no transfers on file": ' + okNotes.slice(0, 200));
     } catch (e) {
       check(false, 'unread files: ' + e.message.split('\n')[0].slice(0, 200));
     }
