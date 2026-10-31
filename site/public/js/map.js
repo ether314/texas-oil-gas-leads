@@ -474,7 +474,7 @@ export function createMapView({ root, meta }) {
       own && !pr && S.opProd ? el('p', { class: 'fine', text: 'No production figure for this operator in the RRC reports, so those cells are blank rather than zero.' }) : null,
       !own ? el('p', { class: 'fine', text: 'Oil and gas production by operator is a Texas record: not available for ' + stateOf(ost).name + '.' }) : null,
       el('p', { class: 'fine', text: located
-        ? 'Showing ' + fmt.format(located) + (total ? ' of ' + fmt.format(total) : '') + ' ' + what + ' that have a recorded ' + (own ? 'surface ' : '') + 'location. Other layers stay as set.'
+        ? 'Showing ' + fmt.format(located) + (total && located <= total ? ' of ' + fmt.format(total) + ' in 24 months' : '') + ' ' + what + ' that have a recorded ' + (own ? 'surface ' : '') + 'location. Other layers stay as set.'
         : 'None of this operator’s ' + what + ' has a recorded ' + (own ? 'surface ' : '') + 'location, so there is nothing to draw.' }),
       el('div', { class: 'psec-actions' }, el('a', { class: 'btn sm primary', href: opsLink(name), text: 'See in Operators' }),
         btn('Show all operators', () => { setOp(null); engine.setPadBottom(coverPx()); engine.reset(); })));

@@ -509,6 +509,60 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 14. what a state does not publish is never shown as a 0, and a figure that adds states says which: found by an independent review of the pages
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const hover = (st) => page.evaluate(async (st) => {
+      const el = [...document.querySelectorAll('#daily-root .dr-mapwrap path.dr-county')].find((x) => x.dataset.f.startsWith(st + ':'));
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+      await new Promise((done) => setTimeout(done, 100));
+      return document.querySelector('#tip').innerText.replace(/\s+/g, ' ');
+    }, st);
+    const layer = async (name) => { await page.locator('#daily-root .dr-mapwrap').locator('xpath=ancestor::*[contains(@class,"card")][1]').getByRole('button', { name: new RegExp('^' + name) }).first().click(); await page.waitForTimeout(250); };
+    try {
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-mapwrap path.dr-county', { timeout: 25000 });
+      await layer('Completions');
+      const nm = await hover('NM'); const tx = await hover('TX');
+      check(/Not available/.test(nm || '') && !/ 0 /.test(nm || '') && /completions/.test(tx || ''), 'on the Daily map\'s Completions layer a New Mexico county says "Not available" (it publishes none), a Texas county gives its figure: "' + nm + '" / "' + tx + '"');
+      await layer('Waiting');
+      const ok = await hover('OK');
+      check(/Not available/.test(ok || ''), 'and on the queue layer an Oklahoma county says so too: "' + ok + '"');
+      await page.goto(base + '#daily?v=full', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
+      const row = await page.evaluate(() => { const tr = [...document.querySelectorAll('#daily-root table tr')].find((r) => /^Other filings/.test(r.children[0].textContent.trim())); return tr ? [...tr.children].map((c) => c.textContent.trim()) : null; });
+      const head = await page.evaluate(() => { const t = [...document.querySelectorAll('#daily-root table')].find((x) => /Other filings/.test(x.textContent)); return t ? [...t.querySelectorAll('thead th')].map((c) => c.textContent.trim()) : []; });
+      const nmCol = head.indexOf('New Mexico');
+      check(!row || nmCol < 0 || row[nmCol] === '—', 'New Mexico has no "other filings" (its permits are all new wells), so its cell is a dash, not 0: ' + JSON.stringify(row));
+      const amended = await page.evaluate(() => { const t = [...document.querySelectorAll('#daily-root .dr-tile')].find((x) => /^Amended/.test(x.innerText.trim())); return t ? t.innerText.replace(/\s+/g, ' ') : null; });
+      check(!amended || /only/.test(amended), 'the amended-permits figure (Texas and Oklahoma count them, New Mexico does not) names the states it adds: ' + amended);
+      // an address that names two of the three states: nothing is highlighted in the bar, and a note says which are shown
+      await page.goto(base + '#overview?st=tx,ok', { waitUntil: 'load' });
+      await page.waitForSelector('#statebar-seg button', { timeout: 25000 });
+      await page.waitForTimeout(400);
+      const pair = await page.evaluate(() => ({ on: [...document.querySelectorAll('#statebar-seg button')].filter((b) => b.getAttribute('aria-pressed') === 'true').length, note: document.querySelector('#statebar-note').textContent }));
+      check(pair.on === 0 && /Showing Texas and Oklahoma/.test(pair.note), 'two states named in the address: no segment of the bar is lit and the note says "' + pair.note.slice(0, 60) + '"');
+      // wording that names New Mexico's different measure, and the Active wells chip naming each inventory
+      await page.goto(base + '#overview?st=ok,nm', { waitUntil: 'load' });
+      await page.waitForSelector('#kpis .kpi-chip', { timeout: 25000 });
+      await page.waitForTimeout(900);
+      const chips = await page.evaluate(() => [...document.querySelectorAll('#kpis .kpi-chip-note')].map((n) => n.textContent).join(' || '));
+      check(/wells spudded in New Mexico/.test(chips) && /first spud in New Mexico/.test(chips) && /well inventories of Oklahoma and New Mexico/.test(chips), 'the Overview\'s chips for Oklahoma and New Mexico name its different measure and both inventories: ' + chips.slice(0, 160));
+      // a Map operator panel never shows more dots than the operator has
+      await page.goto(base + '#map?op=NM:7377&st=nm', { waitUntil: 'load' });
+      await page.waitForSelector('.psec-op', { timeout: 25000 });
+      const shown = await page.locator('.psec-op').innerText();
+      const m = shown.match(/Showing ([\d,]+)(?: of ([\d,]+))?/);
+      check(m && (!m[2] || +m[1].replace(/,/g, '') <= +m[2].replace(/,/g, '')), 'a Map operator panel never says it shows more than the operator has: "' + (m ? m[0] : shown.slice(0, 60)) + '"');
+    } catch (e) {
+      check(false, 'what a state does not publish: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));
