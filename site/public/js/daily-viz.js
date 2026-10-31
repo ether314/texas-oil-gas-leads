@@ -233,7 +233,8 @@ export function gpsMap(G, pts, { onPick }) {
       if (s) { dots.append(s.node); setTab(s); ring.classList.add('pulse'); }
       apply();
     },
-    focusOn(key, w = 110) { // about a county and its neighbors (a county is 25-45 world units wide) const n = byKey.get(key); if (!n) return; view.cx = n.x; view.cy = n.y; view.w = w; clampView(); apply(); },
+    // w: world units across, about a county and its neighbors (a county is 25-45 units wide)
+    focusOn(key, w = 110) { const n = byKey.get(key); if (!n) return; view.cx = n.x; view.cy = n.y; view.w = w; clampView(); apply(); },
     setLayer(id, on) {
       nodes.forEach((n) => { if (n.p.layer === id) { n.on = on; n.node.classList.toggle('off', !on); } });
       const v = nodes.find((n) => n.on); if (v) setTab(v);
