@@ -66,6 +66,13 @@ export function spudsNote(ids) {
   const who = statesIn(sp); const many = sp.length > 1;
   return who.charAt(0).toUpperCase() + who.slice(1) + (many ? ' count' : ' counts') + ' wells spudded, not permits (' + (many ? 'their regulators publish' : 'its regulator publishes') + ' no approval dates by well)';
 }
+// the first day of the "last 12 months" of a state whose file ends on asOf (ms, UTC). The states that count wells spudded end on a month end and count 12 calendar months
+// from the first day (d1_permits_geo.windows, calendar=True), so their figures add up to the months of their monthly series; the others count the 365 days that end on asOf.
+export function yearStart(id, asOf) {
+  const end = Date.parse(asOf + 'T00:00:00Z'); const d = new Date(end);
+  const monthEnd = new Date(end + 864e5).getUTCDate() === 1;
+  return measureOf(id).id === 'spuds' && monthEnd ? Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 11, 1) : end - 365 * 864e5;
+}
 export const stateIndex = (id) => STATES.findIndex((s) => s.id === id);
 export const otherStates = STATES.filter((s) => s.files);
 export const dailyStates = STATES.filter((s) => s.dir); // the states that have a Daily report

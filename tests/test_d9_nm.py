@@ -117,6 +117,17 @@ def run_checks(quiet=False):
     chk((32312, ) == (round(32.31234 * 1000),) and any(q[0] == 323120 and q[1] == -1035120 for q in pts["pts"]), "a location is rounded to 3 decimals")
     chk(pts["coverage"]["share12"] < 1.0 and pts["coverage"]["share24"] < 1.0, "coverage counts the well outside the state as not located")
 
+    # ---- one year is the same year in the series, the counties and the operators: 12 calendar months, because the files end on a month end (found by an independent
+    # review of the federal offshore, which is built the same way: a well on Aug 31 of the year before was in the counties' 12 months and not in the series')
+    edge = N.collect([well("30-025-7%04d" % i, 7377, "EOG Resources Inc", d) for i, d in enumerate((date(2025, 8, 31), date(2025, 9, 1), date(2024, 8, 31), date(2024, 9, 1), date(2026, 8, 31)))],
+                     FIRST, date(2026, 10, 31))
+    edocs, _ = M.build(edge, NAMES, ASOF, None, N.SPEC)
+    es, ec, eo = edocs["series-permits-nm.json"], edocs["county-permits-nm.json"]["counties"], edocs["operators-nm.json"]
+    erow = dict(zip(eo["cols"], eo["rows"][0]))
+    chk(sum(es["permits"][-12:]) == 2 == sum(c["p12"] for c in ec.values()) == erow["new12"] and sum(es["permits"][-24:-12]) == 2 == sum(c["p12prev"] for c in ec.values()) == erow["prev12"],
+        "wells on Aug 31 and Sep 1 of the year windows are in the same year for the series, the counties and the operators: 12 months %d, the 12 before %d"
+        % (sum(c["p12"] for c in ec.values()), sum(c["p12prev"] for c in ec.values())))
+
     # ---- the validator, on what was built and on faults
     out = os.path.join(TMP, "good")
     shutil.rmtree(out, ignore_errors=True)
@@ -146,7 +157,7 @@ def run_checks(quiet=False):
 
 def mutants():
     fails = []
-    real = {"nameable": D.nameable, "reliable": N.reliable_asof}
+    real = {"nameable": D.nameable, "reliable": N.reliable_asof, "SPEC": dict(N.SPEC)}
 
     def run(name, patch):
         patch()
@@ -156,6 +167,8 @@ def mutants():
             got = ["raised %r" % ex]
         finally:
             D.nameable, N.reliable_asof = real["nameable"], real["reliable"]
+            N.SPEC.clear()
+            N.SPEC.update(real["SPEC"])
         print(("ok   " if got else FAIL_KEY) + "mutant caught: %s (%d checks failed)" % (name, len(got)))
         if not got:
             fails.append("mutant survived: " + name)
@@ -163,6 +176,7 @@ def mutants():
     run("nobody is named", lambda: setattr(D, "nameable", lambda n: False))
     run("the files end the day before the layer is read (no lag)", lambda: setattr(N, "reliable_asof", lambda today, lag=0: today - timedelta(days=1)))
     run("a lag of 30 days", lambda: setattr(N, "reliable_asof", lambda today, lag=30: real["reliable"](today, 30)))
+    run("a year is the 365 days that end on the as-of day", lambda: N.SPEC.update(calendar_windows=False))
     return fails
 
 
