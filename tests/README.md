@@ -21,8 +21,11 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   header-only, renamed, cut short or starts with a byte-order mark, a backup run that read less than the report it would replace, a master file that
   cannot be read, a rebuilt day left partial, no web address in a failure's text, and eleven mutants that put the old behavior back.
 - `test_privacy_gate.py`: the privacy gate the nightly runs before it commits (`privacy_check.py` and the three producers' `--check`: no e-mail address, web address or phone number in a day file, no ten-digit number in Oklahoma's or New Mexico's, every
-  operator name it publishes held to the state's rule), against a copy of each committed archive with a violation put in; the child that parses a downloaded PDF has no repository token; and the 316 published data files hold no e-mail, phone or API-like
+  operator name it publishes held to the state's rule), against a copy of each committed archive with a violation put in; the child that parses a downloaded PDF has no repository token; and the 321 published data files hold no e-mail, phone or API-like
   number and every city is a place name.
+- `test_d10_fo.py`: the federal offshore's files (`d10_fo_monthly.py`, from BSEE's borehole and company files): a well is the first ten digits of the API number on its earliest spud, a sidetrack is not another well, the 63 areas and their numbering,
+  the 60-day lag, blank and placeholder dates, a spud after today, a location outside the Gulf, an individual or an unknown operator number named by no one, no API number, lease or platform published, the readers refusing an error page or a handful of companies, the validator
+  against five faults, five mutants and the committed files; with `FO_REAL_FILES` set to a folder holding BSEE's three zips it reads the real ones.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, the
   validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,

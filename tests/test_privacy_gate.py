@@ -158,7 +158,7 @@ check("inherited" not in seen and not {"GH_TOKEN", "GITHUB_TOKEN", "ACTIONS_RUNT
 # ------------------------------------------------------------------------------------------------ the published data
 files = sorted(glob.glob(os.path.join(DATA, "**", "*.json"), recursive=True))
 phone, mail, digits, urls = [], [], [], []
-no_api = re.compile(r"(^|/)(daily-ok|daily-nm)/|-(ok|nm)\.json$|(^|/)(operators|permits|county-permits|series-permits)-(ok|nm)\.json$")
+no_api = re.compile(r"(^|/)(daily-ok|daily-nm)/|-(ok|nm|fo)\.json$|(^|/)(operators|permits|county-permits|series-permits)-(ok|nm|fo)\.json$")
 for f in files:
     rel = os.path.relpath(f, DATA)
     text = open(f, encoding="utf-8").read()
@@ -175,7 +175,7 @@ check(not urls, "no web address in any Daily day file or index (%s)" % urls[:3])
 import build_data  # noqa: E402
 
 odd = []
-for name, col in (("companies.json", "city"), ("operators.json", "city"), ("operators-ok.json", "city"), ("operators-nm.json", "city")):
+for name, col in (("companies.json", "city"), ("operators.json", "city"), ("operators-ok.json", "city"), ("operators-nm.json", "city"), ("operators-fo.json", "city")):
     doc = json.load(open(os.path.join(DATA, name)))
     ci = doc["cols"].index(col)
     odd += [(name, i) for i, r in enumerate(doc["rows"]) if r[ci] and not (build_data.CITY_OK.fullmatch(r[ci]))]
