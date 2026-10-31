@@ -97,6 +97,10 @@ New Mexico's drilling history (wells spudded by month, county counts, operators 
 `site/pipeline/d9_nm_monthly.py` from the Oil Conservation Division's public well layer (about 4 s): `python3 -I site/pipeline/d9_nm_monthly.py`; see
 `site/pipeline/NOTES_D9.md` for why it counts spuds and not permits.
 
+The federal offshore's drilling history (the Gulf of America's federal waters: wells spudded by month, counts by protraction area, operators and spud points, again in the
+same shapes) is built by `site/pipeline/d10_fo_monthly.py` from the Bureau of Safety and Environmental Enforcement's public borehole and company files (4 MB, about 10 s):
+`python3 -I site/pipeline/d10_fo_monthly.py`; see `site/pipeline/NOTES_D10.md` (it counts spuds, about 45 wells a year, and publishes no depth).
+
 Oklahoma's permit history (monthly series, county counts, operators and permit points, in the Texas files' shapes) is built by
 `site/pipeline/d8_ok_monthly.py` from the OCC's master permit workbook (154 MB, about 75 s): `python3 -I site/pipeline/d8_ok_monthly.py`.
 
