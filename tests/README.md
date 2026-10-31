@@ -28,7 +28,8 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
   preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs them all on every pull request and push to `main`.
-  It also drives the states bar: choosing a state changes the Overview and the address, the Daily report follows, and a view that does not follow it hides the bar.
+  It also drives the states bar: choosing a state changes the Overview and the address, the Daily report and the Operators page follow (the State
+  column, each state's own date, the Texas-only filters stepping aside), Companies say they are Texas only, and a view that does not follow it hides the bar.
 
 Optional: `OK_REAL_FILES=<folder holding the OCC daily .xlsx files and rbdms-wells.csv>` adds two checks against the real files (the two
 workbook readers agree; no operator the naming rule refuses appears in the archive); with the master `ITD-wells-formations-base.xlsx` and

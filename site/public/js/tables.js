@@ -3,6 +3,8 @@ import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash,
 import { spark, delta } from './charts.js';
 import { getGeo, getPoints, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
+import { stateOf, measureOf } from './states.js';
+import { stateOperatorRows } from './overview-data.js';
 
 const BAND_ORDER = { A: 0, B: 1, C: 2, D: 3, '': 4 };
 const BAND_TITLES = {
@@ -62,7 +64,7 @@ export function explorer(cfg, meta) {
   });
 
   const ths = cfg.cols.map((c) => {
-    const th = el('th', { scope: 'col', class: c.align === 'right' ? 'num' : '', title: c.hint });
+    const th = el('th', { scope: 'col', class: c.align === 'right' ? 'num' : '', title: c.hint, hidden: c.hidden });
     if (c.sort) {
       const first = c.desc ? -1 : 1;
       const b = el('button', { type: 'button', class: 'sort', text: c.label });
@@ -108,7 +110,7 @@ export function explorer(cfg, meta) {
       + (n > shown ? ', showing the first ' + fmt.format(shown) : '') + (cfg.note ? cfg.note(state.values) : '');
     tbody.replaceChildren(...state.view.slice(0, shown).map((r) => el('tr', {}, cfg.cols.map((c) => {
       const cls = [c.align === 'right' ? 'num' : '', c.cls || ''].filter(Boolean).join(' ');
-      return el('td', { class: cls }, c.render(r));
+      return el('td', { class: cls, hidden: c.hidden }, c.render(r));
     }))));
     empty.hidden = n !== 0; more.hidden = n <= shown;
     more.textContent = 'Show ' + fmt.format(Math.min(100, n - shown)) + ' more';
@@ -186,18 +188,22 @@ export function explorer(cfg, meta) {
       if (col) { state.sortKey = col.key; state.dir = params.get('dir') === 'asc' ? 1 : params.get('dir') === 'desc' ? -1 : (col.desc ? -1 : 1); }
       refresh();
     },
+    // show or hide a column (the State column only matters when several states are shown); the cells keep their place
+    setColHidden(key, hidden) {
+      const i = cfg.cols.findIndex((c) => c.key === key); if (i < 0) return;
+      cfg.cols[i].hidden = hidden; ths[i].hidden = hidden; render();
+    },
+    // show or hide a filter (one that only Texas's records can answer); hiding it also switches it off
+    setFilterHidden(id, hidden) {
+      const f = cfg.filters.find((q) => q.id === id); if (!f) return;
+      inputs[id].closest('label').hidden = hidden;
+      if (hidden) setFilter(f, f.initial);
+    },
     // retitle a column once its data window is known (for example the newest complete production month)
     relabel(key, text, hint) {
       const i = cfg.cols.findIndex((c) => c.key === key); if (i < 0) return;
       cfg.cols[i].label = text; if (hint) { cfg.cols[i].hint = hint; ths[i].title = hint; }
       const b = ths[i].querySelector('.sort'); if (b) b.textContent = text; else ths[i].textContent = text;
-    },
-    // remove columns (and their CSV fields) a missing optional file cannot fill; also hides a filter that depends on it
-    dropCols(keys, csvNames = [], filterIds = []) {
-      keys.forEach((k) => { const i = cfg.cols.findIndex((c) => c.key === k); if (i >= 0) { cfg.cols.splice(i, 1); ths.splice(i, 1); } });
-      cfg.csv = cfg.csv.filter((c) => !csvNames.includes(c[0]));
-      $('thead tr', table).replaceChildren(...ths);
-      filterIds.forEach((id) => { const idx = cfg.filters.findIndex((f) => f.id === id); if (idx >= 0) { inputs[id].closest('label').hidden = true; cfg.filters.splice(idx, 1); delete state.values[id]; } });
     },
   };
 }
@@ -206,7 +212,7 @@ export function explorer(cfg, meta) {
 function trendCell(r) {
   if (!r.x) return null;
   const h = r.h;
-  const title = fmt.format(h.a) + ' permits in the last 12 full months against ' + fmt.format(h.b) + ' in the 12 before';
+  const title = fmt.format(h.a) + ' ' + (r.st && measureOf(r.st).id === 'spuds' ? 'wells spudded' : 'permits') + ' in the last 12 full months against ' + fmt.format(h.b) + ' in the 12 before';
   if (h.f === Infinity) return el('span', { class: 'delta up', title }, el('span', { class: 'arrow', 'aria-hidden': 'true', text: '▲' }), el('span', { text: 'new' }));
   const d = delta(h.f); d.setAttribute('title', title);
   return d;
@@ -238,48 +244,50 @@ function operatorsConfig(ctx) {
     note: (v) => (v.top ? '. Top 100 by oil among the operators listed here; some of the largest producers hold expired registrations, so they show on the Overview but not on this page.' : ''),
     text: (r) => [r.name, r.city, r.state, r.zip, r.num].join(' '),
     cols: [
+      { key: 'st', label: 'State', hint: 'The state whose records the row comes from', hidden: true, render: (r) => el('span', { class: 'st-tag st-' + r.st.toLowerCase(), title: stateOf(r.st).name, text: r.st }), sort: (r) => r.st },
       { key: 'band', label: 'Band', hint: 'Drilling activity band', render: (r) => chip(r.band), sort: (r) => BAND_ORDER[r.band] },
       {
         key: 'name', label: 'Operator', cls: 'name', sort: (r) => r.name.toLowerCase(),
-        render: (r) => el('span', { class: 'op-name' }, r.name, ctx.hasPts.has(r.num) ? mapLink('#map?op=' + r.num, 'Show ' + r.name + ' on the map') : null),
+        // the Map links are Texas's until the Map reads the other states too
+        render: (r) => el('span', { class: 'op-name' }, r.name, r.st === 'TX' && ctx.hasPts.has(r.num) ? mapLink('#map?op=' + r.num, 'Show ' + r.name + ' on the map') : null),
       },
       { key: 'type', label: 'Type', render: (r) => TYPE_SHORT[r.type] || r.type, sort: (r) => r.type },
-      { key: 'loc', label: 'Location', cls: 'loc', render: place, sort: (r) => (r.state + r.city).toLowerCase() },
-      { key: 'new12', label: 'New wells (12 mo)', align: 'right', desc: true, render: (r) => fmt.format(r.new12), sort: (r) => r.new12 },
+      { key: 'loc', label: 'Location', cls: 'loc', render: place, sort: (r) => (r.state + r.city).toLowerCase(), filled: (r) => r.city || r.state },
+      { key: 'new12', label: 'New wells (12 mo)', hint: 'New-drill permits in the last 12 months (New Mexico: wells spudded, which it counts instead because it publishes no approval dates)', align: 'right', desc: true, render: (r) => fmt.format(r.new12), sort: (r) => r.new12 },
       {
-        key: 'trend', label: 'Trend', hint: 'Permits in the last 12 full calendar months against the 12 before. "new" means none in the prior 12.',
+        key: 'trend', label: 'Trend', hint: 'Permits in the last 12 full calendar months against the 12 before (New Mexico: wells spudded). "new" means none in the prior 12.',
         cls: 'trend', render: trendCell, desc: true, sort: (r) => (r.x && r.h.f != null ? (r.h.f === Infinity ? 1e9 : r.h.f) : null),
       },
       { key: 'm24', label: '24 months', hint: 'Monthly new-drill permits, last 24 full months', render: (r) => (r.x ? spark(r.x.m24, { w: 84, h: 24, label: 'Monthly new-drill permits, last 24 months' }) : null) },
       {
         key: 'oil12', label: 'Oil (12 mo)', hint: 'Crude oil plus condensate in barrels reported to the RRC over the latest 12 complete months. Blank: no production figure for this operator.',
-        align: 'right', desc: true, render: (r) => (r.p ? fmt.format(r.p.o12) : null), sort: (r) => (r.p ? r.p.o12 : null),
+        align: 'right', desc: true, render: (r) => (r.p ? fmt.format(r.p.o12) : null), sort: (r) => (r.p ? r.p.o12 : null), filled: (r) => r.p,
       },
       {
         key: 'gas12', label: 'Gas (12 mo)', hint: 'Gas-well plus casinghead gas in mcf over the same 12 months. Blank: no production figure.',
-        align: 'right', desc: true, render: (r) => (r.p ? fmt.format(r.p.g12) : null), sort: (r) => (r.p ? r.p.g12 : null),
+        align: 'right', desc: true, render: (r) => (r.p ? fmt.format(r.p.g12) : null), sort: (r) => (r.p ? r.p.g12 : null), filled: (r) => r.p,
       },
       {
         key: 'ptrend', label: 'Production trend', hint: 'Oil over the latest 12 months against the 12 before, with a 24-month line. "new" means none before.', cls: 'trend', desc: true,
-        render: prodTrendCell, sort: (r) => (r.p && (r.p.o12 || r.p.o12p) ? (r.p.o12p > 0 ? r.p.o12 / r.p.o12p - 1 : 1e9) : null),
+        render: prodTrendCell, sort: (r) => (r.p && (r.p.o12 || r.p.o12p) ? (r.p.o12p > 0 ? r.p.o12 / r.p.o12p - 1 : 1e9) : null), filled: (r) => r.p,
       },
-      { key: 'all12', label: 'Permits (12 mo)', align: 'right', desc: true, render: (r) => fmt.format(r.all12), sort: (r) => r.all12 },
-      { key: 'all24', label: 'Permits (24 mo)', align: 'right', desc: true, render: (r) => fmt.format(r.all24), sort: (r) => r.all24 },
+      { key: 'all12', label: 'Permits (12 mo)', align: 'right', desc: true, render: (r) => (r.all12 == null ? '' : fmt.format(r.all12)), sort: (r) => r.all12, filled: (r) => r.all12 != null },
+      { key: 'all24', label: 'Permits (24 mo)', align: 'right', desc: true, render: (r) => (r.all24 == null ? '' : fmt.format(r.all24)), sort: (r) => r.all24, filled: (r) => r.all24 != null },
       {
         key: 'spud', label: 'Spud (12 mo)', hint: 'New-drill permits whose reported spud date falls in the last 12 months', align: 'right', desc: true,
-        render: (r) => (r.x ? fmt.format(r.x.spud12) : ''), sort: (r) => (r.x ? r.x.spud12 : null),
+        render: (r) => (r.x && r.x.spud12 != null ? fmt.format(r.x.spud12) : ''), sort: (r) => (r.x ? r.x.spud12 : null), filled: (r) => r.x && r.x.spud12 != null,
       },
       {
         key: 'depth', label: 'Avg depth (ft)', hint: 'Mean total depth of permits in the last 24 months', align: 'right', desc: true,
-        render: (r) => (r.x && r.x.depth ? fmt.format(r.x.depth) : ''), sort: (r) => (r.x && r.x.depth ? r.x.depth : null),
+        render: (r) => (r.x && r.x.depth ? fmt.format(r.x.depth) : ''), sort: (r) => (r.x && r.x.depth ? r.x.depth : null), filled: (r) => r.x && r.x.depth,
       },
       {
         key: 'county', label: 'Top county', hint: 'County with the most of its permits in the last 24 months', cls: 'loc',
-        render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : 'n/a'),
+        render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? (r.st === 'TX' ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : cname(r.x.fips)) : 'n/a'),
         sort: (r) => (r.x ? (r.x.fips ? cname(r.x.fips).toLowerCase() : '￿') : null),
       },
       { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => fmtDate(r.last), sort: (r) => r.last },
-      { key: 'dist', label: 'District', hint: 'RRC district with the most permits in 24 months', render: (r) => r.dist, sort: (r) => r.dist },
+      { key: 'dist', label: 'District', hint: 'RRC district with the most permits in 24 months', render: (r) => r.dist, sort: (r) => r.dist, filled: (r) => r.dist },
       { key: 'notes', label: 'Notes', cls: 'notes', render: operatorNotes },
     ],
     filters: [
@@ -288,21 +296,21 @@ function operatorsConfig(ctx) {
         options: [['abc', 'Bands A to C'], ['ab', 'Bands A and B'], ['A', 'Band A'], ['B', 'Band B'], ['C', 'Band C'], ['all', 'All registrants']],
         test: (r, v) => (v === 'all' ? true : v === 'abc' ? r.band !== '' : v === 'ab' ? r.band === 'A' || r.band === 'B' : r.band === v),
       },
-      { id: 'op', type: 'check', label: 'Oil or gas operators only', initial: false, test: (r, v) => !v || r.roles.includes('OPRS') },
+      { id: 'op', type: 'check', label: 'Oil or gas operators only', initial: false, test: (r, v) => !v || r.st !== 'TX' || r.roles.includes('OPRS') },
       { id: 'newDrill', type: 'check', label: 'New to drilling', initial: false, test: (r, v) => !v || r.newDrill === 1 },
       { id: 'newP5', type: 'check', label: 'New P-5', initial: false, test: (r, v) => !v || r.newP5 === 1 },
       { id: 'top', type: 'check', label: 'Top producers (100 largest by oil)', initial: false, test: (r, v) => !v || (r.p && r.p.rank != null && r.p.rank <= 100) },
     ],
     csv: [
-      ['band', (r) => r.band], ['operator_number', (r) => r.num], ['name', (r) => r.name], ['type', (r) => r.type],
+      ['data_state', (r) => r.st], ['counts_are_of', (r) => measureOf(r.st).noun], ['band', (r) => r.band], ['operator_number', (r) => r.num], ['name', (r) => r.name], ['type', (r) => r.type],
       ['city', (r) => r.city], ['state', (r) => r.state], ['zip', (r) => r.zip],
-      ['new_well_permits_12m', (r) => r.new12], ['all_permits_12m', (r) => r.all12], ['all_permits_24m', (r) => r.all24],
+      ['new_well_permits_12m', (r) => r.new12], ['all_permits_12m', (r) => (r.all12 == null ? '' : r.all12)], ['all_permits_24m', (r) => (r.all24 == null ? '' : r.all24)],
       ['last_permit_date', (r) => r.last], ['top_district_24m', (r) => r.dist], ['roles', roleText],
       ['new_to_drilling', (r) => (r.newDrill ? 'Y' : '')], ['new_p5_24m', (r) => (r.newP5 ? 'Y' : '')],
       ['new_well_permits_prior_12m', (r) => (r.x ? r.x.prev12 : '')],
       ['permits_last_12_full_months', (r) => (r.x ? r.h.a : '')], ['permits_prior_12_full_months', (r) => (r.x ? r.h.b : '')],
       ['trend_pct_full_months', (r) => (!r.x || r.h.f == null ? '' : r.h.f === Infinity ? 'new' : Math.round(r.h.f * 1000) / 10)],
-      ['spud_12m', (r) => (r.x ? r.x.spud12 : '')], ['avg_depth_ft_24m', (r) => (r.x && r.x.depth ? r.x.depth : '')],
+      ['spud_12m', (r) => (r.x && r.x.spud12 != null ? r.x.spud12 : '')], ['avg_depth_ft_24m', (r) => (r.x && r.x.depth ? r.x.depth : '')],
       ['top_county_24m', (r) => (r.x && r.x.fips ? cname(r.x.fips) : '')], ['top_county_fips', (r) => (r.x ? r.x.fips : '')],
       ['counties_24m', (r) => (r.x ? r.x.counties : '')], ['on_map', (r) => (ctx.hasPts.has(r.num) ? 'Y' : '')],
       ['oil_bbl_12m', (r) => (r.p ? r.p.o12 : '')], ['gas_mcf_12m', (r) => (r.p ? r.p.g12 : '')],
@@ -371,20 +379,37 @@ const zipCounties = () => once('zipcounty', async () => {
 
 export function createTables(meta) {
   const ctx = { G: null, hasPts: new Set(), zipSet: new Set() };
-  const operators = explorer(operatorsConfig(ctx), meta);
+  const opCfg = operatorsConfig(ctx);
+  const operators = explorer(opCfg, meta);
   const companies = explorer(companiesConfig(meta, ctx), meta);
   return {
     operators: {
       ex: operators,
-      async load() {
-        const [t, extras, G, pts, prod] = await Promise.all([load('operators'), loadOpt('operator-extras'), getGeo().catch(() => null), getPoints().catch(() => null), loadOpt('operator-production')]);
+      // the operators of the states shown: Texas's table (with its extras and production) and every other state's own file, each row tagged with its state
+      async load(states = ['TX']) {
+        const tx = states.includes('TX'); const others = states.filter((id) => id !== 'TX');
+        const [t, extras, G, pts, prod, ...docs] = await Promise.all([tx ? load('operators') : null, tx ? loadOpt('operator-extras') : null, getGeo(states).catch(() => null), getPoints(states).catch(() => null),
+          tx ? loadOpt('operator-production') : null, ...others.map((id) => loadOpt(stateOf(id).files.operators))]);
         ctx.G = G; ctx.hasPts = new Set(pts ? pts.pm.opNums : []);
         const by = new Map(extras ? toObjects(extras).map((r) => [r.num, r]) : []);
         // production by operator number, ranked by oil; an operator with no row here gets blank cells, never zeros
         const pb = new Map();
         if (prod && prod.rows) toObjects(prod).filter((r) => r.o12 + r.g12 > 0).forEach((r) => pb.set(r.num, r));
-        const rows = toObjects(t);
-        rows.forEach((r) => { r.x = by.get(r.num) || null; r.h = r.x ? halves(r.x.m24) : null; r.p = pb.get(r.num) || null; });
+        const rows = t ? toObjects(t) : [];
+        rows.forEach((r) => { r.st = 'TX'; r.x = by.get(r.num) || null; r.h = r.x ? halves(r.x.m24) : null; r.p = pb.get(r.num) || null; });
+        // another state's operators fill the same cells from their own file; what only Texas has (P-5 roles and districts, production, reported spud dates) stays blank
+        others.forEach((id, i) => {
+          for (const r of stateOperatorRows(id, docs[i])) {
+            r.x = { prev12: r.prev12, spud12: null, depth: r.depth, fips: r.county, counties: r.counties, m24: r.m24 };
+            r.h = halves(r.m24); r.p = null; r.roles = ''; r.specialties = ''; r.dist = ''; r.newP5 = 0; r.zip = '';
+            // a state that counts wells spudded has no "all permits" figure: blank, not the same number again
+            if (measureOf(id).id === 'spuds') { r.all12 = null; r.all24 = null; }
+            rows.push(r);
+          }
+        });
+        rows.forEach((r, i) => { r._i = i; });
+        // several states: one ranking (by band, then by new wells) so the busiest operators of every state are at the top, not Texas's whole list first
+        if (states.length > 1) { rows.sort((a, b) => (BAND_ORDER[a.band] - BAND_ORDER[b.band]) || (b.new12 - a.new12) || (a._i - b._i)); rows.forEach((r, i) => { r._i = i; }); }
         // rank by oil among the operators this table lists
         rows.filter((r) => r.p && r.p.o12 > 0).sort((a, b) => b.p.o12 - a.p.o12).forEach((r, i) => { r.p.rank = i + 1; });
         if (prod && prod.months) {
@@ -392,9 +417,19 @@ export function createTables(meta) {
           operators.relabel('oil12', 'Oil (12 mo to ' + end + ')', 'Crude oil plus condensate in barrels, ' + w + '. Blank: no production figure for this operator.');
           operators.relabel('gas12', 'Gas (12 mo to ' + end + ')', 'Gas-well plus casinghead gas in mcf, ' + w + '. Blank: no production figure.');
           operators.relabel('ptrend', 'Production trend', 'Oil in the ' + w + ', against the 12 months before, with the monthly line for the last ' + prod.months.length + ' months. A step is often an acquisition: production follows the operator of record. "new" means none in the 12 before.');
-          const note = $('#ops-prod-note'); if (note) { note.textContent = ' Oil and gas figures are the ' + w + '; permits run to a later date.'; note.hidden = false; }
-        }
-        if (!pb.size) operators.dropCols(['oil12', 'gas12', 'ptrend'], ['oil_bbl_12m', 'gas_mcf_12m', 'oil_bbl_prior_12m', 'gas_mcf_prior_12m', 'oil_trend_pct', 'producing_leases_12m', 'top_producer_rank_oil'], ['top']);
+          const note = $('#ops-prod-note'); if (note) { note.textContent = ' ' + (states.length > 1 ? 'Texas oil and gas figures are' : 'Oil and gas figures are') + ' the ' + w + '; permits run to a later date.'; note.hidden = false; }
+        } else { const note = $('#ops-prod-note'); if (note) note.hidden = true; }
+        // how far each state's data runs: Texas's permit master, the other states' own files
+        const docOf = new Map(others.map((id, i) => [id, docs[i]]));
+        const ends = states.map((id) => [id, id === 'TX' ? meta.sources.latest_permit : docOf.get(id) && docOf.get(id).asOf]).filter((e) => e[1]);
+        const through = $('#ops-through');
+        if (through) through.textContent = states.length === 1 && tx ? 'Permit data runs through ' + fmtDate(ends[0][1]) + '.'
+          : 'Data runs through ' + ends.map(([id, d]) => fmtDate(d) + (states.length > 1 ? ' (' + stateOf(id).name + ')' : '')).join(', ') + '.';
+        operators.setColHidden('st', states.length < 2);
+        // a column nothing fills for the states shown (production, RRC districts, a city, a depth) is hidden, never a column of blanks
+        opCfg.cols.forEach((c) => { if (c.filled) operators.setColHidden(c.key, !rows.some(c.filled)); });
+        // and what only Texas's registrations can answer is not asked without Texas
+        ['op', 'newP5', 'top'].forEach((id) => operators.setFilterHidden(id, !tx));
         operators.setRows(rows);
       },
     },

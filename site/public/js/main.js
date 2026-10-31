@@ -9,11 +9,11 @@ import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, measurePhrase } from './states.js';
 
 const VIEWS = { overview: 'Overview', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the Both / Texas / Oklahoma choice; the others show what they showed before (Texas) and hide the choice
-const STATE_VIEWS = new Set(['overview', 'daily']);
+const STATE_VIEWS = new Set(['overview', 'daily', 'operators', 'companies']);
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -67,12 +67,28 @@ async function boot() {
   const tables = createTables(meta);
   const map = createMapView({ root: $('#map-root'), meta });
   const daily = createDailyView({ root: $('#daily-root') });
-  const lazy = { operators: { t: tables.operators, started: false }, companies: { t: tables.companies, started: false } };
+  const lazy = { operators: { t: tables.operators, started: false, key: '' }, companies: { t: tables.companies, started: false, key: '' } };
+  // loads a table the first time its view is shown, and the Operators again when the states shown have changed since
   function ensure(name) {
     const item = lazy[name];
-    if (!item || item.started) return;
-    item.started = true;
-    item.t.load().catch(() => { item.started = false; item.t.ex.fail('Could not load the data. Reload the page to try again.'); });
+    const key = name === 'operators' ? statesKey(activeStates()) : '';
+    if (!item || (item.started && item.key === key)) return;
+    item.started = true; item.key = key;
+    item.t.load(activeStates()).catch(() => { item.started = false; item.key = ''; item.t.ex.fail('Could not load the data. Reload the page to try again.'); });
+  }
+  // what the Operators and Companies pages say about the states shown. Companies are the Texas Comptroller's records, so they are Texas only.
+  const TX_WHAT = 'Active RRC registrants that are corporations, LLCs or limited partnerships, ranked by drilling permits.';
+  function pageTexts() {
+    const ids = activeStates();
+    // the sentence on what the operators are; tables.js adds the dates each state's data runs to when its files are in
+    $('#ops-what').textContent = ids.length === 1 && ids[0] === 'TX' ? TX_WHAT
+      : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.';
+    const tx = ids.includes('TX');
+    $('#co-root').hidden = !tx;
+    const co = $('#co-note');
+    co.hidden = tx && ids.length === 1;
+    co.textContent = !tx ? 'Companies come from the Texas Comptroller’s franchise-tax records, so there is nothing to list for ' + ids.map((id) => stateOf(id).name).join(' or ')
+      + ': no public bulk list like it exists there. Choose All or Texas to browse the Texas pool.' : ids.length > 1 ? 'The company pool is the Texas Comptroller’s, so this list is Texas only.' : '';
   }
 
   /* ---------- the states shown: one choice for every view that follows it, kept in the address as st=tx or st=ok ---------- */
@@ -135,6 +151,7 @@ async function boot() {
     // a link with a query (a bar or tile on the overview) restarts that view from its defaults plus the query
     if (hasQuery && lazy[id]) lazy[id].t.ex.apply(params);
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
+    pageTexts();
     ensure(id);
     if (id === 'overview') overview.show(activeStates());
     if (id === 'daily') daily.activate(params).then(() => { bar.set(choice(), false); setNote(); });
@@ -155,6 +172,7 @@ async function boot() {
     overview.stale();
     if (shown === 'overview') overview.show(ids);
     else if (shown === 'daily') daily.setStates(ids);
+    else if (shown === 'operators' || shown === 'companies') { pageTexts(); ensure(shown); }
     setNote();
   });
   window.addEventListener('hashchange', () => show(true));
