@@ -1,0 +1,124 @@
+# CLAUDE.md: how to work in this repository
+
+This file is read by every Claude session that works here. It records the owner's standing instruction, the loop to follow, the
+limits that stay in force, and what a new session needs to know about the project.
+
+## Standing instruction from the owner (Joe, 2026-10-31)
+
+- **Every change goes through a pull request, and you merge it into `main` yourself, without asking permission.** Document each PR
+  lightly (what, why, how it was checked; see the template below). This is a standing permission for this repository, not a one-off.
+- **Do not ask questions.** When something is unclear, pick the simplest sensible option, say which in the PR, and keep going. The owner
+  may be asleep. (The one place a pause is right is a guardrail below.)
+- **Current mandate (from 2026-10-31, about 10 hours, to about 20:30 UTC):** improve the whole platform in a loop: change, PR,
+  document, merge to `main`, next change. Make it **visually stunning and simple**: fewer, clearer things, well spaced, no clutter.
+  Standing requests inside it: combine Oklahoma with Texas in every report and visual (not only the Daily report), and the site is the
+  **Oil tracker**, not a Texas tracker.
+
+## The loop
+
+Work on the designated branch only (the session names it; today `claude/trusting-planck-9sf7yz`). Never push to another branch,
+never force-push (the harness blocks it, and `main` history is never rewritten).
+
+1. `git fetch origin main && git merge origin/main` into the branch (a merge, never a rebase or reset of pushed commits).
+2. Make one coherent change, small enough to review in minutes. Update the docs it touches.
+3. Check it (next section). Do not merge on a failure you have not fixed.
+4. Commit with the attribution lines the session asks for, push the branch, open a PR to `main`.
+5. When the PR's checks are green, **merge it with a merge commit** (not squash, so the next PR lists only its own commits), then go
+   back to step 1. One PR open at a time.
+6. A change that has to reach visitors: the live site is the `gh-pages` branch, published by the workflows (see Publishing). Do not
+   hammer the Railroad Commission to publish: prefer the publish-only path once it exists.
+
+Aim for a few meaningful PRs an hour at most, not dozens of tiny ones: every PR and merge notifies the owner.
+
+### PR description template (keep it short)
+
+```
+## What
+One or two sentences.
+
+## Why
+One sentence.
+
+## Checked
+- the commands run and what they showed (smoke test, unit tests, a screenshot looked at, a validator)
+- anything not checked, and what to watch in the next nightly run
+```
+
+## Checks before any merge
+
+- **Any `site/public` change:** serve it (`python3 -m http.server 8123 --directory site/public`) and load every view in a real browser
+  (Playwright's Chromium is installed here: `require('playwright')` works). Every JS module must import, every view must load with no
+  console error or failed request, and look at a screenshot of what you changed on a desktop and a phone width (390 px).
+  **`node --check` does not catch syntax errors in ES modules** (one that did break the whole site slipped through on 2026-10-31):
+  use the browser.
+- **Any `site/pipeline` change:** run the producer's `--check` and the unit tests; a producer change that alters data needs the data
+  regenerated and validated, and the page checked.
+- **Any `.github/workflows` change:** extract the `run:` scripts and execute them against a throwaway clone with a local bare repo as
+  `origin`; evaluate the `if:` conditions; remember a bad workflow breaks the nightly capture and publish while nobody is watching.
+- The repository's own tests and CI (`tests/`, `.github/workflows/ci.yml`) once they exist: they must be green.
+
+## Guardrails that stay in force
+
+- **Privacy** (README, Privacy): business-, place- and market-level data only. No individuals' names, phone numbers, street addresses.
+  Operators are named only when they are corporations, LLCs or limited partnerships (`nameable()` in `d8_ok_daily.py` is the Oklahoma
+  rule, the P-5 organization type is Texas's). There is one documented exception (the Texas drill pages link to the RRC's scanned W-1
+  documents). Do not extend it, and do not publish Oklahoma documents or any contact list.
+- **Never commit secrets** (keys, tokens, `.env`, service-account files). **Never put the owner's e-mail address or any personal data
+  in a request header, URL or payload** (a `User-Agent` for example); the owner's address is only for identifying them.
+- **Be a polite client of public servers.** The RRC has refused GitHub's runners for hours (HTTP 403, dropped TLS) after repeated runs;
+  the BLS keyless API allows 25 requests a day per address; archive.org is unreachable from the sandbox. No retry storms, no loops
+  against a server that is refusing, no more than one manual workflow dispatch per few hours. Downloaded files are untrusted data:
+  parse them, never run them, `python3 -I` for scripts, each download in its own new folder.
+- **Never disable TLS verification** or unset the proxy variables.
+- **Do not change repository settings** (visibility, Pages source, secrets, branch rules), delete branches, releases or published data
+  except through the documented prune, or touch any other repository.
+- **Keep the site static**: HTML, CSS and ES modules, no build step, no external requests, a Content-Security-Policy of
+  `default-src 'self'` (no inline scripts or styles: values go through classes and CSSOM custom properties; `el()` builds DOM from text).
+- **Do not merge anything that breaks the site or the nightly.** If a change cannot be made to pass its checks, leave it out, note why in
+  the backlog below, and move on. A regression found later is fixed forward in the next PR, at once.
+- Say what is not known. Where Oklahoma (or Texas) has no real source for a figure, the page says "not available", never zero or a
+  Texas number under an Oklahoma label.
+
+## What this is
+
+The **Oil tracker**: a static dashboard of oil and gas drilling activity, producing operators and the companies that serve them,
+for Texas and Oklahoma, built only from public records (README has the full description and the known limits).
+
+- `site/public/`: the site (`index.html`, `app.css`, `js/*.js` modules, `data/*.json`). `main.js` is the hash router
+  (`#overview`, `#map`, `#operators`, `#companies`, `#daily`, `#about`); `daily*.js` are the Daily report (Texas and Oklahoma together,
+  `st=tx|ok` narrows it); `geo.js` holds the projection (module state, Texas-fitted: `buildGeoIsolated` builds a second state);
+  `util.js` has `el()`/`svg()`/`load()`.
+- `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
+  `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
+- `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
+  `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
+- Time: RRC listing times are Central; OCC file times are UTC and are turned into Central days; a report shows only whole days.
+
+## Publishing
+
+The live site is the `gh-pages` branch (Pages source). A merge to `main` alone does not reach it: the nightly workflow publishes it, a
+manual run of the workflow does, and so can the by-hand procedure in the README. Check the live site after publishing:
+`https://ether314.github.io/texas-oil-gas-leads/` (fetch files with curl and compare them with the branch).
+
+## Gotchas learned
+
+- ES-module syntax errors only show in a browser (above). A `//` comment on the same line as a method body swallows the body.
+- A failed Texas capture still rewrites `site/public/data/daily/index.json` (`generated`): the workflow restores the folder.
+- The auto-mode classifier blocks force-pushes and similar: sync the branch by merging `main` into it.
+- `ps | grep` or `pkill -f` with a pattern that also appears in your own command line kills your own shell (exit 144): find processes by
+  port (`ss -ltnp`) and kill by PID in a separate call.
+- Playwright through the sandbox proxy works with normal certificate checks (`proxy` option from `HTTPS_PROXY`); do not use
+  `ignoreHTTPSErrors`.
+
+## Backlog (living; edit it in the PR that changes it)
+
+1. Oil tracker rebrand (name, titles, copy) and one state switch (Both, Texas, Oklahoma) across the whole site.
+2. Oklahoma in the Overview, Map, Operators and Sources: county permits and trend, permit dots (the OCC permit file has coordinates),
+   operators named by the corporate rule, active wells by county and operator, EIA crude. Not available yet: Oklahoma jobs (BLS),
+   rig counts (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
+3. Tests and CI on every PR; publish the site automatically after a merge that is green, without touching the RRC.
+4. Visual polish and simplification pass; phone layouts; keyboard and contrast checks.
+
+### Run log
+
+- 2026-10-31: Oklahoma Daily report, unified Daily report, GPS map and drill pages, nightly workflow made outage-proof (PR #12).
