@@ -115,12 +115,13 @@ a download that hangs cannot starve the others. A later capture of a day never r
 expected (an error page, an empty or cut-short inventory) fails its dataset instead of being published. To fill Oklahoma's archive from the OCC's master
 files (230 MB, about 2 minutes): `python3 -I site/pipeline/d8_ok_daily.py --history`, or tick `oklahoma_history` when running the
 workflow by hand; for New Mexico's, `python3 -I site/pipeline/d9_nm_daily.py --history` or `new_mexico_history`. The monthly cards (Oklahoma
-and New Mexico crude production) are refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py [--state NM]`.
+, New Mexico and federal offshore crude production) are refreshed by hand with `python3 -I site/pipeline/d8_ok_context.py [--state NM|FO]` (the EIA's monthly series; one request each).
 
-The permit history of Oklahoma and New Mexico (the four `*-ok.json` and four `*-nm.json` files that the Overview, the Map and the Operators
-page read) is refreshed once a week by `.github/workflows/refresh-monthly.yml` (Mondays 05:40 UTC, or by hand): New Mexico's in a few seconds,
-Oklahoma's from the 154 MB master workbook. The two refreshes are isolated like the captures (a failed one's files are put back as committed),
-and the workflow shares the nightly capture's concurrency group, so the two never run at once. Texas's monthly files are rebuilt by hand.
+The permit history of Oklahoma, New Mexico and the federal offshore (the four `*-ok.json`, four `*-nm.json` and four `*-fo.json` files that the Overview, the Map and the Operators
+page read) is refreshed once a week by `.github/workflows/refresh-monthly.yml` (Mondays 05:40 UTC, or by hand): New Mexico's in a few seconds, the offshore's from
+BSEE's two small zips (BSEE makes its borehole file on Sundays) in about ten, Oklahoma's from the 154 MB master workbook. The three refreshes are isolated like the captures (a failed
+one's files are put back as committed, the others go ahead), and the workflow shares the nightly capture's concurrency group, so the two never run at once. The offshore's map of its
+63 areas (`counties-fo.geo.json`) is rebuilt by hand, rarely (`d10_fo_monthly.py --areas`). Texas's monthly files are rebuilt by hand.
 
 ## Publishing
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
