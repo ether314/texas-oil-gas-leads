@@ -162,6 +162,9 @@ export function createDailyView({ root }) {
       el('small', { text: 'One bar per report day. Height is the new-drill permits ' + issued() + ' that business day' + (multi() ? ', ' + (S.states.length === 2 ? 'both' : 'all') + ' states stacked' : '') + '; weekends have none.' }), multi() ? stateKey() : null), rb.el);
   }
 
+  // New Mexico's layer is entered some days after an approval, so its newest days run low and are not a fair comparison with an average of days that
+  // have filled in: a permit day within 3 days of the last one the series speaks for is "still filling in"
+  const filling = (id) => id === 'NM' && S.reps[id] && S.reps[id].permits && S.series[id] && S.series[id].hi && S.reps[id].permits.day > addDays(S.series[id].hi, -3);
   function permitKpi() {
     const label = 'New-drill permits ' + issued();
     const ids = have('permits');
@@ -174,7 +177,8 @@ export function createDailyView({ root }) {
     const split = ps.length > 1 ? ps.map((x) => x.id + ' ' + num(x.p.newDrill) + (days.length > 1 ? ' on ' + fmtDow(x.p.day) : '')).join(' · ') : null;
     return kpi({ ic: 'pin', label, value, hero: true, color: 'var(--s2)', vals: bs.total,
       note: [days.length === 1 ? fmtDow(days[0]) : null, split, num(total) + (total === 1 ? ' permit' : ' permits') + ' of all ' + (ps.length === 1 && ids[0] === 'TX' ? 'types' : 'kinds') + onlyNote(ids)].filter(Boolean).join(' · '),
-      extra: avg ? [delta((value - avg) / avg), ' vs the 20-day average of ' + avgTxt(avg)] : null });
+      extra: ids.length === 1 && filling(ids[0]) ? 'The newest days are still filling in'
+        : avg ? [delta((value - avg) / avg), ' vs the 20-day average of ' + avgTxt(avg), ids.some(filling) ? ' · New Mexico is still filling in' : ''] : null });
   }
   function completionsKpi() {
     const items = have('completions').map((id) => ({ id, c: S.reps[id].completions }));
@@ -328,7 +332,7 @@ export function createDailyView({ root }) {
       const where = ps.length > 1 ? [' across ' + place(), ...when, ' (' + ps.map((x) => sname(x.id) + ' ' + num(x.p.newDrill) + (days.length > 1 ? ' on ' + fmtDow(x.p.day) : '')).join(', ') + ')'] : when;
       if (nd) {
         add('pin', 'var(--s2)', strong(num(nd)), nd === 1 ? ' new-drill permit was ' + issued() : ' new-drill permits were ' + issued(), ...where,
-          avg ? [', ', strong(rel(nd, avg)), ' the 20-business-day average of ' + avgTxt(avg) + '.'] : '.',
+          avg && !(pids.length === 1 && filling(pids[0])) ? [', ', strong(rel(nd, avg)), ' the 20-business-day average of ' + avgTxt(avg) + '.'] : '.',
           total - nd ? ' Another ' + (total - nd === 1 ? '1 was an amendment, re-entry, recompletion or other filing.' : (total - nd) + ' were amendments, re-entries, recompletions or other filings.') : '');
         const top = mergeRank(ps.map(({ id, p }) => ({ id, rows: p.counties })), 3);
         if (top.length) {
