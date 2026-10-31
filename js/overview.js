@@ -138,9 +138,11 @@ export function renderSegments(m) {
   });
 }
 
-/* data freshness: every source with its own latest date */
+/* data freshness: every source with its own latest date and, where documented, how often the source publishes */
 export function renderFreshness(ul, items) {
   const list = items.filter((x) => x && x.value);
   if (!list.length) { hide(ul); return; }
-  ul.replaceChildren(...list.map((x) => el('li', {}, icon(x.icon || 'calendar', 16), el('div', {}, el('b', { text: x.label }), el('span', { text: x.value })))));
+  ul.replaceChildren(...list.map((x) => el('li', {}, icon(x.icon || 'calendar', 16), el('div', {},
+    el('b', { text: x.label }), el('span', { text: x.value }),
+    x.cadence ? el('small', { class: 'fresh-cad', text: 'Publishes ' + x.cadence, title: 'The source publishes new data ' + x.cadence + '. This site is rebuilt by hand, so it can lag.' }) : null))));
 }
