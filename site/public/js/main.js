@@ -1,5 +1,5 @@
 // Boot, hash routing and wiring. Every data-dependent block degrades on its own if its file is missing.
-import { $, $$, el, load, loadOpt, parseHash, replaceHash, fmt, monthLabel, reduced } from './util.js';
+import { $, $$, el, load, loadOpt, parseHash, replaceHash, fmt, fmtDate, monthLabel, reduced } from './util.js';
 import { initTheme } from './theme.js';
 import { hideTip } from './tip.js';
 import { fillMeta, renderSegments } from './overview.js';
@@ -10,7 +10,7 @@ import { createDailyView } from './daily.js';
 import { createNationalView } from './national.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesName, statesIn, inName, shortName, placesOne, measurePhrase, measureOf, sameMeasure, listAnd, listOr } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesIn, inName, shortName, placesOne, measurePhrase, measureAnd, everyOf, spudCaveat, ucFirst, listOr } from './states.js';
 
 const VIEWS = { overview: 'Overview', national: 'National report', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the states bar; the others (Sources) hide it
@@ -29,6 +29,24 @@ async function fillProdNote() {
   if (nw && ((sr && sr.completeThrough) || (cpr && cpr.completeThrough)) && nw > ((sr && sr.completeThrough) || cpr.completeThrough)) parts.push('The file runs to ' + monthLabel(nw) + ', but months after ' + monthLabel((sr && sr.completeThrough) || cpr.completeThrough) + ' are still being filled in by operators (they run below the EIA estimate), so they are left out.');
   slot.textContent = parts.join(' ');
   li.hidden = false; $('#src-prod2').hidden = false; $('#src-p5').hidden = !opr;
+}
+
+/* the Sources page's figures for the federal offshore are read from its own files, so the text moves with the weekly refresh instead of going stale (a week that
+   BSEE adds a month changes the date, the year's count and the operators; a missing file leaves a plain word, never an empty gap) */
+async function fillOffshore(meta) {
+  const [ser, ops, eia] = await Promise.all([loadOpt('series-permits-fo'), loadOpt('operators-fo'), loadOpt('series-fo')]);
+  const extra = { foSince: 'the start of the record', foThrough: 'the last complete month', foYear: 'Fewer than a hundred', foOps: 'a few', foEiaThrough: 'the newest month', foEiaNow: 'the monthly total' };
+  if (ser && ser.months && ser.months.length) {
+    extra.foSince = monthLabel(ser.months[0]); extra.foThrough = fmtDate(ser.through);
+    extra.foYear = fmt.format(ser.permits.slice(-12).reduce((t, n) => t + n, 0));
+  }
+  if (ops && ops.rows && ops.rows.length) extra.foOps = fmt.format(ops.rows.length);
+  if (eia && eia.foCrude && eia.latest) {
+    const v = eia.foCrude[eia.foCrude.length - 1];
+    extra.foEiaThrough = monthLabel(eia.latest);
+    if (v) extra.foEiaNow = 'about ' + fmt.format(Math.round(v / 1000)) + ' million barrels in ' + monthLabel(eia.latest);
+  }
+  fillMeta(meta, extra);
 }
 
 // Sources & method is long: a sticky "on this page" list on wide screens. Buttons, not links, so the hash router is left alone.
@@ -62,6 +80,7 @@ async function boot() {
     return;
   }
   fillMeta(meta);
+  fillOffshore(meta).catch(() => {});
   renderSegments(meta);
   const overview = createOverview(meta);
 
@@ -84,11 +103,13 @@ async function boot() {
   function pageTexts() {
     const ids = activeStates();
     // the sentence on what the operators are; tables.js adds the dates each state's data runs to when its files are in
+    // (what a state's count leaves out, where it has something to say: a sidetrack is not a new well offshore, so an operator that sidetracked ten times ranks with none)
     $('#ops-what').textContent = ids.length === 1 && ids[0] === 'TX' ? TX_WHAT
-      : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.';
+      : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.' + (spudCaveat(ids) ? ' ' + spudCaveat(ids) : '');
     const tx = ids.includes('TX');
+    // the dots are permits where a state counts permits and wells where it counts spuds, and a county is an area offshore
     $('#map-lede').textContent = ids.length === 1 && tx ? MAP_TX
-      : placesOne(ids).replace(/^./, (c) => c.toUpperCase()) + ' activity and permit locations across ' + statesIn(ids) + '. Shading and counts use every ' + (sameMeasure(ids) ? measureOf(ids[0]).one : 'permit and every spud')
+      : ucFirst(placesOne(ids)) + ' activity and ' + measureAnd(ids) + ' locations across ' + statesIn(ids) + '. Shading and counts use ' + everyOf(ids)
         + '; dots show the ones with a recorded location.' + (tx ? ' Plants, company ZIPs and basins are Texas only.' : '');
     $('#co-root').hidden = !tx;
     const co = $('#co-note');
@@ -121,16 +142,15 @@ async function boot() {
   // what the bar says about the view on screen: the Daily report only has some states
   const note = $('#statebar-note');
   function setNote() {
-    let text = activeStates().length > 1 && activeStates().length < STATES.length ? 'Showing ' + statesName(activeStates()) + '. Choose a state, or All, to change it.' : '';
+    let text = activeStates().length > 1 && activeStates().length < STATES.length ? 'Showing ' + statesIn(activeStates()) + '. Choose a state, or All, to change it.' : '';
     if (shown === 'daily') {
       const have = daily.available();
       const missing = activeStates().filter((id) => have.length && !have.includes(id));
       if (missing.length) {
-        const names = (ids) => listAnd(ids.map((id) => stateOf(id).name));
         const shownIds = activeStates().filter((id) => have.includes(id));
         // a state that can never have a report says why (the federal offshore's file is weekly); one that may get a report says "yet"
         const why = missing.length === 1 && stateOf(missing[0]).noDaily;
-        text = (text ? text + ' ' : '') + names(missing) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report' + (why ? ' (' + why + ')' : ' yet') + '; ' + (shownIds.length ? 'it shows ' + names(shownIds) + '.' : 'it shows ' + names(have) + ' instead.');
+        text = (text ? text + ' ' : '') + ucFirst(statesIn(missing)) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report' + (why ? ' (' + why + ')' : ' yet') + '; ' + (shownIds.length ? 'it shows ' + statesIn(shownIds) + '.' : 'it shows ' + statesIn(have) + ' instead.');
       }
     }
     note.textContent = text;

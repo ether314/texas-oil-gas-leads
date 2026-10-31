@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 import { segmented } from './ui.js';
 import { hideTip } from './tip.js';
 import { permitSeries } from './overview-data.js';
-import { otherStates, stateOf, measureOf, sameMeasure, spudStates, spudsNote, listAnd } from './states.js';
+import { otherStates, stateOf, measureOf, sameMeasure, spudStates, spudsNote, spudCaveat, listAnd, inName, ucFirst, placeOf } from './states.js';
 
 // Texas's own files, and each other state's permit series and (where it has one) the EIA's crude oil production for it
 const FILES = ['series-permits', 'series-markets', 'series-rigs', 'series-jobs', 'series-tax', 'series-outlook', 'series-production',
@@ -191,7 +191,7 @@ function makeGroups(R, raw) {
       notes: [(R.rigTx ? 'Rig counts are Baker Hughes weekly counts through ' + fmtDate(R.rigAsOf) + ' (the workbooks come from Internet Archive copies of Baker Hughes’ public files). "Permian, Texas counties" is the Texas part of Baker Hughes’ Permian basin; the basin-wide count also includes southeastern New Mexico.' : '')
         + (R.permits ? (ids.includes('TX') ? ' Texas permits are Railroad Commission new-drill permits by issue month.' : '')
           + (ids.includes('OK') ? ' Oklahoma permits are Oklahoma Corporation Commission new-drill permits by approval month, one per well and day.' : '')
-          + (spudStates(ids).length ? ' ' + spudsNote(ids) + ', by the month of the spud date; spud dates are reported about two months late, so ' + (spudStates(ids).length > 1 ? 'their lines end' : 'its line ends') + ' two months ' + (spudStates(ids).length < ids.length ? 'before the others.' : 'back.') : '') : '')],
+          + (spudStates(ids).length ? ' ' + spudsNote(ids) + ', by the month of the spud date; spud dates are reported about two months late, so ' + (spudStates(ids).length > 1 ? 'their lines end' : 'its line ends') + ' two months ' + (spudStates(ids).length < ids.length ? 'before the others.' : 'back.') + (spudCaveat(ids) ? ' ' + spudCaveat(ids) : '') : '') : '')],
     });
   }
 
@@ -233,7 +233,7 @@ function makeGroups(R, raw) {
         + (R.prodMeta.partial.length ? 'Reports for ' + monthLabel(R.prodMeta.partial[0]) + ' to ' + monthLabel(R.prodMeta.partial[R.prodMeta.partial.length - 1]) + ' are still being filled in and run below the EIA estimate, so they are left out. ' : '')
         + (cross ? 'Cross-check against the EIA’s own estimate, ' + cross : '')
         : 'The Railroad Commission production file is not loaded, so this shows the EIA’s monthly estimate of Texas crude production only; the newest months are not yet published.') : '')
-        + Object.entries(R.crude).map(([id, ser]) => (R.prodOil || R.eia ? ' ' : '') + stName(id) + ' is the EIA’s monthly estimate of field production of crude oil, through ' + monthLabel(ymOf(ser.t[lastIdx(ser.v)])) + '; its newest months are estimates that the EIA revises. ' + stName(id) + ' has no county or operator production file here.').join('')],
+        + Object.entries(R.crude).map(([id, ser], k) => (k || R.prodOil || R.eia ? ' ' : '') + ucFirst(inName(id)) + '’s line is the EIA’s monthly estimate of field production of crude oil, through ' + monthLabel(ymOf(ser.t[lastIdx(ser.v)])) + '; its newest months are estimates that the EIA revises. ' + ucFirst(inName(id)) + ' has no ' + placeOf(id).one + ' or operator production file here.').join('')],
     });
   }
 
@@ -303,8 +303,8 @@ export function initMarkets({ ticker, card, raw, states = ['TX'] }) {
   live = { tabs, cleanup: () => toggle.removeEventListener('click', flip) };
   show(groups[0].id);
   src.textContent = 'Each group has its own latest date; see "Data freshness" below and Sources and method for what each series is.'
-    + (!states.includes('TX') ? ' ' + listAnd(states.map(stName)) + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here (see Sources and method).'
-      : states.length > 1 ? ' Rigs, jobs and taxes are Texas’s: ' + listAnd(states.filter((id) => id !== 'TX').map(stName)) + ' ' + (states.length > 2 ? 'have' : 'has') + ' none of them here.' : '');
+    + (!states.includes('TX') ? ' ' + ucFirst(listAnd(states.map(inName))) + ' ' + (states.length > 1 ? 'have' : 'has') + ' no rig count, jobs or tax series here (see Sources and method).'
+      : states.length > 1 ? ' Rigs, jobs and taxes are Texas’s: ' + listAnd(states.filter((id) => id !== 'TX').map(inName)) + ' ' + (states.length > 2 ? 'have' : 'has') + ' none of them here.' : '');
   api = {
     select(id, scroll) {
       if (!groups.some((g) => g.id === id)) return;
