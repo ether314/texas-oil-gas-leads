@@ -191,6 +191,9 @@ with the network faked, and a mutant puts each fix's old behavior back and must 
   carry a link. The naming rule refuses every spelling of a person trading under a name (dba, d/b/a, d.b.a, d b a, db/a, doing business as, trading
   as, t/a, aka, a/k/a, a k a, also known as). The monthly validator refuses a phone number anywhere in a file and an operator's city or state that is not
   a place name or two letters.
+- **A privacy gate before anything is committed** (`privacy_check.py`, in `--check`): every day file is scanned for an e-mail address, a web address, a phone number and a run of ten digits (no API numbers are published), and every operator name it publishes
+  (`published_operator_names`) must pass `nameable`. A night that breaks it is dropped by the workflow, not published (the check read no text before; that is how the two sole proprietors reached the live site). `clean_error` is shared with the other producers and
+  also strips an error page's markup and a path.
 - **Time.** Each state's capture step has a time limit of its own in the workflow (Texas 25 minutes, Oklahoma 12, New Mexico 6, the job 60), so a
   download that hangs cannot use up the time the other states, the commit and the publish need (`tests/test_workflow.py`).
 

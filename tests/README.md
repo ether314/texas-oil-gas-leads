@@ -20,6 +20,9 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_d8_nights.py`: whole nights of the Oklahoma producer with the network faked: a permit with no county, an inventory that is an error page, empty,
   header-only, renamed, cut short or starts with a byte-order mark, a backup run that read less than the report it would replace, a master file that
   cannot be read, a rebuilt day left partial, no web address in a failure's text, and eleven mutants that put the old behavior back.
+- `test_privacy_gate.py`: the privacy gate the nightly runs before it commits (`privacy_check.py` and the three producers' `--check`: no e-mail address, web address or phone number in a day file, no ten-digit number in Oklahoma's or New Mexico's, every
+  operator name it publishes held to the state's rule), against a copy of each committed archive with a violation put in; the child that parses a downloaded PDF has no repository token; and the 316 published data files hold no e-mail, phone or API-like
+  number and every city is a place name.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, the
   validator against faults, mutants, the committed files and the EIA series for New Mexico.
 - `test_d8_monthly.py`: the Oklahoma permit history files (`d8_ok_monthly.py`): one permit per API number and day, formation rows folded,

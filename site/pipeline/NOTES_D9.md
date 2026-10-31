@@ -98,6 +98,9 @@ when they do not add up), a whole run with the network faked (a first night with
 'same' and 'new', the backup guard, a failure writing nothing, a second capture that keeps the first one's inventory), three nights against a layer that is entered late (the earlier reports'
 permits settle, the rest of them and a report older than the window do not change), the validator on faults, six mutants and the committed archive.
 
+The nightly `--check` also holds every day file to the privacy gate shared with the other two states (`privacy_check.py`: no e-mail address, web address, phone number or ten-digit number in a day file, and every operator name it publishes passes
+`d8_ok_daily.nameable`; `tests/test_privacy_gate.py`), and an error text from the OCD's server reaches a report only through `clean_error` (one short line, no address, markup or path).
+
 ## Not available
 
 Permit approvals by date for older months, depth, office city and state, Baker Hughes rig counts and BLS jobs for New Mexico (sources not reached from the build host), a company

@@ -342,6 +342,8 @@ What it found, and what the producer does now:
   backfill window, built again; `permits-series.json` of another shape is started again from what the permit files cover.
 - **A failure's text is published as one short line** (`clean_error`): no web address, no server markup (an error page), no path on the
   runner. The log keeps the whole text.
+- **A privacy gate before anything is committed** (`privacy_check.py`, in `--check`): every day file is scanned for an e-mail address, a web address and a phone number, and the operator
+  names in the newest three days (the days a night writes) must be on the corporate list (`operators.json`). A night that breaks it is dropped by the workflow, not published. Found by a security review: the check read no text before.
 - **A name or a date that is not a day cannot fail a dataset** (`named_date`, `oracle_date`, `pending_sets`): a stray `13-45-2026.zip`, a
   pending set named for hour 99 or one submit date of "31-NOV" is skipped. **A zip named for a day after the one it landed on is not used**
   (`landed_on`): a stray `11-05-2026.zip` listed on Oct 31 used to win, and the report showed its data under a status of ok.

@@ -138,6 +138,11 @@ def pick(docs, ds, count=TILES):
     return picks
 
 
+def scrubbed_env():
+    """The environment for a child that parses a file a server sent (poppler): everything but the tokens that can write to the repository."""
+    return {k: v for k, v in os.environ.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN") and not k.startswith("ACTIONS_")}
+
+
 def render_first_page(zf, info, tmp, Image):
     """Page one of a member as a PIL image about twice the tile size, or raises."""
     data = zf.read(info)
@@ -146,7 +151,7 @@ def render_first_page(zf, info, tmp, Image):
         with open(src, "wb") as f:
             f.write(data)
         subprocess.run(["pdftoppm", "-f", "1", "-l", "1", "-scale-to-x", str(TILE_W * 2), "-scale-to-y", "-1", "-jpeg", "-jpegopt", "quality=70",
-                        src, os.path.join(tmp, "out")], check=True, timeout=PER_FILE_SECONDS, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        src, os.path.join(tmp, "out")], check=True, timeout=PER_FILE_SECONDS, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=scrubbed_env())
         out = sorted(f for f in os.listdir(tmp) if f.startswith("out"))
         with Image.open(os.path.join(tmp, out[0])) as im:
             return im.convert("RGB")

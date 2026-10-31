@@ -10,6 +10,7 @@ sole proprietor or other non-entity registrant, a trust/family name or a deprior
 import csv
 import json
 import os
+import re
 from collections import Counter
 from datetime import date
 
@@ -24,6 +25,15 @@ OP_COLS = ["band", "num", "name", "type", "city", "state", "zip", "new12", "all1
            "roles", "specialties", "newDrill", "newP5"]
 CO_COLS = ["fit", "band", "seg", "name", "city", "state", "zip", "naics", "word", "isNew", "yrs", "new12", "all12",
            "match", "rrcNum", "reason"]
+
+
+CITY_OK = re.compile(r"[A-Za-z][A-Za-z .'&-]{1,29}")  # a place name; the Comptroller's city field has held a street address (one row, found by a review)
+
+
+def place(city):
+    """The city as published: a place name, or blank when the source field holds anything else (a street, a number)."""
+    c = " ".join((city or "").split())
+    return c if CITY_OK.fullmatch(c) else ""
 
 
 def count(text):
@@ -44,12 +54,12 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     op_src, co_src = read("rrc_operators.csv"), read("leadpool_ranked.csv")
 
-    operators = [[r["activity_band"], r["operator_number"], r["name"], r["org_type"], r["city"], r["state"], r["zip"],
+    operators = [[r["activity_band"], r["operator_number"], r["name"], r["org_type"], place(r["city"]), r["state"], r["zip"],
                   count(r["new_well_permits_12m"]), count(r["all_permits_12m"]), count(r["all_permits_24m"]),
                   r["last_permit_date"], r["top_district_24m"], r["activity_codes"], r["specialty_codes"],
                   1 if r["new_to_drilling"] == "Y" else 0, 1 if r["new_p5_24m"] == "Y" else 0]
                  for r in op_src if r["org_type"] in ENTITY_TYPES]
-    companies = [[r["fit"], r["activity_band"], r["segment"], r["name"], r["city"], r["state"], r["zip"][:5],
+    companies = [[r["fit"], r["activity_band"], r["segment"], r["name"], place(r["city"]), r["state"], r["zip"][:5],
                   r["naics"], r["name_match"], 1 if r["new_entity"] == "Y" else 0, r["years_since_charter"],
                   count(r["new_well_permits_12m"]), count(r["all_permits_12m"]), r["rrc_match"],
                   r["rrc_operator_no"], r["fit_reason"]]
