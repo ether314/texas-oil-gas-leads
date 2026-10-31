@@ -76,6 +76,10 @@ reports, Run workflow) and give the day in the `date` box. The Texas workflow st
 the job publishes only counts and blurred sheets. To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
+New Mexico's drilling history (wells spudded by month, county counts, operators and spud points, in the same shapes) is built by
+`site/pipeline/d9_nm_monthly.py` from the Oil Conservation Division's public well layer (about 4 s): `python3 -I site/pipeline/d9_nm_monthly.py`; see
+`site/pipeline/NOTES_D9.md` for why it counts spuds and not permits.
+
 Oklahoma's permit history (monthly series, county counts, operators and permit points, in the Texas files' shapes) is built by
 `site/pipeline/d8_ok_monthly.py` from the OCC's master permit workbook (154 MB, about 75 s): `python3 -I site/pipeline/d8_ok_monthly.py`.
 
