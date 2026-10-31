@@ -22,9 +22,12 @@ const nice = (v) => (v <= 10 ? 10 : v <= 60 ? Math.ceil(v / 10) * 10 : Math.ceil
 const rise = (node, i) => { node.style.setProperty('--i', String(i)); return node; };
 
 /* ---------- permits per business day: stacked bars (horizontal / other), average line, the selected day lit ---------- */
-export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill permits' }) {
+// avgText names the average line (default: the average rounded to a whole number). A top of 12 or less is rounded up to a
+// multiple of 4 so every axis tick is a whole number (the Oklahoma counts are that small).
+export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill permits', sub = 'horizontal', avgText = null }) {
   const W = 640; const H = 236; const L = 34; const R = 8; const T = 24; const B = 30;
-  const n = days.length; const max = nice(Math.max(1, ...total, avg || 0));
+  const top = Math.max(1, ...total, avg || 0);
+  const n = days.length; const max = top <= 12 ? Math.ceil(top / 4) * 4 : nice(top);
   const cw = (W - L - R) / n; const bw = Math.max(3, cw * 0.68);
   const x = (i) => L + cw * i + (cw - bw) / 2; const y = (v) => T + (H - T - B) * (1 - v / max);
   const root = svg('svg', { class: 'dr-chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': label });
@@ -39,14 +42,14 @@ export function trendBars({ days, total, horiz, avg, label, unit = 'new-drill pe
     g.append(rise(svg('rect', { class: 'dr-bar rest', x: x(i), y: y(t), width: bw, height: Math.max(0, y(0) - y(t)), rx: Math.min(3, bw / 3) }), i));
     if (h) g.append(rise(svg('rect', { class: 'dr-bar horiz', x: x(i), y: y(h), width: bw, height: Math.max(0, y(0) - y(h)), rx: Math.min(3, bw / 3) }), i));
     const hit = svg('rect', { class: 'dr-hit', x: L + cw * i, y: T, width: cw, height: H - T - B });
-    hit.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(fmt.format(t), unit), h ? tipRow(fmt.format(h), 'horizontal') : null], e.clientX, e.clientY));
+    hit.addEventListener('pointermove', (e) => showTip([tipRow(fmtDow(d), ''), tipRow(fmt.format(t), unit), h ? tipRow(fmt.format(h), sub) : null], e.clientX, e.clientY));
     hit.addEventListener('pointerleave', hideTip);
     g.append(hit);
     root.append(g);
   });
   if (avg) {
     root.append(svg('line', { class: 'dr-avg', x1: L, x2: W - R, y1: y(avg), y2: y(avg) }),
-      svg('text', { class: 'dr-ax avg', x: L + 5, y: y(avg) - 6, 'text-anchor': 'start', text: '20-day average ' + Math.round(avg) }));
+      svg('text', { class: 'dr-ax avg', x: L + 5, y: y(avg) - 6, 'text-anchor': 'start', text: '20-day average ' + (avgText || Math.round(avg)) }));
   }
   root.append(svg('text', { class: 'dr-val', x: x(last) + bw / 2, y: y(total[last]) - 6, 'text-anchor': 'middle', text: fmt.format(total[last]) }));
   const marks = [0, Math.floor(last / 2), last];
@@ -66,7 +69,8 @@ function countyPath(c) {
   }
   return dCache.get(c);
 }
-export function countyMap(G, layers, first) {
+export function countyMap(G, layers, first, opts = {}) {
+  const place = opts.state || 'Texas';
   const root = svg('svg', { class: 'dr-map', viewBox: '0 0 ' + G.W + ' ' + Math.ceil(G.H), role: 'img', 'aria-label': '' });
   const base = svg('g', { class: 'dr-counties' });
   const paths = new Map();
@@ -77,7 +81,7 @@ export function countyMap(G, layers, first) {
   const bub = svg('g', { class: 'dr-bubbles' });
   root.append(base, bub);
   let cur = null;
-  const unit = { permits: 'new-drill permits issued', pending: 'applications waiting', completions: 'completions approved' };
+  const unit = opts.unit || { permits: 'new-drill permits issued', pending: 'applications waiting', completions: 'completions approved' };
   function set(id) {
     cur = id;
     const L = layers[id] || { map: new Map(), label: '' };
@@ -92,9 +96,9 @@ export function countyMap(G, layers, first) {
       const r = 6 + 17 * Math.sqrt(v / max);
       if (i === 0 && !reduced()) bub.append(svg('circle', { class: 'dr-pulse', cx: c.lx, cy: c.ly, r }));
       bub.append(rise(svg('circle', { class: 'dr-bubble', cx: c.lx, cy: c.ly, r }), i));
-      if (i < 3) bub.append(svg('text', { class: 'dr-maplabel', x: c.lx, y: c.ly - r - 5, 'text-anchor': 'middle', text: c.n + ' · ' + v }));
+      if (i < 3) bub.append(svg('text', { class: 'dr-maplabel', x: c.lx, y: c.ly - r - 5, 'text-anchor': 'middle', text: c.n + ' · ' + fmt.format(v) }));
     });
-    root.setAttribute('aria-label', ranked.length ? 'Map of Texas counties. ' + ranked.slice(0, 3).map(([f, v]) => G.byFips.get(f).n + ' ' + v).join(', ') + ' ' + unit[id] + '.' : 'Map of Texas counties. No data for this layer.');
+    root.setAttribute('aria-label', ranked.length ? 'Map of ' + place + ' counties. ' + ranked.slice(0, 3).map(([f, v]) => G.byFips.get(f).n + ' ' + fmt.format(v)).join(', ') + ' ' + unit[id] + '.' : 'Map of ' + place + ' counties. No data for this layer.');
   }
   root.addEventListener('pointermove', (e) => {
     const f = e.target.dataset && e.target.dataset.f;
@@ -109,7 +113,9 @@ export function countyMap(G, layers, first) {
 }
 
 /* ---------- the 92-day ribbon: one bar per report day, the selected day lit; arrow keys move a day ---------- */
-export function ribbon({ days, selected, onPick }) {
+// words names the three figures in the tooltip; the Texas wording is the default
+const TX_WORDS = { permits: 'new-drill permits issued', queue: 'waiting for approval', completions: 'completions approved' };
+export function ribbon({ days, selected, onPick, words = TX_WORDS }) {
   const n = days.length; const bw = 9; const gap = 3; const W = n * (bw + gap) + 6; const H = 84; const T = 8; const B = 18;
   const vals = days.map((r) => (r.pFresh ? r.pn || 0 : 0));
   const max = Math.max(10, ...vals);
@@ -137,8 +143,9 @@ export function ribbon({ days, selected, onPick }) {
     const i = e.target.dataset && e.target.dataset.i;
     if (i == null) { hideTip(); return; }
     const r = days[+i];
-    showTip([tipRow(fmtDow(r.d), r.k === 'live' ? 'captured live' : 'reconstructed'), r.pFresh && r.pn != null ? tipRow(fmt.format(r.pn), 'new-drill permits issued ' + fmtMd(r.dd)) : null,
-      r.q != null ? tipRow(fmt.format(r.q), 'waiting for approval') : null, r.c != null ? tipRow(fmt.format(r.c), 'completions approved') : null], e.clientX, e.clientY);
+    showTip([tipRow(fmtDow(r.d), r.k === 'live' ? 'captured live' : 'reconstructed'), r.pFresh && r.pn != null ? tipRow(fmt.format(r.pn), words.permits + ' ' + fmtMd(r.dd)) : null,
+      r.q != null && words.queue ? tipRow(fmt.format(r.q), words.queue) : null, r.c != null ? tipRow(fmt.format(r.c), words.completions) : null,
+      r.t != null && words.transfers ? tipRow(fmt.format(r.t), words.transfers) : null], e.clientX, e.clientY);
   });
   root.addEventListener('pointerleave', hideTip);
   wrap.addEventListener('keydown', (e) => {
@@ -235,7 +242,7 @@ export function rankList(items, { color = 'var(--s2)', max, empty = 'Nothing to 
   if (!items.length) return el('p', { class: 'fine', text: empty });
   const top = max || Math.max(1, ...items.map((i) => i.value));
   items.forEach((it) => {
-    const bar = el('span', { class: 'bar' });
+    const bar = el('span', { class: 'bar' + (it.value > 0 ? '' : ' zero') });
     bar.style.setProperty('--p', String(it.value / top));
     const label = it.href ? el('a', { class: 'bar-label', href: it.href, text: it.label, title: it.label }) : el('span', { class: 'bar-label', text: it.label, title: it.label });
     ul.append(el('li', {}, el('div', { class: 'bar-row dr-rr' }, label, el('span', { class: 'bar-track' }, bar, el('span', { class: 'bar-value', text: it.valueText || fmt.format(it.value) })))));
