@@ -58,7 +58,7 @@ The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard lib
 `site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night, commits the result to `main` and
 publishes the site. A second schedule an hour later is a backup for a run GitHub skips: it does nothing when the first one
 already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily
-reports, Run workflow) and give the day in the `date` box. The workflow runs with `--publish-docs`, which needs `contents: write` (it has it) for the release files; without that flag
+reports, Run workflow) and give the day in the `date` box. The Texas workflow step runs with `--publish-docs`, which needs `contents: write` (it has it) for the release files; without that flag
 the job publishes only counts and blurred sheets. To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
