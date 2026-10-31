@@ -153,3 +153,4 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: the nightly workflow captures New Mexico's report too (isolated like the others, 64 outcome combinations tested), and `refresh-monthly.yml` refreshes Oklahoma's and New Mexico's permit history weekly. The first runs of both are the ones to watch.
 - 2026-10-31: polish: each state's color in the states bar (and in its operator sparklines), the Overview's dates and hero note shortened for several states.
 - 2026-10-31: honesty and phone polish: New Mexico's newest permit days (which the layer fills in over a few days) are not set against an average of complete days, and a ticker card's label wraps on a phone instead of ending in an ellipsis.
+- 2026-10-31: New Mexico's Daily report gets the well inventory (counted by the server, live days only), so it has the same four cards as Oklahoma's.

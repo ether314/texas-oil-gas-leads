@@ -60,7 +60,12 @@ report day, 92 kept, and `permits-series.json`), the same shapes as Oklahoma's s
 - **One rule, live or rebuilt:** a report shows the newest day before it (within 10 days) on which wells were approved; Monday's report shows Friday's. A report never shows its own day.
 - **What a day holds** (`permits`): permits (all are permits for new wells, so `total` = `newDrill`), kinds of well (Oil, Gas, Salt Water Disposal), horizontal / vertical / directional,
   OCD districts, counties (the layer's county code), operators (named by the corporate rule only) and the share of permits that went to named ones. **Not published, so left out
-  and never a zero:** filing dates and days to approval, planned depth, amendments, completions, transfers, a pending queue. The inventory (wells by status) is not read yet.
+  and never a zero:** filing dates and days to approval, planned depth, amendments, completions, transfers, a pending queue.
+- **The inventory** (`wells`, live days only, like Oklahoma's): the server counts the whole layer by status (142,463 records, 54,223 Active on 2026-10-31) and, for the active wells,
+  by kind, county code and operator, in four group-by requests (a count the server would cut short is an error, not a smaller number). Only counts are kept: plugged (both kinds), the
+  status mix (five largest plus Other, so it adds up), active wells by kind (Oil, Gas, the rest together), by county, the 12 largest named operators, how many operators have an active well,
+  and the active wells of unnamed operators and of none. `change` is against the previous live report that had one. If the inventory cannot be read the permits are still a report, marked
+  partial (so the backup run takes the night over), and the dataset says why.
 - **A well is counted once.** The layer holds some wells twice (a record per location: 10 records for 5 wells on 2026-10-29), so the API number is read to count a well once and is
   never kept or published (`validate` fails a file that holds one).
 - **The layer is entered late.** The newest two or three days run well under the 17 to 22 permits a business day of the weeks before (5, 5 and 8 on 2026-10-29, -28 and -27 when this was

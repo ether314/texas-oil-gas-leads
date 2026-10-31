@@ -15,6 +15,8 @@ are published, and the report says so by leaving them out, never by showing a ze
     reads permits-series.json, which every night's run rewrites from the layer as it stands, so a day's bar settles as the layer catches up.
   - Nothing names a well, a lease or an API number (an API number is used only to count a well once). Operators are named only when the
     corporate rule says so (d8_ok_daily.nameable), never a person's dba.
+  - The inventory (wells by status, and for the active wells their kinds, counties and operators) is counted by the server in four more
+    requests and kept only as counts: on a day captured live, as Oklahoma's is. A day rebuilt later has none.
 
   python3 -I site/pipeline/d9_nm_daily.py [--date YYYY-MM-DD] [--backfill N] [--history] [--out DIR] [--keep 92]
   python3 -I site/pipeline/d9_nm_daily.py --check [--out DIR]        only reload and check what is already there
@@ -47,7 +49,8 @@ FIELDS = "id,effective_date,last_edited_on,county,county_code,type,directional_s
 DAY_FILE = re.compile(r"\d{4}-\d\d-\d\d\.json")
 SERIES = "permits-series.json"  # approvals by day, from the layer as it stands (the Texas file of the same name has the same shape)
 BUDGET_BYTES = {"index.json": 40_000, "day": 30_000}
-DATASETS = [{"id": "permits", "title": "Permits to drill"}]
+DATASETS = [{"id": "permits", "title": "Permits to drill"}, {"id": "wells", "title": "Well inventory"}]
+PLUGGED = ("Plugged (site released)", "Plugged (not released)")
 FILE_NAME = "OCD well layer (Wells, MapServer)"
 log = D.log
 
@@ -90,6 +93,25 @@ def fetch_layer_edit():
     doc = query({"where": "1=1", "outStatistics": stat})
     ms = ((doc.get("features") or [{}])[0].get("attributes") or {}).get("newest")
     return datetime.fromtimestamp(ms / 1000, timezone.utc) if isinstance(ms, (int, float)) else None
+
+
+def fetch_inventory():
+    """The wells of the state counted by the server, never listed: every status, and for the active wells their kinds, counties and
+    operators (four requests). A count that would be cut short by the server's page limit is an error, not a smaller number."""
+    count = json.dumps([{"statisticType": "count", "onStatisticField": "OBJECTID", "outStatisticFieldName": "n"}])
+
+    def groups(where, fields):
+        doc = query({"where": where, "groupByFieldsForStatistics": fields, "outStatistics": count})
+        if doc.get("exceededTransferLimit"):
+            raise RuntimeError("a count by %s is longer than the server's page" % fields)
+        return [f["attributes"] for f in doc.get("features", [])]
+    status = {(a.get("status") or ""): a["n"] for a in groups("1=1", "status")}
+    types = {(a.get("type") or ""): a["n"] for a in groups("status = 'Active'", "type")}
+    counties = [(a.get("county_code"), " ".join((a.get("county") or "").split()), a["n"]) for a in groups("status = 'Active'", "county_code,county")]
+    ops = [(a.get("ogrid"), " ".join((a.get("ogrid_name") or "").split()), a["n"]) for a in groups("status = 'Active'", "ogrid,ogrid_name")]
+    if not status or not sum(status.values()):
+        raise RuntimeError("the layer returned no wells")
+    return {"status": status, "types": types, "counties": counties, "ops": ops}
 
 
 def central_digits(utc):
@@ -161,6 +183,32 @@ def permits_section(day, rows, lk):
     }
 
 
+def status_mix(status, keep=5):
+    """[[label, wells]]: the largest `keep` statuses and the rest as Other, so it adds up to the total (the page's stacked bar tells six parts apart)."""
+    ranked = sorted(((k or "No status", v) for k, v in status.items()), key=lambda kv: (-kv[1], kv[0]))
+    head, rest = ranked[:keep], ranked[keep:]
+    return [[k, v] for k, v in head] + ([["Other", sum(v for _, v in rest)]] if rest else [])
+
+
+def wells_section(inv, as_of, lk):
+    """The inventory as counts. Operators are named only by the corporate rule; the active wells of the others, and any with none, are counted apart."""
+    status = inv["status"]
+    active = status.get("Active", 0)
+    kinds = collections.Counter()
+    for k, n in inv["types"].items():
+        kinds[k if k in ("Oil", "Gas") else "Injection, disposal and other"] += n
+    ranked = sorted(inv["ops"], key=lambda o: (-o[2], o[1]))
+    shown = [[D.pretty(name), n] for _, name, n in ranked if name and D.nameable(name)][:12]
+    counties = {"%03d" % code: (name, n) for code, name, n in inv["counties"] if isinstance(code, int) and 0 < code < 1000}
+    return {
+        "asOf": as_of, "total": sum(status.values()), "active": active, "plugged": sum(n for k, n in status.items() if k in PLUGGED),
+        "status": status_mix(status), "activeTypes": D.top(kinds, 4),
+        "counties": [[f, lk.county_name(f, name), n] for f, (name, n) in sorted(counties.items(), key=lambda kv: (-kv[1][1], kv[0]))], "countyCount": len(counties),
+        "operators": shown, "operatorCount": len([o for o in inv["ops"] if o[1]]),
+        "unnamed": sum(n for _, name, n in inv["ops"] if name and not D.nameable(name)), "unassigned": sum(n for _, name, n in inv["ops"] if not name),
+    }
+
+
 def group_by_day(rows):
     out = collections.defaultdict(list)
     for r in rows:
@@ -174,26 +222,37 @@ def newest_day(by_day, day, lookback=LOOKBACK):
     return max(days) if days else None
 
 
-def build_reports(dates, by_day, kind_by_date, lk, edit_digits):
-    """One report dict per date. Live days carry the layer's last-edit time as their file time; rebuilt days have no file to show."""
+def build_reports(dates, by_day, kind_by_date, lk, edit_digits, inv=None, inv_error=None):
+    """One report dict per date. Live days carry the layer's last-edit time as their file time, and the inventory when it was read (or why it was not);
+    rebuilt days have no file to show, and no inventory: the layer holds only the current one."""
     reports = {}
+    file_info = {"name": FILE_NAME, "modified": edit_digits, "bytes": None} if edit_digits else None
     for day in dates:
         live = kind_by_date[day] == "live"
         rep = {"v": 1, "state": "NM", "date": day.isoformat(), "kind": kind_by_date[day]}
         d = newest_day(by_day, day)
         if d:
             rep["permits"] = permits_section(d, by_day[d], lk)
+        if live and inv:
+            rep["wells"] = wells_section(inv, (edit_digits or "")[:10] or day.isoformat(), lk)
+        wells = {"id": "wells", "title": DATASETS[1]["title"], "cadence": "Daily", "dataDay": rep["wells"]["asOf"] if "wells" in rep else None}
+        if not live:
+            wells.update({"error": None, "file": None, "absent": True})
+        elif inv:
+            wells.update({"error": None, "file": file_info})
+        else:
+            wells.update({"error": (inv_error or "not captured")[:200], "file": None})
         rep["datasets"] = [{"id": "permits", "title": DATASETS[0]["title"], "cadence": "Daily", "dataDay": d.isoformat() if d else None, "error": None,
-                            "file": {"name": FILE_NAME, "modified": edit_digits, "bytes": None} if live and edit_digits else None}]
+                            "file": file_info if live else None}, wells]
         reports[day] = rep
     return reports
 
 
 def headline(rep):
-    """The index row for one report (the same keys Oklahoma's rows use; pd is the horizontal permits here)."""
-    p = rep.get("permits")
+    """The index row for one report (the same keys Oklahoma's rows use; pd is the horizontal permits here, w the active wells)."""
+    p, w = rep.get("permits"), rep.get("wells")
     return {"d": rep["date"], "k": rep["kind"], "s": rep.get("status", "ok"), "dd": p["day"] if p else None, "p": p["total"] if p else None,
-            "pn": p["newDrill"] if p else None, "pd": p["horizontal"] if p else None,
+            "pn": p["newDrill"] if p else None, "pd": p["horizontal"] if p else None, "w": w["active"] if w else None,
             "f": sum(1 for d in rep["datasets"] if not d.get("error") and not d.get("absent"))}
 
 
@@ -212,6 +271,18 @@ def update_states(live, out_dir):
             d["state"] = "same" if before[d["id"]] == d["file"] else "new"
         else:
             d["state"] = "new"
+
+
+def add_wells_change(live, out_dir):
+    """Active, plugged and total wells against the previous live report that had an inventory."""
+    w = live.get("wells")
+    if not w:
+        return
+    for f in sorted((f for f in os.listdir(out_dir) if DAY_FILE.fullmatch(f) and f[:-5] < live["date"]), reverse=True):
+        prev = (D.read_json(os.path.join(out_dir, f)) or {}).get("wells")
+        if prev:
+            w["change"] = {"since": f[:-5], "active": w["active"] - prev["active"], "plugged": w["plugged"] - prev["plugged"], "total": w["total"] - prev["total"]}
+            return
 
 
 def update_series(out_dir, by_day, since, last, keep=KEEP_DAYS):
@@ -267,7 +338,7 @@ def validate(out_dir, keep=KEEP_DAYS):
             continue
         check(rep.get("v") == 1 and rep.get("date") == f[:-5] and rep.get("state") == "NM", "%s: wrong version, date or state" % f)
         check(rep.get("kind") in ("live", "reconstructed"), "%s: unknown kind" % f)
-        check([d.get("id") for d in rep.get("datasets", [])] == [s["id"] for s in DATASETS], "%s: the dataset list is not the one OCD dataset" % f)
+        check([d.get("id") for d in rep.get("datasets", [])] == [s["id"] for s in DATASETS], "%s: the dataset list is not the two OCD datasets" % f)
         check(os.path.getsize(path) <= BUDGET_BYTES["day"], "%s is over its size budget" % f)
         check(not re.search(r"\b\d\d-\d\d\d-\d{5}\b|@|https?://", text), "%s: holds an API number, an address or a link" % f)
         p = rep.get("permits")
@@ -277,6 +348,13 @@ def validate(out_dir, keep=KEEP_DAYS):
             check(sum(n for _, _, n in p["counties"]) <= p["newDrill"], "%s: the counties exceed the permits" % f)
             check(not county_codes or all(c in county_codes for c, _, _ in p["counties"]), "%s: a county that is not one of the 33" % f)
             check(p["day"] < f[:-5], "%s: permits are not from before the report day" % f)
+        w = rep.get("wells")
+        if w:
+            check(w["active"] + w["plugged"] <= w["total"], "%s: well counts do not nest" % f)
+            check(sum(n for _, n in w["status"]) == w["total"], "%s: the well status mix does not add up to the total" % f)
+            check(sum(n for _, _, n in w["counties"]) <= w["active"], "%s: active wells by county exceed the active wells" % f)
+            check(not county_codes or all(c in county_codes for c, _, _ in w["counties"]), "%s: an inventory county that is not one of the 33" % f)
+            check(rep["kind"] == "live", "%s: a rebuilt day cannot hold an inventory" % f)
     return bad
 
 
@@ -349,14 +427,22 @@ def main():
     if not rows:
         log("the layer returned no approvals in the window: nothing written")
         sys.exit(1)
-    reports = build_reports(dates, group_by_day(rows), kind_by_date, lk, central_digits(edit) if edit else None)
+    inv, inv_error = None, None
+    try:
+        inv = fetch_inventory()
+        log("wells         ok (%d wells, %d active)" % (sum(inv["status"].values()), inv["status"].get("Active", 0)))
+    except Exception as e:  # noqa: BLE001 - the permits are still a report; this makes it partial
+        inv_error = str(e)
+        log("wells         SKIPPED (%s)" % e)
+    reports = build_reports(dates, group_by_day(rows), kind_by_date, lk, central_digits(edit) if edit else None, inv, inv_error)
     live = reports[R]
-    live["status"] = "ok"
+    live["status"] = "ok" if inv else "partial"
     live["capturedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for d, rep in reports.items():
         if d != R:
             rep["status"] = "ok"
     update_states(live, a.out)
+    add_wells_change(live, a.out)
     fetched_from = min(dates) - timedelta(days=LOOKBACK + 1)
     last_day = min(R - timedelta(days=1), (D.central_day(edit.replace(tzinfo=None)) if edit else R - timedelta(days=1)))
     update_series(a.out, group_by_day(rows), fetched_from, last_day, a.keep)
@@ -368,7 +454,7 @@ def main():
             os.remove(os.path.join(a.out, f))
     index = [headline(D.read_json(os.path.join(a.out, f))) for f in sorted(os.listdir(a.out)) if DAY_FILE.fullmatch(f)]
     D.write_json(os.path.join(a.out, "index.json"), {"generated": live["capturedAt"], "keep": a.keep, "days": index})
-    log("report %s: ok | %d day files" % (R, len(index)))
+    log("report %s: %s | %d day files" % (R, live["status"], len(index)))
     problems = validate(a.out, a.keep)
     for pr in problems:
         log("CHECK failed: " + pr)
