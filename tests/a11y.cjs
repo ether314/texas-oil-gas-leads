@@ -55,6 +55,7 @@ const VIEWS = [
   ['sources', '#about', '#view-about h1'],
   ['national', '#national', '#national-root .nat-tile'],
   ['national, Oklahoma panel', '#national?s=OK', '#national-root .nat-panel h3'],
+  ['texas images', '#images', '#images-root .img-pack'],
 ];
 const SIZES = [[1280, 800], [390, 844]];
 
@@ -219,6 +220,7 @@ function targets() {
       ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'], ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'], ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
       ['overview, federal offshore', '#overview?st=fo', '#hot-bars .bar-row'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
+      ['texas images', '#images', '#images-root .img-pack'],
     ];
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light' });
     const page = await ctx.newPage();

@@ -17,6 +17,9 @@ address keep their first name, `texas-oil-gas-leads`.)
   (new wells, injection and disposal, re-entries, reworks, amendments) where an agency tells them apart, and a table of who is covered and who is not yet. Each agency counts what it
   publishes, permits by approval or issue date or, where no approval dates by well exist, wells by spud date; the two are never added together, a state not read yet is "not available" and never zero,
   and the BLM's onshore permits (federal land, which the states also permit) are a line of their own and never added into the states. See `site/pipeline/NOTES_D11.md`.
+- **Texas images**: what a Texas well leaves behind as scanned filings (`#images`), from the Railroad Commission's three packs a business day: a well's life in three stages (the permit letter and plat, the directional survey,
+  the completion forms and logs) with each kind of document explained and counted, how much arrives each day over the 92-day archive (a day with no pack listed is a gap, never zero), and for any day what its packs hold
+  (size, size by RRC district, documents by kind for days captured live, the blurred contact sheets, and the permits whose filings are published, each linking to its drill page). It reads only the Daily archive's own files.
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
   top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
   operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green, the federal offshore rose).

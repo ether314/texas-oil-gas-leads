@@ -51,6 +51,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   operators and permit points of the states shown, merged; a state with no file is left out, never counted as zero) and, on the committed
   files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
 - `test_js_data.mjs` also covers `national-data.js` (totals within a measure and never the BLM's, size classes, the stack and where its axis ends, the mix, the tile map covering every jurisdiction in the committed file).
+- `test_js_data.mjs` also covers `images-data.js` (a pack not listed is null and never zero, totals and the average over only the days that had a pack, a day file's packs and kinds, the permits whose files are published, the lifecycle, and that every kind in the committed live days is described).
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
   preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs them all on every pull request and push to `main`.
   It also drives the states bar: choosing a state changes the Overview and the address, the Daily report and the Operators page follow (the State
@@ -69,6 +70,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   With Texas's pending and completion files stubbed as unread it checks that the Daily cards say "could not be read" (and for which state) rather than "no pending set recorded" or "no completion filings".
   The National report is driven too: the panel opens on the biggest state, a tile opens its panel and the address, a producing state with no data says "Not read yet" and never a figure, the count toggle changes the stack and the address,
   a ranking row selects its tile, and the view shows no NaN, undefined, null or Infinity.
+  The Texas images view is driven too: a column for each report day, the day list, choosing a day shows its packs and the address, any contact sheet loads from the site itself, and no NaN.
   It checks that every button draws its words as one piece (a label split into two flex items gets the icon's gap between its words, which read as a double space).
   It downloads the Operators CSV (a State column, blank not zero where a state publishes no figure, no number turned into text) and walks the archive's days (the newest, the oldest, every tenth and each day with an empty Texas queue) for rendered NaN, undefined, null or Infinity.
 - `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to
