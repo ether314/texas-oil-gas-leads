@@ -16,6 +16,10 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
 - `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the two captures, the `if:` conditions for every
   combination of outcomes, and the workflow's own `run:` scripts executed against a throwaway clone with a local bare `origin`
   (needs git and PyYAML).
+- `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it cannot reach the agencies)
+  and `.github/scripts/publish_pages.sh`, which the nightly capture shares: run against a throwaway clone with a local bare `origin` that has
+  a gh-pages branch (publishes exactly the site, never rewrites history, says so when current, refuses an incomplete copy, retries a refused
+  push and gives up after four; needs git and PyYAML).
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
   preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs both on every pull request and push to `main`.
 

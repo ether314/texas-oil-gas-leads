@@ -84,9 +84,11 @@ workflow by hand. Its monthly card (Oklahoma crude production) is refreshed by h
 
 ## Publishing
 The live site is GitHub Pages serving the `gh-pages` branch: a copy of the committed `site/public` plus an empty `.nojekyll`
-file. The nightly workflow refreshes it after each capture with an ordinary push. **A change on `main` alone does not reach
-the live site.** To publish by hand, replace the branch's contents with `git archive main site/public` (extracted without
-the two leading folders), add `.nojekyll`, commit and push.
+file. Two workflows publish it, with one script (`.github/scripts/publish_pages.sh`: an ordinary push, retried if the other workflow
+pushed first): `.github/workflows/publish.yml` runs after CI has passed on a push to `main`, so a merged change goes live in a few
+minutes without touching the Railroad Commission or the OCC, and the nightly capture publishes after it commits its data. To publish
+`main` as it is now, run "Publish the site" by hand (Actions). To publish without a workflow, replace the branch's contents with
+`git archive main site/public` (extracted without the two leading folders), add `.nojekyll`, commit and push.
 
 ## Known limits
 - Permit dots show only permits with a recorded surface location (about 40% of the last 12 months); counts and trends

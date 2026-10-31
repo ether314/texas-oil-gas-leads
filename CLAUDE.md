@@ -25,8 +25,8 @@ never force-push (the harness blocks it, and `main` history is never rewritten).
 4. Commit with the attribution lines the session asks for, push the branch, open a PR to `main`.
 5. When the PR's checks are green, **merge it with a merge commit** (not squash, so the next PR lists only its own commits), then go
    back to step 1. One PR open at a time.
-6. A change that has to reach visitors: the live site is the `gh-pages` branch, published by the workflows (see Publishing). Do not
-   hammer the Railroad Commission to publish: prefer the publish-only path once it exists.
+6. A merge to `main` reaches visitors by itself: `publish.yml` publishes `site/public` to the `gh-pages` branch once CI is green on the
+   merge (a few minutes; see Publishing). Look at the live site afterwards. Never dispatch the nightly capture just to publish.
 
 Aim for a few meaningful PRs an hour at most, not dozens of tiny ones: every PR and merge notifies the owner.
 
@@ -95,14 +95,19 @@ for Texas and Oklahoma, built only from public records (README has the full desc
   the monthly EIA series) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
 - `.github/workflows/daily-rrc-report.yml`: captures both states nightly (03:15 UTC, backup 04:20), commits the data to `main`, publishes
   `site/public` to `gh-pages`. Each state's capture is isolated: if one fails the other is committed and published and the run ends red.
+- `.github/workflows/publish.yml` and `.github/scripts/publish_pages.sh`: the publish after a green merge (and, by the same script, the
+  nightly's publish); it never contacts the RRC or the OCC.
 - Time: RRC listing times are Central; times inside OCC files are UTC and are turned into Central days; a report shows only whole days.
   The OCC's daily permit and completion files end the day before the day they are made (made 19:41 CDT on Oct 30, they end Oct 29), so
   a morning capture fills the gap from the master files.
 
 ## Publishing
 
-The live site is the `gh-pages` branch (Pages source). A merge to `main` alone does not reach it: the nightly workflow publishes it, a
-manual run of the workflow does, and so can the by-hand procedure in the README. Check the live site after publishing:
+The live site is the `gh-pages` branch (Pages source). Two workflows publish it with one script (`.github/scripts/publish_pages.sh`: a copy of
+`site/public` plus `.nojekyll`, one ordinary push, retried from the branch's new tip if the other got there first): `publish.yml`, which
+runs when CI has passed on a push to `main` (so every green merge goes live in a few minutes), and the nightly capture, after it commits
+its data. A nightly commit starts neither CI nor `publish.yml` (it is pushed with the workflow's own token). To publish `main` as it is,
+run "Publish the site" by hand in Actions; the by-hand git procedure in the README still works. Check the live site after publishing:
 `https://ether314.github.io/texas-oil-gas-leads/` (fetch files with curl and compare them with the branch).
 
 ## Gotchas learned
@@ -123,8 +128,7 @@ manual run of the workflow does, and so can the by-hand procedure in the README.
    permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
    Daily report's inventory), refreshing the monthly files in the nightly workflow. Not available yet: Oklahoma jobs (BLS), rig counts
    (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
-3. Publish the site automatically after a merge that is green, without touching the RRC (tests and CI are in place).
-4. Visual polish and simplification pass; phone layouts; keyboard and contrast checks.
+3. Visual polish and simplification pass; phone layouts; keyboard and contrast checks.
 
 ### Run log
 
@@ -132,3 +136,4 @@ manual run of the workflow does, and so can the by-hand procedure in the README.
 - 2026-10-31: CLAUDE.md, tests and CI (PR #13, #14); Oklahoma gap fill from the master files (PR #15); site renamed Oil tracker (PR #16).
 - 2026-10-31: Oklahoma permit history files (`d8_ok_monthly.py`). Privacy fix found while reading the operator list: two reports had named two
   sole proprietors ("... DBA ..."); the rule now refuses a dba and the two days were rebuilt. The live site shows the old names until it is published.
+- 2026-10-31: `publish.yml`: a green merge to `main` is published to `gh-pages` without a capture run (first use: the privacy fix above).
