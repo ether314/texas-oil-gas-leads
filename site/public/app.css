@@ -521,6 +521,12 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .lg-nodata { display: flex; align-items: center; gap: 7px; margin-top: 7px; font-size: var(--fs-2xs); color: var(--ink-2); }
 .lg-nodata .lg-sw { flex: none; width: 22px; border: 1px solid var(--border-2); }
 .lg-basin { display: flex; align-items: center; gap: 7px; margin-top: 7px; font-size: var(--fs-2xs); color: var(--ink-2); }
+/* with several states the dots take their state's color: this says which is which */
+.lg-states { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 8px; font-size: var(--fs-2xs); color: var(--ink-2); }
+.lg-st { --c: var(--st-tx); display: inline-flex; align-items: center; gap: 5px; }
+.lg-st i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.lg-st.st-ok { --c: var(--st-ok); }
+.lg-st.st-nm { --c: var(--st-nm); }
 .lg-basin i { flex: none; width: 22px; height: 0; border-top: 3px solid var(--s2); border-radius: 2px; }
 .map-loading { padding: 80px var(--sp-4); text-align: center; color: var(--ink-2); }
 .map-notes { padding: var(--sp-3) var(--sp-4) 14px; border-top: 1px solid var(--border); display: grid; gap: 6px; }

@@ -29,6 +29,9 @@ function serve() {
 const VIEWS = [
   ['#overview', '#kpis > *'],
   ['#map', '#map-root canvas'],
+  ['#map?st=tx', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) ? null : 'Texas alone should keep its own legend')],
+  ['#map?st=ok', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) && (await page.locator('.lg-states').count()) === 0 ? null : 'the Oklahoma map should say permits and need no state legend')],
+  ['#map?st=nm', '#map-root canvas', async (page) => (/^Wells spudded, /.test(await page.locator('.lg-title').innerText()) ? null : 'the New Mexico map should say wells spudded')],
   ['#operators', '#ops-root table'],
   ['#companies', '#co-root table'],
   ['#daily', '#daily-root .dr-hero'],
@@ -171,6 +174,69 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the states bar: ' + e.message.split('\n')[0].slice(0, 160));
     }
     check(!errs.length, 'the states bar loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 4. the Map follows the states bar: shapes, dots, legend and panels for the states shown, deep links with a state's county and operator keys
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const legend = async () => (await page.locator('.lg-title').innerText()).replace(/\s+/g, ' ');
+    const panel = async () => (await page.locator('.map-panel .panel-body').innerText()).replace(/\s+/g, ' ');
+    const counties = () => page.evaluate(() => window.__map.S.G.counties.length);
+    const mapFor = async (id, text) => { // choose a state on the bar and wait for the legend to name it
+      await page.click('#statebar button[data-id="' + id + '"]');
+      await page.waitForFunction((src) => { const t = document.querySelector('.lg-title'); return !!t && new RegExp(src).test(t.textContent); }, text.source, { timeout: 25000 });
+    };
+    try {
+      await page.goto(base + '?debug#map', { waitUntil: 'load' });
+      await page.waitForSelector('.lg-states', { timeout: 25000 });
+      check((await counties()) === 254 + 77 + 33 && (await page.locator('.lg-st').count()) === 3 && /Permits and spuds/.test(await legend()), 'all states: 364 counties on one map, the legend names the three dot colors and says permits and spuds');
+      check(/Texas, Oklahoma and New Mexico/.test(await page.locator('#map-lede').innerText()), 'and the page says which states it covers');
+      await page.click('#map-root button:has-text("Table view")');
+      await page.waitForSelector('.map-table tbody tr', { timeout: 10000 });
+      const th = await page.locator('.map-table thead th').allInnerTexts();
+      check((await page.locator('.map-table tbody tr').count()) === 364 && th[1].trim() === 'State', 'the table twin lists every county of the states shown, with a State column');
+      await page.click('#map-root button:has-text("Map view")');
+      await mapFor('OK', /^New-drill permits, /);
+      check(/across Oklahoma\./.test(await page.locator('#map-lede').innerText()), 'choosing a state on the Map changes the page\'s own sentence too');
+      check((await counties()) === 77 && /st=ok/.test(await page.evaluate(() => location.hash)) && (await page.locator('.lchip-body', { hasText: /^Permits$/ }).count()) === 1, 'Oklahoma alone: 77 counties, st=ok in the address, the dots are permits');
+      await mapFor('NM', /^Wells spudded, /);
+      check((await counties()) === 33 && (await page.locator('.lchip-body', { hasText: 'Wells spudded' }).count()) === 1 && (await page.locator('.map-actions').innerText()).includes('New Mexico drill'), 'New Mexico alone: 33 counties, the dots and the replay say wells spudded');
+      // a dot of New Mexico: its tooltip and its page say spudded, in its county
+      const pt = await page.evaluate(() => {
+        const { engine, S } = window.__map; const P = S.P;
+        for (let i = 0; i < P.n; i++) { const [sx, sy] = engine.screenOf(P.x[i], P.y[i]); if (sx > 120 && sx < 700 && sy > 60 && sy < 500) return { sx, sy }; }
+        return null;
+      });
+      const box = await page.locator('.map-canvas').boundingBox();
+      await page.mouse.move(box.x + pt.sx - 25, box.y + pt.sy - 25); await page.mouse.move(box.x + pt.sx, box.y + pt.sy);
+      await page.waitForSelector('.tip', { state: 'visible', timeout: 5000 });
+      check(/Spudded/.test(await page.locator('.tip').innerText()), 'hovering a New Mexico dot says Spudded, not Issued');
+      await page.mouse.click(box.x + pt.sx, box.y + pt.sy);
+      await page.waitForFunction(() => /Well spudded/.test(document.querySelector('.map-panel .panel-body').textContent), null, { timeout: 5000 });
+      check(/FIPS 35\d{3}/.test(await panel()) && /Texas figures: not available for New Mexico/.test(await panel()), 'its page and its county say so, and name what New Mexico has no figure for');
+      await mapFor('all', /^Permits and spuds, /);
+      check(/Texas, Oklahoma and New Mexico/.test(await page.locator('#map-lede').innerText()) && (await page.locator('.lg-st').count()) === 3, 'back to All: the sentence and the legend name the three states again');
+      await mapFor('TX', /^New-drill permits, /);
+      check((await counties()) === 254 && (await page.locator('.lg-states').count()) === 0 && (await page.locator('.lchip').count()) === 5, 'Texas alone: its 254 counties and all five layers, no state legend');
+      await page.goto(base + '?debug#map?st=ok&county=OK:039', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Custer County/.test(document.querySelector('.map-panel .panel-body')?.textContent || ''), null, { timeout: 25000 });
+      check(/Custer County FIPS 40039/.test(await panel()) && /county=OK:039/.test(await page.evaluate(() => location.hash)), 'an Oklahoma county opens by its key (county=OK:039), in a readable address');
+      await page.goto(base + '?debug#map?st=nm&op=NM:7377', { waitUntil: 'load' });
+      await page.waitForFunction(() => /New Mexico operator 7377/.test(document.querySelector('.map-panel .panel-body')?.textContent || ''), null, { timeout: 25000 });
+      check(/Wells spudded, 12 mo/.test(await panel()), 'a New Mexico operator opens by its key (op=NM:7377) and counts wells spudded');
+      await page.goto(base + '?debug#map?st=tx&county=OK:039', { waitUntil: 'load' });
+      await page.waitForSelector('.lg-title', { timeout: 25000 });
+      check(/Texas at a glance/.test(await panel()), 'a county of a state that is not shown is ignored, not an error');
+    } catch (e) {
+      check(false, 'the Map and the states bar: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the Map and the states bar load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

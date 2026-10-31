@@ -162,11 +162,13 @@ export function parseHash() {
     hasQuery: cut >= 0,
   };
 }
+// a query as it reads in an address: commas (st=tx,nm) and the colon of a county key (county=OK:129) are left as they are
+export const queryText = (params) => params.toString().replace(/%2C/gi, ',').replace(/%3A/gi, ':');
 // keeps the address bar in step with the map without firing hashchange. The states shown (st=tx or st=ok, none for both) stay in it.
 export function replaceHash(view, params) {
   const sp = stateParam(activeStates());
   if (sp && !params.has('st')) { params = new URLSearchParams(params); params.set('st', sp); }
-  const q = params.toString().replace(/%2C/g, ',');
+  const q = queryText(params);
   const next = '#' + view + (q ? '?' + q : '');
   if (location.hash !== next) history.replaceState(null, '', next);
 }

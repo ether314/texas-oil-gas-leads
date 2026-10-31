@@ -13,6 +13,8 @@ export function createEngine(canvas, host, G, P0, Z, F) {
   let P = P0;
   const st = { w: 0, h: 0, dpr: 1, k0: 1, k: 1, cx: G.W / 2, cy: G.H / 2, tk: 1, tcx: G.W / 2, tcy: G.H / 2, anchor: null };
   let th = null; let sprite = null; let freshSprite = null; let classPaths = [];
+  // a state's dots look like the theme's (Texas) or like its own skin: th.st[n] says how (colors, and the glow sprites made from them)
+  let skins = [];
   const layers = { permits: true, zips: false };
   let opFilter = -1; let hover = null; let padB = 0; let basinSel = null;
   // time-lapse: points are replayed by issue day. Settled points (older than `fade` days) live in the cached layer, newer ones
@@ -111,19 +113,17 @@ export function createEngine(canvas, host, G, P0, Z, F) {
   /* theme and data hooks */
   function setTheme(t) {
     th = t; widths.clear(); pc.ok = false;
-    sprite = null; freshSprite = null;
-    if (t.tlGlow) {
-      freshSprite = document.createElement('canvas'); freshSprite.width = freshSprite.height = 64;
-      const g = freshSprite.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      t.tlGlow.forEach(([at, c]) => gr.addColorStop(at, c));
+    const glowOf = (stops) => {
+      if (!stops) return null;
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+      const g = cv.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      stops.forEach(([at, c]) => gr.addColorStop(at, c));
       g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-    }
-    if (t.glow) {
-      sprite = document.createElement('canvas'); sprite.width = sprite.height = 64;
-      const g = sprite.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      t.glow.forEach(([at, c]) => gr.addColorStop(at, c));
-      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-    }
+      return cv;
+    };
+    freshSprite = glowOf(t.tlGlow); sprite = glowOf(t.glow);
+    skins = [{ glow: sprite, fresh: freshSprite, dotNew: t.dotNew, dotOld: t.dotOld, tlHot: t.tlHot, tlRing: t.tlRing },
+      ...(t.st || []).slice(1).map((q) => ({ glow: glowOf(q.glow), fresh: glowOf(q.tlGlow), dotNew: q.dotNew, dotOld: q.dotOld, tlHot: q.tlHot, tlRing: q.tlRing }))];
     invalidate();
   }
   function setCountyColors(colors, noData) {
@@ -217,33 +217,38 @@ export function createEngine(canvas, host, G, P0, Z, F) {
     const rn = clamp(1.55 * Math.pow(zoom, 0.34), 1.55, 5.4) * boost; const ro = rn * (opFilter !== -1 ? 0.9 : 0.78);
     const X = P.x; const Y = P.y; const R = useOrder ? tl.zero : P.rec; const k = st.k; const hx = st.w / 2 - st.cx * k + ox; const hy = st.h / 2 - st.cy * k + oy;
     const skip = (i) => useOrder && opFilter !== -1 && P.op[i] !== opFilter;
-    if (sprite && !dbg.noGlow) {
-      g.globalCompositeOperation = th.additive ? 'lighter' : 'source-over';
+    // one pass of each kind per state present, each in its own color (one state: one pass, as before)
+    const states = P.sts && P.sts.length ? P.sts : [0]; const many = states.length > 1; const S = P.st;
+    for (const sn of states) {
+      const sk = skins[sn] || skins[0];
+      if (sk.glow && !dbg.noGlow) {
+        g.globalCompositeOperation = th.additive ? 'lighter' : 'source-over';
+        for (let pass = 0; pass < 2; pass++) {
+          const gr = (pass ? rn : ro) * 3.4;
+          g.globalAlpha = pass ? th.glowNew : th.glowOld;
+          for (let q = q0; q < q1; q++) {
+            const i = at(q);
+            if (R[i] !== pass || skip(i) || (many && S[i] !== sn)) continue;
+            const x = X[i] * k + hx; const y = Y[i] * k + hy;
+            if (x < -gr || x > cw + gr || y < -gr || y > ch + gr) continue;
+            g.drawImage(sk.glow, x - gr, y - gr, gr * 2, gr * 2);
+          }
+        }
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      }
       for (let pass = 0; pass < 2; pass++) {
-        const gr = (pass ? rn : ro) * 3.4;
-        g.globalAlpha = pass ? th.glowNew : th.glowOld;
+        const r = pass ? rn : ro;
+        g.beginPath();
         for (let q = q0; q < q1; q++) {
           const i = at(q);
-          if (R[i] !== pass || skip(i)) continue;
+          if (R[i] !== pass || skip(i) || (many && S[i] !== sn)) continue;
           const x = X[i] * k + hx; const y = Y[i] * k + hy;
-          if (x < -gr || x > cw + gr || y < -gr || y > ch + gr) continue;
-          g.drawImage(sprite, x - gr, y - gr, gr * 2, gr * 2);
+          if (x < -r || x > cw + r || y < -r || y > ch + r) continue;
+          g.moveTo(x + r, y); g.arc(x, y, r, 0, TAU);
         }
+        g.fillStyle = pass ? sk.dotNew : sk.dotOld; g.fill();
+        if (pass) { g.lineWidth = 0.7; g.strokeStyle = th.dotRing; g.stroke(); }
       }
-      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-    }
-    for (let pass = 0; pass < 2; pass++) {
-      const r = pass ? rn : ro;
-      g.beginPath();
-      for (let q = q0; q < q1; q++) {
-        const i = at(q);
-        if (R[i] !== pass || skip(i)) continue;
-        const x = X[i] * k + hx; const y = Y[i] * k + hy;
-        if (x < -r || x > cw + r || y < -r || y > ch + r) continue;
-        g.moveTo(x + r, y); g.arc(x, y, r, 0, TAU);
-      }
-      g.fillStyle = pass ? th.dotNew : th.dotOld; g.fill();
-      if (pass) { g.lineWidth = 0.7; g.strokeStyle = th.dotRing; g.stroke(); }
     }
   }
   function paintPermits() {
@@ -291,15 +296,16 @@ export function createEngine(canvas, host, G, P0, Z, F) {
       const x = P.x[i] * k + hx; const y = P.y[i] * k + hy;
       if (x < -40 || x > w + 40 || y < -40 || y > h + 40) continue;
       const age = tl.cur - P.t[i]; const u = clamp(age / tl.fade, 0, 1);
-      if (freshSprite) {
+      const sk = skins[P.st[i]] || skins[0];
+      if (sk.fresh) {
         const gr = rn * (7.2 - 3.4 * u); ctx.globalAlpha = 0.95 * (1 - u) * (1 - u * 0.4);
-        ctx.drawImage(freshSprite, x - gr, y - gr, gr * 2, gr * 2);
+        ctx.drawImage(sk.fresh, x - gr, y - gr, gr * 2, gr * 2);
       }
       ctx.globalAlpha = 1;
-      if (age < 4) { ctx.beginPath(); ctx.arc(x, y, rn * (1.6 + 4.2 * (age / 4)), 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = th.tlRing; ctx.globalAlpha = 0.8 * (1 - age / 4); ctx.stroke(); ctx.globalAlpha = 1; }
+      if (age < 4) { ctx.beginPath(); ctx.arc(x, y, rn * (1.6 + 4.2 * (age / 4)), 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = sk.tlRing; ctx.globalAlpha = 0.8 * (1 - age / 4); ctx.stroke(); ctx.globalAlpha = 1; }
       const r = rn * (1.75 - 0.75 * u);
-      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = th.dotNew; ctx.fill();
-      if (u < 0.85) { ctx.globalAlpha = 1 - u / 0.85; ctx.beginPath(); ctx.arc(x, y, r * 0.58, 0, TAU); ctx.fillStyle = th.tlHot; ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = sk.dotNew; ctx.fill();
+      if (u < 0.85) { ctx.globalAlpha = 1 - u / 0.85; ctx.beginPath(); ctx.arc(x, y, r * 0.58, 0, TAU); ctx.fillStyle = sk.tlHot; ctx.fill(); ctx.globalAlpha = 1; }
     }
   }
 
@@ -533,8 +539,10 @@ export function createEngine(canvas, host, G, P0, Z, F) {
   }
   function zoomBy(f) { zoomAt(st.w / 2, st.h / 2, f); }
 
-  new ResizeObserver(resize).observe(host);
+  const sizeWatch = new ResizeObserver(resize); sizeWatch.observe(host);
   window.addEventListener('resize', resize);
+  // the map is built again when the states shown change: the old engine lets go of the page
+  function destroy() { sizeWatch.disconnect(); window.removeEventListener('resize', resize); cancelAnimationFrame(raf); clearTimeout(idleT); raf = 0; }
 
   /* QA: time pan frames the way a drag produces them (cached layer) and one crisp repaint, with a forced raster flush.
      Does not wait for requestAnimationFrame, so it also works in a background tab. */
@@ -563,7 +571,7 @@ export function createEngine(canvas, host, G, P0, Z, F) {
   }
 
   return {
-    resize, invalidate, setTheme, setCountyColors, benchmark, hitAt, dbg,
+    resize, invalidate, setTheme, setCountyColors, benchmark, hitAt, dbg, destroy,
     on(t, fn) { handlers[t] = fn; },
     setLayers(o) { Object.assign(layers, o); pc.ok = false; clearHover(); invalidate(); },
     setOpFilter(i) { opFilter = i; pc.ok = false; clearHover(); invalidate(); },
