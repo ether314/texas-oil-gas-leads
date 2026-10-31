@@ -746,6 +746,41 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-rank { margin-top: var(--sp-2); }
 .dr-rr { grid-template-columns: minmax(110px, 200px) 1fr; }
 
+/* GPS map and drill pages (Daily report) */
+.dr-gps-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-4); margin: 0 0 var(--sp-3); }
+.dr-gps-layers, .dr-gps-zoom { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.dr-lay .dr-sw { display: inline-block; flex: none; width: 11px; height: 11px; }
+.dr-lay .dr-sw.permits { border-radius: 50%; background: var(--s2); }
+.dr-lay .dr-sw.surveys { background: var(--s7); transform: rotate(45deg) scale(0.86); }
+.dr-lay[aria-pressed="false"] .dr-sw { opacity: 0.3; }
+.dr-gpswrap { --cb: color-mix(in srgb, var(--ink) 22%, transparent); position: relative; aspect-ratio: 3 / 2; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-md); background: color-mix(in srgb, var(--s1) 6%, var(--surface-2)); }
+.dr-gps { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
+.dr-gps:active { cursor: grabbing; }
+.dr-gps.zoomed { touch-action: none; }
+.dr-gps .dr-county { fill: color-mix(in srgb, var(--ink) 5%, var(--surface)); }
+.dr-gps-labels .cl { font-size: var(--lf, 12px); font-weight: 700; fill: var(--ink-2); stroke: var(--surface); stroke-width: calc(var(--lf, 12px) * 0.3); paint-order: stroke; pointer-events: none; }
+.dr-pt { stroke: var(--surface); stroke-width: 1.4px; vector-effect: non-scaling-stroke; cursor: pointer; outline: none; }
+.dr-pt.permits { fill: color-mix(in srgb, var(--s2) 82%, transparent); }
+.dr-pt.surveys { fill: color-mix(in srgb, var(--s7) 82%, transparent); }
+.dr-pt:hover, .dr-pt:focus-visible { stroke: var(--ink); stroke-width: 2px; }
+.dr-pt.sel { stroke: var(--ink); stroke-width: 2.4px; }
+.dr-pt.off { display: none; }
+.dr-ring { fill: none; stroke: var(--ink); stroke-width: 1.6px; vector-effect: non-scaling-stroke; pointer-events: none; transform-box: fill-box; transform-origin: center; }
+.dr-ring.pulse { animation: dr-ping 2.6s ease-out infinite; }
+.dr-drill-host:empty { display: none; }
+.dr-drill .dr-tiles { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin: var(--sp-3) 0; }
+.dr-drill .dr-tile dd { font-size: 1.2rem; overflow-wrap: anywhere; }
+.dr-drill { margin-top: var(--sp-4); padding: var(--sp-4); border: 1px solid var(--border-2); border-radius: var(--r-md); background: var(--surface-2); }
+.dr-drill.missing { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.dr-drill.missing p { margin: 0; }
+.dr-drill-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.dr-drill-head h3 { margin: 0; }
+.dr-drill-act { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.dr-h4 { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.dr-docs { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.dr-doc small { font-size: var(--fs-xs); font-weight: 650; color: var(--ink-2); }
+.dr-doc.off { color: var(--ink-2); }
+
 .dr-bullets { display: grid; gap: 2px; margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
 .dr-story .insight p { max-width: 92ch; }
 .dr-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sp-3); }

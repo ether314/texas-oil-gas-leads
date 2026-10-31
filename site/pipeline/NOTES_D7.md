@@ -6,7 +6,8 @@ About 20 s for one day; rebuilding all 92 days took 88 s (2026-10-31). Page: `#d
 
 Files in `site/public/data/daily/`: `YYYY-MM-DD.json` (3-13 KB each, 92 kept), `index.json` (one row per day, 13 KB),
 `permits-series.json` (permits issued per calendar day, 2 KB), and with `--packs` `img/<day>-<pack>.jpg` (contact sheets, 22-29 KB).
-Budgets 60 / 40 / 20 / 150 KB, enforced by `--check`.
+Budgets 100 / 40 / 20 / 150 KB (day / index / series / sheet), enforced by `--check`. The day budget was 60 KB until GPS points, links and
+surveys joined the day file (a day of 200 permits and 300 surveys can pass 60 KB; a typical day is 13-23 KB).
 
 ## Read this first
 
@@ -101,6 +102,61 @@ Cost: the three packs are 360-510 MB a night (306 MB took 39 s through the agent
 under two minutes). The workflow installs poppler-utils and Pillow first (about 15 s, `continue-on-error`). Three sheets are
 about 80 KB a day, committed to `main` with the day file and again to `gh-pages`: about 30 MB a year of history on each, and
 92 days (7 MB) in the tree, because `prune_images` deletes the sheets no day file refers to.
+
+## GPS map and drill pages (added 2026-10-31)
+
+**Points.** Record 14 of the permit file (surface location) exists for only 0-12 of a day's 40-80 permits, so the report asks the
+RRC's public map service instead (`d7_locate.py`): layer 1 "Well Locations" of
+`gis.rrc.texas.gov/server/rest/services/rrc_public/RRC_Public_Viewer_Srvs/MapServer`, queried by API number in batches of 100
+(`GIS_LAT83` / `GIS_LONG83`, NAD83 degrees, rounded to 5 places, about a metre). On 2026-10-29 all 36 new-drill permits had a
+"Permitted Location" point there, and all 57 directional surveys' wells did. The permit file's record 14 is the fallback when the
+service does not answer; a failed lookup is logged and costs nothing but points. This also gives every *rebuilt* day its points
+(they need no pack).
+
+**Day file additions** (additive; days captured earlier keep 7-field rows and the page copes):
+
+- `permits.rows[i]` is now `[permit, county, district, operator #, operator name, depth, H/D/V, API, lat, lon, docs?]`. `docs`, when
+  present, lists the suffixes of that permit's published files; the file is `<permit>_<suffix>`, e.g. `0919696_W1.pdf`,
+  `0919696_Plat_1.pdf`. `permits.located` is now the rows with a point from either source.
+- `surveys` = `{day, n, rows}` with rows `[API, county, 'M'|'O', from ft, to ft, start, end, lateral, attachment id, lat, lon]`
+  ('M' MWD, 'O' other). The county is the API's first three digits. Surveys are listed by API because they do not link to the day's
+  permits: none of the 23 wells of 2026-10-29 was in the month's permit file (a survey comes after the well is drilled).
+- `release` = `{repo, tag, files, bytes, permits, surveys}`: present only when the files were confirmed on GitHub.
+
+**Where the files live.** One GitHub release a day, tag `daily-YYYY-MM-DD` of the report day, marked pre-release (`d7_release.py`,
+through the gh CLI): `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>`. Chosen over committing because the W-1
+pack is about 31 MB a day and the survey pack 28 MB; the day of 2026-10-29 published 139 files, 47 MB (36 W-1 letters, 46 plats,
+57 surveys), about 4.3 GB over 92 days, none of it in git history or on Pages. Release files are served as downloads, so pages
+link to them and cannot show them inline. The nightly capture uploads in batches of 40, then lists the release and requires every
+file to be there before the report gets any link, so a failed upload gives a report with no links, never dead ones. The release
+of a day that leaves the 92-day archive is deleted with its tag (`prune`: only tags that are exactly `daily-YYYY-MM-DD` and older
+than the oldest kept day).
+
+**It is opt-in.** `--publish-docs` (the workflow passes it) stages and publishes; `--packs` alone still only counts and blurs, so
+a local run with an authenticated gh never publishes by accident. Only the live day gets files (a pack is 30-450 MB, and a rebuilt
+day would be 92 of them). Staging copies a member only if it is under 40 MB and starts with the PDF or TIFF signature, under a name
+this code makes up, never the pack's. Only permits in the report's rows are uploaded (36 of the pack's 74 on 2026-10-29; the
+others are amendments with no page). Completion images are never published.
+
+**The privacy decision.** The filings are the RRC's public records, but a W-1 letter and a plat can carry the names, phone numbers
+and addresses of individuals, which the README's rule used to exclude. The repository's owner chose on 2026-10-31 to publish them
+readable and unmodified, so the README now says so, the page says so beside every link, and nothing is redacted. Removing a file
+later means deleting the release asset; git history is not involved, which was part of the reason for releases.
+
+**Pages.** `#daily?d=<day>&drill=<permit>` and `#daily?d=<day>&survey=<id>` (plus `v=full` when verbose) open the day's GPS card
+with that well selected and zoomed to, its facts, GPS point and a button per file. Dots, the table twin and the verbose permit table
+all select in place (`replaceState`, no history entries). The map is inline SVG with its own pan and zoom (`gpsMap` in
+`daily-viz.js`): drag pans, Ctrl or Cmd plus wheel (and a trackpad pinch) zooms, so the page keeps scrolling; buttons and `+` `-`
+do the same; point radius and county labels keep their screen size at every zoom; an unzoomed map lets a finger scroll the page
+and a zoomed one takes the drag. Checked in a browser: 36 dots and 57 diamonds, layer toggles, picking, close, deep links
+(good, unknown, with `v=full`), 375 px width without horizontal scroll, light and dark, no console errors.
+
+## Known limits of the drill pages
+
+- Only live days from the first run with `--publish-docs` have files; earlier days have the map but no filings.
+- A survey is not tied to the permit of the same well unless both fall on the same day (rare), because the permit that went with a
+  survey was issued weeks or months earlier. A `drills.json` index keyed by API would fix that; not built.
+- The released files are the RRC's, including mistakes and scans of poor quality.
 
 ## Layouts
 

@@ -18,6 +18,9 @@ Inputs are public RRC files, only parsed, never executed (run with `python3 -I`)
   images       W-1 images, directional surveys, completion images: the share listing is read (names, sizes). With --packs the
                live day's three packs are also opened (d7_packs.py): documents counted by kind, and a contact sheet of
                first pages shrunk and blurred so nothing reads (img/<day>-<pack>.jpg), because the filings carry names this site leaves out.
+               With --publish-docs the W-1 letters, plats and directional surveys are also published READABLE as the files of one
+               GitHub release a day and linked from each drill's page (d7_packs.stage_pack, d7_release.py; NOTES_D7, README Privacy).
+  gps          every permit's surface point, from the RRC public map service by API number (d7_locate.py).
 
 One rule for every report, live, rebuilt or repaired: a day shows what landed on each share that day, judged by the
 file's Last Modified time (the share prints Central time). Completions and the three image packs: the dated zip that was
@@ -35,7 +38,8 @@ have no history, so a rebuilt day has no catalog check. Each dataset is independ
 the rest still run; an existing day file is replaced only by a run that captured something.
 
 Privacy: operators are named only when they are corporations, LLCs or limited partnerships (the list in
-operators.json). Lease names, well numbers and everything about individuals are left out.
+operators.json). Lease names, well numbers and everything about individuals are left out of what this script writes. The one exception
+is the scanned filings published with --publish-docs, which are the RRC's own and unredacted (README, Privacy).
 """
 import argparse
 import collections
@@ -45,6 +49,7 @@ import html.parser
 import json
 import os
 import re
+import shutil
 import statistics
 import sys
 import time
@@ -58,6 +63,8 @@ ROOT = os.path.dirname(SITE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path; rrc_share.py sits next to this file
 from rrc_share import Session, Share, ShareError, TooSlow  # noqa: E402
 import d7_packs  # noqa: E402
+import d7_locate  # noqa: E402
+import d7_release  # noqa: E402
 
 DATA_PAGE = "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/"
 UA = "Mozilla/5.0 (research script)"
@@ -65,7 +72,7 @@ KEEP_DAYS = 92
 PACK_SECONDS = 480  # a pack download gets this long (and 3 tries): the nightly capture waits for every dataset, so a stall must not hold it up
 EOM_GUID = "f5dfea9c-bb39-4a5e-a44e-fb522e088cba"  # Drilling Permit Master and Trailer, End of Month files
 DEFAULT_OUT = os.path.join(SITE, "public", "data", "daily")
-BUDGET_BYTES = {"index.json": 40_000, "permits-series.json": 20_000, "day": 60_000, "sheet": 150_000}
+BUDGET_BYTES = {"index.json": 40_000, "permits-series.json": 20_000, "day": 100_000, "sheet": 150_000}  # a day with GPS points, links and 300 surveys can pass 60 KB
 
 # the six datasets the RRC page lists as nightly or twice daily (matched by description, GUID read from the page)
 DATASETS = [
@@ -193,6 +200,7 @@ class Lookups:
         ops = read_json(os.path.join(data, "operators.json"), {"rows": []})
         self.operator = {r[1]: r[2] for r in ops["rows"]}
         self.meta = read_json(os.path.join(data, "meta.json"), {})
+        self.locator = d7_locate.Locator(log)  # API number -> point, from the RRC public map service (d7_locate.py)
 
     def county_name(self, fips):
         return self.county.get(fips) or ("Offshore" if fips and fips not in VALID_FIPS else "Unknown")
@@ -292,15 +300,18 @@ def read_daf(path):
                 if issued is None:
                     continue
                 td = L[54:59]
+                api = L[502:510]  # 8-digit API number: the county code and the well's unique number (checked against the county column)
                 p = out[num] = {"n": num, "county": L[11:14], "district": DISTRICT.get(L[46:48], L[46:48]), "depth": int(td) if td.isdigit() else 0,
                                 "op": L[59:65], "type": L[65:67], "received": pdate(L[121:129]), "issued": issued,
-                                "horizontal": L[493] == "Y", "directional": L[481] == "Y", "amended": set(), "located": False}
+                                "horizontal": L[493] == "Y", "directional": L[481] == "Y", "amended": set(), "located": False, "xy": None,
+                                "api": api if api.isdigit() and api[:3] == L[11:14] else None}
             if amended:
                 p["amended"].add(amended)
         elif kind == b"14" and cur in out:
             m = RX14.match(rec)
             if m and LON_MIN <= float(m.group(1)) <= LON_MAX and LAT_MIN <= float(m.group(2)) <= LAT_MAX:
                 out[cur]["located"] = True
+                out[cur]["xy"] = (round(float(m.group(2)), 5), round(float(m.group(1)), 5))  # (lat, lon): the record is "longitude latitude"
     return out
 
 
@@ -340,11 +351,14 @@ def permits_section(perms, day, lk):
     ops = collections.Counter(p["op"] for p in new)
     cnt = collections.Counter(p["county"] for p in new)
     rows = sorted(new, key=lambda p: (-ops[p["op"]], p["op"], p["n"]))[:200]
+    # surface points: the RRC public map service first (nearly every permit has one), the permit file's own record 14 otherwise
+    found = lk.locator.locate([p["api"] for p in new])
+    xy = {p["n"]: found.get(p["api"]) or p["xy"] for p in new}
     return {
         "day": day.isoformat(), "total": len(issued), "newDrill": len(new),
         "types": top(collections.Counter(p["type"] for p in issued), 8),
         "horizontal": sum(p["horizontal"] for p in new), "directional": sum(p["directional"] and not p["horizontal"] for p in new),
-        "located": sum(p["located"] for p in new),
+        "located": sum(1 for p in new if xy[p["n"]]),
         "depth": {"median": int(statistics.median(depths)), "max": max(depths), "mean": int(sum(depths) / len(depths))} if depths else None,
         "wait": {"median": statistics.median(wait), "max": wait[-1]} if wait else None,
         "amended": sum(1 for p in perms.values() if day in p["amended"] and p["issued"] != day),
@@ -352,7 +366,8 @@ def permits_section(perms, day, lk):
         "districts": top(collections.Counter(p["district"] for p in new), 14),
         "operators": [lk.op(k) + [n] for k, n in top(ops, 12)], "operatorCount": len(ops),
         "namedShare": round(sum(n for k, n in ops.items() if k in lk.operator) / len(new), 3) if new else None,
-        "rows": [[p["n"], p["county"], p["district"], p["op"], lk.operator.get(p["op"]), p["depth"], kind_of(p)] for p in rows],
+        # [permit, county, district, operator #, operator name, planned depth, H/D/V, API number, latitude, longitude]; the last three are null when unknown
+        "rows": [[p["n"], p["county"], p["district"], p["op"], lk.operator.get(p["op"]), p["depth"], kind_of(p), p["api"], *(xy[p["n"]] or (None, None))] for p in rows],
     }
 
 
@@ -625,22 +640,35 @@ def images_job(ctx, ds):
             picked[day] = {"name": days[use]["name"], "modified": days[use]["modified"], "bytes": days[use]["bytes"]}
     out = {"days": dict(days), "picked": picked, "files": sh.total, "retries": sess.retries}
     if ctx.get("packs") and ctx["R"] in picked:  # only the live day: a pack is 30-450 MB, and rebuilt days would mean 92 of them
-        out["docs"] = {ctx["R"]: pack_preview(sh, ctx, ds, picked[ctx["R"]]["name"])}
+        preview, staged = pack_preview(sh, ctx, ds, picked[ctx["R"]]["name"])
+        out["docs"] = {ctx["R"]: preview}
+        out["staged"] = staged  # the readable documents copied out for the release (--publish-docs), kept apart from what the report shows
     return out
 
 
 def pack_preview(sh, ctx, ds, name):
-    """Download the pack that landed on the live day, count its documents and draw its contact sheet (d7_packs). Returns
-    {'docs': ..., 'sheet': ...} or None when it cannot be done: a pack that cannot be read never costs the dataset."""
-    path = None
+    """Download the pack that landed on the live day, count its documents and draw its contact sheet (d7_packs); with
+    ctx['stage'] set (--publish-docs) also copy the W-1 or survey documents out. Returns (preview, staged): the preview is
+    {'docs': ..., 'sheet': ...} and the staged part is {'permits': ...} or {'surveys': ...}; either is None when it cannot be
+    done. A pack that cannot be read never costs the dataset."""
+    path, preview, staged = None, None, None
     sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, time.time() + PACK_SECONDS
     try:
         path = sh.download(name, os.path.join(ctx["dl"], "pack-%s-%s" % (ds, ctx["R"].isoformat())))
-        docs, sheet = d7_packs.inspect_pack(path, ds, os.path.join(ctx["img_out"], "%s-%s.jpg" % (ctx["R"].isoformat(), ds)), log)
-        return dict({"docs": docs}, **({"sheet": sheet} if sheet else {}))
-    except Exception as e:  # noqa: BLE001 - a bad zip, a failed or too slow download, a full disk
+        try:
+            docs, sheet = d7_packs.inspect_pack(path, ds, os.path.join(ctx["img_out"], "%s-%s.jpg" % (ctx["R"].isoformat(), ds)), log)
+            preview = dict({"docs": docs}, **({"sheet": sheet} if sheet else {}))
+        except Exception as e:  # noqa: BLE001 - a bad zip, a full disk
+            log("%-12s pack preview SKIPPED (%s)" % (ds, e))
+        if ctx.get("stage"):
+            try:
+                staged = d7_packs.stage_pack(path, ds, ctx["stage"], log)
+            except Exception as e:  # noqa: BLE001
+                log("%-12s staging the documents SKIPPED (%s)" % (ds, e))
+        return preview, staged
+    except Exception as e:  # noqa: BLE001 - a failed or too slow download
         log("%-12s pack preview SKIPPED (%s)" % (ds, e))
-        return None
+        return preview, staged
     finally:
         sh.s.deadline = None
         for f in glob.glob(os.path.join(ctx["dl"], "pack-%s-%s" % (ds, ctx["R"].isoformat()), "*")):
@@ -654,6 +682,43 @@ def image_section(days, use):
     row = days[use]
     return {"day": use.isoformat(), "bytes": row["bytes"], "modified": row["modified"], "empty": row["bytes"] < 2048,
             "districts": sorted(([k, v] for k, v in row["districts"].items() if v > 2048), key=lambda kv: -kv[1])}
+
+
+def attach_documents(ctx, jobs, rep, repo, log=log):
+    """Link the live report to the filings of its day. The W-1 letters and plats of the day's new-drill permits and every directional
+    survey the day's pack held are published as files of one GitHub release first (d7_release); the report gets links only for
+    files the release was confirmed to hold, so a failed upload leaves a report with no links and never dead ones.
+    Adds, in place: permits.rows[i][10] (the suffixes of that permit's files: <permit>_<suffix>), `surveys` and `release`.
+    Returns the release tag, or None when nothing was published."""
+    w1 = (jobs.get("w1images") or {}).get("staged") if isinstance(jobs.get("w1images"), dict) else None
+    sv = (jobs.get("dirsurveys") or {}).get("staged") if isinstance(jobs.get("dirsurveys"), dict) else None
+    rows = (rep.get("permits") or {}).get("rows") or []
+    by_permit = {r[0]: w1["permits"][r[0]] for r in rows if w1 and r[0] in w1["permits"]}
+    surveys = ((sv or {}).get("surveys") or [])[:300]  # the report lists at most 300
+    sizes = {"%s_%s" % (n, suffix): size for n, docs in by_permit.items() for suffix, size in docs}
+    sizes.update({"dir_survey_%s.pdf" % r[8]: r[9] for r in surveys})
+    names = sorted(sizes)
+    if not names:
+        log("documents: nothing staged for %s, so no links" % ctx["R"])
+        return None
+    why = d7_release.ready() or (None if repo else "no repository name")
+    if why:
+        log("documents: %d files staged but NOT published (%s), so no links" % (len(names), why))
+        return None
+    try:
+        tag = d7_release.publish(repo, ctx["R"], ctx["stage"], names, log)
+    except d7_release.ReleaseError as e:
+        log("documents: publishing SKIPPED (%s), so no links" % e)
+        return None
+    for r in rows:
+        if r[0] in by_permit:
+            r.append([s for s, _ in by_permit[r[0]]])
+    if surveys:
+        pts = ctx["lk"].locator.locate([r[0] for r in surveys])
+        rep["surveys"] = {"day": ((rep.get("images") or {}).get("dirsurveys") or {}).get("day"), "n": len(surveys),
+                          "rows": [r[:9] + list(pts.get(r[0]) or (None, None)) for r in surveys]}
+    rep["release"] = {"repo": repo, "tag": tag, "files": len(names), "bytes": sum(sizes.values()), "permits": len(by_permit), "surveys": len(surveys)}
+    return tag
 
 
 # ------------------------------------------------------------------------------------------------ monthly watch
@@ -803,6 +868,20 @@ def validate(out_dir, keep=KEEP_DAYS):
             check(0 <= p["horizontal"] <= p["newDrill"] <= p["total"], "%s: permit counts do not nest" % f)
             check(len(p["rows"]) == min(p["newDrill"], 200), "%s: permit rows do not match the new-drill count" % f)
             check(p["day"] < f[:-5], "%s: permits are not from before the report day" % f)
+            for r in p["rows"]:
+                if len(r) == 7:  # a day captured before GPS points and links existed
+                    continue
+                check(len(r) >= 10 and (r[8] is None) == (r[9] is None) and (r[8] is None or d7_locate.valid_point(r[8], r[9])), "%s: permit %s has a bad GPS point" % (f, r[0]))
+                check(len(r) >= 10 and (r[7] is None or re.fullmatch(r"\d{8}", r[7])), "%s: permit %s has a bad API number" % (f, r[0]))
+                check(len(r) < 11 or (isinstance(r[10], list) and r[10] and all(isinstance(s, str) and re.fullmatch(r"[\w.-]+", s) for s in r[10])), "%s: permit %s has bad document names" % (f, r[0]))
+        rel, sv = rep.get("release"), rep.get("surveys")
+        linked = sum(len(r[10]) for r in (p or {}).get("rows", []) if len(r) >= 11 and isinstance(r[10], list))
+        check(not linked or rel, "%s: permits link to documents but the report has no release" % f)
+        if rel:
+            check(re.fullmatch(r"[\w.-]+/[\w.-]+", str(rel.get("repo"))) and rel.get("tag") == "daily-" + f[:-5], "%s: the release block does not name this day's release" % f)
+            check(rel.get("files") == linked + len((sv or {}).get("rows", [])), "%s: the release file count does not match the links" % f)
+        if sv:
+            check(sv["n"] == len(sv["rows"]) and all(len(r) == 11 and re.fullmatch(r"\d+", str(r[8])) and (r[9] is None) == (r[10] is None) for r in sv["rows"]), "%s: survey rows are malformed" % f)
         if q:
             check(q["total"] == sum(x["n"] for x in q["sets"]), "%s: pending total is not the sum of its sets" % f)
         if c:
@@ -851,7 +930,13 @@ def main():
                     "pdftoppm): count the documents by kind and draw a contact sheet of first pages, shrunk and blurred so nothing reads")
     ap.add_argument("--skip-if-captured", action="store_true", help="do nothing when the report day was already captured live, "
                     "reading every dataset, at or after 03:00 UTC the next day (for a backup schedule)")
+    ap.add_argument("--publish-docs", action="store_true", help="also publish the live day's W-1 letters, plats and directional surveys, "
+                    "READABLE and unmodified, as the files of one GitHub release, and link each drill's page to its own (implies --packs; "
+                    "needs the gh CLI and GH_TOKEN; the README's privacy section explains why this is an explicit choice)")
+    ap.add_argument("--repo", help="owner/name of the repository whose release gets the files (default: GITHUB_REPOSITORY, else the origin remote)")
     a = ap.parse_args()
+    if a.publish_docs:
+        a.packs = True
     if a.check:
         problems = validate(a.out, a.keep)
         for pr in problems:
@@ -896,7 +981,10 @@ def main():
     for u in unknown:
         log("catalog: the RRC page lists a nightly dataset this script does not read: %s" % u)
 
-    ctx = {"R": R, "today": today, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img")}
+    stage = os.path.join(a.dl, "release", d7_release.tag_for(R)) if a.publish_docs else None
+    if stage:
+        shutil.rmtree(stage, ignore_errors=True)  # a leftover from an earlier run of this day must never be uploaded
+    ctx = {"R": R, "today": today, "dates": dates, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img"), "stage": stage}
     work = {"permits": permits_job, "pending": pending_job, "completions": completions_job,
             "w1images": lambda c: images_job(c, "w1images"), "dirsurveys": lambda c: images_job(c, "dirsurveys"),
             "complimages": lambda c: images_job(c, "complimages")}
@@ -932,6 +1020,10 @@ def main():
         if d != R:
             rep["status"] = "ok" if all(not x.get("error") for x in rep["datasets"]) else "partial"
     update_states(live, a.out)
+    released = None
+    if stage:
+        repo = a.repo or d7_release.repo_name()
+        released = attach_documents(ctx, jobs, live, repo)
     if live["status"] == "failed" and os.path.exists(os.path.join(a.out, R.isoformat() + ".json")):
         log("nothing captured; keeping the existing report for %s" % R)
         del reports[R]
@@ -955,6 +1047,11 @@ def main():
         if DAY_FILE.fullmatch(f) and f[:-5] < keep_from.isoformat():
             os.remove(os.path.join(a.out, f))
     prune_images(a.out)
+    if released:  # the releases of days that have left the archive: their pages no longer link to them
+        try:
+            d7_release.prune(live["release"]["repo"], keep_from, log)
+        except d7_release.ReleaseError as e:
+            log("release: pruning old releases SKIPPED (%s)" % e)
     rows = [headline(read_json(os.path.join(a.out, f))) for f in sorted(os.listdir(a.out)) if DAY_FILE.fullmatch(f)]
     write_json(os.path.join(a.out, "index.json"), {"generated": live["capturedAt"], "keep": a.keep, "days": rows})
     log("report %s: %s | %d of %d datasets | %d day files | %d connection resets absorbed" % (R, live["status"], got, len(DATASETS), len(rows), retries))
