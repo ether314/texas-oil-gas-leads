@@ -2,7 +2,7 @@
 
 Scripts: `site/pipeline/d7_daily.py`, its share client `site/pipeline/rrc_share.py` and `site/pipeline/d7_packs.py`, which opens the image
 packs (standard library; Pillow and `pdftoppm` only to draw the contact sheets). Run with `python3 -I`.
-About 20 s for one day; rebuilding all 92 days took 88 s (2026-10-31). Page: `#daily` (`js/daily.js`, `js/daily-viz.js`).
+About 20 s for one day; rebuilding all 92 days took 88 s (2026-10-31). Page: `#daily` (`js/daily.js`, which since 2026-10-31 shows Texas and Oklahoma as one report, `js/daily-tx.js` for the sections only Texas has, `js/daily-viz.js`).
 
 Files in `site/public/data/daily/`: `YYYY-MM-DD.json` (3-13 KB each, 92 kept), `index.json` (one row per day, 13 KB),
 `permits-series.json` (permits issued per calendar day, 2 KB), and with `--packs` `img/<day>-<pack>.jpg` (contact sheets, 22-29 KB).

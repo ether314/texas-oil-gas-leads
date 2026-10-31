@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""D8 context: Oklahoma's monthly figures for the card under the map on the Oklahoma daily report page.
+"""D8 context: Oklahoma's monthly figures, for the monthly figures card on the Daily report.
 
 Reads one EIA series, Oklahoma field production of crude oil (MCRFPOK1, thousand barrels a month), by the same fetch and the same
 page parser the Texas market series use (d3_markets_infra.py), and writes site/public/data/series-ok.json. The two prices on the card

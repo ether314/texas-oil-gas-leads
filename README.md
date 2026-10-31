@@ -11,14 +11,19 @@ JavaScript modules, no build step, no external requests) plus the Python scripts
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
   basin outlines and a time-lapse of permits.
 - **Operators** and **Companies**: sortable, filterable tables with CSV export of the public fields.
-- **Daily report**: what the Railroad Commission's nightly files held, one report a day for the last 92 days. A simple version
-  for the daily look, and a verbose one with permits, the pending queue, completions, image packs (sizes, and for days captured live a count of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and source health.
-  A **GPS map** plots each day's new-drill permits and directional surveys, and every point opens a **page with its own URL**
-  (`#daily?d=DAY&drill=PERMIT`) holding the well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and
-  survey, which the nightly job stores as the files of one GitHub release a day.
-- **Oklahoma daily report**: the same two versions and 92-day archive for the Oklahoma Corporation Commission's daily files: intents to
-  drill, completion filings, wells that changed operator and, for days captured live, the state's well inventory, with a county map,
-  counts by kind, depth and operator, and source health.
+- **Daily report**: what the Railroad Commission of Texas and the Oklahoma Corporation Commission published overnight, the two states as
+  one dataset, one report a day for the last 92 days. A simple version for the daily look, and a verbose one. The permits and
+  completions of both states are added into one set of figures, one pace chart (the bars stacked by state), one county map, one
+  3-month ribbon and calendar and one plain-English summary, and also shown side by side by state wherever the two files measure
+  different things (Texas knows which wells are horizontal, Oklahoma only the planned depth). **Show** narrows the whole report to one
+  state (`#daily?st=tx` or `st=ok`); an old `#oklahoma` link opens it that way. A day one state has no report for says so and is left out
+  of every total, never counted as zero. Texas alone adds the pending queue, the image packs (sizes, and for days captured live a count
+  of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and a **GPS map** of each day's
+  new-drill permits and directional surveys; every point opens a **page with its own URL** (`#daily?d=DAY&drill=PERMIT`) holding the
+  well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and survey, which the nightly job stores as the
+  files of one GitHub release a day. Oklahoma alone adds the wells that changed operator and, for days captured live, the state's well
+  inventory. The monthly figures card shows crude production for the states shown beside the WTI and Henry Hub prices. Source health
+  covers every file of both states.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
@@ -27,7 +32,7 @@ outlook, refinery capacity), BLS (QCEW, state employment), Census (county bounda
 centroids), EPA facility data and Baker Hughes rig counts (through Internet Archive copies of its public workbooks).
 Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
 `site/pipeline/NOTES_*.md`. The Daily report reads the six datasets the RRC lists as nightly or twice daily (permits, pending
-applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`. The Oklahoma report reads four files from the
+applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`. Oklahoma's half of the Daily report reads four files from the
 Oklahoma Corporation Commission (intents to drill, completions and well transfers daily; the well inventory nightly), the
 Census outlines of Oklahoma's 77 counties and, for its monthly card, EIA's Oklahoma crude oil production beside the oil and gas
 prices above; see `site/pipeline/NOTES_D8.md`.
@@ -62,7 +67,7 @@ reports, Run workflow) and give the day in the `date` box. The Texas workflow st
 the job publishes only counts and blurred sheets. To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
-The Oklahoma report is built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, in the same
+Oklahoma's reports are built the same way by `site/pipeline/d8_ok_daily.py` into `site/public/data/daily-ok/`, in the same
 workflow run, after the Texas capture. The two captures are isolated from each other: if one fails (the RRC has refused GitHub's
 runners for hours at a time, and the OCC can have outages of its own), that state's changes are dropped before the commit, the other
 state is committed, the site is published, and the run then ends red so the failure shows. To fill its archive from the OCC's master
@@ -81,7 +86,7 @@ the two leading folders), add `.nojekyll`, commit and push.
 - RRC production is complete only through January 2026 because reports lag.
 - The Daily report reads nightly files, but the county, operator and company tables are built from the RRC's monthly files, so the
   two can show permits through different dates. The report's source-health section says when a monthly rebuild is due.
-- The Oklahoma report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
+- Oklahoma's part of the Daily report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
   image packs, planned depth instead of horizontal (the permit file does not say), transfers for about the last month and the well
   inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host) and does
   not rebuild the monthly tables, operator pages or company lists for Oklahoma.

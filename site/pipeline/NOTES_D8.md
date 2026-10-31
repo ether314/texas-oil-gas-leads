@@ -2,8 +2,9 @@
 
 Scripts: `site/pipeline/d8_ok_daily.py` (the producer), `site/pipeline/ok_xlsx.py` (a small .xlsx reader) and
 `site/pipeline/d8_ok_context.py` (one monthly series for the card under the map), all standard library only; run with `python3 -I`. A live capture takes about 10 s (most of it the 121 MB well file); rebuilding all 92 days from the
-master files takes about 2 minutes (2026-10-31). Page: `#oklahoma` (`js/ok-daily.js`, with `js/daily-viz.js` and `js/daily-kit.js`, which the
-Texas report shares). County shapes: `site/public/data/counties-ok.geo.json` (77 counties).
+master files takes about 2 minutes (2026-10-31). Page: the Daily report, `#daily` (`js/daily.js`, which
+merges the two states, with `js/daily-ok.js` for the sections only Oklahoma has, `js/daily-data.js` for the merge rules and `js/daily-viz.js` /
+`js/daily-kit.js`, which both states share); `#oklahoma` redirects to `#daily?st=ok`, the Daily report narrowed to Oklahoma. County shapes: `site/public/data/counties-ok.geo.json` (77 counties).
 
 Files in `site/public/data/daily-ok/`: `YYYY-MM-DD.json` (3-6 KB each, 92 kept) and `index.json` (one row per day, 14 KB). Budgets
 60 / 40 KB, enforced by `--check`. `site/public/data/series-ok.json` (2 KB) holds the monthly series.

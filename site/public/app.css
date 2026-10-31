@@ -41,6 +41,9 @@
   --s2: light-dark(#eb6834, #d95926);
   --s3: light-dark(#1baf7a, #199e70);
   --s7: light-dark(#6250d6, #9085e9);
+  /* the two states in the Daily report: Texas keeps the orange it always had, Oklahoma is the purple slot */
+  --st-tx: var(--s2);
+  --st-ok: var(--s7);
   --up: light-dark(#006300, #0ca30c);
   --down: light-dark(#d03b3b, #e66767);
   /* interaction */
@@ -663,7 +666,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-title { font-size: var(--fs-display); line-height: 1.02; letter-spacing: var(--track-display); font-weight: 740; text-wrap: balance; margin: 0 0 var(--sp-3); }
 .dr-lede { margin: 0 0 var(--sp-4); max-width: 52ch; color: var(--ink-2); font-size: clamp(15px, 1vw + 12px, 18px); }
 .dr-pills { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.dr-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 13px 5px 10px; border-radius: var(--r-pill); border: 1px solid var(--border-2); background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: var(--fs-sm); font-weight: 620; white-space: nowrap; }
+.dr-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 13px 5px 10px; border-radius: var(--r-pill); border: 1px solid var(--border-2); background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: var(--fs-sm); font-weight: 620; white-space: nowrap; max-width: 100%; }
 .dr-pill.quiet { font-weight: 560; color: var(--ink-2); }
 .dr-led { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 3px color-mix(in srgb, var(--muted) 24%, transparent); }
 .dr-pill.good .dr-led { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 22%, transparent); }
@@ -686,11 +689,18 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-ribbon-head small { color: var(--ink-2); font-size: var(--fs-xs); }
 .dr-ribbon-wrap { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--axis) transparent; border-radius: var(--r-sm); }
 .dr-ribbon { display: block; width: 100%; min-width: 760px; height: auto; }
-.dr-rb { fill: color-mix(in srgb, var(--s2) 42%, transparent); cursor: pointer; transition: fill var(--dur-2); }
-.dr-rb.live { fill: color-mix(in srgb, var(--s2) 72%, transparent); }
-.dr-rb.off { fill: color-mix(in srgb, var(--ink) 15%, transparent); }
-.dr-rb:hover { fill: var(--s2); }
-.dr-rb.sel { fill: var(--s2); stroke: var(--ink); stroke-width: 1.6px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--s2) 75%, transparent)); }
+.dr-rb { fill: color-mix(in srgb, var(--st-tx) 42%, transparent); pointer-events: none; transition: fill var(--dur-2); }
+.dr-rb.ok { fill: color-mix(in srgb, var(--st-ok) 42%, transparent); }
+.dr-rbg.live .dr-rb { fill: color-mix(in srgb, var(--st-tx) 72%, transparent); }
+.dr-rbg.live .dr-rb.ok { fill: color-mix(in srgb, var(--st-ok) 72%, transparent); }
+.dr-rbg .dr-rb.off { fill: color-mix(in srgb, var(--ink) 15%, transparent); }
+.dr-rbg.partial .dr-rb { stroke: var(--ink-2); stroke-width: 1px; stroke-dasharray: 2 2; }
+.dr-rbhit { fill: transparent; cursor: pointer; }
+.dr-rbg:hover .dr-rb:not(.off), .dr-rbg.sel .dr-rb:not(.off) { fill: var(--st-tx); }
+.dr-rbg:hover .dr-rb.ok:not(.off), .dr-rbg.sel .dr-rb.ok:not(.off) { fill: var(--st-ok); }
+.dr-rbsel { fill: none; stroke: var(--ink); stroke-width: 1.6px; pointer-events: none; opacity: 0; }
+.dr-rbg.sel .dr-rbsel { opacity: 1; }
+.dr-rbg.sel { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--st-tx) 70%, transparent)); }
 
 .dr-kpis { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
 .dr-ctx { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
@@ -720,15 +730,21 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-bar { transform-box: fill-box; transform-origin: center bottom; animation: dr-rise 0.7s var(--ease) both; animation-delay: calc(var(--i, 0) * 14ms); }
 @keyframes dr-rise { from { transform: scaleY(0); } }
 .dr-bar.rest { fill: color-mix(in srgb, var(--s2) 34%, transparent); }
-.dr-bar.horiz { fill: var(--s2); }
+.dr-bar.horiz, .dr-bar.tx { fill: var(--st-tx); }
+.dr-bar.ok { fill: var(--st-ok); }
+.dr-bar.okrest { fill: color-mix(in srgb, var(--st-ok) 34%, transparent); }
 .dr-barg.on .dr-bar.rest { fill: color-mix(in srgb, var(--s2) 58%, transparent); }
-.dr-barg.on .dr-bar.horiz { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--s2) 75%, transparent)); }
+.dr-barg.on .dr-bar.okrest { fill: color-mix(in srgb, var(--st-ok) 58%, transparent); }
+.dr-barg.on .dr-bar.horiz, .dr-barg.on .dr-bar.tx { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--st-tx) 75%, transparent)); }
+.dr-barg.on .dr-bar.ok { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--st-ok) 75%, transparent)); }
 .dr-hit { fill: transparent; }
 .dr-hit:hover { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
 .dr-legend-inline { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); font-size: var(--fs-sm); color: var(--ink-2); }
 .dr-legend-inline span + i { margin-left: var(--sp-3); }
 .dr-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 3px; }
-.dr-dot.horiz { background: var(--s2); }
+.dr-dot.horiz, .dr-dot.tx { background: var(--st-tx); }
+.dr-dot.ok { background: var(--st-ok); }
+.dr-dot.okrest { background: color-mix(in srgb, var(--st-ok) 34%, transparent); }
 .dr-dot.rest { background: color-mix(in srgb, var(--s2) 34%, transparent); }
 
 .dr-maptools { margin: 0 0 var(--sp-3); }
@@ -741,7 +757,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 @keyframes dr-pop { from { transform: scale(0); opacity: 0; } }
 .dr-pulse { fill: none; stroke: var(--lc); stroke-width: 1.5px; vector-effect: non-scaling-stroke; pointer-events: none; transform-box: fill-box; transform-origin: center; animation: dr-ping 2.6s ease-out infinite; }
 @keyframes dr-ping { from { transform: scale(1); opacity: 0.85; } to { transform: scale(2.8); opacity: 0; } }
-.dr-maplabel { font-size: 15px; font-weight: 700; fill: var(--ink); stroke: var(--surface); stroke-width: 4px; paint-order: stroke; pointer-events: none; }
+.dr-maplabel { font-size: var(--ml, 15px); font-weight: 700; fill: var(--ink); stroke: var(--surface); stroke-width: calc(var(--ml, 15px) * 0.27); paint-order: stroke; pointer-events: none; }
 .dr-maplist-h { margin: var(--sp-3) 0 0; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
 .dr-rank { margin-top: var(--sp-2); }
 .dr-rr { grid-template-columns: minmax(110px, 200px) 1fr; }
@@ -783,6 +799,12 @@ ul.plain li { margin-bottom: var(--sp-2); }
 
 .dr-bullets { display: grid; gap: 2px; margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
 .dr-story .insight p { max-width: 92ch; }
+.dr-strips { display: grid; gap: var(--sp-3); }
+.dr-state-h { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--sp-3); font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.dr-blk + .dr-blk { margin-top: var(--sp-5); }
+.dr-strip-h .dr-dot { align-self: center; }
+.dr-strip-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--sp-3); margin: 0; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.dr-strip-h small { font-size: var(--fs-xs); font-weight: 500; letter-spacing: 0; text-transform: none; }
 .dr-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sp-3); }
 .dr-strip.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .dr-ds { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--elev-1); }
@@ -872,6 +894,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 }
 @media (max-width: 640px) {
   .dr-hero { border-radius: var(--r-xl); }
+  .dr-pill { white-space: normal; } /* a long pill ("Oklahoma: reconstructed from Commission file history") wraps instead of running off the card */
   .dr-radar { width: 230px; height: 230px; right: -60px; top: -60px; }
   .dr-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dr-cols { grid-template-columns: minmax(0, 1fr); }

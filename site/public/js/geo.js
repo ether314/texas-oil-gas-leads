@@ -111,7 +111,7 @@ export function buildGeo(gj) {
     }
     let lx = bx; let ly = by;
     if (!best || !inRing(best, lx, ly)) { lx = (bb[0] + bb[2]) / 2; ly = (bb[1] + bb[3]) / 2; }
-    const c = { f: f.properties.f, n: f.properties.n, i: idx, path, rings, bb, lx, ly };
+    const c = { f: f.properties.f, n: f.properties.n, s: f.properties.s, i: idx, path, rings, bb, lx, ly };
     counties.push(c); byFips.set(c.f, c);
     outline.addPath(path);
   });
