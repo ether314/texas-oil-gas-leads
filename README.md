@@ -6,8 +6,12 @@ build step, no external requests) plus the Python scripts that build its data fi
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
+- **States**: a bar above the Overview and the Daily report chooses what is shown: all the states (Texas and Oklahoma now), or one. The choice
+  is kept in the address (`st=ok`; nothing means all) and follows you between those views. A view says so when one state cannot give a figure
+  (Oklahoma has no company pool, rig counts, jobs, taxes or production by county here).
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
-  top producers, basin cards and plain-English talking points.
+  top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
+  operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple).
 - **Map**: county shading (permits, oil and gas production and change, well depth, oil and gas jobs and wages,
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
   basin outlines and a time-lapse of permits.
@@ -98,8 +102,9 @@ minutes without touching the Railroad Commission or the OCC, and the nightly cap
   two can show permits through different dates. The report's source-health section says when a monthly rebuild is due.
 - Oklahoma's part of the Daily report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
   image packs, planned depth instead of horizontal (the permit file does not say), transfers for about the last month and the well
-  inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host) and does
-  not rebuild the monthly tables, operator pages or company lists for Oklahoma.
+  inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host), no company
+  list and no production by county. Its permit history (series, counties, operators, permit points) is in the Overview; the Map and the
+  Operators page follow.
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 
 Not affiliated with any agency. Public records can be wrong or stale: verify before any outreach. No license has been

@@ -1,6 +1,6 @@
 # Runs the repository's tests on every pull request and on every push to main: the Python tests (pipeline rules, workflow steps,
-# data validators, privacy checks) and the browser smoke test (every JS module imports, every view loads clean, no sideways scroll on a
-# phone). Nothing here touches the Railroad Commission or the OCC: the tests use synthetic data and the committed files.
+# data validators, privacy checks), the JavaScript data tests (which states are shown, what the Overview merges from them) and the browser smoke
+# test (every JS module imports, every view loads clean, no sideways scroll on a phone, the states bar). Nothing here touches the Railroad Commission or the OCC: the tests use synthetic data and the committed files.
 name: CI
 
 on:
@@ -51,6 +51,9 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.63.0
           npx playwright install --with-deps chromium
+
+      - name: JavaScript data tests
+        run: node tests/test_js_data.mjs
 
       - name: Browser smoke test
         run: node tests/smoke.cjs

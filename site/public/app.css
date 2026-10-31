@@ -41,9 +41,10 @@
   --s2: light-dark(#eb6834, #d95926);
   --s3: light-dark(#1baf7a, #199e70);
   --s7: light-dark(#6250d6, #9085e9);
-  /* the two states in the Daily report: Texas keeps the orange it always had, Oklahoma is the purple slot */
+  /* the states: Texas keeps the orange it always had, Oklahoma is the purple slot, New Mexico the green one */
   --st-tx: var(--s2);
   --st-ok: var(--s7);
+  --st-nm: var(--s3);
   --up: light-dark(#006300, #0ca30c);
   --down: light-dark(#d03b3b, #e66767);
   /* interaction */
@@ -98,6 +99,14 @@ em { font-style: normal; font-weight: 600; }
 h1[tabindex="-1"]:focus-visible { outline: none; }
 ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
 .ico { flex: none; display: inline-block; vertical-align: -0.2em; }
+#view-overview[data-states="OK"] .live-dot { background: var(--st-ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-ok) 55%, transparent); }
+#view-overview[data-states="NM"] .live-dot { background: var(--st-nm); box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-nm) 55%, transparent); }
+/* the states shown: one choice above every view that follows it */
+.statebar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-4) 0; }
+.statebar[hidden] { display: none; }
+.statebar-label { font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.statebar-note { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+.statebar-note:empty { display: none; }
 .view-head { padding-block: var(--sp-7) var(--sp-2); }
 .view-head.compact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; padding-block: var(--sp-5) 0; }
 .view-head.compact .lede { margin: 0; font-size: var(--fs-md); flex: 1 1 360px; }
@@ -335,9 +344,14 @@ svg .hbar.on { filter: brightness(1.15); }
 
 /* bars */
 .bars { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 2px; }
-#hot-bars, #top-ops { --bar: var(--s2); }
+#hot-bars, #top-ops { --bar: var(--st-tx); }
 #seg-bars { --bar: var(--s1); }
 .bars li { margin: 0; }
+/* Oklahoma's rows take its color wherever a list holds them, and a list of both states says which is which */
+.bars li.st-ok { --bar: var(--st-ok); }
+.bars li.st-nm { --bar: var(--st-nm); }
+.bars li.bars-h { margin-top: var(--sp-3); padding: 0 6px; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--bar, var(--ink-2)); }
+.bars li.bars-h:first-child { margin-top: 0; }
 .bar-row { display: grid; grid-template-columns: minmax(110px, 220px) 1fr; align-items: center; gap: var(--sp-3); min-height: 34px; padding: 3px 6px; border-radius: var(--r-sm); color: inherit; text-decoration: none; transition: background var(--dur-1); }
 .bar-row:hover, .bar-row:focus-visible { background: color-mix(in srgb, var(--bar, var(--s1)) 10%, transparent); }
 .bar-label { font-size: var(--fs-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

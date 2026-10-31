@@ -5,15 +5,11 @@
 // County FIPS codes repeat across the two states and so do 8 county names, so every county key carries its state (ck).
 import { addDays, isWeekend } from './daily-dates.js';
 
-export const STATES = [
-  { id: 'TX', name: 'Texas', dir: 'daily', agency: 'Railroad Commission' },
-  { id: 'OK', name: 'Oklahoma', dir: 'daily-ok', agency: 'Oklahoma Corporation Commission' },
-];
-export const stateOf = (id) => STATES.find((s) => s.id === id);
-// ?st=tx or ?st=ok narrows the report to one state; anything else is both
-export const parseStates = (v) => { const s = String(v || '').toUpperCase(); return s === 'TX' || s === 'OK' ? [s] : STATES.map((x) => x.id); };
-export const stateParam = (active) => (active.length === STATES.length ? null : active[0].toLowerCase());
-export const ck = (id, fips) => id + ':' + fips; // county key
+import { STATES } from './states.js';
+
+// the states, and which one the address names, are shared with every other view (states.js)
+export { STATES, stateOf, parseStates, stateParam } from './states.js';
+export const ck = (id, fips) => id + ':' + fips; // county key (the Daily report keys both states, Texas too)
 
 const ZERO = Object.freeze({ n: 0, total: 0, h: 0 });
 

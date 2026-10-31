@@ -4,7 +4,8 @@ Everything here runs without network access, on synthetic data and the committed
 
 ```
 python3 -I tests/run_all.py            # every Python test, one process each (add a name fragment to run some: ... run_all.py d8)
-node tests/smoke.cjs                   # browser smoke test: every JS module imports, every view loads clean, no sideways scroll on a phone
+node tests/test_js_data.mjs            # the pure JavaScript data code: which states are shown, what the Overview merges, the permit points merge
+node tests/smoke.cjs                   # browser smoke test: every JS module imports, every view loads clean, no sideways scroll on a phone, the states bar
 ```
 
 - `test_d7_*.py`: the Texas Daily report producer (`d7_daily.py`, `d7_packs.py`, `rrc_share.py`): the one rule (a report shows what landed
@@ -20,8 +21,12 @@ node tests/smoke.cjs                   # browser smoke test: every JS module imp
   and `.github/scripts/publish_pages.sh`, which the nightly capture shares: run against a throwaway clone with a local bare `origin` that has
   a gh-pages branch (publishes exactly the site, never rewrites history, says so when current, refuses an incomplete copy, retries a refused
   push and gives up after four; needs git and PyYAML).
+- `test_js_data.mjs`: `states.js` (parsing and keeping the choice, county and point keys), `overview-data.js` (the permit series, county counts,
+  operators and permit points of the states shown, merged; a state with no file is left out, never counted as zero) and, on the committed
+  files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
-  preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs both on every pull request and push to `main`.
+  preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs them all on every pull request and push to `main`.
+  It also drives the states bar: choosing a state changes the Overview and the address, the Daily report follows, and a view that does not follow it hides the bar.
 
 Optional: `OK_REAL_FILES=<folder holding the OCC daily .xlsx files and rbdms-wells.csv>` adds two checks against the real files (the two
 workbook readers agree; no operator the naming rule refuses appears in the archive); with the master `ITD-wells-formations-base.xlsx` and

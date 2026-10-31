@@ -87,9 +87,11 @@ The **Oil tracker**: a static dashboard of oil and gas drilling activity, produc
 for Texas and Oklahoma, built only from public records (README has the full description and the known limits).
 
 - `site/public/`: the site (`index.html`, `app.css`, `js/*.js` modules, `data/*.json`). `main.js` is the hash router
-  (`#overview`, `#map`, `#operators`, `#companies`, `#daily`, `#about`); `daily*.js` are the Daily report (Texas and Oklahoma together,
-  `st=tx|ok` narrows it); `geo.js` holds the projection (module state, Texas-fitted: `buildGeoIsolated` builds a second state);
-  `util.js` has `el()`/`svg()`/`load()`.
+  (`#overview`, `#map`, `#operators`, `#companies`, `#daily`, `#about`) and owns the states bar; `states.js` lists the states (a new state is
+  one entry there plus its data files) and keeps the choice (`st=ok` or a list in the address, none is all); `overview-view.js` draws the Overview
+  for the states shown from `overview-data.js` (pure merging, tested under Node); `daily*.js` are the Daily report; `geo.js` holds the
+  projection (module state, Texas-fitted; each set of shapes carries its own `G.toWorld`, `buildGeoIsolated` builds the others) and the
+  shapes and permit points for any set of states; `util.js` has `el()`/`svg()`/`load()`. County keys: Texas plain (`001`), others `OK:001`.
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`
   the monthly EIA series) plus `ok_xlsx.py`. Each has a `NOTES_*.md`: read it before changing it.
@@ -122,8 +124,8 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 
 ## Backlog (living; edit it in the PR that changes it)
 
-1. One state switch (Both, Texas, Oklahoma) across the whole site. (The rebrand to Oil tracker is done: name, titles, header, hero.
-   Views still describe themselves as Texas where they are Texas only; each loses that wording when Oklahoma reaches it.)
+1. One state choice across the whole site. Done: the bar, the Overview and the Daily report. To do: Map, Operators, Companies, Sources. Views still
+   describe themselves as Texas where they are Texas only; each loses that wording when the other states reach it.
 2. Oklahoma in the Overview, Map, Operators and Sources. Data done: `d8_ok_monthly.py` writes the permit series, county counts, operators and
    permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
    Daily report's inventory), refreshing the monthly files in the nightly workflow. Not available yet: Oklahoma jobs (BLS), rig counts
@@ -135,5 +137,7 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: Oklahoma Daily report, unified Daily report, GPS map and drill pages, nightly workflow made outage-proof (PR #12).
 - 2026-10-31: CLAUDE.md, tests and CI (PR #13, #14); Oklahoma gap fill from the master files (PR #15); site renamed Oil tracker (PR #16).
 - 2026-10-31: Oklahoma permit history files (`d8_ok_monthly.py`). Privacy fix found while reading the operator list: two reports had named two
-  sole proprietors ("... DBA ..."); the rule now refuses a dba and the two days were rebuilt. The live site shows the old names until it is published.
+  sole proprietors ("... DBA ..."); the rule now refuses a dba and the two days were rebuilt (live within the hour of PR #18).
 - 2026-10-31: `publish.yml`: a green merge to `main` is published to `gh-pages` without a capture run (first use: the privacy fix above).
+- 2026-10-31: the states bar (All, Texas, Oklahoma) and Oklahoma in the Overview (`states.js`, `overview-data.js`, `overview-view.js`); the owner then asked
+  for New Mexico in every view too, so the state layer is built for any number of states (a new state is an entry in `states.js` plus its files).
