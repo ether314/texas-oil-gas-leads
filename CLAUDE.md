@@ -50,14 +50,14 @@ One sentence.
   (Playwright's Chromium is installed here: `require('playwright')` works). Every JS module must import, every view must load with no
   console error or failed request, and look at a screenshot of what you changed on a desktop and a phone width (390 px).
   **`node --check` does not catch syntax errors in ES modules** (one that did break the whole site slipped through on 2026-10-31):
-  use the browser. A color or token change also needs `node tests/a11y.cjs` (text contrast in both themes, keyboard focus): a state's own color is
+  use the browser. A color, token or layout change also needs `node tests/a11y.cjs` (text contrast in both themes, keyboard focus, nothing cut off at 360 px): a state's own color is
   under 4.5:1 as text, so it colors dots, bars and lines and never words.
 - **Any `site/pipeline` change:** `python3 -I tests/run_all.py` (add a name fragment such as `d8` to run some), the producer's `--check`;
   a producer change that alters data needs the data regenerated and validated, and the page checked.
 - **Any `.github/workflows` change:** extract the `run:` scripts and execute them against a throwaway clone with a local bare repo as
   `origin`; evaluate the `if:` conditions; remember a bad workflow breaks the nightly capture and publish while nobody is watching.
 - **Always:** `node tests/smoke.cjs` (browser: every module imports, every view loads clean at desktop and phone width),
-  `node tests/a11y.cjs` (browser: contrast and keyboard) and `python3 -I tests/run_all.py` must pass locally, and CI (`.github/workflows/ci.yml`, the same commands) must be green on the PR
+  `node tests/a11y.cjs` (browser: contrast, keyboard, nothing cut off at 360 px) and `python3 -I tests/run_all.py` must pass locally, and CI (`.github/workflows/ci.yml`, the same commands) must be green on the PR
   before you merge it. `tests/README.md` says what each test covers; a change to behavior comes with a test.
 
 ## Guardrails that stay in force
@@ -135,8 +135,8 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
    permit points (`*-ok.json`); EIA crude is in `series-ok.json`. To do: the pages that read them, active wells by county and operator (from the
    Daily report's inventory), refreshing the monthly files in the nightly workflow. Not available yet: Oklahoma jobs (BLS), rig counts
    (Baker Hughes), production by county, companies (no public bulk source like the Texas Comptroller's).
-3. Visual polish and simplification pass; phone layouts. Done: contrast and keyboard checks (`tests/a11y.cjs`, in CI), the tabs' edge fade on a phone, Operators and Companies tidied.
-   To do: more phone passes on the Map and the Daily report's long cards; look at every view again in dark mode after any color change.
+3. Visual polish and simplification pass; phone layouts. Done: contrast, keyboard and phone-reflow checks (`tests/a11y.cjs`, in CI), the tabs' edge fade on a phone, Operators and Companies tidied, the Daily report's first screen and cards on a phone.
+   To do: more phone passes on the Map and the Daily report's long cards (its first screen is done); look at every view again in dark mode after any color change.
 
 ### Run log
 
@@ -159,3 +159,5 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
 - 2026-10-31: accessibility: `tests/a11y.cjs` (text contrast in both themes at both widths, keyboard focus, titles; in CI) found and fixed the primary button's white text (3.5 to 4.6:1),
   a state's own color used as words in the Overview's lists (now ink with a colored dot), the grey "Publishes monthly" tags, the light theme's red for falls and the search placeholders;
   the tabs fade at the edge that has more on a phone; the Companies note under the heading is a quiet line; an operator's Map chip stays with its name.
+- 2026-10-31: the Daily report on a phone: one pill per state (the time its files were read is inside it), sparklines and notes that fit a half-width card (a note was cut off, a sparkline ran past the card), and a card never left alone in half a row.
+- 2026-10-31: the Operators CSV no longer turns a negative number into text (a fall of -14.4 had a spreadsheet guard's apostrophe), and `a11y.cjs` gained a reflow check at 360 px that found the Daily cards' clipped notes.

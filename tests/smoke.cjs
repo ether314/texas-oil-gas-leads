@@ -307,6 +307,68 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 7. the Daily report on a phone with the three states: one pill each, cards that hold their text and sparkline, no card alone in half a row
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dr-kpis .dr-kpi', { timeout: 25000 });
+      const pills = await page.locator('#daily-root .dr-pills .dr-pill').count();
+      check(pills === 3 && (await page.locator('#daily-root .dr-pills .dr-pill.quiet').count()) === 0, 'the three states are three pills (the time each was read is inside it), not six: ' + pills);
+      const out = await page.evaluate(() => [...document.querySelectorAll('#daily-root .dr-kpi')].flatMap((c) => {
+        const r = c.getBoundingClientRect();
+        return [...c.querySelectorAll('.dr-kpi-note, .dr-kpi-extra, .dr-kpi-spark svg')].filter((k) => k.getBoundingClientRect().right > r.right - 17).map((k) => (k.className.baseVal !== undefined ? k.className.baseVal : k.className) + ' of ' + c.querySelector('.dr-kpi-top').textContent.trim().slice(0, 24));
+      }));
+      check(!out.length, 'every card on a phone holds its note and its sparkline (none runs past the card\'s padding)' + (out.length ? ': ' + out.join(', ') : ''));
+      const alone = await page.evaluate(() => {
+        const cs = [...document.querySelectorAll('#daily-root .dr-kpis > .dr-kpi')];
+        const full = cs[0].getBoundingClientRect().width;
+        const top = (c) => c.getBoundingClientRect().top;
+        return { cards: cs.length, alone: cs.filter((c) => c.getBoundingClientRect().width < full * 0.6 && !cs.some((o) => o !== c && Math.abs(top(o) - top(c)) < 2)).length };
+      });
+      check(alone.cards >= 3 && alone.alone === 0, 'no half-width card is left alone in its row (' + alone.cards + ' cards)');
+    } catch (e) {
+      check(false, 'the Daily report on a phone: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
+  // 8. the Operators CSV for all three states: a column that says which state, figures a state does not publish left blank (never zero), and a fall stays a number
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#operators', { waitUntil: 'load' });
+      await page.waitForFunction(() => { const b = [...document.querySelectorAll('#ops-root button')].find((x) => /Download CSV/.test(x.textContent)); return b && !b.disabled; }, null, { timeout: 25000 });
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#ops-root button', { hasText: 'Download CSV' }).click()]);
+      const text = fs.readFileSync(await dl.path(), 'utf8').replace(/^\uFEFF/, '');
+      // a small reader for quoted fields (a name can hold a comma)
+      const table = [];
+      { let row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (q) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
+          else if (ch === '"') q = true;
+          else if (ch === ',') { row.push(cell); cell = ''; }
+          else if (ch === '\n') { row.push(cell.replace(/\r$/, '')); table.push(row); row = []; cell = ''; }
+          else cell += ch;
+        }
+        if (cell || row.length) { row.push(cell); table.push(row); } }
+      const head = table[0];
+      const col = (name) => head.indexOf(name);
+      const states = new Set(table.slice(1).map((r) => r[0]));
+      check(head[0] === 'data_state' && ['TX', 'OK', 'NM'].every((x) => states.has(x)), 'the CSV says which state each row is, and holds all three: ' + [...states].sort().join(','));
+      // New Mexico publishes no all-kinds permit count: the cell is empty, not 0
+      const nm = table.slice(1).filter((r) => r[0] === 'NM');
+      check(nm.length > 0 && nm.every((r) => r.length === head.length && r[col('all_permits_12m')] === '' && r[col('all_permits_24m')] === ''), 'a figure New Mexico does not publish is blank in its rows, not zero (' + nm.length + ' rows)');
+      check(!/(^|,)'-?\d/.test(text), 'no number was turned into text by the spreadsheet guard (a fall such as -14.4 has no apostrophe)');
+    } catch (e) {
+      check(false, 'the Operators CSV: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

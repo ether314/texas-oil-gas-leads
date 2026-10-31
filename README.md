@@ -70,7 +70,7 @@ Then open http://localhost:8000. Any static host works.
 
 ## Tests
 `python3 -I tests/run_all.py` runs the Python tests (pipeline rules, validators, the nightly workflow's own steps), `node tests/smoke.cjs`
-loads every view in a real browser at desktop and phone width and `node tests/a11y.cjs` checks text contrast in both themes and keyboard focus;
+loads every view in a real browser at desktop and phone width and `node tests/a11y.cjs` checks text contrast in both themes, keyboard focus and that nothing is cut off at 360 px;
 `.github/workflows/ci.yml` runs them on every pull request. See `tests/README.md`.
 
 ## Rebuild the data

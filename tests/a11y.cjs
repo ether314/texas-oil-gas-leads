@@ -7,6 +7,9 @@
 //    primary button's gradient (3.5 to 4.6:1).
 // 2. Keyboard: Tab through each view; every stop has a name and shows a focus ring, and focus never sticks on one element. Each page has a
 //    language, one main landmark and a title that follows the view.
+// 3. Reflow: at 360 px wide (the narrowest phone) no content is cut off by an overflow:hidden box (without an ellipsis) and no box sticks out
+//    past the right edge outside a scroller, on every view and every set of states. It found a note and a sparkline cut off in the Daily report's
+//    half-width cards (the card's one column had grown to the sparkline's fixed 160 px).
 //
 // Run: node tests/a11y.cjs
 // Needs Playwright (preinstalled in the Claude sandbox; installed by .github/workflows/ci.yml).
@@ -125,6 +128,30 @@ function audit() {
   return out;
 }
 
+// runs in the page: content cut off by overflow, and boxes past the right edge of the viewport that no scroller holds
+function reflow() {
+  const out = [];
+  const vw = document.documentElement.clientWidth;
+  const name = (el) => el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '');
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+    const clipsX = cs.overflowX === 'hidden' || cs.overflowX === 'clip';
+    if (clipsX && cs.textOverflow !== 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && !el.matches('.sr-only,.map-stage,.dr-hero,.hero')) {
+      out.push(name(el) + ' cuts off ' + (el.scrollWidth - el.clientWidth) + ' px: "' + (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) + '"');
+    }
+    if (r.right > vw + 1) {
+      let held = false;
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === 'auto' || o === 'scroll' || o === 'hidden' || o === 'clip') { held = true; break; } }
+      if (!held) out.push(name(el) + ' runs ' + Math.round(r.right - vw) + ' px past the edge: "' + (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) + '"');
+    }
+  }
+  return out;
+}
+
 (async () => {
   const { server, base } = await serve();
   const browser = await chromium.launch();
@@ -157,6 +184,33 @@ function audit() {
       for (const [k, f] of bad) console.log('       ' + f.ratio + ' (needs ' + f.need + ')  ' + k + '  in ' + [...new Set(f.where)].join(', '));
       await ctx.close();
     }
+  }
+
+  // ---- reflow
+  {
+    const REFLOW = [
+      ['overview', '#overview', '#hot-bars .bar-row'], ['overview, Oklahoma', '#overview?st=ok', '#hot-bars .bar-row'],
+      ['map', '#map', '#map-root canvas'], ['operators', '#operators', '#ops-root table.grid tbody tr'], ['operators, New Mexico', '#operators?st=nm', '#ops-root table.grid tbody tr'],
+      ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
+      ['daily', '#daily', '#daily-root .dr-hero'], ['daily, Texas', '#daily?st=tx', '#daily-root .dr-hero'], ['daily, Oklahoma', '#daily?st=ok', '#daily-root .dr-hero'], ['daily, New Mexico', '#daily?st=nm', '#daily-root .dr-hero'],
+      ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'], ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'], ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
+      ['sources', '#about', '#view-about h1'],
+    ];
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light' });
+    const page = await ctx.newPage();
+    const bad = [];
+    for (const [name, hash, ready] of REFLOW) {
+      try {
+        await page.goto(base + hash, { waitUntil: 'load' });
+        await page.waitForSelector(ready, { timeout: 25000 });
+        await page.waitForTimeout(600);
+        for (const f of await page.evaluate(reflow)) bad.push(name + ': ' + f);
+      } catch (e) {
+        check(false, 'reflow, ' + name + ' did not draw: ' + e.message.split('\n')[0].slice(0, 160));
+      }
+    }
+    check(!bad.length, 'at 360 px on ' + REFLOW.length + ' views nothing is cut off and nothing runs past the edge' + (bad.length ? '\n       ' + [...new Set(bad)].slice(0, 12).join('\n       ') : ''));
+    await ctx.close();
   }
 
   // ---- keyboard

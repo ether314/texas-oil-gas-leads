@@ -748,7 +748,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-kpis { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
 .dr-kpis.three { grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr)); }
 .dr-ctx { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
-.dr-kpi { position: relative; display: grid; align-content: start; gap: 4px; padding: 18px 18px 16px; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--kc) 8%, var(--surface)), var(--surface) 72%); box-shadow: var(--elev-1); }
+.dr-kpi { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 4px; padding: 18px 18px 16px; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--kc) 8%, var(--surface)), var(--surface) 72%); box-shadow: var(--elev-1); }
 .dr-kpi::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--kc), transparent 72%); }
 .dr-kpi-top { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 620; color: var(--ink-2); }
 .dr-kpi-top .ico { color: var(--kc); }
@@ -756,6 +756,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
 .dr-kpi.lead .dr-kpi-num { font-size: var(--fs-figure-xl); letter-spacing: -0.052em; }
 .dr-kpi-note, .dr-kpi-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; font-size: var(--fs-sm); color: var(--ink-2); }
 .dr-kpi-spark { margin-top: var(--sp-2); }
+.dr-kpi-spark svg { max-width: 100%; height: auto; } /* a half-width card on a phone is narrower than the 160 px the sparkline is drawn at: it scales, it is not cut off */
 .dr-kpi-gauge { margin: 2px 0; }
 .dr-ring-bg { fill: none; stroke: var(--grid); stroke-width: 7; }
 .dr-ring-fg { fill: none; stroke: var(--up); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); }
@@ -932,6 +933,7 @@ ul.plain li { margin-bottom: var(--sp-2); }
   .dr-controls, .dr-nav { justify-items: start; justify-content: flex-start; }
   .dr-kpis, .dr-kpis.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dr-kpi.lead { grid-column: 1 / -1; }
+  .dr-kpis > :last-child:nth-child(even) { grid-column: 1 / -1; } /* the lead takes the first row, so an even last card would be alone in its row: it takes the whole row */
   .dr-grid2 { grid-template-columns: minmax(0, 1fr); }
   .dr-col { display: contents; }
   .dr-trend { order: 1; }
