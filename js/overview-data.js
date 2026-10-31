@@ -43,7 +43,11 @@ export function countyPermits(states, docs) {
   for (const u of use) {
     for (const [f, c] of Object.entries(u.f.counties)) counties[countyKey(u.id, f)] = u.id === 'TX' ? c : { ...c, ops: c.ops.map(([n, num, k]) => [n, u.id + ':' + num, k]) };
   }
-  return { asOf: use.map((u) => u.f.asOf).sort().pop(), months: use[0].f.months, counties, ids: use.map((u) => u.id) };
+  // each state's file has its own 36 months (they end on different days), so a county's monthly counts are read against its own state's months
+  return {
+    asOf: use.map((u) => u.f.asOf).sort().pop(), months: use[0].f.months, counties, ids: use.map((u) => u.id),
+    monthsBy: Object.fromEntries(use.map((u) => [u.id, u.f.months])), asOfBy: Object.fromEntries(use.map((u) => [u.id, u.f.asOf])),
+  };
 }
 
 // Another state's operators as the objects the Texas table gives (toObjects), numbers and county keyed by state.
@@ -56,6 +60,8 @@ export function stateOperatorRows(id, doc) {
     return o;
   });
 }
+// What the operator pages know about another state's operator, in the shape Texas's operator-extras file gives (what only Texas has stays null)
+export const operatorExtras = (r) => ({ prev12: r.prev12, spud12: null, depth: r.depth, fips: r.county, counties: r.counties, m24: r.m24 });
 // Every operator of the states shown: Texas's rows (a table with cols and rows) and the others', each tagged with its state
 export function operatorRows(states, txTable, docs) {
   const out = [];

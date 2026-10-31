@@ -181,7 +181,7 @@
         <summary>How to use this site, and what the columns mean</summary>
         <h2>How to use it</h2>
         <ul class="plain">
-          <li><strong>Map</strong> shades counties by permits, production, jobs, establishments, mineral value or companies, and shows permit locations, refineries, gas plants, LNG terminals and where the pooled companies sit. Pick a basin to frame it, press Watch Texas drill to replay two years of permits, or click a county for its numbers.</li>
+          <li><strong>Map</strong> follows the states bar: its shapes, dots (each state in its own color), legend and panels are those of the states shown. It shades counties by permits (New Mexico: wells spudded) and, for Texas, by production, jobs, establishments, mineral value or companies, and shows permit locations, and for Texas refineries, gas plants, LNG terminals and where the pooled companies sit. Pick a basin to frame it, press Watch to replay two years of permits, or click a county for its numbers; a county of another state says which Texas figures it has none of.</li>
           <li><strong>Operators</strong> lists every active Railroad Commission registrant that is a corporation, LLC or limited partnership. Start with bands A and B: they are drilling now. Tick Top producers to see who produces the most oil.</li>
           <li><strong>Companies</strong> lists the Comptroller pool: entities filed under an oil and gas industry code, plus entities with no code whose names say oil and gas. Where a company matched an RRC operator, its permit counts are filled in.</li>
           <li><strong>On this page</strong>, click a bar, a number or a market figure to open the matching records or chart.</li>
@@ -224,7 +224,7 @@
   <section id="view-map" data-view hidden>
     <div class="view-head compact">
       <h1>Drilling map</h1>
-      <p class="lede">County activity, permit locations and energy facilities across Texas. Shading and counts use every permit; dots show the ones with a recorded location.</p>
+      <p class="lede" id="map-lede">County activity, permit locations and energy facilities across Texas. Shading and counts use every permit; dots show the ones with a recorded location.</p>
     </div>
     <div id="map-root"></div>
   </section>
@@ -321,7 +321,7 @@
         <li>Basin cards and the basin outline on the map use the county lists above. The operators named on a basin card come from each county's top-eight operator list, so they are the operators with the most permits there, not a full ranking.</li>
         <li>Companies by county use the Comptroller's county code, which numbers counties alphabetically (not in FIPS order); 107 Texas rows with code 0 are left out of the county counts. The County filter on the Companies tab uses the county that holds each ZIP code's center, so its counts can differ from the map's (within about 2% for most counties, more for a few such as Midland).</li>
         <li>Companies by ZIP: 1,560 ZIP codes cover every pooled Texas company. 239 ZIPs have no Census center (PO boxes and the like) and are placed at their city's center, so several ZIPs of one city can share a point.</li>
-        <li>County permit counts, trends and rankings, the market charts and the headline numbers use every permit. Only the dots, and the Watch Texas drill replay, use the located subset. The replay shows each located permit on its issue date, over the last 24 months.</li>
+        <li>County permit counts, trends and rankings, the market charts and the headline numbers use every permit. Only the dots, and the Watch replay, use the located subset (Oklahoma and New Mexico publish a location for nearly all of theirs). The replay shows each located permit on its issue date, over the last 24 months.</li>
         <li>The Insights on the Overview are computed in your browser from the same files. Growth compares the last 12 full months with the 12 before, and counties or operators with a small base are left out.</li>
       </ul>
 
