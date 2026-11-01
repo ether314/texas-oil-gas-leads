@@ -683,6 +683,9 @@ with tempfile.TemporaryDirectory() as tmp:
         units = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
         check(code == 0 and units == {"ci", "ds", "w1"} and W.check(out) == [], "the next run does what was left")
         out2 = os.path.join(tmp, "wells2")
+        # a new GitHub with nothing in it: Pillow stamps a PDF with the second it was made, so a world built in the same second as the one above has the same bytes, the releases would already hold every
+        # file, nothing would be uploaded, and the cap (which counts files uploaded) would never apply. That was the flake of 2026-11-01 (CI failed twice, passed on a re-run).
+        unpatch(saved); gh = FakeGH(); saved = patched(gh)
         code = W.run(args(out2, dl, max_files=5), io=world(tmp), now=NOW, log=lambda m: None)
         check(code == 0 and {u["p"] for u in json.load(open(os.path.join(out2, "index.json")))["units"]} == {"w1"}, "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit")
         check(saved_est["ci"] >= 2000 and W.MAX_FILES_PER_RUN >= sum(saved_est.values()) and W.MAX_FILES_PER_RUN < 2 * saved_est["ci"] + saved_est["ds"] + saved_est["w1"],
