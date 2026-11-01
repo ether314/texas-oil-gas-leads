@@ -131,10 +131,42 @@ bad_data["cells"][k0].update(s="data", e="form")
 mutant("any evidence will do for data", lambda m: setattr(m, "EVIDENCE", ("file", "doc", "form", "web", "none")) or setattr(m, "CODES", ("data",)), lambda m: m.problems_in(sid0, bad_data, keys) != F.problems_in(sid0, bad_data, keys))
 mutant("the privacy scan is blind", lambda m: setattr(m.privacy_check, "scan", lambda t, digits=False: []), lambda m: not m.problems_in(sid0, copy.deepcopy(dict(base, producer_plan="call 701-555-0100")), keys))
 
+# the page's words: the researchers' voice is rewritten and a long string is cut at a sentence or a word, never in the middle of one
+check(F.clip("short text", 100) == "short text" and F.clip("  spaced\n out  ", 100) == "spaced out", "clip: a string that fits is kept (whitespace made plain)")
+long_text = "First sentence is here. Second sentence follows it and goes on for a good while longer than the room."
+cut = F.clip(long_text, 40)
+check(cut == "First sentence is here." and not cut.endswith("…"), "clip: when a sentence ends in the second half of the room the string ends there, whole: %r" % cut)
+cut = F.clip("one two three four five six seven eight nine ten eleven twelve", 30)
+check(cut.endswith("…") and cut[:-1] in "one two three four five six seven eight nine ten eleven twelve" and cut[:-1].split()[-1] in ("one two three four five six seven eight nine ten eleven twelve").split() and len(cut) <= 30, "clip: otherwise after a whole word, with an ellipsis, in the room (%r)" % cut)
+check(all(len(F.clip("word " * 80, n)) <= n for n in (20, 57, 120, 200)) and F.clip("x" * 500, 40).endswith("…") and len(F.clip("x" * 500, 40)) <= 40, "clip: never over its room, even for a string with no space")
+check(F.clip("I tried from this machine and the tracker answered 403 to a HEAD", 200) != "I tried from this machine and the tracker answered 403 to a HEAD" and "this site" in F.clip("the tracker names it", 99) and "This site" in F.clip("The tracker names it", 99), "clip: the researchers' words go through the visitor rewrites (the tracker becomes this site)")
+check(F.vis("a free, reachable ArcGIS layer") == "a free and open ArcGIS layer" and F.vis("Reachable from here; its counts") == "Open to anyone; its counts" and F.vis("answered HTTP 403") == "answered 403", "vis: the common phrases are made plain")
+
 # the committed files
 committed = json.load(open(os.path.join(DATA, "permit-fields.json"), encoding="utf-8"))
 check(F.validate(committed) == [], "the committed permit-fields.json validates: %s" % F.validate(committed)[:2])
 check(F.build(F.SRC, date.fromisoformat(committed["generated"])) == committed, "permit-fields.json is what the builder makes from fields/ (rebuild it after changing a research file)")
+import re  # noqa: E402
+VOICE = re.compile(r"\b(I (?:read|saw|did|tried|made|found|looked|have|could|can|will|would|was|am|think|checked|used|ran|fetched|opened|asked|requested)\b|I'\w+|my\b|this machine|from here|here\b|sandbox|polite\w*|(?-i:HEAD)\b|HTTP \d{3}|reachable|answered \d+ (?:from|today)|the tracker|WebFetch|WebSearch|the brief|GitHub runner|CI runner|curl)", re.I)
+left = []
+
+
+def walk(o, path):
+    if isinstance(o, str):
+        m = VOICE.search(o)
+        if m and not path.endswith("/producer_plan"):  # the plan is research notes for a producer, not shown on the page
+            left.append((path, m.group(0)))
+    elif isinstance(o, dict):
+        for k, v in o.items():
+            walk(v, path + "/" + str(k))
+    elif isinstance(o, list):
+        for i, v in enumerate(o):
+            walk(v, path + "/%d" % i)
+
+
+walk(committed["states"], "")
+check(not left, "no string the matrix page shows has the researchers' voice left in it (%d found: %s)" % (len(left), left[:3]))
+check(committed["states"]["FO"]["name"] == F.C.NAME_OF["FO"] and all(st["name"] == F.C.NAME_OF[sid] for sid, st in committed["states"].items()), "each jurisdiction has one name, the National report's, in the matrix too")
 nat = json.load(open(os.path.join(DATA, "national.json"), encoding="utf-8"))
 check(nat["hasFields"] is True, "national.json knows the matrix file exists (so the national panels link to it)")
 check(all(sid in F.C.NAME_OF for sid in committed["order"]), "every researched jurisdiction is one the national report carries")

@@ -220,8 +220,10 @@ next(s for s in holey["states"] if s["id"] == "BL")["bands"]["new"][-20] = None
 check(B.validate(holey), "a gap inside a state's months (a null between figures) is refused")
 check(nat["months"][-1] == "2026-09" and ak["through"].startswith("2026-07"), "the axis runs to the newest month any state reaches")
 check(ak["mix12"]["new"] == ak["p12"] and ak["mix12"].get("redrill") is None, "the mix covers only the bands the state can tell")
-gap = next(g for g in B.build(docs, {"states": {"CO": {"agency": {"name": "ECMC"}, "grade": "D", "grade_reason": "blocked"}}}, today)["gaps"] if g["id"] == "CO")
-check(gap["agency"] == "ECMC" and gap["grade"] == "D" and gap["why"] == "blocked", "a gap carries the research's agency, grade and reason")
+research = {"states": {"UT": {"agency": {"name": "DOGM"}, "grade": "D", "grade_reason": "blocked"}, "CO": {"agency": {"name": "ECMC"}, "grade": "D", "grade_reason": "I tried from this machine and it answered 403"}}}
+gaps = {g["id"]: g for g in B.build(docs, research, today)["gaps"]}
+check(gaps["UT"]["agency"] == "DOGM" and gaps["UT"]["grade"] == "D" and gaps["UT"]["why"] == "blocked", "a gap carries the research's agency, grade and reason")
+check(gaps["CO"]["why"] == B.GAP_WHY["CO"] and "machine" not in gaps["CO"]["why"], "a gap with a visitor's reason (GAP_WHY) shows that and not the researchers' account of what they tried")
 check(B.build(docs, {}, today)["hasFields"] is False and B.build(docs, {"states": {"CO": {}}}, today)["hasFields"] is True, "hasFields says whether the matrix file exists")
 bad = copy.deepcopy(nat)
 bad["totals"]["permits12"] += 1
@@ -251,6 +253,8 @@ mutant("placeholder dates count", lambda m: setattr(m, "parse_day", lambda t, to
 
 # ------------------------------------------------------------------------------------------------ the committed files
 natdoc = json.load(open(os.path.join(DATA, "national.json")))
+VOICE = __import__("re").compile(r"\b(I\b|my\b|this machine|from here|here\b|sandbox|polite|HEAD\b|HTTP \d|answered \d|reachable|the tracker|runner|WebFetch|curl)", __import__("re").I)
+check(all(g["id"] in B.GAP_WHY for g in natdoc["gaps"]) and not [g["id"] for g in natdoc["gaps"] if VOICE.search(g["why"])], "every gap on the committed page has a visitor's reason with none of the researchers' words: %s" % [g["id"] for g in natdoc["gaps"] if g["id"] not in B.GAP_WHY or VOICE.search(g["why"])])
 check(B.validate(natdoc) == [], "the committed national.json validates: %s" % B.validate(natdoc)[:2])
 check(C.check_dir(os.path.join(DATA, "nat")) == [], "every committed nat/<ST>.json validates: %s" % C.check_dir(os.path.join(DATA, "nat"))[:3])
 check({"TX", "OK", "NM", "FO"} <= {s["id"] for s in natdoc["states"]}, "Texas, Oklahoma, New Mexico and the federal offshore are in it")

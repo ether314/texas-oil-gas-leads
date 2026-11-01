@@ -168,8 +168,8 @@ def build(get=C.polite_get, to_text=pdf_to_text, pause=PAUSE, old=None, today=No
     asof = C.month_end(newest)
     return t.document(agency="Bureau of Land Management", source_name="Application for Permit to Drill Status Report (monthly PDF, by BLM state office)", source_url=PAGE, basis="approval date (APDs approved)",
                       cadence="monthly", measure="permits", asof=asof, first=start, unit="APDs approved", place="state offices",
-                      note="APDs approved by BLM state office, new drills and re-entries together, federal and tribal lands together; an office is not a state (New Mexico's covers Oklahoma, Kansas and Texas). "
-                           "Shown on its own and never added to the states, which permit most of the same wells. The series starts in %s: the BLM did not publish earlier months monthly." % start)
+                      note="APDs (applications for permit to drill) approved by BLM state office, new drills and re-entries together, federal and tribal lands together; an office is not a state (New Mexico's covers Oklahoma, Kansas and Texas). "
+                           "Shown on its own and never added to the states, which permit most of the same wells. The series starts in %s: the BLM's monthly reports run from April 2021, but the October and November 2022 reports were never linked on its page, so the unbroken run starts there." % start)
 
 
 if __name__ == "__main__":
