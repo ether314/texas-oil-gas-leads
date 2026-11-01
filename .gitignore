@@ -11,3 +11,7 @@ __pycache__/
 *service-account*.json
 *-firebase-adminsdk-*.json
 node_modules/
+db/
+*.sqlite
+*.sqlite3
+*.building

@@ -88,6 +88,13 @@ loads every view in a real browser at desktop and phone width and `node tests/a1
 The national report's files are `site/public/data/nat/<ST>.json` (one per state, written by `site/pipeline/d11_nat_<st>.py`) merged into `national.json` by
 `python3 -I site/pipeline/d11_nat_build.py`; `NOTES_D11.md` has the shape and the rules every producer follows.
 
+## A local database
+Everything the site publishes can be loaded into one SQLite file you keep on your own machine (standard library only, a few seconds, built from the committed files and never fetched):
+`python3 -I site/pipeline/build_db.py` writes `db/oil-tracker.sqlite` (about 13 MB; `db/` and `*.sqlite` are kept out of git), `--check` verifies an existing file. Every data file is stored verbatim in
+`documents`, and the main entities are tables you can query and join: jurisdictions, national_months (permits or spuds by state, month and kind of permit), series (prices, crude production, rigs, jobs,
+tax), county_permits, operators, permit_points, companies, daily_reports and daily_permits, tx_image_packs and, once the matrix exists, metrics, field_states, field_cells and field_sources. Permits approved
+and wells spudded are different measures (`jurisdictions.measure` says which) and nothing in the database adds them. See the top of `site/pipeline/build_db.py`.
+
 ## Rebuild the data
 The scripts in `site/pipeline/` (`d1` to `d6`) and `site/build_data.py` write the JSON files in `site/public/data/`
 (Python 3, standard library only). Some downloads are large (the RRC production dump is 3.7 GB). `build_data.py` reads
