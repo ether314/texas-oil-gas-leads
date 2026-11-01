@@ -3,7 +3,7 @@
 Everything here runs without network access, on synthetic data and the committed files.
 
 ```
-python3 -I tests/run_all.py            # every Python test, one process each (add a name fragment to run some: ... run_all.py d8)
+python3 -I tests/run_all.py            # every Python test, one process each (add a name fragment to run some: ... run_all.py d8); a failing file prints each failing check, then its last lines
 node tests/test_js_data.mjs            # the pure JavaScript data code: which states are shown, what the Overview merges, the permit points merge
 node tests/smoke.cjs                   # browser smoke test: every JS module imports, every view loads clean, no sideways scroll on a phone, the states bar
 node tests/a11y.cjs                    # browser accessibility test: text contrast in both themes at both widths, nothing cut off and no control under 24 px at 360 px, keyboard focus, page language and titles
