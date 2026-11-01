@@ -201,6 +201,18 @@ check(m.execute("SELECT COUNT(*) FROM daily_permits").fetchone()[0] == 2 and m.e
 check(m.execute("SELECT COUNT(*) FROM tx_image_packs").fetchone()[0] == 1, "a pack with no entry for a day is skipped, one with no documents is kept")
 check(m.execute("SELECT COUNT(*) FROM series").fetchone()[0] == 2 and m.execute("SELECT COUNT(*) FROM jurisdictions").fetchone()[0] == 0, "a series with a gap loads only its real points; missing optional files load nothing")
 m.close()
+arr_data = os.path.join(tmp, "arr-data")
+os.makedirs(os.path.join(arr_data, "newwells"))
+for f in ("summary.json", "points.json"):
+    shutil.copy(os.path.join(DATA, "newwells", f), os.path.join(arr_data, "newwells", f))
+json.dump({"v": 1, "checked": "2026-11-02", "since": "2026-11-01", "against": {"TX": {"wells": 83, "from": "2026-10-30"}},
+           "days": [{"day": "2026-11-02", "found": 4, "removed": 0, "states": [["TX", 3, 1], ["OK", 1, None]]}, {"day": "2026-11-01", "found": 2, "removed": 1, "states": [["NM", 2, None]]}]}, open(os.path.join(arr_data, "newwells", "arrivals.json"), "w"))
+adb = os.path.join(tmp, "arr.sqlite")
+B.build(adb, arr_data)
+ad = sqlite3.connect(adb)
+check(ad.execute("SELECT COUNT(*) FROM new_wells_arrivals").fetchone()[0] == 3 and ad.execute("SELECT found, reported FROM new_wells_arrivals WHERE state = 'TX'").fetchone() == (3, 1)
+      and ad.execute("SELECT reported FROM new_wells_arrivals WHERE state = 'OK'").fetchone()[0] is None and B.check(adb) == [], "the daily arrivals are loaded by day and state, a state whose report lists no wells keeps NULL (not zero), and the file passes its check")
+ad.close()
 
 # ------------------------------------------------------------------------------------------------ mutants
 spec = importlib.util.spec_from_file_location("m_bdb", os.path.join(PIPE, "build_db.py"))

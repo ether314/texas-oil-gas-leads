@@ -725,6 +725,14 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .nw-chip:hover { border-color: var(--border-2); }
 .nw-chip[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
 .nw-other { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 4px; }
+/* the marks that say which is which: a filled dot is a fractured well (FracFocus), a hollow ring an oil well permit (a state agency), a ring with a dot the same well in both */
+.mk { display: inline-block; flex: none; box-sizing: border-box; width: 12px; height: 12px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
+.mk-frac { background: var(--ink); }
+.mk-oil { border: 2px solid var(--ink); background: transparent; }
+.mk-both { border: 2px solid var(--ink); background: radial-gradient(circle, var(--ink) 0 28%, transparent 32%); }
+.dd-key { display: inline-flex; align-items: center; margin-right: var(--sp-4); white-space: nowrap; }
+.dd-sub { color: var(--ink-2); font-size: var(--fs-xs); }
+@media (max-width: 560px) { .dd-arr th, .dd-arr td { white-space: normal; } .dd-arr .dd-sub { display: block; margin: 2px 0 0; } .dd-arr th:first-child { white-space: nowrap; } }
 .nw-status { margin: 0 0 var(--sp-3); color: var(--ink-2); }
 .nw-status:empty { display: none; }
 .nw-pick { min-height: 36px; max-width: 100%; padding: 0 var(--sp-3); border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-md); }
@@ -744,6 +752,45 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .dd-marker { fill: color-mix(in srgb, var(--ink) 14%, transparent); stroke: var(--ink); stroke-width: 1; pointer-events: none; }
 .dd-typ { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 4; pointer-events: none; }
 .dd-chart { max-height: 280px; }
+/* the day in numbers: six small panels, each a fact every state's disclosures carry */
+.dd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--sp-4); margin-top: var(--sp-5); }
+.dd-stats.is-empty { display: block; }
+.dd-stat { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-5); border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
+.dd-stat h3 { margin: 0; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.dd-stat .fine { margin: 0; }
+.dd-bars { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.dd-bars li { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(24px, 1fr) auto; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.dd-hist ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.dd-hcol { display: grid; grid-template-rows: auto 72px auto; gap: 4px; justify-items: center; text-align: center; font-size: var(--fs-xs); }
+.dd-hv { font-weight: 600; font-variant-numeric: tabular-nums; }
+.dd-hl { color: var(--ink-2); white-space: nowrap; }
+.dd-htrack { position: relative; width: 100%; height: 100%; border-radius: 5px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.dd-hbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--p) * 100%); border-radius: 5px; background: var(--s1); }
+.dd-htyp { position: absolute; left: -2px; right: -2px; bottom: calc(var(--t) * 100%); height: 2px; border-radius: 1px; background: var(--ink); }
+@media (max-width: 640px) { .dd-stat { padding: var(--sp-4); } }
+/* the strip of every month since 2011 above the chart: bars, the chart's days as a band, the chosen day as a line */
+.dd-yearsbox { margin-top: var(--sp-3); }
+.dd-ycap { margin: 0 0 var(--sp-1); }
+.dd-ychart { max-width: 100%; height: auto; margin-top: 0; }
+.dd-yseg { fill: var(--c); }
+.dd-yseg.is-late { opacity: 0.42; }
+.dd-years .nat-hit { cursor: pointer; }
+.dd-ywin { fill: color-mix(in srgb, var(--ring) 16%, transparent); stroke: var(--ring); stroke-width: 1; pointer-events: none; }
+.dd-yday { stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.nw-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-4); margin: var(--sp-3) 0 var(--sp-2); padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--ink-2); }
+.nw-marks li { display: inline-flex; align-items: center; gap: var(--sp-2); }
+/* a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud: the same two marks as on the map */
+.dd-dotkey, .dd-ringkey { display: inline-block; flex: none; box-sizing: border-box; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
+.dd-dotkey { background: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent); }
+.dd-ringkey { border: 2px solid var(--ink); background: transparent; width: 13px; height: 13px; }
+.dd-by { margin-top: var(--sp-4); }
+.dd-by h4 { display: flex; align-items: center; gap: var(--sp-2); }
+.nat-big.dd-bigq { margin-top: var(--sp-2); align-items: center; }
+.nat-big.dd-bigq strong { font-size: var(--fs-xl); }
+/* the permits approved each day, in the chart: a thin line with a ring for each day that has a count */
+.dd-oil-line { fill: none; stroke: color-mix(in srgb, var(--ink) 55%, transparent); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
+.dd-oil-dot { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; pointer-events: none; }
+.dd-approved { margin: var(--sp-2) 0 0; }
 .dd-by .link, .dd-tbl .link { display: inline-flex; align-items: center; min-height: 24px; } /* a name that is a button is as tall as any other control: 24 px */
 @media (max-width: 640px) { .dd-mid { flex-basis: 100%; order: 3; } }
 

@@ -15,6 +15,7 @@ const S = await imp('states.js');
 const O = await imp('overview-data.js');
 const GEO = await imp('usgeo.js');
 const NW = await imp('newwells-data.js');
+const OD = await imp('oil-day-data.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
 
 let fails = 0;
@@ -412,12 +413,73 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(q.length === 2 && q[0].id === 'AL' && q[0].latest === NW.byId(doc, 'AL').latest && q[1].latest === null, 'newwells: a producing state with no well in the last 12 months is "quiet" (with its last job, or none ever), a state with wells is not');
   check(NW.listAnd(['a']) === 'a' && NW.listAnd(['a', 'b']) === 'a and b' && NW.listAnd(['a', 'b', 'c']) === 'a, b and c' && NW.feet(95) === '9,500 ft' && NW.feet(0) === null && NW.gallons(210) === '21.0 million gal' && NW.gallons(0) === null, 'newwells: the wording helpers (a list, feet in hundreds, gallons in hundreds of thousands, nothing for zero)');
   check(NW.colorOf('TX') === 'var(--st-tx)' && NW.colorOf('NM') === 'var(--st-nm)' && NW.colorOf('OK') === 'var(--st-ok)' && NW.colorOf('WY') === NW.OTHER_COLOR, 'newwells: Texas, New Mexico and Oklahoma keep the colors the rest of the site gives them; every other state is slate');
+  // arrivalRows: fractured wells found and oil well permits approved, day by day, side by side and never added
+  const arrIn = { v: 1, since: '2026-10-30', against: { TX: { wells: 83, from: '2026-10-30' } }, days: [{ day: '2026-10-31', found: 41, removed: 0, states: [['TX', 25, 3], ['NM', 9, null], ['OK', 7, null]] }] };
+  const rep = (rows) => ({ days: rows.map(([d, dd, pn, st]) => ({ d, dd, pn, s: st || 'ok' })) });
+  const reports = { TX: rep([['2026-10-31', '2026-10-30', 36], ['2026-10-30', '2026-10-29', 30], ['2026-10-29', '2026-10-28', 28], ['2026-10-28', '2026-10-27', 99, 'partial']]), OK: rep([['2026-10-31', '2026-10-30', 7], ['2026-10-30', '2026-10-29', 2]]), NM: rep([['2026-10-31', '2026-10-29', 5]]) };
+  const rows = NW.arrivalRows(arrIn, reports, 14); const r31 = rows[0]; const r30 = rows[1]; const r29 = rows[2];
+  check(rows.map((r) => r.day).join() === '2026-10-31,2026-10-30,2026-10-29' && r31.fractured === 41 && r31.oilTotal === 48 && r31.oil.map((o) => o[0] + o[1]).join() === 'TX36,OK7,NM5' && r31.both === 3, 'arrivalRows: a day carries the wells found and, apart, each state\'s oil well permits in the order TX, OK, NM; the two are never added (41 and 48)');
+  check(r30.fractured === 0 && r30.both === 0 && r30.oilTotal === 32 && r30.byState.length === 0, 'arrivalRows: a day that was compared and had nothing new is a real zero');
+  check(r29.fractured === null && r29.both === null && r29.oilTotal === 28 && !rows.some((r) => r.day === '2026-10-28'), 'arrivalRows: a day before the comparison began has no number for the fractured side (null, not a zero) but keeps its oil permits, and a state report that was not read (status partial) is left out, not counted as none');
+  check(NW.arrivalRows(null, reports, 14).every((r) => r.fractured === null && r.both === null) && NW.arrivalRows({ ...arrIn, since: null }, reports, 14).every((r) => r.fractured === null) && NW.arrivalRows(arrIn, null, 14).length === 1 && NW.arrivalRows(arrIn, reports, 2).length === 2, 'arrivalRows: no log, or a log that has not compared yet, gives no number for the fractured side; no state reports still lists the found day; n limits the days');
+  check(NW.OIL_STATES.join() === 'TX,OK,NM' && rows.every((r) => !/\d{10}/.test(JSON.stringify(r))), 'arrivalRows: the oil side is the three states whose daily reports are kept, and no API number is in a row');
+
   // typicalDay: a day is set against the twelve months it sits in
   const tdNew = NW.typicalDay(doc, doc.asOf); const tdSettled = NW.typicalDay(doc, '2026-03-10'); const td14 = NW.typicalDay(doc, '2014-03-12'); const td11 = NW.typicalDay(doc, '2011-01-05'); const tdTx = NW.typicalDay(doc, '2014-03-12', 'TX');
   check(tdNew.latest && tdNew.to === doc.settled.slice(0, 7) && Math.abs(tdNew.perDay - NW.totals(doc).p12 / 365) < 0.01 && tdSettled.latest, 'newwells: the newest days are set against the last 12 settled months (the figure the page always had: p12 over 365)');
   check(!td14.latest && td14.from === '2013-10' && td14.to === '2014-09' && td14.perDay > 50 && td14.perDay < 120 && !td11.latest && td11.from === '2011-01' && td11.to === '2011-12' && tdTx.perDay > 0 && tdTx.perDay < td14.perDay,
     'newwells: a day in 2014 is set against Oct 2013 to Sep 2014 (' + td14.perDay.toFixed(1) + ' a day, not last year\'s ' + tdNew.perDay.toFixed(1) + '), the first days against the first twelve months, one state against its own');
   check(NW.typicalDay(doc, '2030-01-01').latest && NW.typicalDay(doc, '2001-01-01').from === '2011-01' && NW.drilled(NW.byId(doc, 'AL')) && !NW.drilled({ new: [0, 0] }), 'newwells: a day outside the series gets the nearest twelve months, and a state with a well only years ago counts as drilled');
+  // profile: what a set of wells looks like (the Daily report's numbers card), on a handmade set whose answers are known, then on the committed wells
+  const eq = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  const mk = (rows) => ({ v: 1, t0: '2026-01-01', asOf: '2026-01-02', n: rows.length, states: ['TX', 'NM'], counties: [['TX', 'Martin'], ['TX', 'Midland'], ['NM', 'Lea']], ops: ['A LLC', 'B LLC'],
+    lat: rows.map((r) => r[0]), lon: rows.map((r) => r[1]), d: rows.map((r) => r[2]), s: rows.map((r) => r[3]), c: rows.map((r) => r[4]), o: rows.map((r) => r[5]), tvd: rows.map((r) => r[6]), h2o: rows.map((r) => r[7]), f: rows.map((r) => r[8]) });
+  //            lat      lon       day state county op  tvd  h2o  land
+  const H = NW.decode(mk([
+    [320000, -1020000, 0, 0, 0, 0, 90, 200, 0], [320001, -1020000, 0, 0, 0, 0, 100, 210, 1], [320010, -1020000, 0, 0, 0, 1, 0, 0, 0], // a pad: 0.0001 and 0.0010 degrees north (11 m and 111 m)
+    [320020, -1020000, 0, 0, 1, -1, 130, 300, 2], // 222 m from the first well but 111 m from the third: the same pad through a chain
+    [326000, -1020000, 0, 1, 2, 1, 50, 10, 3], // 41 miles away, in New Mexico
+    [320000, -1020000, 1, 0, 0, 0, 95, 205, 0]]));
+  const pr = NW.profile(H, 0, 0, { hot: true }); const prNm = NW.profile(H, 0, 0, { state: 'NM', hot: true }); const prNone = NW.profile(H, 5, 3, { hot: true });
+  check(pr.n === 5 && pr.states === 2 && pr.counties === 3 && pr.pads === 2 && NW.padsOf(H, NW.indexesOf(H, 0, 1)) === 3, 'profile: five wells in two states and three counties; four within 150 m of each other through a chain are one pad, so two pads that day (and the next day\'s well is its own pad, not the first day\'s: three over both days)');
+  check(pr.depth.n === 4 && pr.depth.median === 9500 && pr.depth.max.ft === 13000 && pr.depth.max.county === 'Midland' && pr.depth.max.state === 'TX' && eq(pr.depth.bands, [1, 0, 1, 1, 1]), 'profile: depth is counted over the four wells that report one (a depth of nothing is not zero feet), the median is the middle of the four, the deepest names its county, and the bands add up');
+  check(pr.water.n === 4 && Math.abs(pr.water.total - 72) < 1e-9 && pr.water.median === 20.5 && pr.water.max.mgal === 30 && Math.abs(pr.water.pools - 72e6 / NW.POOL_GAL) < 1e-9 && pr.water.pools > 100 && pr.water.pools < 120, 'profile: water is counted over the four wells that report it (units are 100,000 gallons: 72 million in all), the median, the most and the Olympic pools it fills');
+  check(eq(pr.land.counts, [2, 1, 1, 1]) && pr.land.federalOrTribal === 3 && pr.operators.named === 2 && pr.operators.unnamed === 1 && eq(pr.operators.top, [{ label: 'A LLC', n: 2 }, { label: 'B LLC', n: 2 }]) && eq(pr.topCounties.map((c) => c.label + c.n), ['Martin3', 'Lea1', 'Midland1']) && pr.weekday[4] === 5 && pr.weekday.reduce((a, b) => a + b, 0) === 5, 'profile: land by class, the operators that may be named (the one that may not is counted, never named), counties ranked with ties by name, and the weekday of 2026-01-01 (a Thursday)');
+  check(pr.hot && pr.hot.n === 4 && pr.hot.of === 5 && pr.hot.county === 'Martin' && pr.hot.state === 'TX' && NW.hotSpot(H, NW.indexesOf(H, 0, 0).slice(0, 2)) === null && prNm.n === 1 && prNm.pads === 1 && prNm.hot === null && NW.profile(H, 0, 0).hot === null, 'profile: the busiest spot is four of the five wells within 10 miles (around Martin County), none for under three wells, and only when asked; one state\'s wells are counted alone');
+  check(prNone.n === 0 && prNone.pads === 0 && prNone.depth.median === null && prNone.water.median === null && prNone.water.total === 0 && prNone.depth.max === null && prNone.operators.top.length === 0 && prNone.hot === null && !/NaN|undefined|Infinity/.test(JSON.stringify(prNone)), 'profile: no wells gives no medians (null, not zero) and no NaN');
+  const wholeYear = NW.profile(P, d0, d1); const wholeTx = NW.profile(P, d0, d1, { state: 'TX' });
+  check(wholeYear.n === byState.reduce((t, x) => t + x.n, 0) && wholeYear.land.counts.reduce((a, b) => a + b, 0) === wholeYear.n && wholeYear.depth.bands.reduce((a, b) => a + b, 0) === wholeYear.depth.n && wholeYear.weekday.reduce((a, b) => a + b, 0) === wholeYear.n
+    && wholeYear.depth.median > 8000 && wholeYear.depth.median < 11000 && wholeYear.water.median > 10 && wholeYear.water.median < 30 && wholeYear.states >= 8 && wholeTx.n < wholeYear.n && wholeTx.states === 1 && wholeYear.pads < wholeYear.n && wholeYear.pads > wholeYear.n / 4, 'profile: the settled year\'s wells on the committed file add up (every well has a land class, a weekday and at most one depth band), the median well is about 9,400 ft and 20 million gallons, and a pad is a few wells (' + wholeYear.pads + ' pads for ' + wholeYear.n + ' wells)');
+  check(!/\d{10}/.test(JSON.stringify(wholeYear.operators) + JSON.stringify(wholeYear.topCounties)) && wholeYear.operators.top.every((r) => !/@|http|www\./i.test(r.label)) && wholeYear.operators.unnamed < wholeYear.n, 'profile: the operators it lists carry no number, address or web address, and the ones that may not be named are only counted');
+  const trg = NW.typicalRange(P, doc, doc.asOf); const trgOld = NW.typicalRange(P, doc, '2024-12-15'); const trgGone = NW.typicalRange(P, doc, '2011-02-01');
+  check(trg && !trg.clipped && trg.from === NW.windowOf(doc).first && trg.to === doc.settled && trg.d1 - trg.d0 === 364 && trgOld && trgOld.clipped && trgOld.d0 === 0 && trgGone === null, 'typicalRange: the newest days are set against the last 12 settled months in whole, a day near the start of the last two years against the months the points hold (clipped), and a day whose months are not in the points against none');
+  const D0 = NW.dayOfIso(P, '2026-03-10'); const rk = NW.dayRank(P, D0, trg.d0, trg.d1); const rkNone = NW.dayRank(P, 3, 5, 3);
+  check(rk && rk.days === 365 && rk.share >= 0 && rk.share <= 1 && rk.n === NW.perDay(P, D0, D0)[0] && P.states.includes('AL') && NW.dayRank(P, trg.d0, trg.d0, trg.d1, 'AL').share === 0 && rkNone === null, 'dayRank: the share of the days that had fewer wells (0 to 1) over the 365 days, null for an empty range, and a state with no wells never ranks above anyone');
+  // monthPos: where a day sits on the month axis of the Daily report's overview strip (Jan 1, 2011 is 0, each month is one step, a day is its share of its month)
+  const lastM = doc.months.length - 1;
+  check(NW.monthPos(doc, '2011-01-01') === 0 && NW.monthPos(doc, '2011-02-01') === 1 && Math.abs(NW.monthPos(doc, '2011-01-16') - 15 / 31) < 1e-9 && Math.abs(NW.monthPos(doc, '2012-03-01') - 14) < 1e-9 && NW.monthPos(doc, '2010-12-01') === -1
+    && NW.monthPos(doc, doc.months[lastM] + '-01') === lastM && Math.abs(NW.monthPos(doc, '2012-02-15') - (13 + 14 / 29)) < 1e-9 && NW.monthPos(doc, doc.asOf) > lastM - 1 && NW.monthPos(doc, doc.asOf) < lastM + 1,
+    'newwells: monthPos puts a day on the strip\'s month axis (Jan 1, 2011 at 0, a month a step, leap February by its 29 days, the newest well inside the last month)');
+  // decodePermits: the agencies' oil permits and spuds that have a point, on the wells' days (the Daily report draws them as rings beside the fracked wells)
+  const pdocs = NW.PERMIT_SOURCES.map((x) => ({ id: x.id, pm: read(x.file) }));
+  const dayOff = (pm, t0) => Math.round((Date.parse(pm.t0 + 'T00:00:00Z') - Date.parse(t0 + 'T00:00:00Z')) / 864e5);
+  const Qp = NW.decodePermits(pdocs, pts.t0);
+  const wantN = pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, pts.t0) >= 0).length, 0);
+  check(Qp.n === wantN && wantN > 10000 && Qp.states.join() === 'TX,OK,NM,FO' && Qp.spud.join() === '0,0,1,1' && Qp.day.every((d, i) => i === 0 || d >= Qp.day[i - 1]) && Qp.day[0] >= 0,
+    'permits: ' + Qp.n + ' points from the four agencies, sorted by day, none before the wells\' first day; Texas and Oklahoma count permits, New Mexico and the offshore spuds');
+  const aDay = Qp.day[Math.floor(Qp.n / 2)]; const iso = NW.dayIso(NW.dayMs({ t0: Date.parse(pts.t0 + 'T00:00:00Z') }, aDay));
+  const wantDay = pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, pts.t0) === aDay).length, 0);
+  const perSt = NW.permitsPerState(Qp, aDay, aDay);
+  check(wantDay > 0 && NW.permitsOfDay(Qp, aDay).length === wantDay && perSt.reduce((t, x) => t + x.n, 0) === wantDay && perSt.every((x, i) => i === 0 || perSt[i - 1].n >= x.n)
+    && NW.permitsOfDay(Qp, aDay, perSt[0].id).length === perSt[0].n && NW.permitsOfDay(Qp, aDay, 'ND').length === 0 && NW.permitsOfDay(Qp, -5).length === 0,
+    'permits: ' + iso + ' has ' + wantDay + ' in the files and in the decoder, ranked by state, and a state with no source has none');
+  const named = Array.from({ length: Qp.n }, (_, i) => NW.permitOperator(Qp, i)).filter(Boolean);
+  const pfo = pdocs.find((d) => d.id === 'FO').pm;
+  check(named.length > 5000 && named.every((x) => typeof x === 'string') && Qp.op.some((o) => o < 0) && NW.permitWord(Qp, Qp.s.indexOf(2)) === 'Well spudded' && NW.permitWord(Qp, Qp.s.indexOf(0)) === 'Permit approved'
+    && NW.permitStateName('FO') === 'Federal offshore' && Qp.last[3] === Math.max(...pfo.pts.map((r) => r[3])) + dayOff(pfo, pts.t0) && Qp.last.every((d) => d > 0),
+    'permits: only named operators carry a name (the rest are -1), spuds and permits are told apart, and each state\'s newest day is its file\'s');
+  const Qlate = NW.decodePermits(pdocs, '2025-06-01');
+  check(Qlate.n < Qp.n && Qlate.day.every((d) => d >= 0) && Qlate.n === pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, '2025-06-01') >= 0).length, 0), 'permits: a later first day leaves out the permits before it and renumbers the rest from it');
   // the history: every well with a point since 2011, joined to the last two years' points
   const hist = read('newwells/points-history');
   const mp = NW.mergePoints(pts, hist); const PH = NW.decode(mp);
@@ -444,6 +506,33 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(h1 - h0 > 300 && NW.dayMs(PH, h1) === NW.dayMs(P, d1) && NW.landShare(PH, h0, h1).of === land.of && NW.leaders(PH, h0, h1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join() === NW.leaders(P, d0, d1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join(),
     'newwells: the settled year over the merged points is the same year as over the points alone (the panel and the lists read the same wells either way)');
   check((() => { try { NW.mergePoints(pts, { ...hist, states: hist.states.slice().reverse() }); return false; } catch (e) { return /same read/.test(e.message); } })(), 'newwells: a history from another read than the points (other states) is refused');
+}
+
+/* ---------- oil-day-data.js: the permits the three daily-publishing states approved each day, for the Daily report's chart and summary ---------- */
+{
+  const eq = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  // a made-up week: Oklahoma's points (day in column 3) with a weekend in them, Texas's and New Mexico's series
+  const okPts = { t0: '2026-01-01', asOf: '2026-01-10', pts: [[0, 0, 0, 0, 0, 39], [0, 0, 0, 5, 0, 39], [0, 0, 0, 5, 0, 17], [0, 0, 0, 6, 0, 39], [0, 0, 0, 20, 0, 39]] };
+  const tx = { days: ['2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08'], newDrill: [0, 0, 30, 28, 25, 31] };
+  const nm = { days: ['2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09'], newDrill: [2, 0, 0, 5, 4, 6, 7, 9] };
+  const cn = OD.counts({ tx, nm, okPoints: okPts });
+  check(cn.first === '2026-01-03' && cn.last === '2026-01-08' && cn.per.OK.get('2026-01-01') === 1 && cn.per.OK.get('2026-01-02') === 0 && cn.per.OK.get('2026-01-06') === 2 && cn.per.OK.get('2026-01-10') === 0 && cn.per.OK.size === 10, 'oil days: the days that count are the days all three states have (here Jan 3 to Jan 8), and Oklahoma\'s counts come from its permit points with the zeros in them (a point past the file\'s end is not counted)');
+  check(eq(OD.permitsOn(cn, '2026-01-05'), [{ id: 'TX', name: 'Texas', n: 30 }, { id: 'OK', name: 'Oklahoma', n: 0 }, { id: 'NM', name: 'New Mexico', n: 5 }]) && OD.permitsOn(cn, '2026-01-02') === null && OD.permitsOn(cn, '2026-01-09') === null && OD.permitsOn(null, '2026-01-05') === null
+    && OD.permitsOn(OD.counts({ tx, nm: { days: ['2026-01-02', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08'], newDrill: [2, 0, 5, 4, 6, 7] }, okPoints: okPts }), '2026-01-03') === null, 'oil days: a day inside the range has a count for each state; a day outside it, or one a state has no count for, has none (null), never zero');
+  const vals = OD.valuesOver(cn, '2026-01-02', 8); const valsTx = OD.valuesOver(cn, '2026-01-02', 8, 'TX'); const valsNd = OD.valuesOver(cn, '2026-01-02', 8, 'ND');
+  check(eq(vals, [null, 0, 0, 35, 34, 32, 38, null]) && eq(valsTx, [null, 0, 0, 30, 28, 25, 31, null]) && valsNd.every((v) => v === null), 'oil days: the chart\'s line is the three states added (Jan 5: 30 + 0 + 5; the weekend is a real zero), or one state\'s, null outside the days all three have, and all null for a state that is not one of the three');
+  // the committed files: every day the counts cover has a count for all three states, and the sources agree where they overlap
+  const txS = read('daily/permits-series'); const nmS = read('daily-nm/permits-series'); const okP = read('permits-ok'); const real = OD.counts({ tx: txS, nm: nmS, okPoints: okP });
+  let allDays = true;
+  for (let t = Date.parse(real.first + 'T00:00:00Z'); t <= Date.parse(real.last + 'T00:00:00Z'); t += 864e5) { const r = OD.permitsOn(real, new Date(t).toISOString().slice(0, 10)); if (!r || r.length !== 3 || r.some((x) => !Number.isInteger(x.n) || x.n < 0)) allDays = false; }
+  const lastOf = (name) => { const m = new Map(); for (const r of read(name).days) if (r.dd) m.set(r.dd, r); return m; };
+  const lastOk = lastOf('daily-ok/index'); const lastTx = lastOf('daily/index'); const lastNm = lastOf('daily-nm/index');
+  check(real.first >= '2026-07-21' && real.last <= txS.days[txS.days.length - 1] && real.last >= '2026-10-01' && allDays
+    && [...lastOk].every(([dd, r]) => real.per.OK.get(dd) === r.pn) && [...lastTx].every(([dd, r]) => !real.per.TX.has(dd) || real.per.TX.get(dd) === r.pn) && [...lastNm].every(([dd, r]) => !real.per.NM.has(dd) || real.per.NM.get(dd) === r.pn),
+  'oil days: on the committed files every day from ' + real.first + ' to ' + real.last + ' has a count for Texas, Oklahoma and New Mexico, and each state\'s count equals its nightly capture\'s on every day the capture has (Oklahoma\'s from the permit points)');
+  const wk = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay(); let weekend = 0; let weekdays = 0;
+  for (const [d, n] of real.per.OK) if (d >= real.first && d <= real.last) { if (wk(d) === 0 || wk(d) === 6) weekend += n; else weekdays += n; }
+  check(weekdays > 20 && weekend <= weekdays / 10, 'oil days: Oklahoma approves on weekdays (' + weekdays + ' on weekdays and ' + weekend + ' on weekends in the covered days), so a weekend zero is a real zero and not a gap');
 }
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));

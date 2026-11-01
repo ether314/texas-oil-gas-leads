@@ -1186,6 +1186,14 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     const head = () => page.locator('#daily-root .nat-panel h3').first().innerText();
     const tableHead = () => page.locator('#dd-table-h').innerText();
     const hash = () => page.evaluate(() => location.hash);
+    // the numbers card describes the wells the table lists: its pad line counts the same wells, its land line the same, and a day with none says so
+    const statsAgree = async (what) => {
+      const n = +(await tableHead()).match(/^([\d,]+) (?:fracked )?well/)[1].replace(/,/g, '');
+      if (!n) return (await page.locator('#daily-root .dd-stat').count()) === 0 && /nothing to describe/.test(await page.locator('#daily-root .dd-stats').innerText()) ? null : what + ': a day with no well should say there is nothing to describe, not draw six panels';
+      const pads = +(await page.locator('#daily-root .dd-pads .fine').first().innerText()).match(/^([\d,]+) wells? on/)[1].replace(/,/g, '');
+      const land = +(await page.locator('#daily-root .dd-land .fine').first().innerText()).match(/of ([\d,]+)/)[1].replace(/,/g, '');
+      return pads === n && land === n ? null : what + ': the numbers describe ' + pads + ' and ' + land + ' wells but the table lists ' + n;
+    };
     try {
       await page.goto(base + '?debug#daily', { waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
@@ -1193,16 +1201,47 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const text = await page.locator('#view-daily').innerText();
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(text), label + ': no NaN, undefined, null or Infinity anywhere on the Daily report');
       check((await page.locator('#daily-root .dr-tile').count()) === 4 && !(await page.locator('#statebar').isVisible()) && !(await page.locator('#ticker, #insights, #pulse-card, #seg-chart').count()), label + ': four figures, no states bar, none of the Texas-only cards');
-      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '')), label + ': no API number, well name or lease anywhere on the page');
+      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '').replace(/(matched by|without) API numbers?/g, '')), label + ': no API number, well name or lease anywhere on the page');
       const ink = await page.evaluate(() => { const c = document.querySelector('#daily-root .nw-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; });
       check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
       const first = await page.locator('#daily-root .dd-date').innerText();
-      const n0 = +(await tableHead()).match(/^([\d,]+) well/)[1].replace(/,/g, '');
+      const n0 = +(await tableHead()).match(/^([\d,]+) (?:fracked )?well/)[1].replace(/,/g, '');
+      const titles = await page.locator('#daily-root .dd-stat h3').allTextContents();
+      check(titles.join('|') === 'Where|Pads and spots|How deep|How much water|Whose land|Who drilled', label + ': the day in numbers has its six panels: ' + titles.join(', '));
+      check(!(await statsAgree(label + ' (opening day)')), (await statsAgree(label)) || label + ': the numbers describe the same wells as the table on the opening day');
+      const bars = await page.evaluate(() => [...document.querySelectorAll('#daily-root .dd-stat .nat-lb, #daily-root .dd-hbar')].map((b) => parseFloat(getComputedStyle(b).getPropertyValue('--p')) || 0));
+      check(bars.length >= 8 && bars.every((v) => v >= 0 && v <= 1.0001) && bars.some((v) => v === 1), label + ': the panels draw bars (' + bars.length + ') on a scale of 0 to 1, the longest full');
+      check(/Susquehanna|Lea|Eddy|Pecos|, [A-Z]{2}/.test(await page.locator('#daily-root .dd-where').innerText()) && /Typical/.test(await page.locator('#daily-root .dd-pads').innerText()) && /Olympic swimming pools/.test(await page.locator('#daily-root .dd-water').innerText()) && /federal or tribal/.test(await page.locator('#daily-root .dd-land').innerText()), label + ': the panels name where (county and state), set pads against a typical day, give water in pools and say whose land');
+      // every permit approved each day (Texas, Oklahoma and New Mexico publish a list daily), counted in the summary and drawn as a line of rings in the chart: beside the rings of the permits that have a location
+      const dots = () => page.locator('#daily-root .dd-chart .dd-oil-dot').count();
+      const appr = (await page.locator('#daily-root .dd-approved').first().innerText()).replace(/\s+/g, ' ');
+      const apprN = +appr.match(/Approved that day: ([\d,]+) new-drill permits?/)[1].replace(/,/g, ''); const apprParts = [...appr.matchAll(/(Texas|Oklahoma|New Mexico) ([\d,]+)/g)].map((m) => +m[2].replace(/,/g, ''));
+      check(apprParts.length === 3 && apprParts.reduce((a, b) => a + b, 0) === apprN && apprN >= 1, label + ': the summary counts every permit approved that day, by state, and the parts add up (' + appr.slice(0, 120) + ')');
+      check((await dots()) > 40 && (await page.locator('#daily-root .dd-chart .dd-oil-line').count()) >= 1 && /line of rings/.test(await page.locator('#daily-root .dd-oilkey').innerText()) && /not added/.test(await page.locator('#daily-root .dd-chartbox').locator('xpath=..').innerText()), label + ': the chart has the permits approved each day as a line of rings beside the bars, with a key, and says they are not added to the wells');
+      await page.click('#ddk-wells');
+      check((await dots()) === 0 && (await page.locator('#daily-root .dd-oilkey').count()) === 0 && (await page.locator('#daily-root .dd-approved').count()) === 0 && !/\b(null|undefined|NaN)\b/.test(await page.locator('#daily-root .dd-chartbox').innerText()), label + ': "Fracked wells" takes the line, its key and the approvals out, and leaves no "null" in the chart');
+      await page.click('#ddk-permits');
+      check((await dots()) > 40 && (await page.locator('#daily-root .dd-approved').count()) === 1, label + ': "Oil permits" keeps them');
+      await page.click('#ddk-both');
+      await page.selectOption('#daily-root select.nw-pick', 'TX');
+      await page.waitForFunction(() => /Approved that day in Texas/.test((document.querySelector('#daily-root .dd-approved') || {}).textContent || ''), null, { timeout: 8000 });
+      check((await dots()) > 40 && !/Oklahoma/.test(await page.locator('#daily-root .dd-approved').first().innerText()), label + ': choosing Texas counts Texas\'s permits alone, in the summary and in the line');
+      await page.selectOption('#daily-root select.nw-pick', 'ND');
+      await page.waitForFunction(() => /not published by day for this state/.test((document.querySelector('#daily-root .dd-oilkey') || {}).textContent || ''), null, { timeout: 8000 });
+      check((await dots()) === 0 && (await page.locator('#daily-root .dd-approved').count()) === 0, label + ': a state that publishes no daily list has no line and no count, said in the key, never zeros');
+      await page.selectOption('#daily-root select.nw-pick', '');
+      await page.fill('#daily-root input[type=date]', '2026-03-10'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
+      await page.waitForFunction(() => /starts on Aug 1, 2026/.test((document.querySelector('#daily-root .dd-approved') || {}).textContent || ''), null, { timeout: 8000 });
+      check((await dots()) === 0 && /none by day for these days/.test(await page.locator('#daily-root .dd-oilkey').innerText()), label + ': a day before the daily lists were read says the count of every permit starts on Aug 1, 2026 and draws no line there, not zeros');
+      await page.goto(base + '?debug&again=1#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
+      await page.waitForTimeout(900);
       check(n0 >= 10 && /Still filling in/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()), label + ': it opens on the newest day with ten or more wells (' + first + ', ' + n0 + ' wells), and says that day is still filling in');
       check(/typical settled day has about \d+\.\d/.test(await page.locator('#daily-root .nat-panel').innerText()), label + ': a day still filling in is set against a typical day and not called slow');
       // four ways to choose a day: the arrows, the slider, the date box, a bar of the chart
       await page.click('button[aria-label="The day before"]');
       check((await page.locator('#daily-root .dd-date').innerText()) !== first && /d=\d{4}-\d\d-\d\d/.test(await hash()), label + ': the arrow moves a day and writes it in the address');
+      check(!(await statsAgree(label + ' (day before)')), (await statsAgree(label + ' (day before)')) || label + ': the numbers follow the arrow: they describe the day\'s wells');
       await page.locator('#daily-root .tl-range').fill(await page.evaluate(() => String(document.querySelector('#daily-root .tl-range').min)));
       check(/Jun|May/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': the slider reaches the start of the chart: ' + (await page.locator('#daily-root .dd-date').innerText()));
       await page.fill('#daily-root input[type=date]', '2026-03-10'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
@@ -1213,13 +1252,15 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       // a state: the table, the chart and the summary agree
       await page.selectOption('#daily-root select.nw-pick', 'TX');
       await page.waitForFunction(() => /in Texas$/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
-      const states = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap tbody tr td:first-child')].map((t) => t.textContent));
-      check(/s=TX/.test(await hash()) && states.length > 0 && states.every((x) => x === 'Texas') && (await page.locator('#daily-root .dd-chartbox .nat-keys li').count()) === 1, label + ': choosing Texas keeps only Texas in the table and the chart (' + states.length + ' wells), and writes s=TX');
+      const states = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap.tall tbody tr td:nth-child(2)')].map((t) => t.textContent));
+      check(/s=TX/.test(await hash()) && states.length > 0 && states.every((x) => x === 'Texas') && (await page.locator('#daily-root .dd-chartbox .nat-keys:not(.dd-oilkey) li').count()) === 1, label + ': choosing Texas keeps only Texas in the table and the chart (' + states.length + ' wells), and writes s=TX');
+      check(!(await statsAgree(label + ' (Texas)')) && /in Texas/.test(await page.locator('#daily-root .dd-where').innerText()), (await statsAgree(label + ' (Texas)')) || label + ': choosing Texas makes the numbers Texas\'s own');
       // a day with no well says none, rather than a figure the registry lacks
       await page.selectOption('#daily-root select.nw-pick', 'ND');
       await page.fill('#daily-root input[type=date]', '2026-06-24'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
-      await page.waitForFunction(() => /^0 wells/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
-      check(/No well had its first job this day/.test(await page.locator('#daily-root .nat-panel').innerText()) && /No well/.test(await page.locator('#daily-root #dd-table-h + div').innerText()), label + ': a day with no well in the chosen state says "No well", not a table of blanks');
+      await page.waitForFunction(() => /^0 fracked wells/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
+      check(/No well had its first fracturing job this day/.test(await page.locator('#daily-root .nat-panel').innerText()) && /No fracked well/.test(await page.locator('#daily-root #dd-table-h + div').innerText()), label + ': a day with no well in the chosen state says "No well", not a table of blanks');
+      check(!(await statsAgree(label + ' (empty day)')) && (await page.locator('#daily-root .dd-stats.is-empty').count()) === 1, (await statsAgree(label + ' (empty day)')) || label + ': a day with no well in the chosen state: the numbers say there is nothing to describe');
       // freshness: each state's newest well, and the producing states with none in the registry named, not counted as zero
       const fresh = await page.locator('#daily-root .nat-cov, #daily-root table').last().innerText();
       check(/Texas/.test(fresh) && /Days behind the newest/i.test(fresh) && /not counted as zero/.test(await page.locator('#daily-root').innerText()), label + ': the freshness table names each state\'s newest well and the states with none');
@@ -1258,7 +1299,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /Mar 12, 2014/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 30000 });
       await page.waitForTimeout(400);
       const sl2 = await slider();
-      check(want > 20 && new RegExp('^' + want + ' wells on Mar 12, 2014').test(await tableHead()) && /Mar 12, 2014/.test(await head()) && /^Settled$/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()) && /d=2014-03-12/.test(await hash()),
+      check(want > 20 && new RegExp('^' + want + ' fracked wells on Mar 12, 2014$').test(await tableHead()) && /Mar 12, 2014/.test(await head()) && /^Settled$/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()) && /d=2014-03-12/.test(await hash()),
         label + ': a date in 2014 loads the earlier wells and opens that day with the same ' + want + ' wells the file holds: ' + (await tableHead()));
       check(/A typical day in the 12 months Oct 2013 to Sep 2014 had about \d+\.\d/.test(await page.locator('#daily-root .nat-panel').innerText()) && /^The 150 days from /.test(await title()) && sl2.max - sl2.min === 149 && (await page.locator('#daily-root .dd-chart .dd-marker').evaluate((n) => n.style.display !== 'none')),
         label + ': a day in 2014 is set against 2014, the chart and the slider hold the 150 days around it, and the day is marked');
@@ -1272,6 +1313,115 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /Jan 1, 2011/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
       check(await page.locator('button[aria-label="The day before"]').isDisabled() && /in North Dakota$/.test(await tableHead()) && /Saturday, Jan 1, 2011/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': an address with a day in 2011 opens on it with the arrow back switched off at the first day');
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-daily').innerText()), label + ': no NaN, undefined, null or Infinity on a day in 2011');
+      // the strip of every month since 2011 (2026-11-02): a bar a month from the summary (no download), the chart's 150 days as a band, the chosen day as a line; a click on a month opens it,
+      // a failed fetch of the earlier wells says so right there, and a state chosen redraws it
+      await page.goto(base + '?fresh=3#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dd-ychart', { timeout: 25000 });
+      await page.waitForTimeout(300);
+      const sumDoc = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'summary.json'), 'utf8'));
+      const strip = () => page.evaluate(() => {
+        const g = document.querySelector('#daily-root .dd-ychart'); const w = g.querySelector('.dd-ywin'); const d = g.querySelector('.dd-yday'); const box = document.querySelector('#daily-root .dd-years'); const t = [...g.querySelectorAll('text.ax')].map((n) => n.textContent);
+        return { hits: g.querySelectorAll('.nat-hit').length, W: +g.getAttribute('width'), x: +w.getAttribute('x'), w: +w.getAttribute('width'), dx: +d.getAttribute('x1'), fits: box.scrollWidth <= box.clientWidth + 1, top: t[0], years: t.filter((x) => /^20\d\d$/.test(x)) };
+      });
+      const s0 = await strip();
+      check(s0.hits === sumDoc.months.length && s0.hits > 180 && s0.years[0] === '2011' && s0.fits && s0.x + s0.w > s0.W * 0.9 && s0.dx >= s0.x - 1 && s0.dx <= s0.x + s0.w + 1 && /^Every month since Jan 2011, all states/.test(await page.locator('#daily-root .dd-ycap').innerText()),
+        label + ': the chart card opens with a bar for every month since 2011 (' + s0.hits + '), labeled from 2011, fitting the card, with the chart\'s days as a band at the newest end and the day inside it');
+      const errsStrip = errs.length;
+      await page.route('**/newwells/points-history.json', (r) => r.abort());
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(26).click();
+      await page.waitForFunction(() => /Could not load the earlier wells/.test((document.querySelector('#daily-root .dd-yearsbox .nw-status') || {}).textContent || ''), null, { timeout: 15000 });
+      check((await page.locator('#daily-root .dd-date').innerText()) === newestDay, label + ': a click on a month that cannot be loaded says so above the strip, where the click was, and the day stays');
+      await page.unroute('**/newwells/points-history.json');
+      errs.splice(errsStrip);
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(26).click();
+      await page.waitForFunction(() => /Mar 1, 2013/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 30000 });
+      await page.waitForTimeout(300);
+      const s1 = await strip();
+      check(/d=2013-03-01/.test(await hash()) && /^The 150 days from /.test(await title()) && s1.hits === s0.hits && s1.x < s0.x - 100 && s1.dx >= s1.x && s1.dx <= s1.x + s1.w && s1.fits,
+        label + ': a click on March 2013 loads the earlier wells and opens Mar 1, 2013; the band moved back to it and holds the day line (' + Math.round(s0.x) + ' to ' + Math.round(s1.x) + ')');
+      await page.selectOption('#daily-root select.nw-pick', 'ND');
+      await page.waitForFunction(() => /in North Dakota/.test((document.querySelector('#daily-root .dd-ycap') || {}).textContent || ''), null, { timeout: 5000 });
+      const s2 = await strip();
+      check(s2.hits === s0.hits && s2.top !== s1.top && s2.x === s1.x && s2.fits, label + ': choosing a state draws the strip again for that state alone, on its own scale (' + s1.top + ' to ' + s2.top + ') and with the band where it was');
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(0).click();
+      await page.waitForFunction(() => /Jan 1, 2011/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 5000 });
+      const s3 = await strip();
+      check(await page.locator('button[aria-label="The day before"]').isDisabled() && s3.x <= 41 && /s=ND/.test(await hash()) && /in North Dakota$/.test(await tableHead()), label + ': the first bar opens Jan 1, 2011 with the band at the start of the strip, and the state stays');
+      check(/no usable GPS point/.test(await page.locator('#view-daily').innerText()) && !/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-daily').innerText()), label + ': the page says that a few wells have no point, and shows no NaN, undefined, null or Infinity');
+      // fracked wells and oil permits on one map (2026-11-01): a filled dot is a fracked well, a hollow ring is an oil permit or spud, a switch shows both or either, and every count agrees with the files
+      await page.goto(base + '?debug&fresh=4#daily?d=2025-06-12', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .nw-marks', { timeout: 25000 });
+      await page.waitForFunction(() => window.__dd && window.__dd.map && window.__dd.map.ready && window.__dd.map.drawnPermits > 0, null, { timeout: 15000 });
+      const rd = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', f + '.json'), 'utf8'));
+      const dayAt = (iso, t0) => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.parse(t0 + 'T00:00:00Z')) / 864e5);
+      const nw = rd('newwells/points'); const pfiles = ['permits', 'permits-ok', 'permits-nm', 'permits-fo'].map(rd);
+      const wellsOn = (iso) => nw.d.filter((d) => d === dayAt(iso, nw.t0)).length;
+      const permitsOn = (iso, last = 0) => pfiles.reduce((t, f) => t + f.pts.filter((r) => r[3] <= dayAt(iso, f.t0) && r[3] >= dayAt(iso, f.t0) - last).length, 0);
+      const wW = wellsOn('2025-06-12'); const wP = permitsOn('2025-06-12'); const wWin = permitsOn('2025-06-12', 13);
+      const bigs = await page.locator('#daily-root .nat-panel .nat-big').allInnerTexts();
+      check(wW > 5 && wP > 5 && bigs.length === 2 && new RegExp('^' + wW + '\\s+new fracked wells?$').test(bigs[0].replace(/\s+/g, ' ').trim()) && new RegExp('^' + wP + '\\s+oil permits? and spuds? with a location|^' + wP + '\\s+oil permit or spud with a location').test(bigs[1].replace(/\s+/g, ' ').trim()),
+        label + ': a day shows both counts, ' + wW + ' fracked wells and ' + wP + ' oil permits and spuds, the same as the files hold: ' + bigs.join(' | ').replace(/\s+/g, ' '));
+      check(new RegExp('^' + wW + ' fracked wells? and ' + wP + ' oil permits? and spuds? on Jun 12, 2025$').test(await tableHead()) && (await page.locator('#daily-root .table-wrap.tall thead th').first().innerText()) === 'Kind', label + ': the table names both kinds and has a Kind column: ' + (await tableHead()));
+      const marks = await page.locator('#daily-root .nw-marks li').allInnerTexts();
+      const seg = await page.locator('#daily-root #ddk-both, #daily-root #ddk-wells, #daily-root #ddk-permits').evaluateAll((bs) => bs.map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')));
+      check(marks.length === 2 && /Fracked well/.test(marks[0]) && /Oil permit or spud/.test(marks[1]) && seg.join(',') === 'Both:true,Fracked wells:false,Oil permits:false', label + ': the legend names the two marks (a dot and a ring) and the switch offers Both, Fracked wells and Oil permits: ' + seg.join(', '));
+      const mapNow = () => page.evaluate(() => ({ kinds: window.__dd.map.kinds, count: window.__dd.map.permitCount(), drawn: window.__dd.map.drawnPermits, pulsing: window.__dd.map.pulsing }));
+      const m0 = await mapNow();
+      check(m0.kinds.wells && m0.kinds.permits && m0.count === wWin && m0.drawn > 0 && m0.drawn <= m0.count && m0.pulsing === 0, label + ': the map holds the ' + wWin + ' permits and spuds of the two weeks to that day, has painted rings for ' + m0.drawn + ' of them (the offshore\'s may lie off the frame) and pulses nothing beside them');
+      await page.click('#ddk-wells');
+      const m1 = await mapNow(); const bigs1 = await page.locator('#daily-root .nat-panel .nat-big').allInnerTexts();
+      check(!m1.kinds.permits && m1.drawn === 0 && m1.pulsing > 0 && bigs1.length === 1 && /fracked well/.test(bigs1[0]) && /k=wells/.test(await hash()) && !/oil permit/.test(await tableHead()), label + ': "Fracked wells" draws no ring, shows one count and writes k=wells in the address');
+      await page.click('#ddk-permits');
+      const m2 = await mapNow(); const bigs2 = await page.locator('#daily-root .nat-panel .nat-big').allInnerTexts();
+      const kindCells = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap.tall tbody tr td:first-child')].map((t) => t.textContent));
+      check(!m2.kinds.wells && m2.drawn > 0 && bigs2.length === 1 && /oil permit/.test(bigs2[0]) && !(await page.locator('#daily-root .nat-panel .badge').count()) && /k=permits/.test(await hash()) && kindCells.length === wP && kindCells.every((k) => /^(Permit approved|Well spudded)$/.test(k)),
+        label + ': "Oil permits" draws only rings, shows one count, drops the "still filling in" badge (permits are not disclosed late) and lists ' + kindCells.length + ' permits and spuds');
+      // a ring answers a hover with its own words, and never an API number
+      const ring = await page.evaluate(() => { const { map, dt, D } = window.__dd; const day = D.dayOfIso(dt.P, '2025-06-12'); for (let j = 0; j < dt.Q.n; j++) if (dt.Q.day[j] === day) { const [x, y] = map.screenOfQ(j); return { x, y, state: dt.Q.states[dt.Q.s[j]] }; } return null; });
+      await page.locator('.nw-stage').scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+      const boxR = await page.locator('.nw-canvas').boundingBox();
+      if (ring) { await page.mouse.move(boxR.x + ring.x - 12, boxR.y + ring.y - 12); await page.mouse.move(boxR.x + ring.x, boxR.y + ring.y); await page.waitForSelector('.tip', { state: 'visible', timeout: 5000 }); }
+      const tipR = ring ? await page.locator('.tip').innerText() : '';
+      check(!!ring && /Oil (permit approved|well spudded) · /.test(tipR) && /(May|Jun) \d+, 2025/.test(tipR) && !/\d{10}/.test(tipR), label + ': hovering a ring says what it is, its state, its day and its operator, with no API number: ' + tipR.replace(/\s+/g, ' ').slice(0, 110));
+      // the address: a day opened with k=permits comes up showing permits only, and k=wells wells only
+      await page.goto(base + '?debug&fresh=5#daily?d=2025-06-12&k=permits', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .nw-marks', { timeout: 25000 });
+      await page.waitForFunction(() => window.__dd && window.__dd.map && !window.__dd.map.kinds.wells, null, { timeout: 10000 });
+      check((await page.locator('#ddk-permits').getAttribute('aria-pressed')) === 'true' && /k=permits/.test(await hash()), label + ': an address with k=permits opens on the permits only, with that button pressed');
+      // not available is not zero: before the records start, and for a state that publishes no location
+      await page.goto(base + '?debug&fresh=6#daily?d=2023-05-10', { waitUntil: 'load' });
+      await page.waitForFunction(() => /May 10, 2023/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
+      const early = await page.locator('#daily-root .nat-panel').innerText();
+      check(/Oil permit and spud locations start on \w+ \d+, 2024/.test(early) && !/oil permits and spuds with a location/.test(early) && new RegExp('^[\\d,]+ fracked wells? on May 10, 2023$').test(await tableHead()),
+        label + ': a day before the permit records says they start later, and shows no count of none');
+      await page.goto(base + '?debug&fresh=7#daily?d=2025-06-12&s=ND', { waitUntil: 'load' });
+      await page.waitForFunction(() => /in North Dakota$/.test((document.querySelector('#dd-table-h') || {}).textContent || ''), null, { timeout: 30000 });
+      const nd = await page.locator('#daily-root .nat-panel').innerText();
+      check(/North Dakota publishes no oil permit locations/.test(nd) && !/oil permits and spuds with a location/.test(nd) && !/oil permit/.test(await tableHead()), label + ': a state that publishes no location says so instead of showing none');
+      // fractured wells found and oil well permits approved, day by day, marked and never added (2026-11-02)
+      const readIdx = (d) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', d, 'index.json'), 'utf8')).days;
+      const idxTx = readIdx('daily'); const newestIdx = idxTx[idxTx.length - 1].d;
+      const oilOf = (d) => ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const e = readIdx(dir).find((x) => x.d === d && x.s === 'ok'); return e ? e.pn : 0; });
+      const arrCard = page.locator('section[aria-labelledby="dd-arr-h"]');
+      await page.goto(base + '?fresh=8#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
+      const baseText = await arrCard.innerText();
+      const committed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'arrivals.json'), 'utf8'));
+      check((await arrCard.locator('.mk-frac').count()) >= 2 && (await arrCard.locator('.mk-oil').count()) >= 2 && (await arrCard.locator('.mk-both').count()) >= 2 && /Fractured wells found \(FracFocus\)/.test(baseText) && /Oil well permits approved \(state agencies\)/.test(baseText),
+        label + ': the card marks which is which: a filled dot for fractured wells (FracFocus), a hollow ring for oil well permits (state agencies), a ring with a dot for the same well in both');
+      const firstRow = (await arrCard.locator('tbody tr').first().innerText()).replace(/\s+/g, ' ');
+      check(committed.since ? true : (/begins with the next download/.test(baseText) && (await arrCard.locator('tbody tr td:nth-child(2)').allInnerTexts()).every((x) => x.trim() === '—') && !/\b(NaN|undefined|null|Infinity)\b/.test(baseText)),
+        label + ': before the first comparison no day is counted: the fractured column is a dash (never a zero), and the card says the comparison begins with the next download');
+      check(/different things/.test(baseText) && /never added together/.test(baseText) && /cannot be checked against them/.test(baseText) && !/\d{10}/.test(baseText), label + ': it says the two are never added, that Oklahoma and New Mexico cannot be checked, and holds no API number');
+      const fixture = { v: 1, checked: newestIdx, since: newestIdx, against: { TX: { wells: 83, from: '2026-10-30' } }, days: [{ day: newestIdx, found: 41, removed: 1, states: [['TX', 25, 3], ['NM', 9, null], ['OK', 5, null], ['ND', 2, null]] }] };
+      await page.route('**/newwells/arrivals.json', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fixture) }));
+      await page.goto(base + '?fresh=9#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
+      const cells = await arrCard.locator('tbody tr').first().locator('th, td').allInnerTexts();
+      const oil = oilOf(newestIdx); const rows2 = await arrCard.locator('tbody tr').allInnerTexts();
+      check(/^41/.test(cells[1].trim()) && /Texas 25/.test(cells[1]) && /North Dakota 2/.test(cells[1]) && cells[2].trim().startsWith(String(oil[0] + oil[1] + oil[2])) && cells[3].trim() === '3', label + ': a day with a comparison shows the 41 fractured wells found, the ' + (oil[0] + oil[1] + oil[2]) + ' oil well permits the three state reports approved, and the 3 wells in both, side by side: ' + cells.join(' | ').replace(/\s+/g, ' ').slice(0, 140));
+      check(/^—/.test(rows2[1].split('\t')[1] || '—') && /Texas’s daily reports are matched by API number \(83 wells, from Oct 30, 2026\)/.test(await arrCard.innerText()), label + ': the day before the comparison has a dash, not a zero, and the card says what the Texas match covers (83 wells, from Oct 30)');
+      await page.unroute('**/newwells/arrivals.json');
     } catch (e) {
       check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
     }
