@@ -6,6 +6,7 @@ import { segmented } from './ui.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { spark, delta } from './charts.js';
 import * as N from './national-data.js';
+import { GRADES } from './fields-data.js';
 
 const MEASURE_NAME = Object.fromEntries(N.MEASURES.map((m) => [m.id, m.name]));
 // what one count is: the BLM counts APDs approved by state office, Oregon applications filed, Virginia wells drilled; the others new-drill permits or wells spudded
@@ -22,7 +23,7 @@ export function createNationalView({ root }) {
   const slots = {};
 
   const onlyStates = (list) => list.filter((s) => !N.OVERLAP.has(s.id));
-  const nameList = (measureId) => N.listAnd(onlyStates(N.rankBy(doc, measureId)).map((s) => s.name));
+  const nameList = (measureId) => N.upFirst(N.listAnd(onlyStates(N.rankBy(doc, measureId)).map((s) => N.inName(s.id, s.name))));
 
   /* ---------- the hash: #national?s=ND&m=spuds ---------- */
   function writeHash() {
@@ -45,6 +46,12 @@ export function createNationalView({ root }) {
       other.length ? { label: 'Counted another way', value: String(other.length), note: N.listAnd(other.map((s) => s.name + ' (' + unitOf(s) + ')')) + ': shown, never added to the counts above' } : null,
       { label: 'Latest update', value: fmtDate(N.newest(doc)), note: 'the newest day any agency’s file was current to; each state’s own date is below' },
     ].filter(Boolean).map((x) => el('div', { class: 'dr-tile' }, el('dt', { text: x.label }), el('dd', { text: x.value }), el('small', { text: x.note }))));
+  }
+
+  // a link a visitor can open: a file download (.zip, .csv ...) or a map-service root is sent to the agency's own page instead, with the file's name in the words
+  function sourceLink(s) {
+    const h = N.sourceHref(s, fields);
+    return h ? { href: h.href, text: 'Source: ' + s.source.name + (h.viaAgency ? ' (on the agency’s site)' : '') } : null;
   }
 
   /* ---------- the tile map and the state panel ---------- */
@@ -103,7 +110,7 @@ export function createNationalView({ root }) {
     const top = items[0][1];
     return el('div', { class: 'nat-list' }, el('h4', { text: title }), el('ul', {}, items.slice(0, 6).map(([name, n]) => {
       const bar = el('i', { class: 'nat-lb' }); bar.style.setProperty('--p', String(n / top));
-      return el('li', {}, el('span', { class: 'nat-ln', text: name, title: name }), el('span', { class: 'nat-lt' }, bar), el('span', { class: 'nat-lv', text: fmt.format(n), title: n + ' ' + unit }));
+      return el('li', {}, el('span', { class: 'nat-ln', text: name, title: name }), el('span', { class: 'nat-lt' }, bar), el('span', { class: 'nat-lv', text: fmt.format(n), title: n + ' ' + N.unitFor(n, unit) }));
     })));
   }
   function bandBar(m) {
@@ -143,16 +150,17 @@ export function createNationalView({ root }) {
       vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: N.SERIES_COLOR[id] || 'var(--s1)', label: s.name + ', ' + unitOf(s) + ' by month, last ' + vals.length + ' months' })) : null);
     const m = N.mix(s);
     if (m) put(box, el('div', { class: 'nat-sub' }, el('h4', { text: (N.measureOf(s.measure).family === 'permits' ? 'Kinds of permits' : 'Kinds of wells') + ', last 12 months' }), bandBar(m), el('ul', { class: 'nat-mixkeys' }, m.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', {}, sw, b.label + ' ' + fmt.format(b.n)); }))));
-    else put(box, el('p', { class: 'fine', text: 'Kinds of permits (re-entries, reworks, injection wells, amendments) are not split for ' + s.name + ' in this report.' }));
+    else put(box, el('p', { class: 'fine', text: 'Kinds of permits (re-entries, reworks, injection wells, amendments) are not split for ' + N.inName(id, s.name) + ' in this report.' }));
     const fl = N.fluidMix(s);
     if (fl) put(box, el('p', { class: 'fine', text: 'By fluid: ' + fl.parts.map((x) => fmt.format(x.n) + ' ' + x.id).join(', ') + (fl.unknown ? ', ' + fmt.format(fl.unknown) + ' not recorded' : '') + '.' }));
     put(box, 
       el('div', { class: 'nat-lists' }, list('Top ' + (s.place || 'counties'), s.counties, unitOf(s)), list('Top operators', s.operators, unitOf(s))),
       s.operators.length && s.namedShare != null ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round(s.namedShare * 100) + '% of the year’s new wells.' }) : null,
       s.note ? el('p', { class: 'fine', text: s.note }) : null);
-    if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_VIEW[id] }, 'Open ' + s.name + ' in the Map', icon('arrow', 16)));
+    if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_VIEW[id] }, 'Open ' + N.inName(id, s.name) + ' in the Map', icon('arrow', 16)));
     if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
-    if (s.source && s.source.url) links.append(el('a', { class: 'more-link', href: s.source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Source: ' + s.source.name, icon('arrow', 16)));
+    const src = sourceLink(s);
+    if (src) links.append(el('a', { class: 'more-link', href: src.href, target: '_blank', rel: 'noopener noreferrer' }, src.text, icon('arrow', 16)));
     put(box, links);
     return box;
   }
@@ -235,9 +243,9 @@ export function createNationalView({ root }) {
         el('span', { class: 'nat-mv', text: fmt.format(m.reduce((t, b) => t + b.n, 0)) + (N.measureOf(s.measure).family === 'permits' ? ' filings' : ' wells') }));
     }));
     const keys = el('ul', { class: 'nat-keys' }, N.BANDS.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', { class: 'nat-key' }, sw, el('span', { text: b.label })); }));
-    const others = doc.states.filter((s) => !N.mix(s)).map((s) => s.name);
+    const others = doc.states.filter((s) => !N.mix(s)).map((s) => N.inName(s.id, s.name));
     return el('section', { class: 'card nat-card reveal is-in' }, hdr('Every kind of filing', 'layers', 'What the permits are for', 'New wells, injection and disposal wells, re-entries, reworks and amendments, for the states whose agencies tell them apart.'),
-      keys, ul, others.length ? el('p', { class: 'fine', text: 'Not split in this report: ' + N.listAnd(others) + '.' }) : null);
+      keys, ul, others.length ? el('p', { class: 'fine', text: 'Not split in this report: ' + N.upFirst(N.listAnd(others)) + '.' }) : null);
   }
 
   /* ---------- who is covered ---------- */
@@ -250,9 +258,10 @@ export function createNationalView({ root }) {
         el('tbody', {}, data.map((r) => el('tr', { class: r.status === 'gap' ? 'is-gap' : null },
           el('th', { scope: 'row' }, el('button', { type: 'button', class: 'link', text: r.name, onclick: () => { select(r.id); slots.map.scrollIntoView({ behavior: 'smooth', block: 'start' }); } })),
           el('td', { 'data-label': 'Counts' }, status(r)),
-          el('td', { 'data-label': 'Agency' }, r.agency || el('span', { class: 'nd', text: 'not researched' }), r.status === 'gap' && r.why ? el('small', { class: 'nat-why', text: r.why }) : null),
+          el('td', { 'data-label': 'Agency' }, r.agency || el('span', { class: 'nd', text: 'not researched' }), r.status === 'gap' && r.why ? el('small', { class: 'nat-why', text: r.why }) : null,
+            r.status === 'gap' && r.grade && GRADES[r.grade] ? el('small', { class: 'nat-why', text: 'Its published data, as researched (grade ' + r.grade + '): ' + GRADES[r.grade].replace(/^./, (c) => c.toLowerCase()) + '.' }) : null),
           el('td', { 'data-label': 'Data through', text: r.through ? monthLabel(r.through.slice(0, 7)) : '—' }),
-          el('td', { 'data-label': 'Updates', text: r.cadence || (r.grade ? 'grade ' + r.grade : '—') }))))));
+          el('td', { 'data-label': 'Updates', text: r.cadence ? N.upFirst(r.cadence) : '—' }))))));
     return el('section', { class: 'card nat-card reveal is-in' }, hdr('Coverage', 'building', 'Who is covered, and who is not yet', 'Every state with oil production is listed. A state with no data here is counted as not available, never as zero.'), table);
   }
 

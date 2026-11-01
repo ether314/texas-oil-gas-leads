@@ -96,6 +96,12 @@ Oregon counts **applications filed** (`applications`: DOGAMI's file has no appro
 On the page a tile of another kind is dotted, shaded against the biggest state counting something like it (permits for applications, spuds for wells drilled) so it is never the "largest" of its own group of one, and the top figures name them under "Counted another way". A state whose last **24 months** hold nothing (Arizona, Florida, Oregon, South Dakota) is shown as "None recorded", with a dash on its tile, never as a 0: the source dating nothing in two years is not the same as nothing happening.
 A read zero (a year after a year with some) is outlined, apart from a state not read yet (dashed).
 
+## The pages' words
+
+The research files (`fields/<ST>.json`) are written in the researchers' own voice ("blocked from this machine", "I read", "the tracker"), and stay as researched. What reaches a page goes through `d11_fields_build.py`: `VOICE` is a list of the phrases to rewrite (each is one phrase the research uses; `tests/test_d11_fields.py` fails if a marker of the researchers' voice is left in the published
+`permit-fields.json`), and `clip()` cuts a long string after a whole sentence, or a whole word with an ellipsis, never in the middle of one. The reasons a producing state is not read yet are written for visitors in `GAP_WHY` in `d11_nat_build.py` (a test fails for a gap without one, or with the researchers' words in it); the researched reason, with the account of what was tried, is in the matrix.
+The page hides the research's producer plan (it is notes for whoever builds the producer), and the Sources page lists the state agencies behind the report from `national.json` itself, with a link to the agency's page when the source is a raw download or a map-service root (`sourceHref` in `national-data.js`). In a sentence the offshore is "the federal offshore" and the BLM "federal onshore (BLM)" (`inName`).
+
 ## Known limits
 
 - **`asOf` is the day a state's data is current to.** For most states that is the newest record's day. Nevada's page is edited by hand and Virginia's layers publish no update time, so for those two it is the day of the read (their `note` says so, and Nevada's `lag_days` keeps a month with no permit from reading as a real zero too early); the National page's top figure is therefore called "Latest update", not "newest record".

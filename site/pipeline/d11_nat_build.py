@@ -39,13 +39,13 @@ log = C.log
 # the four built earlier: id -> (series, operators, county permits, county names, agency, measure, basis, cadence, source name, source address)
 BUILT = {
     "TX": dict(series="series-permits", operators="operators", county="county-permits", geo="counties.geo", agency="Railroad Commission of Texas", measure="permits",
-               basis="issue date", cadence="rebuilt by hand", source="Drilling Permit Master and Trailer (application type 01, new drill)", url="https://www.rrc.texas.gov/"),
+               basis="issue date", cadence="publishes daily; this report's series is rebuilt by hand", source="Drilling Permit Master and Trailer (application type 01, new drill)", url="https://www.rrc.texas.gov/"),
     "OK": dict(series="series-permits-ok", operators="operators-ok", county="county-permits-ok", geo="counties-ok.geo", agency="Oklahoma Corporation Commission", measure="permits",
-               basis="approval date", cadence="weekly", source="Intents to drill (master workbook and the daily file)", url="https://oklahoma.gov/occ.html"),
+               basis="approval date", cadence="publishes daily; this report refreshes weekly", source="Intents to drill (master workbook and the daily file)", url="https://oklahoma.gov/occ.html"),
     "NM": dict(series="series-permits-nm", operators="operators-nm", county="county-permits-nm", geo="counties-nm.geo", agency="Oil Conservation Division", measure="spuds",
-               basis="spud date", cadence="weekly", source="Public well layer (Wells_Public)", url="https://www.emnrd.nm.gov/ocd/"),
+               basis="spud date", cadence="publishes daily; this report refreshes weekly", source="Public well layer (Wells_Public)", url="https://www.emnrd.nm.gov/ocd/"),
     "FO": dict(series="series-permits-fo", operators="operators-fo", county="county-permits-fo", geo="counties-fo.geo", agency="Bureau of Safety and Environmental Enforcement", measure="spuds",
-               basis="spud date", cadence="weekly", source="Borehole data (the weekly all-releasable file)", url="https://www.bsee.gov/"),
+               basis="spud date", cadence="publishes weekly; this report refreshes weekly", source="Borehole data (the weekly all-releasable file)", url="https://www.bsee.gov/"),
 }
 
 
@@ -55,6 +55,22 @@ def load(name, default=None):
         return default
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+# Why a producing state is not read yet, in a visitor's words (the researched reason, with the researchers' own account of what they tried, is in the permit-fields matrix).
+GAP_WHY = {
+    "AK": "Alaska's commission publishes bulk and query data (a daily Access extract and the Data Miner), but its sites refused automated requests when this was researched, so no file or approval date was seen.",
+    "AR": "Arkansas publishes a wells map layer with a status date only (no permit or spud date), and no bulk file with an issue date was found, so permits cannot be counted by month.",
+    "CA": "California's permit layer is read, but it is too new: the report shows a state once it has 24 complete months, and California appears then.",
+    "CO": "Colorado's commission lists free permit downloads, but its site refused automated requests when this was researched, so no file could be read.",
+    "ID": "Idaho has about 34 wells since 2007 (about one permit a year, none in some years), too few for a monthly count.",
+    "MS": "Mississippi's board publishes a daily wells file with permit dates, but its counts run well below the board's own yearly totals (29 against 37 for 2025), so it is held back until a complete source is found.",
+    "MO": "Missouri's wells layer is frozen: its newest permit is dated August 2019 and confidential wells are left out, so it gives history, not current counts.",
+    "MT": "Montana publishes approval dates only in weekly PDF letters and in a query tool whose export could not be read automatically.",
+    "NE": "Nebraska's commission site refused every connection when this was researched, so its permit files could not be seen. It is a small producer (17 development and exploratory permits in 2025).",
+    "OH": "Ohio publishes a permit list with issue dates, free and with no login, but as a query page rather than a bulk file, and a reader for it has not been built yet.",
+    "TN": "Tennessee's environment department refused automated requests for its data viewer, map layer and permit form, and no bulk file was found; it publishes a searchable permit database.",
+}
 
 
 def short_reason(text, n=240):
@@ -102,7 +118,7 @@ def adapt(sid, spec):
         "namedShare": round(min(1.0, named / window), 3) if window else None, "read": sum(new),
         **({"place": "areas"} if sid == "FO" else {}),
         "note": {"TX": "The monthly files are rebuilt by hand; the Daily report holds the newest days.", "OK": "", "NM": "Spud dates arrive about two months late, so the series ends two months back.",
-                 "FO": "About 45 wells a year; spud dates arrive late."}[sid],
+                 "FO": "About 45 wells a year; spud dates arrive late. The Bureau of Safety and Environmental Enforcement (BSEE) publishes the file."}[sid],
     }
 
 
@@ -161,7 +177,7 @@ def build(docs=None, fields=None, today=None):
             continue
         f = fstates.get(sid) or {}
         gaps.append({"id": sid, "name": name, "agency": (f.get("agency") or {}).get("name"), "grade": f.get("grade"),
-                     "why": short_reason(f.get("grade_reason")) or "Not read yet: no producer for this agency has been built."})
+                     "why": GAP_WHY.get(sid) or short_reason(f.get("grade_reason")) or "Not read yet: no producer for this agency has been built."})
     addable = [s for s in states if s["id"] not in C.OVERLAP]  # the BLM's onshore permits overlap the states' own: never in a total
     tot = {"permits12": sum(s["p12"] for s in addable if s["measure"] == "permits"), "spuds12": sum(s["p12"] for s in addable if s["measure"] == "spuds"),
            "permitStates": sum(1 for s in addable if s["measure"] == "permits"), "spudStates": sum(1 for s in addable if s["measure"] == "spuds")}
