@@ -47,6 +47,16 @@ check(names.index("Capture the report") < names.index("Capture the Oklahoma repo
 check(names.index("Check the New Mexico archive") < names.index(NM_DROP) and names.index("Check the Oklahoma archive") < names.index(OK_DROP), "each state's check comes before the step that drops its changes")
 check("new_mexico_history" in wf[True]["workflow_dispatch"]["inputs"], "a by-hand run can refill New Mexico's archive")
 
+# ---- the job commits and publishes, so it runs from the default branch only: a manual run chosen from another branch would commit to that branch and publish its site
+def runs_for(job, ref):
+    expr = job["if"].replace("${{", "").replace("}}", "").strip()
+    return eval(expr.replace("github.ref", "ref"), {}, {"ref": ref})
+
+
+check(all(runs_for(wf["jobs"]["capture"], r) is True for r in ("refs/heads/main",)) and not any(runs_for(wf["jobs"]["capture"], r) for r in ("refs/heads/claude/some-branch", "refs/heads/main-2", "refs/tags/v1", "refs/pull/5/merge", "")),
+      "the job runs for refs/heads/main (a schedule, or a run chosen from main) and for no other ref (a branch, a tag, a pull request)")
+
+
 
 def cond(name, outcomes, cancelled=False):
     expr = steps[name]["if"].replace("${{", "").replace("}}", "").strip()

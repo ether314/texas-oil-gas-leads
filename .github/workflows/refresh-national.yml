@@ -21,6 +21,9 @@ permissions:
 
 jobs:
   refresh:
+    # these workflows commit and publish: only from the default branch (a manual run chosen from another branch would otherwise commit to that branch and publish its site;
+    # a scheduled run and one chosen from main have github.ref refs/heads/main)
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

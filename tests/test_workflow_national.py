@@ -53,6 +53,16 @@ check(hm(wf[True]["schedule"][0]["cron"]) > hm(monthly[True]["schedule"][0]["cro
       "it runs after the monthly files (same day, at least 20 minutes later), because national.json reads them")
 check(wf["concurrency"]["group"] == nightly["concurrency"]["group"] and wf["concurrency"]["cancel-in-progress"] is False, "it shares the nightly capture's concurrency group: the two never run at once, neither cancels the other")
 check(wf["permissions"] == {"contents": "write"}, "it can commit and nothing else")
+
+# ---- the job commits and publishes, so it runs from the default branch only: a manual run chosen from another branch would commit to that branch and publish its site
+def runs_for(job, ref):
+    expr = job["if"].replace("${{", "").replace("}}", "").strip()
+    return eval(expr.replace("github.ref", "ref"), {}, {"ref": ref})
+
+
+check(all(runs_for(job, r) is True for r in ("refs/heads/main",)) and not any(runs_for(job, r) for r in ("refs/heads/claude/some-branch", "refs/heads/main-2", "refs/tags/v1", "refs/pull/5/merge", "")),
+      "the job runs for refs/heads/main (a schedule, or a run chosen from main) and for no other ref (a branch, a tag, a pull request)")
+
 check(all(by_id[i].get("continue-on-error") is True for i in ("nat_run", "nat_build", "nat_check")), "the producers, the rebuild and the check are continue-on-error: the commit and publish still happen for what succeeded")
 check(by_id["tools"].get("continue-on-error") is True and by_id["tools"].get("timeout-minutes", 99) <= 6 and "poppler-utils" in steps["Install the tool that reads PDF reports"]["run"] and names.index("Install the tool that reads PDF reports") < names.index(RUN),
       "poppler (for the BLM's PDF reports) is installed first, with its own short limit, and a failed install cannot stop the run")

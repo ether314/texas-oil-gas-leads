@@ -49,6 +49,16 @@ FO_FILES = [DATA + "/" + n + "-fo.json" for n in ("series-permits", "county-perm
 check(wf[True]["schedule"] == [{"cron": "40 5 * * 1"}] and "workflow_dispatch" in wf[True], "it runs on Mondays at 05:40 UTC, after the nightly capture and its backup, and by hand")
 check(wf["concurrency"]["group"] == nightly["concurrency"]["group"] and wf["concurrency"]["cancel-in-progress"] is False, "it shares the nightly capture's concurrency group, so the two never run at once and neither cancels the other")
 check(wf["permissions"] == {"contents": "write"}, "it can commit and nothing else")
+
+# ---- the job commits and publishes, so it runs from the default branch only: a manual run chosen from another branch would commit to that branch and publish its site
+def runs_for(job, ref):
+    expr = job["if"].replace("${{", "").replace("}}", "").strip()
+    return eval(expr.replace("github.ref", "ref"), {}, {"ref": ref})
+
+
+check(all(runs_for(job, r) is True for r in ("refs/heads/main",)) and not any(runs_for(job, r) for r in ("refs/heads/claude/some-branch", "refs/heads/main-2", "refs/tags/v1", "refs/pull/5/merge", "")),
+      "the job runs for refs/heads/main (a schedule, or a run chosen from main) and for no other ref (a branch, a tag, a pull request)")
+
 check(all(by_id[i].get("continue-on-error") is True for i in IDS), "all three refreshes and all three checks are continue-on-error: one failing cannot stop the others")
 check(by_id["ok_refresh"].get("timeout-minutes", 0) >= 15 and by_id["nm_refresh"].get("timeout-minutes", 0) <= 10 and by_id["fo_refresh"].get("timeout-minutes", 0) <= 10, "the 154 MB Oklahoma download has room, and no step can hang the job")
 check(sum(by_id[i]["timeout-minutes"] for i in ("nm_refresh", "ok_refresh", "fo_refresh")) + 10 <= job["timeout-minutes"], "the refreshes' limits together leave the job room to check, commit and publish")

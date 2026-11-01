@@ -49,6 +49,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_workflow.py`: `.github/workflows/daily-rrc-report.yml`: the structure that isolates the three captures, the `if:` conditions for every
   combination of outcomes (64), a time limit on each capture that leaves the job room to commit and publish, and the workflow's own `run:` scripts
   executed against a throwaway clone with a local bare `origin` (needs git and PyYAML).
+- All three scheduled workflows' tests also check that the job runs for `refs/heads/main` and for no other ref (a branch, a tag, a pull request).
 - `test_workflow_monthly.py`: `.github/workflows/refresh-monthly.yml` the same way (isolation of the three refreshes, the 64 outcome combinations, the drop, commit and last
   steps run against a clone; only the eight files it names are ever committed, and it shares the nightly's concurrency group).
 - `test_publish.py`: `.github/workflows/publish.yml` (what it follows, its `if:` for every kind of trigger, that it steps aside when main has moved on since the commit CI passed, that it cannot reach the agencies)

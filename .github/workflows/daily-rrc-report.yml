@@ -40,6 +40,9 @@ permissions:
 
 jobs:
   capture:
+    # these workflows commit and publish: only from the default branch (a manual run chosen from another branch would otherwise commit to that branch and publish its site;
+    # a scheduled run and one chosen from main have github.ref refs/heads/main)
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     # the three captures have limits of their own (below, 25 + 12 + 6 minutes): a download that trickles must fail its own step, not use up the job and
     # leave nothing committed for any state
