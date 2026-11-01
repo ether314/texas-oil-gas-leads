@@ -38,6 +38,7 @@ exists, a memory limit, without the repository token. Standard library only, plu
 import argparse
 import collections
 import concurrent.futures
+import hashlib
 import json
 import os
 import re
@@ -422,22 +423,57 @@ def tag_name(day, pack, n):
     return "wells-%s-%s-%02d" % (day.isoformat(), pack, n)
 
 
+def sha256_of(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def assets_state(repo, tag):
+    """{name: asset} of a release: size, state and, where the gh CLI gives it, the SHA-256 digest."""
+    return {a["name"]: a for a in json.loads(gh(["release", "view", tag, "--repo", repo, "--json", "assets"], timeout=300)).get("assets", [])}
+
+
+def same_file(asset, path):
+    """True when the release already holds this file: uploaded completely, the same size and, where GitHub gives a digest, the same SHA-256."""
+    if asset.get("state") not in (None, "uploaded") or asset.get("size") != os.path.getsize(path):
+        return False
+    digest = asset.get("digest") or ""
+    return not digest.startswith("sha256:") or digest[7:] == sha256_of(path)
+
+
+def upload_batches(repo, tag, folder, names, clobber):
+    for i in range(0, len(names), d7_release.BATCH):
+        gh(["release", "upload", tag, "--repo", repo, *(["--clobber"] if clobber else []), *[os.path.join(folder, n) for n in names[i:i + d7_release.BATCH]]])
+
+
 def publish_chunk(repo, tag, day, pack, folder, names, log=log):
-    """Create the release if it is not there, upload `names` (files of `folder`) and require every one to be listed. Raises ReleaseError otherwise."""
+    """Create the release if it is not there, upload what it does not hold and require every file to be there, whole, afterwards. Raises ReleaseError otherwise.
+
+    A file the release already holds (the same name, size and digest) is NOT uploaded again: `--clobber` deletes the old file before it uploads the new one, so a refusal in between
+    (GitHub's upload limit, 2026-11-01) lost a file that was fine, and re-sending 800 correct files spent the very allowance that was running out. `--clobber` is only for a file that differs."""
+    exists = True
     try:
         d7_release._gh(["release", "view", tag, "--repo", repo, "--json", "tagName"], retry=False)
     except d7_release.ReleaseError:
+        exists = False
         notes = ("The Railroad Commission's scanned %s of %s, each tied to the well (API number) it is about. Public records, unmodified; they can carry "
                  "the names, phone numbers and addresses of individuals. A file named <api>_<p|d|c><n>.pdf, .tif or .png is the document; the same name with .jpg is its page one. "
                  "Removed when the day leaves the 92-day archive. Made by site/pipeline/d12_wells.py." % (PACKS[pack][2], day.isoformat()))
         gh(["release", "create", tag, "--repo", repo, "--prerelease", "--latest=false", "--title", "Well images, %s, %s" % (PACKS[pack][2], day.isoformat()), "--notes", notes], timeout=300)
-    for i in range(0, len(names), d7_release.BATCH):
-        gh(["release", "upload", tag, "--repo", repo, "--clobber", *[os.path.join(folder, n) for n in names[i:i + d7_release.BATCH]]])
-    have = d7_release.assets_of(repo, tag)
-    missing = [n for n in names if n not in have]
-    if missing:
-        raise d7_release.ReleaseError("%d of %d files are not on release %s after the upload (%s ...)" % (len(missing), len(names), tag, ", ".join(missing[:3])))
-    log("release %s: %d files confirmed" % (tag, len(names)))
+    have = assets_state(repo, tag) if exists else {}
+    new = [n for n in names if n not in have]
+    changed = [n for n in names if n in have and not same_file(have[n], os.path.join(folder, n))]
+    upload_batches(repo, tag, folder, new, clobber=False)
+    upload_batches(repo, tag, folder, changed, clobber=True)
+    after = assets_state(repo, tag)
+    bad = [n for n in names if n not in after or not same_file(after[n], os.path.join(folder, n))]
+    if bad:
+        raise d7_release.ReleaseError("%d of %d files are not on release %s, whole, after the upload (%s ...)" % (len(bad), len(names), tag, ", ".join(bad[:3])))
+    log("release %s: %d files confirmed (%d uploaded, %d replaced, %d already there)" % (tag, len(names), len(new), len(changed), len(names) - len(new) - len(changed)))
+    return len(new) + len(changed)
 
 
 def publish_unit(repo, day, pack, folder, docs, log=log):
