@@ -88,6 +88,11 @@ The repository's token has one quota, shared with GitHub's own Pages deployment;
 **a run stops starting packs once it has uploaded 3,400 files** (`MAX_FILES_PER_RUN`, `--max-files`): each pack's size is estimated before it is downloaded (`EST_FILES`: 400 W-1, 250 survey, 2,400 completion files, from the four real days seen), the first pack of a run always goes up, a pack that
 would pass the cap is left for the next run (a smaller one of an older day may still fit), and the log says so. One ordinary day (about 2,300 files) fits and a second does not, so **a catch-up does about one day per run**: dispatch it again an hour later.
 
+The third run (dispatched after those two fixes, 02:50 UTC) found the limit still on: its first pack (10-29's W-1) waited 22 minutes and failed, and **it then went on** to download 10-28's completion pack and wait another 20 minutes
+until its budget ended, recording nothing. A refusal that reads as a rate limit now **stops the run** (`no further pack is started`): asking again does not clear it, and each pack after it only costs 300 MB of the RRC's bandwidth. The run also logs GitHub's
+quota before the first pack and after the last (`quota_line()`: `gh api rate_limit` is free), so the next report can say what the limit is instead of guessing. At that point the live site served 407 wells and 2,286 documents (the Pages deploy of run 2's
+data succeeded after the limit eased); 10-29's W-1 pack and the 10-28 packs were still to do.
+
 ## Checked before the first run (2026-11-01)
 
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its
