@@ -114,6 +114,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .st-tag.st-ok { --c: var(--st-ok); }
 .st-tag.st-nm { --c: var(--st-nm); }
 .st-tag.st-fo { --c: var(--st-fo); }
+.st-tag.st-xx { --c: var(--n-other); } /* every other state: the quiet slate of the national view */
 /* a state's dot in the bar: the color it has in every map, chart and legend; All is the four together */
 .seg-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--st-tx)); }
 .seg-dot.st-ok { --c: var(--st-ok); }
@@ -135,6 +136,13 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .statebar .seg[data-fit="short"] .seg-a, .statebar .seg[data-fit="tight"] .seg-a { display: inline; }
 .statebar .seg[data-fit="tight"] button { padding: 0 6px; gap: 4px; }
 .view-head { padding-block: var(--sp-7) var(--sp-2); }
+/* the Companies page: one switch between its two lists, and a line that says what the list is and leaves out */
+.co-bar { padding-block: var(--sp-4) 0; }
+.co-note { max-width: 78ch; margin-top: var(--sp-3); }
+.co-more { max-width: 78ch; margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--ink-2); }
+.co-more[hidden] { display: none; }
+.co-more summary { cursor: pointer; width: fit-content; font-weight: 600; }
+.co-more .fine { margin-top: var(--sp-2); }
 .view-head.compact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; padding-block: var(--sp-5) 0; }
 .view-head.compact .lede { margin: 0; font-size: var(--fs-md); flex: 1 1 360px; }
 .stack { margin-top: var(--gap); padding-bottom: var(--sp-2); }
@@ -378,6 +386,7 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); white-space: nowrap; font-size: var(--fs-sm); font-weight: 620; color: var(--ink-2); box-shadow: 0 1px 0 var(--axis); border-bottom: 0; }
 .grid th.num, .grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid td.num.on { font-weight: 650; }
+.grid .cnt .unit { color: var(--ink-2); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.02em; } /* a count of wells (spuds, drilled) says what it is beside the number */
 .grid tbody th { font-weight: 560; }
 .grid td.name { min-width: 260px; font-weight: 560; }
 .grid td.loc, .grid td.trend { white-space: nowrap; }
