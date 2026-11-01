@@ -691,6 +691,25 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # ------------------------------------------------------------------------------------------------ the run's upload cap (the quota is shared with the site's own deploy)
 
+def done_in(folder):  # the packs a run recorded: none when it wrote no index at all (a run that did nothing must fail the check, not crash it)
+    path = os.path.join(folder, "index.json")
+    return {u["p"] for u in json.load(open(path))["units"]} if os.path.exists(path) else set()
+
+
+def cap_runs(M, tmp, dl, held, tag):
+    """The two runs the first-pack rule is about, of module M (the real code or a mutant of it), each with a cap of 5 files and a first pack expected to send 10: one against a GitHub of its own, whose
+    releases are empty, so the first pack really sends files; one against `held`, a GitHub that already holds every file whole, so the first pack sends nothing. Each run has a folder of its own (a
+    folder that holds an index is a run already done). Returns [(exit code, packs done, log lines)] for the two."""
+    M.EST_FILES.update({"w1": 10, "ds": 10, "ci": 1000})
+    runs = []
+    for name, gh_ in (("empty", FakeGH()), ("held", held)):
+        d7_release.subprocess.run = gh_.run
+        out_, lines_ = os.path.join(tmp, "wells-%s-%s" % (name, tag)), []
+        code = M.run(args(out_, dl, max_files=5), io=world(tmp), now=NOW, log=lines_.append)
+        runs.append((code, done_in(out_), lines_))
+    return runs
+
+
 with tempfile.TemporaryDirectory() as tmp:
     out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
     os.makedirs(dl)
@@ -709,23 +728,11 @@ with tempfile.TemporaryDirectory() as tmp:
         check(code == 0 and units == {"ci", "ds", "w1"} and W.check(out) == [], "the next run does what was left")
         # The cap counts files really SENT (NOTES_D12: a file a release already holds whole costs nothing). This block's `gh` holds every file of the runs above, so a run against it sends nothing, never
         # spends the cap and goes on to every pack. That is the right behavior, and it is what this check used to meet by accident: it ran against the same `gh` with a rebuilt world whose PDFs differed
-        # only by the second they were stamped in, so it passed when the clock had moved on and failed when it had not (about 1 run in 6, more on a fast machine).
-        def done_in(folder):  # the packs a run recorded: none when it wrote no index at all (a run that did nothing must fail the check, not crash it)
-            path = os.path.join(folder, "index.json")
-            return {u["p"] for u in json.load(open(path))["units"]} if os.path.exists(path) else set()
-
-        out2 = os.path.join(tmp, "wells2")
-        d7_release.subprocess.run = FakeGH().run  # a GitHub of its own: its releases are empty, so the first pack really sends files
-        lines2 = []
-        code = W.run(args(out2, dl, max_files=5), io=world(tmp), now=NOW, log=lines2.append)
-        units2 = done_in(out2)
-        check(code == 0 and units2 == {"w1"} and any("left for the next run" in l and "ds" in l for l in lines2),
-              "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit (done %s, exit %d)" % (sorted(units2), code))
-        d7_release.subprocess.run = gh.run  # the GitHub that already holds the files
-        out3, lines3 = os.path.join(tmp, "wells3"), []
-        code = W.run(args(out3, dl, max_files=5), io=world(tmp), now=NOW, log=lines3.append)
-        units3 = done_in(out3)
-        check(code == 0 and units3 == {"w1", "ds", "ci"} and not any("left for the next run" in l for l in lines3),
+        # only by the second they were stamped in, so it passed when the clock had moved on and failed when it had not (about 1 run in 6, more on a fast machine; it failed the CI run of PR 85 that way).
+        (code2, units2, lines2), (code3, units3, lines3) = cap_runs(W, tmp, dl, gh, "real")
+        check(code2 == 0 and units2 == {"w1"} and any("left for the next run" in l and "ds" in l for l in lines2),
+              "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit (done %s, exit %d)" % (sorted(units2), code2))
+        check(code3 == 0 and units3 == {"w1", "ds", "ci"} and not any("left for the next run" in l for l in lines3),
               "a first pack that finds every file already on its release sends nothing, so it does not spend the cap and the run goes on to the other packs (done %s)" % sorted(units3))
         check(saved_est["ci"] >= 2000 and W.MAX_FILES_PER_RUN >= sum(saved_est.values()) and W.MAX_FILES_PER_RUN < 2 * saved_est["ci"] + saved_est["ds"] + saved_est["w1"],
               "the default cap lets one ordinary day through and not a second (%d files expected for a day, the cap is %d)" % (sum(saved_est.values()), W.MAX_FILES_PER_RUN))
@@ -1116,6 +1123,24 @@ def mutated(edit):
 big = [{"f": "%08d_c1" % i, "pv": 1} for i in range(1000)]
 check(len(mutated(('def chunks(docs, cap=MAX_ASSETS):', 'def chunks(docs, cap=10**9):')).chunks(big)) == 1 and len(W.chunks(big)) == 3, "mutant caught: a release that holds every file of a pack, with no limit, is one release where the real code makes three")
 check(len(mutated(("need = 2 if d.get(\"pv\") else 1", "need = 1")).chunks(big)) == 2 and len(W.chunks(big)) == 3, "mutant caught: counting a document without its picture puts too many files in a release (2 releases of up to 1600 files)")
+
+with tempfile.TemporaryDirectory() as tmp:  # the first-pack rule's two checks (section "the run's upload cap") each have a mutant that puts back what the check refuses
+    dl = os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    held = FakeGH()
+    saved = patched(held)
+    try:
+        W.run(args(os.path.join(tmp, "wells-fill"), dl), io=world(tmp), now=NOW, log=lambda m: None)  # a real run, the default cap: every file of the three packs is now on `held`
+        check(done_in(os.path.join(tmp, "wells-fill")) == {"w1", "ds", "ci"} and sum(len(r) for r in held.releases.values()) > 0, "(the real code fills the GitHub the first-pack mutants are run against with all three packs)")
+        src_now = open(os.path.join(PIPE, "d12_wells.py")).read()
+        for n, (label, edit, caught) in enumerate((
+                ("the first pack is held to the cap like the others, so a run with a small cap does nothing", ("if uploaded and uploaded + EST_FILES", "if uploaded + EST_FILES"), lambda runs: runs[0][1] != {"w1"}),
+                ("a file the release already holds counts as sent, so a first pack that sent nothing spends the cap", ("    return len(new) + len(changed)\n", "    return len(names)\n"), lambda runs: runs[1][1] != {"w1", "ds", "ci"})), 1):
+            assert edit[0] in src_now, edit[0]  # a stale edit would leave the real code in place and the mutant would "survive" for the wrong reason
+            runs = cap_runs(mutated(edit), tmp, dl, held, "mutant%d" % n)
+            check(caught(runs), "mutant caught: " + label + " (done %s, then %s)" % (sorted(runs[0][1]), sorted(runs[1][1])))
+    finally:
+        unpatch(saved)
 
 with tempfile.TemporaryDirectory() as tmp:  # numbering must not follow the zip's order: the mutant that drops the sort differs between the same pack written in two orders
     src = open(os.path.join(PIPE, "d12_wells.py")).read()
