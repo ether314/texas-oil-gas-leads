@@ -121,9 +121,9 @@ def asked(env):
 
 base = {"DAYS": "2", "WINDOW": "14", "FILING_DAY": ""}
 code, called, _ = asked(base)
-check(code == 0 and called == "-I site/pipeline/d12_wells.py --days 2 --window 14 --budget 40", "a scheduled run asks for the newest two days of the last 14, with a budget: %s" % called)
+check(code == 0 and called == "-I site/pipeline/d12_wells.py --days 2 --window 14 --budget 75", "a scheduled run asks for the newest two days of the last 14, with a budget: %s" % called)
 code, called, _ = asked({**base, "FILING_DAY": "2026-10-29", "DAYS": "5", "WINDOW": "30"})
-check(code == 0 and called == "-I site/pipeline/d12_wells.py --days 5 --window 30 --budget 40 --day 2026-10-29", "a run by hand can ask for a day and reach back: %s" % called)
+check(code == 0 and called == "-I site/pipeline/d12_wells.py --days 5 --window 30 --budget 75 --day 2026-10-29", "a run by hand can ask for a day and reach back: %s" % called)
 for label, env in (("days that is not a number", {**base, "DAYS": "two"}), ("an empty window", {**base, "WINDOW": ""}), ("a window with a command in it", {**base, "WINDOW": "14; rm -rf /"}),
                    ("a day that is not a date", {**base, "FILING_DAY": "yesterday"}), ("a date with shell characters", {**base, "FILING_DAY": "2026-10-29$(id)"})):
     code, called, out = asked(env)

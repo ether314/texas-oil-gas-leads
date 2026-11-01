@@ -37,7 +37,7 @@ jobs:
     # a manual run from another branch would publish releases and commit to that branch
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,11 +56,11 @@ jobs:
           python3 -m pip install --quiet pillow
 
       # GH_TOKEN is what lets the gh CLI create releases and upload their files (contents: write, above). The producer ends with its own limit (--budget): no new pack or request
-      # is started after 40 minutes, and the step is cut off at 55. continue-on-error: what it published and recorded is committed below even when a later pack failed.
+      # is started after 75 minutes (a wait for GitHub's hourly API quota to reset can take up to an hour; see NOTES_D12.md), and the step is cut off at 95. continue-on-error: what it published and recorded is committed below even when a later pack failed.
       - name: Read the packs, tie the documents to wells, publish them
         id: wells_run
         continue-on-error: true
-        timeout-minutes: 55
+        timeout-minutes: 95
         env:
           DAYS: ${{ github.event.inputs.days || '2' }}
           WINDOW: ${{ github.event.inputs.window || '14' }}
@@ -69,7 +69,7 @@ jobs:
         run: |
           case "$DAYS" in ''|*[!0-9]*) echo "days must be a whole number"; exit 1;; esac
           case "$WINDOW" in ''|*[!0-9]*) echo "window must be a whole number"; exit 1;; esac
-          args=(--days "$DAYS" --window "$WINDOW" --budget 40)
+          args=(--days "$DAYS" --window "$WINDOW" --budget 75)
           if [ -n "$FILING_DAY" ]; then
             case "$FILING_DAY" in
               [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) args+=(--day "$FILING_DAY") ;;

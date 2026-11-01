@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import zipfile
 from datetime import date, datetime
@@ -89,7 +90,7 @@ def plan_days(plan_out):
 
 L = listed_for(["2026-10-27", "2026-10-28", "2026-10-29"], modified=None)
 todo, notes = W.plan(L, {}, NOW, days=2)
-check(plan_days((todo, notes)) == ["2026-10-28", "2026-10-29"] and [u["pack"] for u in todo[:3]] == ["ci", "ds", "w1"], "the newest two filing days are done, newest first, the completion pack first (%s)" % [(str(u["day"]), u["pack"]) for u in todo])
+check(plan_days((todo, notes)) == ["2026-10-28", "2026-10-29"] and [u["pack"] for u in todo[:3]] == ["w1", "ds", "ci"], "the newest two filing days are done, newest first, the small packs first and the completion pack last (%s)" % [(str(u["day"]), u["pack"]) for u in todo])
 done = {(date(2026, 10, 29), p): (L[(date(2026, 10, 29), p)]["name"], L[(date(2026, 10, 29), p)]["bytes"]) for p in ("w1", "ds", "ci")}
 todo, _ = W.plan(L, done, NOW, days=2)
 check(plan_days((todo, [])) == ["2026-10-27", "2026-10-28"], "a day all done is skipped, so the two days after it are taken")
@@ -108,10 +109,10 @@ todo, _ = W.plan(L, {}, NOW, days=3, only=date(2026, 10, 27))
 check(plan_days((todo, [])) == ["2026-10-27"], "--day does only that day")
 nocd = listed_for(["2026-10-29"], packs=("w1", "ds", "ci"))
 todo, notes = W.plan(nocd, {}, NOW)
-check([u["pack"] for u in todo] == ["ds", "w1"] and any("no completion data zip" in n for n in notes), "completion images with no completion data zip cannot be tied, so they wait and say why: %s" % notes[:1])
+check([u["pack"] for u in todo] == ["w1", "ds"] and any("no completion data zip" in n for n in notes), "completion images with no completion data zip cannot be tied, so they wait and say why: %s" % notes[:1])
 sat = listed_for(["2026-10-31"], packs=("ds", "ci", "cd"))
 todo, _ = W.plan(sat, {}, datetime(2026, 11, 1, 22, 0))
-check([u["pack"] for u in todo] == ["ci", "ds"], "a day with no W-1 pack (a weekend) does the packs it has")
+check([u["pack"] for u in todo] == ["ds", "ci"], "a day with no W-1 pack (a weekend) does the packs it has")
 stray = W.units_listed({"w1": [{"name": "subscriptions_2026-13-45.zip", "bytes": 9999999, "modified": None}, {"name": "subscriptions_2026-10-29_district08.zip", "bytes": 9999999, "modified": None}, {"name": "x.zip", "bytes": 9, "modified": None}],
                         "ds": [{"name": "02-30-2026.zip", "bytes": 9999999, "modified": None}]})
 check(stray == {}, "a stray name, an impossible date and a per-district W-1 file are not packs")
@@ -210,6 +211,12 @@ class FakeGH:
         self.releases, self.calls, self.notes, self.fail, self.drop = {}, [], [], set(), False
         self.limit = 0  # the next N uploads are refused the way GitHub refuses a secondary rate limit
         self.digests = True  # older gh versions give no digest
+        self.quota = None  # {"remaining": calls, "reset": epoch}: what `gh api rate_limit` says; each file sent costs two calls
+
+    def sleep(self, seconds):
+        """time.sleep for the tests: a long wait is the hourly reset, which fills the quota again."""
+        if self.quota and seconds >= 30:
+            self.quota.update(remaining=5000, reset=time.time() + 3600)
 
     @staticmethod
     def _asset(path):
@@ -224,6 +231,8 @@ class FakeGH:
         sub = " ".join(a[:2])
         tag = a[2] if len(a) > 2 else None
         CP = subprocess.CompletedProcess
+        if sub == "api rate_limit" and self.quota:
+            return CP(cmd, 0, json.dumps({"resources": {"core": {"limit": 5000, "remaining": self.quota["remaining"], "reset": self.quota["reset"]}}}), "")
         if sub == "release view" and "tagName" in a:
             return CP(cmd, 0 if tag in self.releases else 1, "{}", "")
         if sub == "release create":
@@ -247,6 +256,8 @@ class FakeGH:
             if not self.drop:
                 for x in files:
                     self.releases[tag][os.path.basename(x)] = self._asset(x)
+                    if self.quota:
+                        self.quota["remaining"] -= 2
             return CP(cmd, 0, "", "")
         if sub == "release view":
             rows = [dict(v) if self.digests else {k: x for k, x in v.items() if k != "digest"} for v in self.releases.get(tag, {}).values()]
@@ -578,6 +589,81 @@ with tempfile.TemporaryDirectory() as tmp:
     finally:
         unpatch(saved)
 
+# ------------------------------------------------------------------------------------------------ the REST quota: about two calls a file, 5,000 an hour, shared with the site's own deploy
+
+with tempfile.TemporaryDirectory() as tmp:
+    spec = {"%08d_c1.pdf" % i: b"%PDF-" + bytes([i % 250]) * 40 for i in range(200)}
+    spec.update({"%08d_c1.jpg" % i: b"jpg" + bytes([i % 250]) * 40 for i in range(200)})
+    folder, names = release_files(tmp, spec)  # 400 files: about 800 calls and the reserve
+    gh = FakeGH()
+    saved = patched(gh)
+    waits = []
+    d7_release.time.sleep = lambda s: (waits.append(s), gh.sleep(s)) if s >= 5 else None
+    d7_release.DEADLINE = time.time() + 7200
+    try:
+        gh.quota = {"remaining": 5000, "reset": time.time() + 3000}
+        sent = publish(gh, folder, names)
+        check(sent == 400 and not waits and gh.quota["remaining"] == 4200, "with the quota full, 400 files go up with no waiting and cost 800 calls (%d left)" % gh.quota["remaining"])
+        gh.releases.clear()
+        gh.quota = {"remaining": 900, "reset": time.time() + 600}
+        sent = publish(gh, folder, names)
+        check(sent == 400 and len(waits) == 1 and 600 <= waits[0] <= 700 and gh.quota["remaining"] > 3000, "with 900 left (about 1,300 are needed) it waits for the reset (%s s), then sends the files" % [int(w) for w in waits])
+        gh.releases.clear()
+        gh.quota = None
+        waits.clear()
+        sent = publish(gh, folder, names)
+        check(sent == 400 and not waits, "when gh cannot say what is left, it goes ahead as before")
+        gh.releases.clear()
+        gh.quota = {"remaining": 900, "reset": time.time() + 3000}
+        d7_release.DEADLINE = time.time() + 600
+        gh.calls.clear()
+        try:
+            publish(gh, folder, names)
+            deferred = False
+        except W.QuotaLow as e:
+            deferred = "past this run's time" in str(e)
+        check(deferred and not uploads(gh) and not gh.releases[TAG1], "when the reset is further off than the run's time, it stops with nothing sent (QuotaLow)")
+    finally:
+        unpatch(saved)
+        d7_release.DEADLINE = None
+
+with tempfile.TemporaryDirectory() as tmp:  # a whole run: quota short and the reset far off -> deferred (exit 0, nothing recorded, nothing downloaded); the next run, with the quota back, does the three packs, small ones first
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    io_ = world(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    d7_release.time.sleep = lambda s: gh.sleep(s) if s >= 30 else None
+    try:
+        gh.quota = {"remaining": 100, "reset": time.time() + 3 * 3600}
+        lines = []
+        code = W.run(args(out, dl, days=1, budget=40), io=io_, now=NOW, log=lines.append)
+        check(code == 0 and not io_.downloads and not os.path.exists(os.path.join(out, "index.json")) and any("deferred" in l for l in lines), "a run that starts with too little quota and a distant reset defers at once: exit %d, no download, nothing recorded" % code)
+        gh.quota = {"remaining": 5000, "reset": time.time() + 3000}
+        code = W.run(args(out, dl, days=1), io=io_, now=NOW, log=lambda m: None)
+        packs = [p for p, _ in io_.downloads if p in ("w1", "ds", "ci")]
+        check(code == 0 and packs == ["w1", "ds", "ci"] and {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]} == {"w1", "ds", "ci"}, "the next run does all three, the small packs first (%s)" % packs)
+    finally:
+        unpatch(saved)
+
+# the mutant: no gate
+src_q = open(os.path.join(PIPE, "d12_wells.py")).read()
+mod_q = types.ModuleType("d12quota")
+mod_q.__file__ = os.path.join(PIPE, "d12_wells.py")
+exec(compile(src_q.replace("    if new or changed:\n        wait_for_quota(CALLS_PER_FILE * (len(new) + len(changed)) + RESERVE, log)\n", "", 1), "d12quota.py", "exec"), mod_q.__dict__)
+with tempfile.TemporaryDirectory() as tmp:
+    folder, names = release_files(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    gh.quota = {"remaining": 5, "reset": time.time() + 3000}
+    d7_release.DEADLINE = time.time() + 600
+    try:
+        mod_q.publish_chunk("o/r", TAG1, date(2026, 10, 29), "ci", folder, names, lambda m: None)
+        check(len(uploads(gh)) > 0, "mutant caught: without the gate the files go up with 5 calls left, which is how the site's deploy was refused")
+    finally:
+        unpatch(saved)
+        d7_release.DEADLINE = None
+
 # ------------------------------------------------------------------------------------------------ the run's upload cap (the quota is shared with the site's own deploy)
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -587,18 +673,18 @@ with tempfile.TemporaryDirectory() as tmp:
     gh = FakeGH()
     saved = patched(gh)
     saved_est = dict(W.EST_FILES)
-    W.EST_FILES.update({"w1": 100, "ds": 100, "ci": 100})
+    W.EST_FILES.update({"w1": 10, "ds": 10, "ci": 1000})
     lines = []
     try:
-        code = W.run(args(out, dl, max_files=120), io=io_, now=NOW, log=lines.append)
+        code = W.run(args(out, dl, max_files=500), io=io_, now=NOW, log=lines.append)
         units = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
-        check(code == 0 and units == {"ci", "ds"} and any("left for the next run" in l and "w1" in l for l in lines), "a run that has uploaded 22 files and would pass 120 with the next pack leaves it for the next run, and says so (%s)" % sorted(units))
+        check(code == 0 and units == {"w1", "ds"} and any("left for the next run" in l and "ci" in l for l in lines), "a run that has uploaded about 20 files and would pass 500 with the completion pack leaves it for the next run, and says so (%s)" % sorted(units))
         code = W.run(args(out, dl), io=io_, now=NOW, log=lambda m: None)
         units = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
         check(code == 0 and units == {"ci", "ds", "w1"} and W.check(out) == [], "the next run does what was left")
         out2 = os.path.join(tmp, "wells2")
-        code = W.run(args(out2, dl, max_files=100), io=world(tmp), now=NOW, log=lambda m: None)
-        check(code == 0 and {u["p"] for u in json.load(open(os.path.join(out2, "index.json")))["units"]} == {"ci"}, "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit")
+        code = W.run(args(out2, dl, max_files=5), io=world(tmp), now=NOW, log=lambda m: None)
+        check(code == 0 and {u["p"] for u in json.load(open(os.path.join(out2, "index.json")))["units"]} == {"w1"}, "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit")
         check(saved_est["ci"] >= 2000 and W.MAX_FILES_PER_RUN >= sum(saved_est.values()) and W.MAX_FILES_PER_RUN < 2 * saved_est["ci"] + saved_est["ds"] + saved_est["w1"],
               "the default cap lets one ordinary day through and not a second (%d files expected for a day, the cap is %d)" % (sum(saved_est.values()), W.MAX_FILES_PER_RUN))
     finally:
@@ -617,9 +703,9 @@ with tempfile.TemporaryDirectory() as tmp:
     gh = FakeGH()
     saved = patched(gh)
     mod_cap.d7_daily.read_daf = lambda path: PERMITS
-    mod_cap.EST_FILES.update({"w1": 100, "ds": 100, "ci": 100})
+    mod_cap.EST_FILES.update({"w1": 10, "ds": 10, "ci": 1000})
     try:
-        mod_cap.run(args(out, dl, max_files=120), io=world(tmp), now=NOW, log=lambda m: None)
+        mod_cap.run(args(out, dl, max_files=500), io=world(tmp), now=NOW, log=lambda m: None)
         done = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
     finally:
         unpatch(saved)
@@ -660,7 +746,7 @@ with tempfile.TemporaryDirectory() as tmp:
         code = W.run(args(out, dl, days=1), io=io_, now=NOW, log=lines_.append)
         check(any("no further pack is started" in l for l in lines_), "the log says why the run stopped")
         check(code == 1 and not os.path.exists(os.path.join(out, "index.json")), "a limit that never lifts ends the run red and records nothing (exit %d)" % code)
-        check([p for p, _ in io_.downloads] == ["ci", "cd"], "and the run stops at the first pack it cannot upload: it does not download the others (%s)" % io_.downloads)
+        check([p for p, _ in io_.downloads] == ["w1", "permits"], "and the run stops at the first pack it cannot upload: it does not download the others (%s)" % io_.downloads)
     finally:
         unpatch(saved)
 
