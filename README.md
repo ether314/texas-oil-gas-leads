@@ -6,13 +6,13 @@ build step, no external requests apart from the document previews described unde
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
-- **States**: a bar above the Map, Operators, Companies and Daily report chooses what is shown: all the states (Texas, Oklahoma, New Mexico and the federal offshore), or one
+- **States**: a bar above the Map, Operators and Companies chooses what is shown: all the states (Texas, Oklahoma, New Mexico and the federal offshore), or one
   (on a narrow phone the bar reads TX, OK, NM, Offshore). The choice is kept in the address (`st=ok`; nothing means all) and follows you between those
   views. A view says so when a state cannot give a figure (the others have no company pool, rig counts, jobs, taxes or production by county here).
   Texas and Oklahoma count permits by approval date; New Mexico and the federal offshore publish no approval dates by well, so their figures are wells spudded, named as
   such wherever they show, never added to the permits, and ending two months back because spud dates arrive late (`site/pipeline/NOTES_D9.md`, `NOTES_D10.md`).
   The federal offshore (BSEE, the Gulf's federal waters) is small (about 45 wells a year from 16 operators), is divided into 63 protraction areas where the others have
-  counties, publishes no depth, and has no Daily report because its file is weekly.
+  counties and publishes no depth.
 - **National**: every state agency's drilling permits side by side (`#national`): a tile map of the states you click into, the months stacked by state, a ranking, the kinds of permits
   (new wells, injection and disposal, re-entries, reworks, amendments) where an agency tells them apart, and a table of who is covered and who is not yet. Each agency counts what it
   publishes, permits by approval or issue date or, where no approval dates by well exist, wells by spud date; the two are never added together, a state not read yet is "not available" and never zero,
@@ -40,21 +40,11 @@ address keep their first name, `texas-oil-gas-leads`.)
   states shown are ranked as one list (by activity band, then new wells), each row tagged with its state, and a state's operators come from
   its own file with the columns only Texas can fill (RRC districts and registrations, production) left out. Companies are the Texas
   Comptroller's records, so they stay Texas only and say so for the other states.
-- **Daily report**: what the Railroad Commission of Texas, the Oklahoma Corporation Commission and New Mexico's Oil Conservation Division published overnight, the
-  states as one dataset, one report a day for the last 92 days. A simple version for the daily look, and a verbose one. The permits and
-  completions of the states are added into one set of figures, one pace chart (the bars stacked by state), one county map, one
-  3-month ribbon and calendar and one plain-English summary, and also shown side by side by state wherever the files measure
-  different things (Texas and New Mexico know which wells are horizontal, Oklahoma only the planned depth). The states bar narrows the whole
-  report to some of them (`#daily?st=tx`, `st=ok`, `st=nm`); an old `#oklahoma` link opens it that way. A day one state has no report for says so and is left out
-  of every total, never counted as zero; when the newest report is two or more days behind today's date (Central) the page says so, in case the nightly capture failed. Texas alone adds the pending queue, the image packs (sizes, and for days captured live a count
-  of their documents by kind with a sheet of first pages shrunk and blurred so nothing can be read) and a **GPS map** of each day's
-  new-drill permits and directional surveys; every point opens a **page with its own URL** (`#daily?d=DAY&drill=PERMIT`) holding the
-  well's facts, its coordinates and links to the Railroad Commission's W-1 letter, plat and survey, which the nightly job stores as the
-  files of one GitHub release a day. Oklahoma alone adds the wells that changed operator and, for days captured live, the state's well
-  inventory. New Mexico's report is its permits to drill, read from the Division's well layer (the Division publishes no daily file): permits by county,
-  operator, kind of well, direction and district, and, for days captured live, the state's well inventory (counted by the server, never listed), with no depth,
-  filing date, completion or transfer, which it does not publish. A day's report prints (or saves as a PDF) on its own: light, without the header, the controls or the buttons, each card kept whole. The monthly figures card
-  shows crude production for the states shown beside the WTI and Henry Hub prices. Source health covers every file of every state.
+- **Daily report**: the new wells of one day, nationwide (`#daily`, `#daily?d=2026-08-12&s=TX`), from the same FracFocus data as the Overview and with only what every state can give. Choose a day (the arrows, a slider over the last 150 days, a date box over the 24 months, or a bar of the
+  chart) and see that day's wells glow on the map with the two weeks before it dimmer, how many there were against a typical day, which states they are in, and every well in a table (state, county, operator when it may be named, depth, water, land): the table is the map's twin. The chart stacks the last 150 days by state with a
+  dashed line for a typical day; the newest days are drawn lighter and called "still filling in", because operators disclose weeks to months after a job, and a day still filling in is never called slow. The page opens on the newest day with ten or more wells, a state can be chosen (the map zooms, the table and chart follow),
+  a day with no well says none, and a freshness table gives each state's newest well and how far it is behind. It does not follow the states bar. The Texas, Oklahoma and New Mexico nightly captures (`d7_*`, `d8_*`, `d9_*`) keep running as the archive behind the Texas images page and the well finder, and their day files stay published,
+  but their pages (the permit queue, completions, transfers, well inventories, pace charts and the drill pages that linked each Texas permit's W-1 documents) are no longer in the Daily report: only those states publish them. A permit's documents are on the Texas images page, found by API number.
 
 ## Data
 All public: Railroad Commission of Texas (drilling permits with coordinates, P-5 operators, Production Data Query dump),
@@ -62,8 +52,8 @@ Texas Comptroller (franchise taxpayers, severance-tax revenue, Property Value St
 outlook, refinery capacity), BLS (QCEW, state employment), Census (county boundaries, County Business Patterns, ZIP
 centroids), EPA facility data and Baker Hughes rig counts (through Internet Archive copies of its public workbooks).
 Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
-`site/pipeline/NOTES_*.md`. The Daily report reads the six datasets the RRC lists as nightly or twice daily (permits, pending
-applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`; the packs' documents themselves, tied to wells, are `site/pipeline/NOTES_D12.md`. Oklahoma's half of the Daily report reads four files from the
+`site/pipeline/NOTES_*.md`. The nightly Texas capture (the archive behind the Texas images page) reads the six datasets the RRC lists as nightly or twice daily (permits, pending
+applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`; the packs' documents themselves, tied to wells, are `site/pipeline/NOTES_D12.md`. Oklahoma's nightly capture reads four files from the
 Oklahoma Corporation Commission (intents to drill, completions and well transfers daily; the well inventory nightly), the
 Census outlines of Oklahoma's 77 counties and, for its monthly card, EIA's Oklahoma crude oil production beside the oil and gas
 prices above; see `site/pipeline/NOTES_D8.md`.
@@ -79,7 +69,7 @@ individuals. Operators are named only when they are corporations, LLCs or limite
 
 **Deliberate exceptions (decided by the owner on 2026-10-31 and 2026-11-01).** The Railroad Commission's scanned filings are public records, but they can carry the names, phone numbers and street addresses of individuals (a landowner on a plat,
 an operator's contact on a completion form). This repository and its site are public, and two things publish those scans **readable and unmodified, nothing redacted**, as files of GitHub releases:
-1. the Daily report's drill pages link to the day's W-1 permit letters, plats and directional surveys (`--publish-docs` in `.github/workflows/daily-rrc-report.yml`, releases `daily-YYYY-MM-DD`);
+1. the nightly capture publishes the day's W-1 permit letters, plats and directional surveys, which the Texas images page shows (`--publish-docs` in `.github/workflows/daily-rrc-report.yml`, releases `daily-YYYY-MM-DD`);
 2. **every document of the Commission's three image packs, completion images included, is published under the well (API number) it is about** on the Texas images page, each with a picture of its first page
    (`.github/workflows/well-images.yml`, `site/pipeline/d12_wells.py`, releases `wells-YYYY-MM-DD-<pack>-NN`; about 0.9 GB a day, kept for 92 days). The page loads those pictures from GitHub's image hosts, which the
    Content-Security-Policy allows for `img-src` and nothing else.
@@ -141,7 +131,7 @@ The scripts in `site/pipeline/` (`d1` to `d6`) and `site/build_data.py` write th
 the lead lists `leadpool.csv`, `leadpool_ranked.csv` and `rrc_operators.csv`, which `leadpool.py` and
 `rrc_operators.py` generate; they are not committed because they carry contact details from public filings.
 
-The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard library only; no lead CSVs needed) into
+The Texas nightly report is built by `site/pipeline/d7_daily.py` (Python 3, standard library only; no lead CSVs needed) into
 `site/public/data/daily/`. `.github/workflows/daily-rrc-report.yml` runs it every night, commits the result to `main` and
 publishes the site. A second schedule an hour later is a backup for a run GitHub skips: it does nothing when the first one
 already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily
@@ -189,19 +179,19 @@ minutes without touching the Railroad Commission or the OCC (it steps aside when
 - Permit dots show only permits with a recorded surface location (about 40% of the last 12 months); counts and trends
   use every permit.
 - RRC production is complete only through January 2026 because reports lag.
-- The Daily report reads nightly files, but the county, operator and company tables are built from the RRC's monthly files, so the
+- The nightly Texas report reads nightly files, but the county, operator and company tables are built from the RRC's monthly files, so the
   two can show permits through different dates. The report's source-health section says when a monthly rebuild is due.
-- Oklahoma's part of the Daily report is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
+- Oklahoma's nightly capture is only the OCC's daily files: about 3 new-drill permits a business day (Texas: about 31), no pending queue or
   image packs, planned depth instead of horizontal (the permit file does not say), transfers for about the last month and the well
   inventory only for days captured live. It has no Oklahoma jobs or rig counts (sources not reachable from the build host), no company
   list and no production by county. Its permit history (series, counties, operators, permit points) is in the Overview, the Operators
   page and the Map.
-- New Mexico's part of the Daily report is read from the Division's well layer, which is entered some days after an approval: the newest two or three days
+- New Mexico's nightly capture is read from the Division's well layer, which is entered some days after an approval: the newest two or three days
   run low and fill in (the pace chart is rewritten from the layer each night and the earlier reports' permits are recounted), a rebuilt day counts only the approvals still in status New, and the Division
   publishes no planned depth, filing date, completion or transfer by day (`site/pipeline/NOTES_D9.md`).
 - The federal offshore is read from BSEE's weekly borehole file: wells spudded (BSEE publishes approvals to drill only as an online query), about 45 a year from 16 operators, so a
   month holds about four wells and the pages lean on the 12-month counts. The series ends 60 days back, a cautious guess: there are no earlier copies of the file to measure how late BSEE's spud
-  dates arrive (compare the weekly builds and shorten it if a month keeps growing). It publishes no depth (a total depth exists for a handful of wells), has no Daily report, and its
+  dates arrive (compare the weekly builds and shorten it if a month keeps growing). It publishes no depth (a total depth exists for a handful of wells), has no nightly capture, and its
   areas are BSEE protraction areas, not counties (`site/pipeline/NOTES_D10.md`).
 - BLS suppresses most small counties, and some series end earlier than others; each figure on the site carries its own date.
 

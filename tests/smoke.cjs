@@ -46,17 +46,11 @@ const VIEWS = [
   ['#overview?s=TX', '.nw-grid .nat-panel h3', async (page) => (/^Texas$/.test(await page.locator('.nw-grid .nat-panel h3').first().innerText()) && /s=TX/.test(await page.evaluate(() => location.hash)) ? null : 'an address naming Texas should zoom the explorer to it')],
   ['#map?st=fo', '#map-root canvas', async (page) => (/^Wells spudded, [A-Z][a-z]{2} 1, \d{4} to [A-Z][a-z]{2} \d+, \d{4}$/.test(await page.locator('.lg-title').innerText()) ? null : 'the offshore map should say wells spudded, over 12 calendar months from the first of a month')],
   ['#operators?st=fo', '#ops-root table'],
-  ['#daily?st=fo', '#daily-root .dr-hero'],
   ['#operators', '#ops-root table'],
+  ['#daily', '#daily-root .dd-nav', async (page) => ((await page.locator('#daily-root .dd-nav').count()) === 1 && !(await page.locator('#statebar').isVisible()) ? null : 'the Daily report should be national: a day control and no states bar')],
+  ['#daily?d=2026-02-02&s=TX', '#daily-root .dd-nav', async (page) => (/Monday, Feb 2, 2026/.test(await page.locator('#daily-root .dd-date').innerText()) && /in Texas/.test(await page.locator('#dd-table-h').innerText()) ? null : 'an address naming a day and Texas should open on them')],
+  ['#oklahoma', '#daily-root .dd-nav', async (page) => (/s=OK/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open the Daily report on Oklahoma\'s wells')],
   ['#companies', '#co-root table'],
-  ['#daily', '#daily-root .dr-hero'],
-  ['#daily?v=full', '#daily-root .dr-sec'],
-  ['#daily?st=tx', '#daily-root .dr-hero'],
-  ['#daily?st=ok', '#daily-root .dr-hero', async (page) => (await page.locator('#daily-root path.dr-county').count()) === 77 ? null : 'the Oklahoma map should have 77 counties'],
-  ['#daily?st=ok&v=full', '#daily-root .dr-sec'],
-  ['#daily?st=nm', '#daily-root .dr-hero', async (page) => (await page.locator('#daily-root path.dr-county').count()) === 33 ? null : 'the New Mexico map should have 33 counties'],
-  ['#daily?st=nm&v=full', '#daily-root .dr-sec'],
-  ['#oklahoma', '#daily-root .dr-hero', async (page) => (/st=ok/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open #daily?st=ok')],
   ['#about', '#view-about h1'],
   ['#images', '#images-root .img-stage', async (page) => ((await page.locator('#images-root .img-stage').count()) === 3 ? null : 'the images view should show the three stages of a well')],
   ['#images?d=2026-10-30', '#images-root .img-pack', async (page) => ((await page.locator('#images-root .img-pack').count()) === 3 ? null : 'a day should show its three packs')],
@@ -117,7 +111,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 3. the states shown: one choice in a bar above the views that follow it, kept in the address, and followed by the Overview and the Daily report
+  // 3. the states shown: one choice in a bar above the views that follow it (the Map, Operators and Companies), kept in the address
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
@@ -125,26 +119,20 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
     page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
-    // New Mexico has a Daily report now; it is answered with an empty index here, so the page's handling of a state with none stays exercised (block 5 has the real one)
-    await page.route('**/data/daily-nm/index.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"generated":"x","keep":92,"days":[]}' }));
     const pressed = () => page.locator('#statebar button[aria-pressed="true"]').innerText();
     const hash = () => page.evaluate(() => location.hash);
-    const dailyEyebrow = (re) => page.waitForFunction((src) => { const e = document.querySelector('#daily-root .dr-hero .eyebrow'); return !!e && new RegExp(src, 'i').test(e.textContent); }, re.source, { timeout: 25000 });
     try {
-      // the Overview is national and does not follow the bar; the Daily report still does (until it is national too)
+      // the Overview and the Daily report are national and have no states bar; the Map, Operators and Companies follow it
       await page.goto(base + '#overview', { waitUntil: 'load' });
       await page.waitForSelector('.nw-canvas', { timeout: 25000 });
       check(!(await page.locator('#statebar').isVisible()), 'the Overview is the same for every state: it has no states bar');
       await page.goto(base + '#daily', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Daily report and starts on All');
+      await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
+      check(!(await page.locator('#statebar').isVisible()), 'the Daily report is national too: no states bar');
+      await page.goto(base + '#map', { waitUntil: 'load' });
+      await page.waitForSelector('#map-root canvas', { timeout: 25000 });
+      check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Map and starts on All');
       check((await page.locator('#statebar .seg-dot').count()) === 5 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1 && (await page.locator('#statebar .seg-dot.st-fo').count()) === 1, 'each state wears its color in the bar (All the four together)');
-      await page.click('#statebar button[data-id="OK"]');
-      await page.waitForFunction(() => document.querySelectorAll('#daily-root path.dr-county').length === 77, null, { timeout: 25000 });
-      check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma', 'choosing Oklahoma on the Daily report: its 77 counties, st=ok in the address');
-      await page.click('#statebar button[data-id="NM"]');
-      await page.waitForFunction(() => /no Daily report yet/.test(document.querySelector('#statebar-note').textContent), null, { timeout: 20000 });
-      check((await page.locator('#statebar-note').textContent()).includes('New Mexico has no Daily report yet'), 'a state with no Daily report: the bar says so on the Daily report');
       await page.click('#statebar button[data-id="OK"]');
       await page.click('.nav a[href="#operators"]');
       await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
@@ -174,12 +162,12 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.click('.nav a[href="#operators"]');
       await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
       check((await pressed()) === 'New Mexico' && /st=nm/.test(await hash()), 'and the choice is still there when you come back to a view that follows it');
-      await page.goto(base + '#daily?st=tx', { waitUntil: 'load' });
-      await dailyEyebrow(/Railroad Commission report/);
-      check((await pressed()) === 'Texas', 'an address with st=tx opens the Daily report on Texas alone, and the bar says so');
+      await page.goto(base + '#map?st=tx', { waitUntil: 'load' });
+      await page.waitForFunction(() => /^New-drill permits, /.test((document.querySelector('.lg-title') || {}).textContent || ''), null, { timeout: 25000 });
+      check((await pressed()) === 'Texas', 'an address with st=tx opens the Map on Texas alone, and the bar says so');
       await page.click('#statebar button[data-id="all"]');
-      await dailyEyebrow(/Texas and Oklahoma report/);
-      check(!/st=/.test(await hash()) && (await pressed()) === 'All', 'choosing All on the Daily report shows the states together and leaves st out of the address');
+      await page.waitForFunction(() => /^Permits and spuds, /.test((document.querySelector('.lg-title') || {}).textContent || ''), null, { timeout: 25000 });
+      check(!/st=/.test(await hash()) && (await pressed()) === 'All', 'choosing All on the Map shows the states together and leaves st out of the address');
     } catch (e) {
       check(false, 'the states bar: ' + e.message.split('\n')[0].slice(0, 160));
     }
@@ -271,45 +259,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 5. New Mexico's Daily report: on its own (permits and what goes with them, nothing it does not publish) and with the other two
-  {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
-    const page = await ctx.newPage();
-    const errs = [];
-    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
-    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
-    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
-    const eyebrow = () => page.locator('#daily-root .dr-hero .eyebrow').textContent();
-    try {
-      await page.goto(base + '#daily?st=nm', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      const kpis = await page.locator('#daily-root .dr-kpis .dr-kpi').allInnerTexts();
-      check(/Oil Conservation Division report/i.test(await eyebrow()) && kpis.length === 4 && /Horizontal wells/.test(kpis[1]) && /Active wells in the state/.test(kpis[2]) && !(await page.locator('#statebar-note').innerText()).trim(), 'New Mexico alone: its own report (four cards: permits, the horizontal share, the active wells, the files), and the bar has nothing to say about it');
-      check(/still filling in/.test(kpis[0]) && !/vs the 20-day average/.test(kpis[0]), 'its newest day is not set against an average of days that have filled in: it says it is still filling in');
-      check((await page.locator('#daily-root .dr-rb.nm').count()) > 30 && (await page.locator('#daily-root .dr-bar.nm').count()) > 0, 'its ribbon and pace chart are drawn in its color, with its 33 counties on the map');
-      check(/fill in later/.test(await page.locator('#daily-root .dr-story').innerText()), 'the story says the layer is entered late, so the newest days run low');
-      await page.goto(base + '#daily?st=nm&v=full', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
-      const full = await page.locator('#daily-root').innerText();
-      check(/Kinds of well/.test(full) && /Direction/.test(full) && /OCD districts/.test(full) && /Every well in the state/.test(full) && /Inventory · New Mexico/i.test(full) && !/Amended that day/.test(full) && !/Days to approval/.test(full) && !/Median planned depth/.test(full), 'the verbose report shows kinds of well, direction and districts, and no tile for what the Division does not publish, then its well inventory');
-      await page.click('#statebar button[data-id="all"]');
-      await page.waitForFunction(() => /Texas, Oklahoma and New Mexico report/i.test(document.querySelector('#daily-root .dr-hero .eyebrow').textContent), null, { timeout: 25000 });
-      check((await page.locator('#daily-root .dr-dot.nm').count()) > 0 && (await page.locator('#daily-root .dr-mapwrap path.dr-county').count()) === 364 && /New Mexico: 2 of 2/.test(await page.locator('.dr-pills').innerText()), 'all three together: one map of 364 counties, New Mexico\'s files read named in the pills, its color in the legends');
-      check(/New Mexico is still filling in/.test(await page.locator('#daily-root .dr-kpis .dr-kpi').first().innerText()), 'and the combined comparison says New Mexico\'s newest days are still filling in');
-      // and the Companies table's Segment cell is a table cell (its class once collided with the segmented control's, which made each one a pill)
-      await page.goto(base + '#companies?st=tx', { waitUntil: 'load' });
-      await page.waitForSelector('#co-root td.segcell', { timeout: 25000 });
-      check(await page.evaluate(() => getComputedStyle(document.querySelector('#co-root td.segcell')).display === 'table-cell'), 'the Companies table\'s Segment column is plain table cells, not the segmented control\'s pills');
-      await page.goto(base + '#daily?st=nm&v=full', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
-      check(!/Completion data/.test(await page.locator('#daily-root').innerText()), 'New Mexico alone has no completions card (the Division publishes none)');
-    } catch (e) {
-      check(false, 'the New Mexico Daily report: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    check(!errs.length, 'the New Mexico Daily report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
-    await ctx.close();
-  }
-
   // 6. the tabs scroll sideways on a phone: a fade at an edge with more behind it (data-more), none where they all fit
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -355,33 +304,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 7. the Daily report on a phone with the three states: one pill each, cards that hold their text and sparkline, no card alone in half a row
-  {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
-    const page = await ctx.newPage();
-    try {
-      await page.goto(base + '#daily', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-kpis .dr-kpi', { timeout: 25000 });
-      const pills = await page.locator('#daily-root .dr-pills .dr-pill').count();
-      check(pills === 3 && (await page.locator('#daily-root .dr-pills .dr-pill.quiet').count()) === 0, 'the three states are three pills (the time each was read is inside it), not six: ' + pills);
-      const out = await page.evaluate(() => [...document.querySelectorAll('#daily-root .dr-kpi')].flatMap((c) => {
-        const r = c.getBoundingClientRect();
-        return [...c.querySelectorAll('.dr-kpi-note, .dr-kpi-extra, .dr-kpi-spark svg')].filter((k) => k.getBoundingClientRect().right > r.right - 17).map((k) => (k.className.baseVal !== undefined ? k.className.baseVal : k.className) + ' of ' + c.querySelector('.dr-kpi-top').textContent.trim().slice(0, 24));
-      }));
-      check(!out.length, 'every card on a phone holds its note and its sparkline (none runs past the card\'s padding)' + (out.length ? ': ' + out.join(', ') : ''));
-      const alone = await page.evaluate(() => {
-        const cs = [...document.querySelectorAll('#daily-root .dr-kpis > .dr-kpi')];
-        const full = cs[0].getBoundingClientRect().width;
-        const top = (c) => c.getBoundingClientRect().top;
-        return { cards: cs.length, alone: cs.filter((c) => c.getBoundingClientRect().width < full * 0.6 && !cs.some((o) => o !== c && Math.abs(top(o) - top(c)) < 2)).length };
-      });
-      check(alone.cards >= 3 && alone.alone === 0, 'no half-width card is left alone in its row (' + alone.cards + ' cards)');
-    } catch (e) {
-      check(false, 'the Daily report on a phone: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    await ctx.close();
-  }
-
   // 8. the Operators CSV for all three states: a column that says which state, figures a state does not publish left blank (never zero), and a fall stays a number
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
@@ -417,37 +339,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 9. the archive's days render no "NaN", "undefined", "null" or "Infinity": the newest and oldest day, every tenth, and each day on which Texas's queue was empty
-  // (a share of an empty queue was NaN%); read from the committed index files, so the days follow the archive as it rolls
-  {
-    const read = (dir) => { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', dir, 'index.json'), 'utf8')); return j.days || j; };
-    const tx = read('daily');
-    const every = [...new Set([].concat(read('daily'), read('daily-ok'), read('daily-nm')).map((r) => r.d))].sort();
-    const picks = new Set([every[0], every[every.length - 1], ...every.filter((d, i) => i % 10 === 5), ...tx.filter((r) => r.q === 0).map((r) => r.d)]);
-    const emptyDays = tx.filter((r) => r.q === 0).length;
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
-    const page = await ctx.newPage();
-    const bad = [];
-    let seen = 0;
-    try {
-      for (const d of picks) {
-        for (const q of ['', '&st=tx']) {
-          await page.goto(base + '#daily?d=' + d + '&v=full' + q, { waitUntil: 'load' });
-          await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
-          await page.waitForTimeout(150);
-          const text = await page.locator('#daily-root').innerText();
-          seen++;
-          const m = text.match(/\b(NaN|undefined|null|Infinity)\b|\[object/);
-          if (m) bad.push(d + q + ': "' + text.slice(Math.max(0, m.index - 30), m.index + 30).replace(/\s+/g, ' ') + '"');
-        }
-      }
-    } catch (e) {
-      check(false, 'the archive walk: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    check(seen >= 8 && !bad.length, seen + ' archive pages (' + emptyDays + ' with an empty Texas queue) show no NaN, undefined, null or Infinity' + (bad.length ? ': ' + bad.slice(0, 4).join(' | ') : ''));
-    await ctx.close();
-  }
-
   // 10. a map metric no county has a figure for (New Mexico publishes no depth) says so: no scale of "NaN ft", no empty list; and no metric of any state shows a NaN in its legend or panel
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
@@ -479,58 +370,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 11. the Daily report says so when its newest report is two or more days behind today's date (Central): the nightly capture may have failed; not otherwise
-  {
-    const days = [].concat(...['daily', 'daily-ok', 'daily-nm'].map((dir) => { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', dir, 'index.json'), 'utf8')); return (j.days || j).map((r) => r.d); })).sort();
-    const newest = days[days.length - 1];
-    const at = (offsetDays, hour) => new Date(Date.parse(newest + 'T00:00:00Z') + offsetDays * 86400000 + hour * 3600000);
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
-    const page = await ctx.newPage();
-    try {
-      await page.clock.setFixedTime(at(0, 18)); // noon Central on the newest report's day
-      await page.goto(base + '#daily', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      check((await page.locator('#daily-root .dr-stale').count()) === 0, 'on the newest report\'s own day the Daily report has no warning');
-      await page.clock.setFixedTime(at(5, 18)); // five days later
-      await page.goto(base + '#daily?d=' + newest + '&st=tx', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      const note = (await page.locator('#daily-root .dr-stale').count()) ? await page.locator('#daily-root .dr-stale').innerText() : '';
-      check(/newest report is [4-6] days old/.test(note) && /may have failed/.test(note), 'five days later it says the newest report is old and the capture may have failed: ' + note.slice(0, 80));
-      // an older day is not "the newest report", so it carries no warning
-      const older = days[Math.max(0, days.length - 10)];
-      await page.goto(base + '#daily?d=' + older, { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' }); // a change of hash alone is not a new page: without this the check could run before the view has redrawn (it flaked once)
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      check((await page.locator('#daily-root .dr-stale').count()) === 0, 'and a day that is not the newest carries none');
-    } catch (e) {
-      check(false, 'the stale-report notice: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    await ctx.close();
-  }
-
-  // 12. printing (or saving as a PDF) the Daily report: light even when the page is dark, none of the screen-only parts, cards kept whole
-  {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', colorScheme: 'dark' });
-    const page = await ctx.newPage();
-    try {
-      await page.goto(base + '#daily', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-kpis .dr-kpi', { timeout: 25000 });
-      await page.click('[data-theme-set="dark"]');
-      const screen = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-      await page.emulateMedia({ media: 'print' });
-      const printed = await page.evaluate(() => {
-        const gone = (sel) => [...document.querySelectorAll(sel)].every((e) => getComputedStyle(e).display === 'none');
-        return { bg: getComputedStyle(document.body).backgroundColor, ink: getComputedStyle(document.body).color, header: gone('header.top'), bar: gone('#statebar'), controls: gone('#daily-root .dr-controls'), buttons: gone('#daily-root .btn'), keep: getComputedStyle(document.querySelector('#daily-root .dr-kpi')).breakInside };
-      });
-      check(screen !== 'rgb(255, 255, 255)' && printed.bg === 'rgb(255, 255, 255)' && printed.ink !== 'rgb(255, 255, 255)', 'a dark page prints light: the screen is ' + screen + ', the paper ' + printed.bg + ' with ' + printed.ink + ' ink');
-      check(printed.header && printed.bar && printed.controls && printed.buttons && printed.keep === 'avoid', 'the header, the states bar, the controls and the buttons stay off the paper, and a card is not split across pages: ' + JSON.stringify(printed));
-    } catch (e) {
-      check(false, 'printing the Daily report: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    await ctx.close();
-  }
-
   // 13. a dropped connection is tried once more (a phone between towers): the Map's first request for its permit file fails and it still draws; a missing file is not retried
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
@@ -550,36 +389,11 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 14. what a state does not publish is never shown as a 0, and a figure that adds states says which: found by an independent review of the pages
+  // 14. an address that names two states, and a Map operator panel that never shows more dots than the operator has (found by an independent review of the pages)
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
-    const hover = (st) => page.evaluate(async (st) => {
-      const el = [...document.querySelectorAll('#daily-root .dr-mapwrap path.dr-county')].find((x) => x.dataset.f.startsWith(st + ':'));
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      el.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
-      await new Promise((done) => setTimeout(done, 100));
-      return document.querySelector('#tip').innerText.replace(/\s+/g, ' ');
-    }, st);
-    const layer = async (name) => { await page.locator('#daily-root .dr-mapwrap').locator('xpath=ancestor::*[contains(@class,"card")][1]').getByRole('button', { name: new RegExp('^' + name) }).first().click(); await page.waitForTimeout(250); };
     try {
-      await page.goto(base + '#daily', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-mapwrap path.dr-county', { timeout: 25000 });
-      await layer('Completions');
-      const nm = await hover('NM'); const tx = await hover('TX');
-      check(/Not available/.test(nm || '') && !/ 0 /.test(nm || '') && /completions/.test(tx || ''), 'on the Daily map\'s Completions layer a New Mexico county says "Not available" (it publishes none), a Texas county gives its figure: "' + nm + '" / "' + tx + '"');
-      await layer('Waiting');
-      const ok = await hover('OK');
-      check(/Not available/.test(ok || ''), 'and on the queue layer an Oklahoma county says so too: "' + ok + '"');
-      await page.goto(base + '#daily?v=full', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-sec', { timeout: 25000 });
-      const row = await page.evaluate(() => { const tr = [...document.querySelectorAll('#daily-root table tr')].find((r) => /^Other filings/.test(r.children[0].textContent.trim())); return tr ? [...tr.children].map((c) => c.textContent.trim()) : null; });
-      const head = await page.evaluate(() => { const t = [...document.querySelectorAll('#daily-root table')].find((x) => /Other filings/.test(x.textContent)); return t ? [...t.querySelectorAll('thead th')].map((c) => c.textContent.trim()) : []; });
-      const nmCol = head.indexOf('New Mexico');
-      check(!row || nmCol < 0 || row[nmCol] === '—', 'New Mexico has no "other filings" (its permits are all new wells), so its cell is a dash, not 0: ' + JSON.stringify(row));
-      const amended = await page.evaluate(() => { const t = [...document.querySelectorAll('#daily-root .dr-tile')].find((x) => /^Amended/.test(x.innerText.trim())); return t ? t.innerText.replace(/\s+/g, ' ') : null; });
-      check(!amended || /only/.test(amended), 'the amended-permits figure (Texas and Oklahoma count them, New Mexico does not) names the states it adds: ' + amended);
       // an address that names two of the three states: nothing is highlighted in the bar, and a note says which are shown
       await page.goto(base + '#map?st=tx,ok', { waitUntil: 'load' });
       await page.waitForSelector('#statebar-seg button', { timeout: 25000 });
@@ -613,51 +427,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       }
     } catch (e) {
       check(false, 'button labels: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    await ctx.close();
-  }
-
-  // 16. a file the report could not read is said to be unread: "no pending set recorded" and "no completion filings" are claims about the commission, not about a failed download
-  {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
-    const page = await ctx.newPage();
-    try {
-      const txDays = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily', 'index.json'), 'utf8')).days.map((r) => r.d).sort();
-      const day = txDays[txDays.length - 1];
-      const real = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily', day + '.json'), 'utf8'));
-      const broken = JSON.parse(JSON.stringify(real));
-      for (const d of broken.datasets) if (d.id === 'pending' || d.id === 'completions') { d.error = 'could not be read'; d.file = null; d.dataDay = null; d.state = 'error'; }
-      delete broken.pending; delete broken.completions; broken.status = 'partial';
-      const notes = () => page.evaluate(() => [...document.querySelectorAll('#daily-root .dr-kpi')].map((k) => k.querySelector('.dr-kpi-top').textContent.trim() + ' | ' + ((k.querySelector('.dr-kpi-note') || {}).textContent || '')).join(' || '));
-      await page.goto(base + '#daily?d=' + day + '&st=tx', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-kpi', { timeout: 25000 });
-      const control = await notes();
-      check(!/could not be read/.test(control), 'a day on which every file was read says nothing about unread files: ' + control.slice(0, 90));
-      await page.route('**/data/daily/' + day + '.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(broken) }));
-      await page.goto(base + '#daily?d=' + day + '&st=tx', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-kpi', { timeout: 25000 });
-      const tx = await notes();
-      check(/Waiting for approval \| The pending files could not be read/.test(tx) && !/No pending set recorded/.test(tx), 'Texas with its pending files unread says so, not "no pending set recorded": ' + tx.slice(0, 160));
-      check(/Completions[^|]* \| Texas: the completion files could not be read/.test(tx) && !/No completion filings/.test(tx), 'and so for its completion files');
-      await page.click('#statebar-seg button:has-text("All")'); // the bar keeps the last choice, so an address with no state is still Texas alone here
-      await page.waitForFunction(() => document.querySelector('#daily-root .dr-kpi-top') && [...document.querySelectorAll('#daily-root .dr-kpi-top')].some((k) => /^Completions$/.test(k.textContent.trim())), null, { timeout: 25000 });
-      const all = await notes();
-      check(/Completions \|[^|]*Texas could not be read/.test(all), 'with all three states the completions card says which state could not be read: ' + all.slice(0, 200));
-      // Oklahoma's transfers file, the same way
-      const okDays = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily-ok', 'index.json'), 'utf8')).days.map((r) => r.d).sort();
-      const okDay = okDays[okDays.length - 1];
-      const okBroken = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily-ok', okDay + '.json'), 'utf8'));
-      for (const d of okBroken.datasets) if (d.id === 'transfers') { d.error = 'could not be read'; d.file = null; d.dataDay = null; d.state = 'error'; }
-      delete okBroken.transfers; okBroken.status = 'partial';
-      await page.route('**/data/daily-ok/' + okDay + '.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(okBroken) }));
-      await page.goto(base + '#daily?d=' + okDay + '&st=ok', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-kpi', { timeout: 25000 });
-      const okNotes = await notes();
-      check(/Wells changing operator \| The transfer file could not be read/.test(okNotes) && !/No transfers on file/.test(okNotes), 'Oklahoma with its transfers file unread says so, not "no transfers on file": ' + okNotes.slice(0, 200));
-    } catch (e) {
-      check(false, 'unread files: ' + e.message.split('\n')[0].slice(0, 200));
     }
     await ctx.close();
   }
@@ -706,7 +475,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
   }
 
   // 17. the federal offshore: the bar's five choices fit a 360 px phone (TX, OK, NM, Offshore) and keep their full names for a screen reader; the pages that
-  // follow the bar say areas where it has areas and give its reason for having no Daily report; its operators are named by the same rule
+  // follow the bar say areas where it has areas its operators are named by the same rule
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
@@ -736,18 +505,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       }
       check(!clipped.length, 'the states bar is never clipped, at any width from 320 to 1280 px' + (clipped.length ? ': ' + clipped.join(', ') : ''));
       check(fits[1280] === 'full' && fits[320] !== 'full' && fits[390] !== 'full', 'the full names show on a wide screen and give way to the short ones on a phone (data-fit by width: ' + JSON.stringify(fits) + ')');
-      // the Daily report: no report for the offshore, and it says why (its file is weekly)
-      await page.goto(base + '#daily?st=fo', { waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      await page.waitForTimeout(300);
-      const note = await page.locator('#statebar-note').innerText();
-      check(/^The federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico instead\./.test(note), 'the Daily report for the offshore alone says it has none and why, and shows the three that have one: ' + note);
-      await page.goto(base + '#daily', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      await page.click('#statebar button[data-id="all"]');
-      await page.waitForTimeout(400);
-      check(/^The federal offshore has no Daily report \(BSEE’s file is weekly\); it shows Texas, Oklahoma and New Mexico\.$/.test(await page.locator('#statebar-note').innerText()), 'with all four chosen the Daily report shows the three and names the one with none');
       // Companies are the Texas Comptroller's: with the offshore alone the page says so in a sentence
       await page.goto(base + '#companies?st=fo', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
@@ -1118,17 +875,6 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         // reduced motion: the dialog does not animate in
         check(await page.evaluate(() => getComputedStyle(document.querySelector('dialog.pv-dialog')).animationName === 'none'), label + ': with reduced motion the dialog does not animate');
         await page.keyboard.press('Escape');
-        // the drill page of a permit shows its previews too (desktop only: the map's own controls are not the point here)
-        if (label === 'desktop') {
-          await page.goto(base + '#daily?st=tx&d=' + st.day + '&drill=0900001', { waitUntil: 'load' });
-          await page.waitForSelector('.dr-drill .pv-tile', { timeout: 25000 });
-          const drill = await page.evaluate(() => ({ tiles: document.querySelectorAll('.dr-drill .pv-tile').length, buttons: document.querySelectorAll('.dr-drill .dr-doc').length, head: document.querySelector('.dr-drill h3').textContent }));
-          check(drill.head === 'Permit 0900001' && drill.tiles === 2 && drill.buttons === 2, 'the drill page of a permit shows a preview of each of its filings above the buttons that download them: ' + JSON.stringify(drill));
-          await page.goto(base + '#daily?st=tx&d=' + st.day + '&drill=0900002', { waitUntil: 'load' });
-          await page.waitForFunction(() => document.querySelector('.dr-drill h3') && /0900002/.test(document.querySelector('.dr-drill h3').textContent), null, { timeout: 25000 });
-          const drill2 = await page.evaluate(() => ({ tiles: document.querySelectorAll('.dr-drill .pv-tile').length, buttons: document.querySelectorAll('.dr-drill .dr-doc').length }));
-          check(drill2.tiles === 1 && drill2.buttons === 2, 'a document the release holds no preview of keeps its download button and gets no tile: ' + JSON.stringify(drill2));
-        }
         await st.off();
       } catch (e) {
         check(false, label + ': the previews: ' + e.message.split('\n')[0].slice(0, 220));
@@ -1281,6 +1027,83 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the wording block: ' + e.message.split('\n')[0].slice(0, 240));
     }
     check(!errs.length, 'the wording pages load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+
+  // 21. the national Daily report (2026-11-01): one day of new wells, nationwide, the same for every state; the day can be chosen four ways, the newest days say they are filling in,
+  //     a state can be chosen, a day with no well says none, and nothing is a figure only some states have
+  for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const head = () => page.locator('#daily-root .nat-panel h3').first().innerText();
+    const tableHead = () => page.locator('#dd-table-h').innerText();
+    const hash = () => page.evaluate(() => location.hash);
+    try {
+      await page.goto(base + '?debug#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
+      await page.waitForTimeout(900);
+      const text = await page.locator('#view-daily').innerText();
+      check(!/\b(NaN|undefined|null|Infinity)\b/.test(text), label + ': no NaN, undefined, null or Infinity anywhere on the Daily report');
+      check((await page.locator('#daily-root .dr-tile').count()) === 4 && !(await page.locator('#statebar').isVisible()) && !(await page.locator('#ticker, #insights, #pulse-card, #seg-chart').count()), label + ': four figures, no states bar, none of the Texas-only cards');
+      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '')), label + ': no API number, well name or lease anywhere on the page');
+      const ink = await page.evaluate(() => { const c = document.querySelector('#daily-root .nw-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; });
+      check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
+      const first = await page.locator('#daily-root .dd-date').innerText();
+      const n0 = +(await tableHead()).match(/^([\d,]+) well/)[1].replace(/,/g, '');
+      check(n0 >= 10 && /Still filling in/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()), label + ': it opens on the newest day with ten or more wells (' + first + ', ' + n0 + ' wells), and says that day is still filling in');
+      check(/typical settled day has about \d+\.\d/.test(await page.locator('#daily-root .nat-panel').innerText()), label + ': a day still filling in is set against a typical day and not called slow');
+      // four ways to choose a day: the arrows, the slider, the date box, a bar of the chart
+      await page.click('button[aria-label="The day before"]');
+      check((await page.locator('#daily-root .dd-date').innerText()) !== first && /d=\d{4}-\d\d-\d\d/.test(await hash()), label + ': the arrow moves a day and writes it in the address');
+      await page.locator('#daily-root .tl-range').fill(await page.evaluate(() => String(document.querySelector('#daily-root .tl-range').min)));
+      check(/Jun|May/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': the slider reaches the start of the chart: ' + (await page.locator('#daily-root .dd-date').innerText()));
+      await page.fill('#daily-root input[type=date]', '2026-03-10'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
+      check(/Tuesday, Mar 10, 2026/.test(await page.locator('#daily-root .dd-date').innerText()) && /^Settled$/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()) && /d=2026-03-10/.test(await hash()), label + ': the date box opens a day, and a day long past is settled');
+      await page.locator('#daily-root .dd-chartbox').scrollIntoViewIfNeeded();
+      await page.locator('#daily-root .dd-chart .nat-hit').nth(100).dispatchEvent('click');
+      check(!/Mar 10/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': a click on the chart opens that day');
+      // a state: the table, the chart and the summary agree
+      await page.selectOption('#daily-root select.nw-pick', 'TX');
+      await page.waitForFunction(() => /in Texas$/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
+      const states = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap tbody tr td:first-child')].map((t) => t.textContent));
+      check(/s=TX/.test(await hash()) && states.length > 0 && states.every((x) => x === 'Texas') && (await page.locator('#daily-root .dd-chartbox .nat-keys li').count()) === 1, label + ': choosing Texas keeps only Texas in the table and the chart (' + states.length + ' wells), and writes s=TX');
+      // a day with no well says none, rather than a figure the registry lacks
+      await page.selectOption('#daily-root select.nw-pick', 'ND');
+      await page.fill('#daily-root input[type=date]', '2026-06-24'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
+      await page.waitForFunction(() => /^0 wells/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
+      check(/No well had its first job this day/.test(await page.locator('#daily-root .nat-panel').innerText()) && /No well/.test(await page.locator('#daily-root #dd-table-h + div').innerText()), label + ': a day with no well in the chosen state says "No well", not a table of blanks');
+      // freshness: each state's newest well, and the producing states with none in the registry named, not counted as zero
+      const fresh = await page.locator('#daily-root .nat-cov, #daily-root table').last().innerText();
+      check(/Texas/.test(fresh) && /Days behind the newest/i.test(fresh) && /not counted as zero/.test(await page.locator('#daily-root').innerText()), label + ': the freshness table names each state\'s newest well and the states with none');
+      await page.goto(base + '#daily?d=2026-02-02&s=TX', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
+      await page.waitForFunction(() => /in Texas$/.test((document.querySelector('#dd-table-h') || {}).textContent || ''), null, { timeout: 10000 });
+      check(/Monday, Feb 2, 2026/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': an address with a day and a state opens on them');
+      await page.click('#daily-root button:has-text("Newest day")');
+      check(/Wednesday, Oct 14, 2026|Oct 14, 2026/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': "Newest day" opens the newest well\'s day: ' + (await page.locator('#daily-root .dd-date').innerText()));
+    } catch (e) {
+      check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
+    }
+    check(!errs.length, label + ': the national Daily report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 22. the Companies table's Segment cell is a table cell (its class once collided with the segmented control's, which made each one a pill)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#companies?st=tx', { waitUntil: 'load' });
+      await page.waitForSelector('#co-root td.segcell', { timeout: 25000 });
+      check(await page.evaluate(() => getComputedStyle(document.querySelector('#co-root td.segcell')).display === 'table-cell'), 'the Companies table\'s Segment column is plain table cells, not the segmented control\'s pills');
+    } catch (e) {
+      check(false, 'the Companies segment cell: ' + e.message.split('\n')[0].slice(0, 200));
+    }
     await ctx.close();
   }
 

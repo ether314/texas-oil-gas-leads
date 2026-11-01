@@ -1,5 +1,5 @@
 // Tests for the pure JavaScript data code: which states are shown (states.js), what the Overview merges from them (overview-data.js, the
-// permit points merge) and the Daily report's merge rules (daily-data.js). No browser, no network: synthetic files, plus the committed ones
+// permit points merge), the national wells map's geography and data code (usgeo.js, newwells-data.js). No browser, no network: synthetic files, plus the committed ones
 // for shape and consistency checks.
 //
 // Run: node tests/test_js_data.mjs
@@ -13,7 +13,6 @@ const DATA = path.join(HERE, '..', 'site', 'public', 'data');
 const imp = (f) => import(pathToFileURL(path.join(JS, f)).href);
 const S = await imp('states.js');
 const O = await imp('overview-data.js');
-const D = await imp('daily-data.js');
 const GEO = await imp('usgeo.js');
 const NW = await imp('newwells-data.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
@@ -172,22 +171,6 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   const keyOk = pm.pts.every((p) => geoKeys.has(S.pointCountyKey(p[5])));
   check(pm.pts.length === ids.reduce((t, id) => t + files[id].points.pts.length, 0) && keyOk, 'the merged permit points (' + pm.pts.length + ') all fall in a county on the map');
 }
-
-/* ---------- the Daily report's merge rules are still the same after the states moved into states.js ---------- */
-{
-  // the Daily report's permits by day: from the state's own file where it has one (Texas, New Mexico), else from the report index
-  const idx = { days: [{ d: '2026-10-27', dd: '2026-10-26', pn: 4, p: 5, pd: 3 }, { d: '2026-10-28', dd: '2026-10-27', pn: 6, p: 6, pd: 6 }, { d: '2026-10-29', dd: '2026-10-27', pn: 2, p: 2, pd: 2 }] };
-  const own = { days: ['2026-10-26', '2026-10-27', '2026-10-28'], newDrill: [9, 8, 7], total: [9, 8, 7], horizontal: [9, 7, 7] };
-  const nm = D.permitSeries('NM', idx, own);
-  check(same(nm.get('2026-10-27'), { n: 8, total: 8, h: 7 }) && nm.lo === '2026-10-26' && nm.hi === '2026-10-28' && nm.get('2026-10-29') === null && nm.get('2026-10-25') === null, 'permitSeries: a state with its own file of permits by day reads it (New Mexico\'s, rewritten each night), and a day past its last is no data, not zero');
-  const okIdx = D.permitSeries('OK', idx, null);
-  check(same(okIdx.get('2026-10-26'), { n: 4, total: 5, h: 3 }) && same(okIdx.get('2026-10-27'), { n: 6, total: 6, h: 6 }) && okIdx.get('2026-10-29') === null, 'permitSeries: with no file the days come from the index, the first report to list a permit day counting it');
-  const gap = D.permitSeries('NM', idx, { days: ['2026-10-20', '2026-10-23'], newDrill: [3, 4], total: [3, 4], horizontal: [3, 4] });
-  check(same(gap.get('2026-10-21'), { n: 0, total: 0, h: 0 }), 'permitSeries: a day inside the window with no row (a weekend or a holiday) is a zero');
-  const days = D.mergeDays({ TX: { days: [{ d: '2026-10-29', k: 'live', pFresh: true, pn: 30 }] }, OK: { days: [{ d: '2026-10-29', k: 'live', pFresh: true, pn: 7 }] }, NM: { days: [{ d: '2026-10-28', k: 'reconstructed', pFresh: true, pn: 5 }, { d: '2026-10-29', k: 'live', pFresh: true, pn: 5 }] } }, ['TX', 'OK', 'NM']);
-  check(days.length === 2 && days[1].total === 42 && !days[1].partial && days[0].partial && days[0].total === 5 && days[1].live, 'mergeDays: three states in one list of days, a day one of them has no report for is partial, and the total adds what there is');
-}
-check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '001') === 'OK:001', 'daily-data.js re-exports the states and keys the Daily report\'s counties by state, Texas too');
 
 /* ---------- national-data.js ---------- */
 {
@@ -410,6 +393,10 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(land.of > 5000 && land.n > 0 && land.n < land.of && NW.landShare(P, d0, d1, 'TX').of < land.of, 'newwells: the share on federal or tribal land (' + land.n + ' of ' + land.of + ')');
   const nw = NW.newest(P, 5); const nwTx = NW.newest(P, 5, 'ND');
   check(nw.length === 5 && P.day[nw[0]] === P.span && nw.every((i, k) => k === 0 || P.day[nw[k - 1]] >= P.day[i]) && nwTx.every((i) => P.states[P.s[i]] === 'ND'), 'newwells: the newest wells, newest first, one state\'s on request');
+  const dayStates = NW.perDayByState(P, 0, P.span); const sumOfStates = [...dayStates.values()].reduce((t, v) => t + v.reduce((a, b) => a + b, 0), 0);
+  check(sumOfStates === P.n && dayStates.get('TX').length === P.span + 1 && dayStates.get('TX').every((v, i) => v === NW.perDay(P, 0, P.span, 'TX')[i]) && NW.perDayByState(P, 5, 3).size === 0, 'newwells: wells per day for every state at once add up to every point and equal the one-state count');
+  const busy = NW.lastBusyDay(P, 10);
+  check(busy > 0 && busy <= P.span && NW.perDay(P, busy, busy)[0] >= 10 && NW.perDay(P, busy + 1, P.span).every((n) => n < 10) && NW.lastBusyDay(P, 1e9) === P.span, 'newwells: the Daily report opens on the newest day with ten or more wells (the newest days have a few so far), or on the last day when none has that many');
   check(NW.firstAtOrAfter(P, 0) === 0 && NW.firstAtOrAfter(P, P.span + 1) === P.n && P.day[NW.firstAtOrAfter(P, 100)] >= 100 && (NW.firstAtOrAfter(P, 100) === 0 || P.day[NW.firstAtOrAfter(P, 100) - 1] < 100), 'newwells: the first well at or after a day, by binary search');
   const q = NW.quiet(doc, [{ id: 'TX', name: 'Texas' }, { id: 'AL', name: 'Alabama' }, { id: 'ZZ', name: 'Nowhere' }]);
   check(q.length === 2 && q[0].id === 'AL' && q[0].latest === NW.byId(doc, 'AL').latest && q[1].latest === null, 'newwells: a producing state with no well in the last 12 months is "quiet" (with its last job, or none ever), a state with wells is not');
