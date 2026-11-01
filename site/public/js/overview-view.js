@@ -8,7 +8,7 @@ import { renderKpis, renderHot, renderTopOps, renderProducers, renderFreshness }
 import { loadMarketData, initMarkets } from './pulse.js';
 import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
-import { STATES, otherStates, stateOf, statesKey, spudStates, spudsNote, measureOf, sameMeasure, listAnd, inName, shortName, yearStart } from './states.js';
+import { STATES, otherStates, stateOf, statesKey, spudStates, spudsNote, spudCaveat, measureOf, sameMeasure, listAnd, inName, shortName, yearStart } from './states.js';
 import { permitSeries, countyPermits, operatorRows, activeWells } from './overview-data.js';
 
 const LEDE = {
@@ -46,8 +46,9 @@ export function createOverview(meta) {
   };
   function texts() {
     const many = states.length > 1;
+    // permits where the states count permits, wells spudded where all of them count spuds, both when they differ (the dates are each state's own)
     $('#hero-eyebrow').textContent = many
-      ? 'Permits through ' + datesPhrase(states)
+      ? (sameMeasure(states) ? (measureOf(states[0]).id === 'spuds' ? 'Wells spudded' : 'Permits') : 'Permits and spuds') + ' through ' + datesPhrase(states)
       : SOURCE[states[0]] + ' through ' + fmtDate(through(states[0]));
     $('#hero-lede').textContent = ledeFor(states) + ' Public records only, built ' + fmtDate(meta.built) + '.';
     $('#view-overview').dataset.states = statesKey(states);
@@ -69,7 +70,7 @@ export function createOverview(meta) {
       const cov = (id) => (pm.coverageBy ? pm.coverageBy[id] : pm.coverage);
       const share = (id) => { const c = cov(id); return pct(c.share24) + ' of the last 24 months, ' + pct(c.share12) + ' of the last 12'; };
       const sp = spudStates(states);
-      const nm = sp.length ? ' ' + spudsNote(states) + ', and ' + (sp.length > 1 ? 'end' : 'ends') + ' two months back because spud dates arrive late.' : '';
+      const nm = sp.length ? ' ' + spudsNote(states) + ', and ' + (sp.length > 1 ? 'end' : 'ends') + ' two months back because spud dates arrive late.' + (spudCaveat(states) ? ' ' + spudCaveat(states) : '') : '';
       note.textContent = states.length > 1
         ? 'Dots show the ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded location (share of the last 12 months: ' + states.map((id) => stateOf(id).name + ' ' + pct(cov(id).share12)).join(', ')
           + '). Brighter dots are the last 12 months; counts and trends use every one.' + nm

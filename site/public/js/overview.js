@@ -44,16 +44,18 @@ export function renderKpis({ states, meta: m, sp, rows = [], wells = {} }) {
       { label: 'New entities', value: c.newEntities, note: 'chartered in the last 24 months' + (multi ? ' · Texas only' : ''), href: '#companies?isNew=1' },
     );
   } else {
-    chips.push({ label: 'New to drilling', value: newToDrilling(mine), note: 'operators whose first ' + (states.every((id) => measureOf(id).id === 'spuds') ? 'well was spudded' : 'drilling permit came' + (sameMeasure(states) ? '' : ' (first spud in ' + listAnd(states.filter((id) => measureOf(id).id === 'spuds').map((id) => stateOf(id).name)) + ')')) + ' in the last 24 months', href: '#operators?band=all' });
+    chips.push({ label: 'New to drilling', value: newToDrilling(mine), note: 'operators whose first ' + (states.every((id) => measureOf(id).id === 'spuds') ? 'well was spudded' : 'drilling permit came' + (sameMeasure(states) ? '' : ' (first spud in ' + listAnd(states.filter((id) => measureOf(id).id === 'spuds').map(inName)) + ')')) + ' in the last 24 months', href: '#operators?band=all' });
     // each state's inventory is counted on its own day: one date when they agree, each state's own when they do not, and the states with no count are named
     const counted = states.filter((id) => wells[id]);
     if (counted.length) {
       const days = [...new Set(counted.map((id) => wells[id].day))];
       const missing = states.filter((id) => !wells[id]);
+      const later = missing.filter((id) => stateOf(id).dir); const never = missing.filter((id) => !stateOf(id).dir);
       chips.push({
         label: 'Active wells', value: counted.reduce((t, id) => t + wells[id].n, 0), href: '#daily',
-        note: (counted.length > 1 ? 'in the well inventories of ' + listAnd(counted.map((id) => stateOf(id).name)) : 'in the Commission’s well inventory') + ', ' + (days.length === 1 ? fmtDate(days[0]) : counted.map((id) => stateOf(id).name + ' ' + fmtDate(wells[id].day)).join(', '))
-          + (missing.length ? ' · none yet for ' + listAnd(missing.map((id) => stateOf(id).name)) : ''),
+        note: (counted.length > 1 ? 'in the well inventories of ' + listAnd(counted.map(inName)) : 'in the Commission’s well inventory') + ', ' + (days.length === 1 ? fmtDate(days[0]) : counted.map((id) => stateOf(id).name + ' ' + fmtDate(wells[id].day)).join(', '))
+          // a state with a Daily report will have its count once the report loads; one that publishes no inventory (the federal offshore) never will, and says so
+          + (later.length ? ' · none yet for ' + listAnd(later.map(inName)) : '') + (never.length ? ' · not counted for ' + listAnd(never.map(inName)) : ''),
       });
     }
   }

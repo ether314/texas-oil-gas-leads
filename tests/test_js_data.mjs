@@ -51,6 +51,27 @@ check(same(S.dailyStates.map((q) => q.id), ['TX', 'OK', 'NM']) && !S.stateOf('FO
 check(S.yearStart('FO', '2026-08-31') === Date.UTC(2025, 8, 1) && S.yearStart('NM', '2026-08-31') === Date.UTC(2025, 8, 1) && S.yearStart('FO', '2026-12-31') === Date.UTC(2026, 0, 1)
   && S.yearStart('FO', '2026-08-15') === Date.parse('2026-08-15T00:00:00Z') - 365 * 864e5 && S.yearStart('TX', '2026-10-07') === Date.parse('2025-10-07T00:00:00Z')
   && S.yearStart('OK', '2026-08-31') === Date.parse('2025-08-31T00:00:00Z'), 'yearStart: 12 calendar months from the first day for the states that count spuds at a month end, the 365 days that end on the day for the others');
+// the wording helpers the pages share: a sentence names "the federal offshore" (and capitalizes it at its start), a count of one is "1 spud", and the dots, the counts
+// and the ranking minimum are named for what the states shown count
+check(S.ucFirst(S.inName('FO')) === 'The federal offshore' && S.ucFirst(S.statesIn(['FO'])) === 'The federal offshore' && S.statesIn(['TX', 'FO']) === 'Texas and the federal offshore'
+  && S.statesIn(ids) === 'Texas, Oklahoma, New Mexico and the federal offshore' && S.ucFirst('') === '', 'a state named inside a sentence says "the federal offshore", and a sentence that starts with it capitalizes it');
+check(S.countWord('FO', 1) === 'spud' && S.countWord('FO', 2) === 'spuds' && S.countWord('FO', 0) === 'spuds' && S.countWord('TX', 1) === 'permit' && S.countWord('OK', 12) === 'permits' && S.countWord('NM', 1) === 'spud',
+  'a count of one is "1 spud" or "1 permit", never "1 spuds"');
+check(S.measureAnd(['TX']) === 'permit' && S.measureAnd(['NM', 'FO']) === 'spud' && S.measureAnd(ids) === 'permit and spud' && S.everyOf(['FO']) === 'every spud' && S.everyOf(['TX', 'OK']) === 'every permit' && S.everyOf(ids) === 'every permit and every spud'
+  && S.dotName(['TX']) === 'permit dot' && S.dotName(['FO']) === 'well dot' && S.dotName(['NM', 'FO']) === 'well dot' && S.dotName(['TX', 'FO']) === 'permit or well dot',
+  'the dots and counts are named for what the states shown count: a permit dot, a well dot, or both');
+const FO_CAVEAT = 'a well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted.';
+check(S.spudCaveat(['TX', 'OK', 'NM']) === '' && S.spudCaveat(['NM']) === '' && S.spudCaveat(['FO']) === FO_CAVEAT.replace(/^a/, 'A') && S.spudCaveat(ids) === 'In the federal offshore ' + FO_CAVEAT
+  && S.spudCaveat(['NM', 'FO']) === S.spudCaveat(ids) && S.spudCaveat(['TX', 'FO']) === S.spudCaveat(ids), 'what the offshore\'s count leaves out (a sidetrack is not a new well) is said wherever the offshore is shown, naming it unless it is the only state, and nowhere else');
+// a place is ranked on its change from the 12 before only with enough in the last 12 months: 20 permits or spuds, 5 offshore (its busiest area has 14, so 20 would rank none)
+check(S.chgMinOf('TX') === 20 && S.chgMinOf('OK') === 20 && S.chgMinOf('NM') === 20 && S.chgMinOf('FO') === 5 && S.chgMinPhrase(['TX']) === '20+ permits' && S.chgMinPhrase(['NM']) === '20+ spuds' && S.chgMinPhrase(['FO']) === '5+ spuds'
+  && S.chgMinPhrase(['TX', 'OK']) === '20+ permits' && S.chgMinPhrase(['TX', 'FO']) === '20+ permits or spuds (5+ in the federal offshore)' && S.chgMinPhrase(ids) === '20+ permits or spuds (5+ in the federal offshore)',
+  'the least an area needs to be ranked on its change is named for the states shown (20+ permits, 5+ spuds)');
+{
+  const cp = read('county-permits-fo'); const busiest = Math.max(...Object.values(cp.counties).map((c) => c.p12));
+  const ranked = Object.values(cp.counties).filter((c) => c.p12 >= S.chgMinOf('FO') && c.p12 + c.p12prev >= 10).length;
+  check(busiest < S.CHG_MIN && ranked >= 3, 'on the committed files: the offshore\'s busiest area (' + busiest + ' spuds) is under the 20 that ranks a land county, and ' + ranked + ' areas pass its own minimum, so the map\'s list is not empty');
+}
 check(S.stateOf('TX').fips === '48' && S.stateOf('OK').fips === '40' && S.stateOf('NM').fips === '35', 'each state knows its FIPS code (a county\'s FIPS is the state\'s and its three digits)');
 check(S.dailyStates.map((q) => q.id).join() === 'TX,OK,NM' && S.STATES.find((q) => q.id === 'NM').dir === 'daily-nm' && S.STATES.every((q) => !q.dir || /^daily/.test(q.dir)), 'a state with a Daily report has a folder for it, and only those are asked for one');
 {
