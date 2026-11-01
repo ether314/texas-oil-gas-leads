@@ -1219,7 +1219,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(apprParts.length === 3 && apprParts.reduce((a, b) => a + b, 0) === apprN && apprN >= 1, label + ': the summary counts every permit approved that day, by state, and the parts add up (' + appr.slice(0, 120) + ')');
       check((await dots()) > 40 && (await page.locator('#daily-root .dd-chart .dd-oil-line').count()) >= 1 && /line of rings/.test(await page.locator('#daily-root .dd-oilkey').innerText()) && /not added/.test(await page.locator('#daily-root .dd-chartbox').locator('xpath=..').innerText()), label + ': the chart has the permits approved each day as a line of rings beside the bars, with a key, and says they are not added to the wells');
       await page.click('#ddk-wells');
-      check((await dots()) === 0 && (await page.locator('#daily-root .dd-oilkey').count()) === 0 && (await page.locator('#daily-root .dd-approved').count()) === 0, label + ': "Fracked wells" takes the line, its key and the approvals out');
+      check((await dots()) === 0 && (await page.locator('#daily-root .dd-oilkey').count()) === 0 && (await page.locator('#daily-root .dd-approved').count()) === 0 && !/\b(null|undefined|NaN)\b/.test(await page.locator('#daily-root .dd-chartbox').innerText()), label + ': "Fracked wells" takes the line, its key and the approvals out, and leaves no "null" in the chart');
       await page.click('#ddk-permits');
       check((await dots()) > 40 && (await page.locator('#daily-root .dd-approved').count()) === 1, label + ': "Oil permits" keeps them');
       await page.click('#ddk-both');
