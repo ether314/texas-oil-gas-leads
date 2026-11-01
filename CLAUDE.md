@@ -150,6 +150,8 @@ run "Publish the site" by hand in Actions; the by-hand git procedure in the READ
    without its columns, a table of no files, a listing not newest first): the status is `partial`, the run stays green (exit 0) and the Daily page says "N of 6 files read" and "could not be read", so read the Daily page and the
    `Capture the report` log, not only the run's color. The six RRC share listings and the End of Month share were read once from this machine on 2026-10-31 and pass the new listing checks; the real Oklahoma inventory, and the Oklahoma and
    New Mexico monthly files rebuilt from the live master and layer, matched the committed ones byte for byte. If the OCC ever really shrinks its inventory by more than 10%, run `d8_ok_daily.py --wells-floor 0` once by hand.
+1b. **Watch the first run of `refresh-national.yml`** (Mondays 06:20 UTC, the first on Nov 2) and of the producers it runs (`d11_nat_<st>.py`; the BLM's was run once for real on 2026-11-01, 64 reports, 4 s apart). Each producer is isolated and a failed one keeps last week's file, so a red run
+   names what to look at in its log; a server that refuses the runner (exit 2) is an answer, not an error. Fix forward at once.
 2. **One state choice across the site: done** (the bar, the Overview, the Map, Operators, Companies (Texas only, and say so), the Daily report (New Mexico's is permits to drill from the
    OCD layer and its well inventory: `d9_nm_daily.py`, `daily-nm/`, `daily-nm.js`; `daily.js` asks what a report holds, `HORIZ`, `PERMIT_FROM`, `SERIES`, not which state it is) and Sources).
    Views still describe themselves as Texas where they are Texas only; each loses that wording when the others reach it. Never add New Mexico's or the offshore's spuds to the other states'

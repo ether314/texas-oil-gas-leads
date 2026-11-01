@@ -171,7 +171,8 @@ def validate(doc):
         real = [v for v in new if v is not None]
         ok(s["p12"] == sum(real[-12:]) and s["prev12"] == sum(real[-24:-12]), "%s p12 must be the last 12 real months" % s["id"])
         ok(s["measure"] in C.MEASURES, "%s measure" % s["id"])
-        ok(new[len(real) - 1] is not None and all(v is None for v in new[len(real):]), "%s: padding must be a tail of nulls" % s["id"])
+        have = [i for i, v in enumerate(new) if v is not None]
+        ok(bool(have) and have == list(range(have[0], have[-1] + 1)), "%s: the months with figures must be one unbroken run, with nulls only before it (a state that starts later) and after it (one that ends earlier)" % s["id"])
         for o in s["operators"]:
             ok(C.nameable(o[0]), "%s operator the rule refuses: %s" % (s["id"], C.privacy_check.mask(o[0])))
     t = doc["totals"]

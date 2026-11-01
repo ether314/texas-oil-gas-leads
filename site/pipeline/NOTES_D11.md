@@ -51,6 +51,15 @@ Addresses: `#national?s=ND&m=spuds` (state, count). Every chart has its table tw
 (the producer's file is put back exactly as committed, or removed if it is new; the run exits 1 so the workflow shows red after the commit and publish). Then `national.json` is rebuilt from whatever files survived (and put back if the rebuild
 fails). A state whose producer fails keeps last week's file; its `asOf` and `through` say how old it is. `refresh-monthly.yml` rebuilds `national.json` too (it refreshes the Oklahoma, New Mexico and offshore files the report reads).
 
+## The BLM (onshore federal land): `d11_nat_bl.py`
+
+The BLM's per-permit system (AFMSS) is login-only, so the producer reads what the BLM publishes free: a monthly "Application for Permit to Drill Status Report" PDF with APDs received, pending, processed and **approved** by BLM state
+office, monthly from April 2021 (the earlier years are annual and the October and November 2022 reports were never linked, so the series that is shown starts in December 2022). It reads them with `pdftotext -layout` (poppler-utils),
+by heading because the columns moved between 2022 and 2023, and the period line because from 2024 its second date sits on the next line (found by the first real run, which refused to write until the parser read all 64 months).
+What the line is: **APDs approved** (new drills and re-entries together), **by BLM state office, not by state** (New Mexico's covers Oklahoma, Kansas and Texas; Montana's covers the Dakotas; every office counts federal and tribal lands),
+so it is a line of its own and **never added into the states' totals** (`OVERLAP` in `d11_nat_common.py`: the states permit most of the same wells). Last 12 months (to Sep 2026): 5,599 APDs approved against the BLM's own fiscal-year
+total of 5,602. Each week the last 14 months are read again (a month's report can be revised); older months are kept from the committed file. Nothing here names an operator.
+
 ## Known limits
 
 - Texas's monthly series is application type 01 only; it says nothing about the other bands (its Daily report holds only the last 92 days). Oklahoma's, New Mexico's and the offshore's the same.
