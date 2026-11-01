@@ -11,7 +11,7 @@ import { GRADES } from './fields-data.js';
 const MEASURE_NAME = Object.fromEntries(N.MEASURES.map((m) => [m.id, m.name]));
 // what one count is: the BLM counts APDs approved by state office, Oregon applications filed, Virginia wells drilled; the others new-drill permits or wells spudded
 const unitOf = (s) => s.unit || N.measureOf(s.measure).one;
-const OWN_VIEW = { TX: 'tx', OK: 'ok', NM: 'nm', FO: 'fo' }; // the jurisdictions that also have the Map and Operators pages
+const OWN_VIEW = { TX: 'tx', OK: 'ok', NM: 'nm', FO: 'fo' }; // the jurisdictions that also have the Map and a full operator list on the Companies page
 // Element.append writes the word "null" for a null child, so nothing is appended without dropping the empty ones first
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
@@ -158,6 +158,7 @@ export function createNationalView({ root }) {
       s.operators.length && s.namedShare != null ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round(s.namedShare * 100) + '% of the year’s new wells.' }) : null,
       s.note ? el('p', { class: 'fine', text: s.note }) : null);
     if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_VIEW[id] }, 'Open ' + N.inName(id, s.name) + ' in the Map', icon('arrow', 16)));
+    if (s.operators.length) links.append(el('a', { class: 'more-link', href: '#companies?s=' + id }, OWN_VIEW[id] ? 'Every operator in Companies' : 'Its ' + s.operators.length + ' busiest operators in Companies', icon('arrow', 16)));
     if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
     const src = sourceLink(s);
     if (src) links.append(el('a', { class: 'more-link', href: src.href, target: '_blank', rel: 'noopener noreferrer' }, src.text, icon('arrow', 16)));
