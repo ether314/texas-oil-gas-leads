@@ -824,6 +824,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const fills = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-fill^="fo"]')].map((n) => [n.dataset.fill, n.textContent.trim()])));
       check(/^[A-Z][a-z]{2} \d{4}$/.test(fills.foSince) && /^[A-Z][a-z]{2} \d+, \d{4}$/.test(fills.foThrough) && /^\d+$/.test(fills.foYear) && /^\d+$/.test(fills.foOps) && /^[A-Z][a-z]{2} \d{4}$/.test(fills.foEiaThrough) && /^about \d+ million barrels in [A-Z][a-z]{2} \d{4}$/.test(fills.foEiaNow),
         'the Sources page fills the offshore\'s date, wells, operators and EIA month from its files: ' + JSON.stringify(fills));
+      const eiaMonths = await page.evaluate(() => ['okEiaThrough', 'nmEiaThrough'].map((k) => (document.querySelector('[data-fill="' + k + '"]') || {}).textContent || ''));
+      check(eiaMonths.every((t) => /^[A-Z][a-z]{2} \d{4}$/.test(t.trim())), 'and the month the EIA series for Oklahoma and New Mexico run to, from their files: ' + eiaMonths.join(', '));
+      const nmEnd = await page.evaluate(() => (document.querySelector('[data-fill="nmThrough"]') || {}).textContent || '');
+      check(/^[A-Z][a-z]{2} \d+, \d{4}$/.test(nmEnd.trim()) && !/%/.test(await page.evaluate(() => document.querySelector('#view-about').innerText.match(/depth for [^.]*\./)?.[0] || '')), 'and New Mexico\'s end date, which the weekly refresh moves, from its file (and no percentage of wells with a depth that would go stale): "' + nmEnd + '"');
     } catch (e) {
       check(false, 'the federal offshore: ' + e.message.split('\n')[0].slice(0, 200));
     }
