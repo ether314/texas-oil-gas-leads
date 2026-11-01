@@ -59,8 +59,8 @@ Census outlines of Oklahoma's 77 counties and, for its monthly card, EIA's Oklah
 prices above; see `site/pipeline/NOTES_D8.md`.
 
 The national new-wells map reads the FracFocus registry (the national hydraulic-fracturing disclosure list, public, refreshed five days a week): one disclosure per fractured well, with its wellhead's latitude and longitude, state, county, the day the job started, depth, water
-and operator. It is the one public place with a GPS point for every new (fractured) well in every state that reports to it, 17 of them in the last two years. `site/pipeline/d13_newwells.py` fetches only the registry's disclosure list (16 MB of a 443 MB zip, by range requests) once a week
-(`.github/workflows/refresh-newwells.yml`) and writes `site/public/data/newwells/`; a well counts once, on the day of its first job, and a month counts as settled only 120 days after the newest job because disclosures arrive late. The outlines of the states
+and operator. It is the one public place with a GPS point for every new (fractured) well in every state that reports to it, 17 of them in the last two years. `site/pipeline/d13_newwells.py` fetches only the registry's disclosure list (16 MB of a 443 MB zip, by range requests) every day
+(`.github/workflows/refresh-newwells.yml`) and writes `site/public/data/newwells/`, comparing each download with the list of wells kept from the last one (in GitHub's Actions cache, never committed) to log the wells that are new, apart from those a Texas daily report had already carried (`arrivals.json`, counts only; Oklahoma's and New Mexico's daily reports list no wells, so they cannot be matched); a well counts once, on the day of its first job, and a month counts as settled only 120 days after the newest job because disclosures arrive late. The outlines of the states
 (`site/public/data/us-states.json`) are the Census Bureau's 1:10m cartographic boundary files (public domain). See `site/pipeline/NOTES_D13.md`.
 
 ## Privacy

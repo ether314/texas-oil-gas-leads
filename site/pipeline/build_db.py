@@ -21,6 +21,7 @@ Two layers, so nothing is lost and common questions are easy:
     county_permits, county_permit_months      per state and county: last 12 months, the 12 before, mean depth, and the 36 monthly counts
     operators               every state's published operator table (Texas's joined with its extras); the full row of each in `extra`
     permit_points           one row per permit with a published location (latitude, longitude, day, depth)
+    new_wells_arrivals      the wells each daily FracFocus download added (by arrival day and state), and how many a state's daily report had already carried (null: that report lists no wells)
     new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well since 2011 (the last 24 months and the history file) with its
                             published GPS point (latitude, longitude, day, county, operator when it may be named, depth, water, land), and each state's top operators
     companies               the Texas Comptroller's company pool as published here
@@ -72,6 +73,7 @@ CREATE TABLE permit_points(state TEXT, day TEXT, lat REAL, lon REAL, operator TE
 CREATE TABLE new_wells_months(state TEXT, month TEXT, wells INTEGER, PRIMARY KEY(state, month));
 CREATE TABLE new_wells(state TEXT, day TEXT, lat REAL, lon REAL, county TEXT, operator TEXT, depth_ft INTEGER, water_gal INTEGER, land TEXT);
 CREATE TABLE new_wells_operators(state TEXT, rank INTEGER, operator TEXT, wells12 INTEGER, PRIMARY KEY(state, rank));
+CREATE TABLE new_wells_arrivals(day TEXT, state TEXT, found INTEGER, reported INTEGER, PRIMARY KEY(day, state));
 CREATE TABLE companies(fit TEXT, band TEXT, segment TEXT, name TEXT, city TEXT, state TEXT, zip TEXT, naics TEXT, word TEXT, is_new INTEGER, years TEXT, new12 INTEGER,
   all12 INTEGER, match TEXT, rrc_num TEXT, reason TEXT);
 CREATE TABLE daily_reports(state TEXT, day TEXT, kind TEXT, status TEXT, permits_total INTEGER, permits_new_drill INTEGER, completions_filed INTEGER, transfers_wells INTEGER,
@@ -249,6 +251,10 @@ def load_newwells(db, data):
         hist = jload(ph)
         rows = newwell_rows(hist, history_below(pt, hist)) + rows
     db.executemany("INSERT INTO new_wells VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    pa = os.path.join(data, "newwells", "arrivals.json")
+    if os.path.exists(pa):
+        arr = jload(pa)
+        db.executemany("INSERT INTO new_wells_arrivals VALUES (?,?,?,?)", [(d["day"], st, n, rep) for d in arr.get("days", []) for st, n, rep in d["states"]])
     return len(rows)
 
 
@@ -410,6 +416,9 @@ def check(out):
                 want += bisect.bisect_left(hist["d"], history_below(pts, hist))
             if db.execute("SELECT COUNT(*) FROM new_wells").fetchone()[0] != want:
                 p.append("new_wells does not match newwells/points.json and points-history.json")
+        na = db.execute("SELECT json FROM documents WHERE path = 'newwells/arrivals.json'").fetchone()
+        if na and db.execute("SELECT COUNT(*) FROM new_wells_arrivals").fetchone()[0] != sum(len(d["states"]) for d in json.loads(na[0]).get("days", [])):
+            p.append("new_wells_arrivals does not match newwells/arrivals.json")
         wdocs = sum(sum(len(w["docs"]) for w in json.loads(t)["wells"]) for (t,) in db.execute("SELECT json FROM documents WHERE path GLOB 'wells/county/*.json'"))
         if db.execute("SELECT COUNT(*) FROM well_documents").fetchone()[0] != wdocs:
             p.append("well_documents does not match the county files")

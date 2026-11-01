@@ -1193,7 +1193,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const text = await page.locator('#view-daily').innerText();
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(text), label + ': no NaN, undefined, null or Infinity anywhere on the Daily report');
       check((await page.locator('#daily-root .dr-tile').count()) === 4 && !(await page.locator('#statebar').isVisible()) && !(await page.locator('#ticker, #insights, #pulse-card, #seg-chart').count()), label + ': four figures, no states bar, none of the Texas-only cards');
-      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '')), label + ': no API number, well name or lease anywhere on the page');
+      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '').replace(/(matched by|without) API numbers?/g, '')), label + ': no API number, well name or lease anywhere on the page');
       const ink = await page.evaluate(() => { const c = document.querySelector('#daily-root .nw-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; });
       check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
       const first = await page.locator('#daily-root .dd-date').innerText();
@@ -1272,6 +1272,30 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /Jan 1, 2011/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
       check(await page.locator('button[aria-label="The day before"]').isDisabled() && /in North Dakota$/.test(await tableHead()) && /Saturday, Jan 1, 2011/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': an address with a day in 2011 opens on it with the arrow back switched off at the first day');
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-daily').innerText()), label + ': no NaN, undefined, null or Infinity on a day in 2011');
+      // fractured wells found and oil well permits approved, day by day, marked and never added (2026-11-02)
+      const readIdx = (d) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', d, 'index.json'), 'utf8')).days;
+      const idxTx = readIdx('daily'); const newestIdx = idxTx[idxTx.length - 1].d;
+      const oilOf = (d) => ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const e = readIdx(dir).find((x) => x.d === d && x.s === 'ok'); return e ? e.pn : 0; });
+      const arrCard = page.locator('section[aria-labelledby="dd-arr-h"]');
+      await page.goto(base + '?fresh=3#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
+      const baseText = await arrCard.innerText();
+      const committed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'arrivals.json'), 'utf8'));
+      check((await arrCard.locator('.mk-frac').count()) >= 2 && (await arrCard.locator('.mk-oil').count()) >= 2 && (await arrCard.locator('.mk-both').count()) >= 2 && /Fractured wells found \(FracFocus\)/.test(baseText) && /Oil well permits approved \(state agencies\)/.test(baseText),
+        label + ': the card marks which is which: a filled dot for fractured wells (FracFocus), a hollow ring for oil well permits (state agencies), a ring with a dot for the same well in both');
+      const firstRow = (await arrCard.locator('tbody tr').first().innerText()).replace(/\s+/g, ' ');
+      check(committed.since ? true : (/begins with the next download/.test(baseText) && (await arrCard.locator('tbody tr td:nth-child(2)').allInnerTexts()).every((x) => x.trim() === '—') && !/\b(NaN|undefined|null|Infinity)\b/.test(baseText)),
+        label + ': before the first comparison no day is counted: the fractured column is a dash (never a zero), and the card says the comparison begins with the next download');
+      check(/different things/.test(baseText) && /never added together/.test(baseText) && /cannot be checked against them/.test(baseText) && !/\d{10}/.test(baseText), label + ': it says the two are never added, that Oklahoma and New Mexico cannot be checked, and holds no API number');
+      const fixture = { v: 1, checked: newestIdx, since: newestIdx, against: { TX: { wells: 83, from: '2026-10-30' } }, days: [{ day: newestIdx, found: 41, removed: 1, states: [['TX', 25, 3], ['NM', 9, null], ['OK', 5, null], ['ND', 2, null]] }] };
+      await page.route('**/newwells/arrivals.json', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fixture) }));
+      await page.goto(base + '?fresh=4#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
+      const cells = await arrCard.locator('tbody tr').first().locator('th, td').allInnerTexts();
+      const oil = oilOf(newestIdx); const rows2 = await arrCard.locator('tbody tr').allInnerTexts();
+      check(/^41/.test(cells[1].trim()) && /Texas 25/.test(cells[1]) && /North Dakota 2/.test(cells[1]) && cells[2].trim().startsWith(String(oil[0] + oil[1] + oil[2])) && cells[3].trim() === '3', label + ': a day with a comparison shows the 41 fractured wells found, the ' + (oil[0] + oil[1] + oil[2]) + ' oil well permits the three state reports approved, and the 3 wells in both, side by side: ' + cells.join(' | ').replace(/\s+/g, ' ').slice(0, 140));
+      check(/^—/.test(rows2[1].split('\t')[1] || '—') && /Texas’s daily reports are matched by API number \(83 wells, from Oct 30, 2026\)/.test(await arrCard.innerText()), label + ': the day before the comparison has a dash, not a zero, and the card says what the Texas match covers (83 wells, from Oct 30)');
+      await page.unroute('**/newwells/arrivals.json');
     } catch (e) {
       check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
     }

@@ -182,6 +182,30 @@ export function typicalDay(doc, iso, state = null) {
 }
 // a state that has had a well since the series began, even if none in the last year (the Daily report can show it for an older day)
 export const drilled = (s) => s.new.some((v) => v > 0);
+// ------------------------------------------------------------------------------------------------ fractured wells found, and the state agencies' oil well permits, day by day
+// The states whose daily reports are kept (a state agency's report of the permits it approved): the oil side of the Daily report.
+export const OIL_STATES = ['TX', 'OK', 'NM'];
+// arrivalRows(arr, reports, n): the last n days, newest first, of the two things side by side, never added: `fractured`, the wells FracFocus's download added that day (arrivals.json: null for a day before
+// the comparison began, never a zero for a day that was not compared), and `oil`, each state's new-drill permits in the report it published that day ([id, count, the day they were approved]).
+// `both` is the wells that are in both (Texas, matched by API number), or null when the day was not compared. `reports` maps a state to its per-day index (daily/index.json and the like), or null.
+export function arrivalRows(arr, reports, n = 14) {
+  const found = new Map(((arr && arr.days) || []).map((d) => [d.day, d]));
+  const oil = new Map();
+  for (const id of OIL_STATES) {
+    for (const r of ((reports && reports[id]) || {}).days || []) {
+      if (r.s !== 'ok' || typeof r.pn !== 'number') continue;
+      if (!oil.has(r.d)) oil.set(r.d, []);
+      oil.get(r.d).push([id, r.pn, r.dd || null]);
+    }
+  }
+  const days = [...new Set([...found.keys(), ...oil.keys()])].sort().reverse().slice(0, n);
+  return days.map((day) => {
+    const e = found.get(day); const compared = !!(arr && arr.since && day >= arr.since);
+    const o = (oil.get(day) || []).sort((a, b) => OIL_STATES.indexOf(a[0]) - OIL_STATES.indexOf(b[0]));
+    const tx = e ? e.states.find((x) => x[0] === 'TX') : null;
+    return { day, fractured: compared ? (e ? e.found : 0) : null, byState: e ? e.states.map((x) => ({ id: x[0], n: x[1], carried: x[2] })) : [], oil: o, oilTotal: o.length ? o.reduce((t, x) => t + x[1], 0) : null, both: compared ? (tx ? tx[2] : 0) : null };
+  });
+}
 // "Texas", "Texas and Ohio", "Texas, Ohio and Utah": the names behind a figure
 export const listAnd = (items) => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1]);
 // a depth in feet and a water volume in gallons as the pages say them

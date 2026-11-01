@@ -64,12 +64,27 @@ number and a run of ten digits in either file.
 ```
 python3 -I site/pipeline/d13_newwells.py              # read FracFocus (range requests), validate, write both files
 python3 -I site/pipeline/d13_newwells.py --file PATH  # a local FracFocusCSV.zip or DisclosureList csv instead of the network
+python3 -I site/pipeline/d13_newwells.py --seen PATH  # also compare with the list of wells kept at PATH from the last download, log what is new (arrivals.json) and keep today's list there
 python3 -I site/pipeline/d13_newwells.py --check      # reload and validate what is committed
 python3 -I tests/run_all.py d13                       # the tests
 ```
 
 A run refuses to write (exit 1, the committed files stay) when the registry looks cut short: under 90% of the committed file's wells in the last 24 months or rows read (`--guard-floor 0` for a deliberate reset), fewer than 3,000 wells in the last 12 months, any validator fault.
 A refusal by the server is exit 2, an answer. The same registry read again writes nothing, so a weekly run commits only when the registry has changed.
+
+## Arrivals: what is new since the last download (2026-11-02)
+
+The workflow runs every day now (10:35 UTC) and `d13_arrivals.py` answers what the weekly rebuild could not: which wells arrived since yesterday. The key is the API number's first ten digits, as everywhere here. Yesterday's list is one API number a line in a gzip file (`.ff-cache/ff-seen.txt.gz`, about 570 KB) that the workflow
+keeps in GitHub's Actions cache (`actions/cache/restore` and `save`, the newest `ff-seen-*` entry, a new key each day) and **never commits**: the site's data files carry no API number, and neither does the repository outside the database snapshot the owner approved. A run with no list (the first, or after the cache expired) keeps today's as the baseline and reports nothing: it says
+"no list kept from the last download" instead of calling 239,000 wells new. A list under 100,000 wells, damaged or cut short is no list. The list moves on only after the files were written, and the workflow saves it only when the producer wrote and the check passed, so a refused or failed run leaves yesterday's.
+
+`arrivals.json` (counts only, newest 60 days): per arrival day and state, the wells found, how many of them a state's daily report had already carried, and how many wells of yesterday's list are gone (an operator's correction or a deletion: counted apart, never as new); a second run on one day adds only what the first missed; a day with nothing new only moves `checked`. `against` says what the state match covered.
+
+**Not reported twice.** A new well is checked against the state agencies' daily reports. Only Texas's day files carry wells: each approved-permit row and each directional-survey row has the API number without the state's 42 (`permits.rows[i][7]`, `surveys.rows[i][0]`), put back as `42` + eight digits. A Texas arrival in that set counts as already reported. Oklahoma's and New Mexico's day files hold counts by county and operator, not wells,
+so nothing can be matched and their `reported` is `null`, never a zero (the page says so). Measured on the real archive (2026-11-02): 90 of its 92 Texas day files were rebuilt from the monthly master and have permit rows with no API number; only the two nightly captures (Oct 30, 31) have them, 83 wells, and none of them was among the 339 Texas wells fractured since mid-August. A well is usually fractured months after its permit, so the match is rare at first and
+grows by about 85 wells a night; the completions the Texas capture reads are counted, not listed, so they cannot be matched. Recording the completed wells' API numbers in the Texas capture (the one report that lands close in time to a disclosure) is the way to make the match strong, and is not done.
+
+The Daily report's "New in the registry" card puts the two side by side, day by day (`arrivalRows` in `newwells-data.js`): the wells FracFocus found (a filled dot) and the new-drill permits each state's report approved that day (`daily*/index.json`, a hollow ring), and the wells in both (a ring with a dot). They are never added: a permit is the right to drill, a fracturing job comes after.
 
 ## Known limits
 
