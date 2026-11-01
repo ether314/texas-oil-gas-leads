@@ -60,6 +60,35 @@ What the line is: **APDs approved** (new drills and re-entries together), **by B
 so it is a line of its own and **never added into the states' totals** (`OVERLAP` in `d11_nat_common.py`: the states permit most of the same wells). Last 12 months (to Sep 2026): 5,599 APDs approved against the BLM's own fiscal-year
 total of 5,602. Each week the last 14 months are read again (a month's report can be revised); older months are kept from the committed file. Nothing here names an operator.
 
+## Six more states: Arizona, Indiana, Kansas, Kentucky, Nevada, West Virginia
+
+Each is one file, `d11_nat_<st>.py`, with a test (`tests/test_d11_<st>.py`), and was run once for real from this project and checked against a count the agency publishes itself. What each counts:
+
+| State | Source | Counts | Tells | Last 12 months | Independent check |
+|---|---|---|---|---|---|
+| Arizona | the ArcGIS layer behind the Commission's map (one request) | **spuds** (the layer has no approval date), 60-day lag | new, inj, other; fluid | 0 new (none spud since June 2023: `zeroOk`) | the layer's DRILL_END_DATE gives the same yearly counts for 2020 to 2023 |
+| Indiana | the Division's weekly "Permits Issued" PDFs (`pdftotext`), 353 lists from Jan 2020 | permits by issue date | all six bands; fluid | 48 new wells | the Division's own monthly reports match the weekly sums for five months checked |
+| Kansas | the KGS "Oil and Gas Wells" layer (the KCC's own site refuses scripts) | permits by notice-of-intent date | new, inj, redrill, other; fluid | 586 new | the layer's yearly rows equal the KGS well-statistics table; month by month equal to a second snapshot |
+| Kentucky | the Division's weekly permit lists (.xls and .xlsx, a small .xls reader is inside the producer) | permits by issue date | new, inj, redrill, rework, other; fluid | 64 new | 13 of 1,039 permit numbers are on no list (the Division's omission, in the note) |
+| Nevada | the Division of Minerals' Permits page (six years of PDFs, hand-updated), 30-day lag | permits by approval date | new only | 2 new | the Division's well layer's highest permit number equals the page's newest |
+| West Virginia | the Weekly Permit Report zips (404 weeks), not the TAGIS layer (one New Drill row in nine is repeated there) | permits by issue date, by week | new, rework, redrill, amend, other; no inj, no fluid | 265 new | de-duplicated, the layer agrees within 2% (265 against 265 in the last 12 months) |
+
+Things to know:
+
+- **First reads are by hand, and committed.** Kentucky (17 minutes), Indiana (9) and West Virginia (30) read one file a week, two to three seconds apart; the history was read once and `nat/KY.json`, `IN.json` and `WV.json` are committed. A weekly run
+  re-reads only the newest 14 months of weeks (about 3 minutes each, checked identical to a full read), under a 900-second limit in `TIMEOUTS`. Without a committed file they time out here, by design: a bootstrap is run by hand
+  (`D11_NAT_DIR=<an empty folder> python3 -I site/pipeline/d11_nat_<st>.py`, then the file is committed).
+- **A run fails, and the committed file stays,** when a layout changes, a list is missing (Kentucky: a skipped Friday or a newest list over 45 days old; West Virginia: more than 8 weeks missing), or the count is implausible.
+- **Defects in the agencies' files are told in each file's `note`** (Indiana's two index weeks that point to one PDF and one page that prints three permits on top of each other; West Virginia's three weeks never posted; Kentucky's omitted permit numbers;
+  Nevada's early-2021 numbers with no date), never smoothed over.
+- Nevada publishes no company in a form that can be read (free text inside a link title), so it names no operator and no county (`namedShare` is null); Arizona names none because there were no new wells to name.
+
+## Mississippi (withheld)
+
+`d11_nat_ms.py` was written and tested (the Board's shapefile and well list, joined by API number in memory) but is **not** in the repository's producers, because its count is lower than the Board's own yearly "Permits to Drill" report
+(59, 48, 22 and 29 wells for 2022 to 2025 against the Board's 88, 67, 50 and 37): the shapefile holds only located wells, and expired and cancelled permits are not in it. A figure that is 30 to 55 percent short, published beside agencies' full counts,
+would read as a fall. Mississippi stays a gap in the report ("not read yet", with its researched grade) until a file with every permit is found (the yearly PDF report is one candidate: a table of county by month, which a producer could read).
+
 ## Known limits
 
 - Texas's monthly series is application type 01 only; it says nothing about the other bands (its Daily report holds only the last 92 days). Oklahoma's, New Mexico's and the offshore's the same.
