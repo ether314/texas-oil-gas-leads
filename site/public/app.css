@@ -787,6 +787,10 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .dd-by h4 { display: flex; align-items: center; gap: var(--sp-2); }
 .nat-big.dd-bigq { margin-top: var(--sp-2); align-items: center; }
 .nat-big.dd-bigq strong { font-size: var(--fs-xl); }
+/* the permits approved each day, in the chart: a thin line with a ring for each day that has a count */
+.dd-oil-line { fill: none; stroke: color-mix(in srgb, var(--ink) 55%, transparent); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
+.dd-oil-dot { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; pointer-events: none; }
+.dd-approved { margin: var(--sp-2) 0 0; }
 .dd-by .link, .dd-tbl .link { display: inline-flex; align-items: center; min-height: 24px; } /* a name that is a button is as tall as any other control: 24 px */
 @media (max-width: 640px) { .dd-mid { flex-basis: 100%; order: 3; } }
 
