@@ -40,7 +40,8 @@ PAUSE = 4.0
 REREAD = 14  # months read again each run
 NUM = r"-?\d[\d,]*"
 ROW = re.compile(r"^\s*(%s)\s+((?:%s\s+){4}%s)\s*$" % ("|".join(OFFICES), NUM, NUM), re.M)
-SPAN = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})\s+to\s+(\d{1,2})/(\d{1,2})/(\d{4})")
+# the second date can sit on the next line, with a heading of the next column between ("08/01/2024 to ... Permits ... 08/31/2024" in 2024)
+SPAN = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})\s+to\b[^0-9]{0,200}?(\d{1,2})/(\d{1,2})/(\d{4})")
 LINK = re.compile(r'href="([^"]*?(?:APD|Application)[^"]*?Status[^"]*?\.pdf)"', re.I)
 
 

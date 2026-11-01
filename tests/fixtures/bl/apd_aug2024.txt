@@ -1,0 +1,96 @@
+                                                                                                        Approved
+FY 2024 Application for Permit to Drill (APDs) Status Report: 08/01/2024 to                              Permits
+                                08/31/2024                                                            Available for
+                                                                                                         Drilling
+                                                                                                       (AAPDs) on
+                                                                                                      09/03/2024 (*)
+                                  APDs             APDs
+                                                                    APDs                  APDs
+        State Office             Received         Pending
+                                                                 Processed (C)         Approved (D)
+                                   (A)              (B)
+Alaska                                     0               1                  1                   1           4
+California                                 0             113                  0                   0          121
+Colorado                                  50             146                 10                  10          144
+Eastern States                             2               4                  0                   0          31
+Montana                                   17             119                 27                  24          272
+Nevada                                     0               9                  0                   0           2
+New Mexico                               326           4,522                245                 217         4,107
+Utah                                      11             366                 10                   9          515
+Wyoming                                   63             583                 31                  29         1,583
+August 2024 Total                        469           5,863                324                 290         6,779
+Federal Well Total                       456           5,594                304                 270         6,402
+Indian Well Total                         13             269                 20                  20          307
+Fiscal Year Totals (**)                4,184           5,863              3,408               3,081         6,779
+
+(A) APDs received counts APDs received by the BLM and the APD Fee has been paid during the reporting period.
+
+(B) APDs Pending includes cumulative APDs received without a final disposition. This includes the steps in the
+process where the BLM is determining completeness of the application, or the Operator is addressing deficiencies such
+as, Wildlife or Cultural Clearances, or the application is impacted by ongoing leasing litigation, and APDs awaiting
+final decision.
+
+(C) APDs Processed include APDs that are approved (column D), denied, returned, withdrawn, or cancelled.
+
+(*) AAPDs are APDs that have been approved and are available to drill. These AAPDs are either in their original two-
+year term or have been granted an extension beyond the first two years, but not to exceed a total of four years. This
+AAPD number is accurate on the date that the report is generated, which is distinct from the data on APD status for the
+month. Once an APD is drilled, expired, or withdrawn, it is removed from the Approved and Available (AAPDs)
+numbers.
+(**) Fiscal Year Totals Cover 10/01/2023 to 08/31/2024
+Individual State Office data includes APD activity for both Federal and Tribal lands
+
+Data current as of 10/24/2024
+The data in this report is accurate as of the date it is pulled from the Automated Fluid Minerals Support System
+(AFMSS). Changes to previously reported numbers that are then shown in later reports may result from ongoing data
+quality control reviews. APD Processing takes several months from start to finish. This monthly report is a snapshot
+during the process, so corrections may occur until the entire process for each APD is completed.
+FY 2024 Application for Permit to Drill (APDs) Status Report: 10/01/2023 to                             Approved
+                                08/31/2024                                                               Permits
+                                                                                                      Available for
+                                                                                                         Drilling
+                                                                                                       (AAPDs) on
+                                   APDs            APDs             APDs                  APDs        09/03/2024 (*)
+        State Office
+                                Received (A)    Pending (B)      Processed (C)         Approved (D)
+
+Alaska                                    10               1                 11                  11           4
+California                                 3             113                  4                   4          121
+Colorado                                 155             146                132                 132          144
+Eastern States                             7               4                 22                  21          31
+Montana                                  242             119                223                 214          272
+Nevada                                     0               9                  0                   0           2
+New Mexico                             2,784           4,522              2,162               1,919         4,107
+Utah                                     328             366                202                 196          515
+Wyoming                                  655             583                652                 584         1,583
+Total                                  4,184           5,863              3,408               3,081         6,779
+Federal Well Total                     3,877           5,594              3,141               2,820         6,472
+Indian Well Total                        307              269               267                 261          307
+Fiscal Year Totals (**)                4,184           5,863              3,408               3,081         6,779
+
+
+(A) APDs received counts APDs received by the BLM and the APD Fee has been paid during the reporting period.
+
+(B) APDs Pending includes cumulative APDs received without a final disposition. This includes the steps in the
+process where the BLM is determining completeness of the application, or the Operator is addressing deficiencies such
+as, Wildlife or Cultural Clearances, or the application is impacted by ongoing leasing litigation, and APDs awaiting
+final decision.
+
+(C) APDs Processed include APDs that are approved (column D), denied, returned, withdrawn, or cancelled.
+
+(*) AAPDs are APDs that have been approved and are available to drill. These AAPDs are either in their original two-
+year term or have been granted an extension beyond the first two years, but not to exceed a total of four years. This
+AAPD number is accurate on the date that the report is generated, which is distinct from the data on APD status for the
+month. Once an APD is drilled, expired, or withdrawn, it is removed from the Approved and Available (AAPDs)
+numbers.
+
+(**) Fiscal Year Totals Cover 10/01/2023 to 08/31/2024
+
+Individual State Office data includes APD activity for both Federal and Tribal lands
+
+Data current as of 10/24/2024
+The data in this report is accurate as of the date it is pulled from the Automated Fluid Minerals Support System
+(AFMSS). Changes to previously reported numbers that are then shown in later reports may result from ongoing data
+quality control reviews. APD Processing takes several months from start to finish. This monthly report is a snapshot
+during the process, so corrections may occur until the entire process for each APD is completed.
+
