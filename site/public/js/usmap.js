@@ -1,5 +1,6 @@
 // The national wells map: the 49 state outlines and every new well of the last 24 months as a glowing dot, drawn on a canvas. Used twice: as the Overview's
 // backdrop (nothing to touch) and as the explorer (hover a dot for its well, click a state to zoom in, replay two years with the shared replay bar).
+// A second layer can ride on it (Q, the Daily report's oil permits and spuds, newwells-data.js decodePermits): a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud, in the state's color.
 // The still layers (outlines, settled dots) are painted once to offscreen canvases; each frame only blits them and draws the newest dots and the pulses.
 // The loop runs only while something moves (a replay, a zoom, pulses on a visible map) and never with reduced motion.
 import { clamp, reduced, onReducedChange, whenVisible, fmtDate, fmt, el } from './util.js';
@@ -46,7 +47,7 @@ function rng(seed) {
 
 // canvas, host: the element that sizes it. outlines: usgeo.buildOutlines. P: newwells-data.decode. doc: the summary (for a state's figures).
 // box(w, h): the drawing box in CSS px (the Overview's backdrop keeps clear of its text); default is the whole canvas with a margin.
-export function createUSMap({ canvas, host, outlines, P, doc, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
+export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
   const ctx = canvas.getContext('2d');
   const baseC = document.createElement('canvas'); const dotsC = document.createElement('canvas');
   const bctx = baseC.getContext('2d'); const dctx = dotsC.getContext('2d');
@@ -55,6 +56,11 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
   const wx = new Float32Array(P.n); const wy = new Float32Array(P.n); const slot = new Uint8Array(P.n);
   { const o = [0, 0]; const slotOf = P.states.map((id) => { const k = KEYS.indexOf(id); return k < 0 ? KEYS.length - 1 : k; });
     for (let i = 0; i < P.n; i++) { G.project(P.lon[i], P.lat[i], P.states[P.s[i]], o); wx[i] = o[0]; wy[i] = o[1]; slot[i] = slotOf[P.s[i]]; } }
+  // the oil permits and spuds, in world units and a color slot by state; they share the wells' day numbers (Q was decoded against P's first day)
+  const qn = Q ? Q.n : 0; const qx = new Float32Array(qn); const qy = new Float32Array(qn); const qslot = new Uint8Array(qn);
+  if (Q) { const o = [0, 0]; const slotOf = Q.states.map((id) => { const k = KEYS.indexOf(id); return k < 0 ? KEYS.length - 1 : k; });
+    for (let i = 0; i < qn; i++) { G.project(Q.lon[i], Q.lat[i], Q.states[Q.s[i]], o); qx[i] = o[0]; qy[i] = o[1]; qslot[i] = slotOf[Q.s[i]]; } }
+  let showW = true; let showQ = !!Q; let hoverQ = -1; let lastWd = Infinity; let lastQd = Infinity; let drawnQ = 0;
   // a grid over the wells so the nearest dot to the pointer is found without looking at all of them
   const CELL = 8; const COLS = Math.ceil(G.WIDTH / CELL) + 2; const grid = new Map();
   for (let i = 0; i < P.n; i++) { const key = Math.floor(wy[i] / CELL) * COLS + Math.floor(wx[i] / CELL); const a = grid.get(key); if (a) a.push(i); else grid.set(key, [i]); }
@@ -76,6 +82,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
   const idxLo = () => cum[Math.max(0, lo)]; // wells before the first visible day
   const glowFrom = () => Math.max(idxLo(), cum[Math.max(0, Math.floor(cursor) - glowDays) + 1]);
   const showing = (i) => !selected || P.states[P.s[i]] === selected;
+  const showingQ = (j) => !selected || Q.states[Q.s[j]] === selected;
 
   function loadPalette() {
     dark = isDark();
@@ -105,9 +112,10 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
 
   // the settled dots: every well before the glow window, painted in order into a cached layer (appended while the cursor moves forward, repainted from the start otherwise)
   function paintSettled(cheap) {
-    const key = [w, h, dpr, view.k.toFixed(4), view.tx.toFixed(1), view.ty.toFixed(1), selected, lo, dark ? 1 : 0].join('|');
+    const key = [w, h, dpr, view.k.toFixed(4), view.tx.toFixed(1), view.ty.toFixed(1), selected, lo, dark ? 1 : 0, showW ? 1 : 0].join('|');
     const upto = glowFrom(); const first = idxLo();
     if (key !== dotsKey || upto < drawnTo) { dotsC.width = Math.round(w * dpr); dotsC.height = Math.round(h * dpr); drawnTo = first; dotsKey = key; }
+    if (!showW) { drawnTo = upto; return; } // only the permits are shown: the wells' layer stays empty
     if (upto <= drawnTo) return;
     dctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const rn = radius(); const margin = rn * 4;
@@ -142,7 +150,25 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
 
   function pickPulses() {
     const rand = rng(11); const a = glowFrom(); const b = idxHi(); pulses = [];
+    if (!showW || showQ) return; // no pulses beside permit rings: an expanding ring around a well must not read as a permit
     for (let n = 0; n < 70 && b > a; n++) { const i = a + Math.floor(rand() * (b - a)); if (showing(i)) pulses.push({ i, phase: rand(), period: 2400 + rand() * 1800 }); }
+  }
+
+  // the oil permits and spuds of the shown days: hollow rings in the state's color (a dark or light backing keeps a ring readable over a dense glow); the newest days are brighter and thicker
+  function paintPermits(rn) {
+    drawnQ = 0;
+    if (!Q || !showQ) return;
+    const cur = Math.floor(cursor); const r0 = Math.max(3, rn * 1.7); const back = dark ? 'rgba(8,10,14,0.55)' : 'rgba(255,255,255,0.8)';
+    for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) {
+      if (!showingQ(j)) continue;
+      const x = qx[j] * view.k + view.tx; const y = qy[j] * view.k + view.ty;
+      if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
+      const fresh = Q.day[j] > cur - glowDays;
+      ctx.beginPath(); ctx.arc(x, y, r0, 0, TAU);
+      ctx.lineWidth = fresh ? 4 : 3; ctx.strokeStyle = back; ctx.stroke();
+      ctx.lineWidth = fresh ? 2 : 1.3; ctx.strokeStyle = fresh ? pal[qslot[j]].fresh : pal[qslot[j]].old; ctx.stroke();
+      drawnQ++;
+    }
   }
 
   function draw(now = 0) {
@@ -151,7 +177,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
     ctx.drawImage(baseC, 0, 0, w, h);
     ctx.drawImage(dotsC, 0, 0, w, h);
-    const rn = radius(); const hiI = idxHi(); const gf = glowFrom();
+    const rn = radius(); const hiI = showW ? idxHi() : 0; const gf = showW ? glowFrom() : 0;
     if (!cheap) {
       const c = BASE[dark ? 'dark' : 'light'];
       // the newest dots: bright, fading as they age, with the strongest halo
@@ -183,8 +209,13 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
         }
         ctx.globalAlpha = 1;
       }
+      paintPermits(rn);
       paintLabels();
       if (hoverState && !selected) { const c2 = BASE[dark ? 'dark' : 'light']; ctx.save(); ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.tx, dpr * view.ty); ctx.lineWidth = 1.6 / view.k; ctx.strokeStyle = c2.sel; ctx.stroke(paths[hoverState]); ctx.restore(); }
+      if (hoverQ >= 0) {
+        const x = qx[hoverQ] * view.k + view.tx; const y = qy[hoverQ] * view.k + view.ty;
+        ctx.lineWidth = 2; ctx.strokeStyle = c.ring; ctx.beginPath(); ctx.arc(x, y, Math.max(3, rn * 1.7) + 5, 0, TAU); ctx.stroke();
+      }
       if (hoverPt >= 0) {
         const x = wx[hoverPt] * view.k + view.tx; const y = wy[hoverPt] * view.k + view.ty;
         ctx.lineWidth = 2; ctx.strokeStyle = c.ring; ctx.beginPath(); ctx.arc(x, y, rn + 5, 0, TAU); ctx.stroke();
@@ -229,11 +260,25 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
   function worldAt(px, py) { return [(px - view.tx) / view.k, (py - view.ty) / view.k]; }
   function nearest(px, py) {
     const [x, y] = worldAt(px, py); const rad = Math.max(7, radius() * 2.6) / view.k; const cx = Math.floor(x / CELL); const cy = Math.floor(y / CELL); const span = Math.ceil(rad / CELL);
-    const a = idxLo(); const b = idxHi(); let best = -1; let bd = rad * rad;
+    const a = idxLo(); const b = idxHi(); let best = -1; let bd = rad * rad; lastWd = Infinity;
+    if (!showW) return -1;
     for (let j = cy - span; j <= cy + span; j++) for (let i = cx - span; i <= cx + span; i++) {
       const cell = grid.get(j * COLS + i); if (!cell) continue;
       for (const q of cell) { if (q < a || q >= b || !showing(q)) continue; const dx = wx[q] - x; const dy = wy[q] - y; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = q; } }
     }
+    lastWd = best >= 0 ? bd : Infinity;
+    return best;
+  }
+  // the nearest oil permit or spud among the shown days (a few hundred at most: a plain scan)
+  function nearestQ(px, py) {
+    lastQd = Infinity;
+    if (!Q || !showQ) return -1;
+    const [x, y] = worldAt(px, py); const rad = Math.max(8, radius() * 3) / view.k; const cur = Math.floor(cursor); let best = -1; let bd = rad * rad;
+    for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) {
+      if (!showingQ(j)) continue;
+      const dx = qx[j] - x; const dy = qy[j] - y; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = j; }
+    }
+    lastQd = best >= 0 ? bd : Infinity;
     return best;
   }
   const stateAtPx = (px, py) => { const [x, y] = worldAt(px, py); return G.stateAt(outlines, x, y); };
@@ -247,26 +292,37 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
       size ? tipRow(size, '') : null,
       P.f[i] ? tipRow(D.LAND[P.f[i]].replace(/^./, (c) => c.toUpperCase()), '') : null];
   }
+  function tipOfQ(j) {
+    const spud = Q.spud[Q.s[j]] === 1; const op = D.permitOperator(Q, j); const ft = D.feet(Q.tvd[j]);
+    return [el('div', { class: 'tip-head', text: (spud ? 'Oil well spudded · ' : 'Oil permit approved · ') + D.permitStateName(Q.states[Q.s[j]]) }),
+      tipRow(fmtDate(D.dayIso(D.dayMs(P, Q.day[j]))), spud ? 'the well was spudded' : 'the day the permit was approved'),
+      tipRow(op || 'Operator not named', op ? 'operator' : 'only companies are named'),
+      ft ? tipRow(ft, 'permitted depth') : null].filter(Boolean);
+  }
   function move(e) {
     if (!interactive || from) return;
     const r = canvas.getBoundingClientRect(); const px = e.clientX - r.left; const py = e.clientY - r.top;
-    const i = nearest(px, py); const st = i < 0 ? stateAtPx(px, py) : null;
+    let i = nearest(px, py); const j = nearestQ(px, py); let q = -1;
+    if (j >= 0 && (i < 0 || lastQd < lastWd)) { q = j; i = -1; } // a ring and a dot under the pointer: the nearer one answers
+    const st = i < 0 && q < 0 ? stateAtPx(px, py) : null;
     const s = st && doc.states.find((x) => x.id === st && x.p12 > 0);
-    if (i !== hoverPt || st !== hoverState) { hoverPt = i; hoverState = s ? st : null; draw(performance.now()); }
-    canvas.style.cursor = i >= 0 || s || selected ? 'pointer' : 'default';
+    if (i !== hoverPt || q !== hoverQ || st !== hoverState) { hoverPt = i; hoverQ = q; hoverState = s ? st : null; draw(performance.now()); }
+    canvas.style.cursor = i >= 0 || q >= 0 || s || selected ? 'pointer' : 'default';
     if (i >= 0) showTip(tipOf(i), e.clientX, e.clientY);
+    else if (q >= 0) showTip(tipOfQ(q), e.clientX, e.clientY);
     else if (s) showTip([el('div', { class: 'tip-head', text: s.name }), tipRow(fmt.format(s.p12), 'new wells in the last 12 months'), tipRow(selected ? '' : 'Click to zoom in', '')], e.clientX, e.clientY);
     else hideTip();
     if (onHover) onHover(i, st);
   }
-  function leave() { hoverPt = -1; hoverState = null; hideTip(); draw(performance.now()); }
+  function leave() { hoverPt = -1; hoverQ = -1; hoverState = null; hideTip(); draw(performance.now()); }
   function click(e) {
     if (!interactive) return;
     const r = canvas.getBoundingClientRect(); const px = e.clientX - r.left; const py = e.clientY - r.top;
-    const dot = nearest(px, py);
-    if (dot >= 0 && selected) { move(e); return; } // a tap on a dot of the state already zoomed to shows that well (a touch screen has no hover)
+    const dot = nearest(px, py); const ring = nearestQ(px, py);
+    if ((dot >= 0 || ring >= 0) && selected) { move(e); return; } // a tap on a dot of the state already zoomed to shows that well (a touch screen has no hover)
     let st = stateAtPx(px, py);
     if (!st && dot >= 0) st = D.stateOfPoint(P, dot);
+    if (!st && ring >= 0) st = Q.states[Q.s[ring]];
     const have = st && doc.states.find((x) => x.id === st && x.p12 > 0);
     if (have && st !== selected) api.select(st); else if (selected) api.select(null);
   }
@@ -277,7 +333,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
     select(code, silent = false) {
       const next = code && outlines[code] ? code : null;
       if (next === selected) return;
-      selected = next; hoverPt = -1; hoverState = null; hideTip();
+      selected = next; hoverPt = -1; hoverQ = -1; hoverState = null; hideTip();
       const target = fit(frame());
       if (calm() || !w) { view = target; from = null; } else { from = { ...view }; to = target; t0 = performance.now(); }
       dotsKey = ''; paintBase(); pickPulses(); render(performance.now()); kick();
@@ -291,6 +347,17 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
     // the days shown: [first, cursor]; the Daily report shows a window, the Overview all of it
     setRange(a, b) { lo = clamp(a, 0, P.span); cursor = clamp(b, lo, P.span); dotsKey = ''; pickPulses(); render(performance.now()); kick(); },
     count: () => idxHi() - idxLo(),
+    // which layers are drawn: the fracked wells (dots), the oil permits and spuds (rings); the permits only when the map was given them
+    setKinds({ wells = true, permits = true } = {}) {
+      showW = !!wells; showQ = !!Q && !!permits; hoverPt = -1; hoverQ = -1; hideTip();
+      dotsKey = ''; pickPulses(); render(performance.now()); kick();
+    },
+    get kinds() { return { wells: showW, permits: showQ }; },
+    get drawnPermits() { return drawnQ; }, // the rings painted in the last frame (QA)
+    get pulsing() { return pulses.length; }, // wells chosen to pulse (QA): none while permit rings are shown
+    // the permits and spuds in the shown days that the chosen state allows (QA and the Daily's counts)
+    permitCount() { if (!Q || !showQ) return 0; let n = 0; const cur = Math.floor(cursor); for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) if (showingQ(j)) n++; return n; },
+    screenOfQ: (j) => [qx[j] * view.k + view.tx, qy[j] * view.k + view.ty],
     // where a well is on the canvas, in CSS pixels (QA drives hovers and clicks with it)
     screenOf: (i) => [wx[i] * view.k + view.tx, wy[i] * view.k + view.ty],
     get ready() { return w > 0; },
