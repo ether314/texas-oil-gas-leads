@@ -312,7 +312,7 @@ export function createDailyView({ root }) {
     S.chartTitle = chartHead.querySelector('h2');
     const chartCard = el('section', { class: 'card nat-card reveal is-in' }, chartHead, S.chart, S.chartNote);
     const tableCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-table-h' }, el('p', { class: 'eyebrow' }, icon('layers', 15), 'The wells'), S.tableHead, S.table);
-    root.replaceChildren(el('div', { class: 'stack' }, ...[figures(), dayCardEl, chartCard, arrivals(), tableCard, lately()].filter(Boolean), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job.' })));
+    root.replaceChildren(el('div', { class: 'stack' }, ...[figures(), dayCardEl, chartCard, arrivals(), tableCard, lately()].filter(Boolean), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read daily; each well is dated by its first fracturing job.' })));
     drawChart();
   }
   // want: the day the address asks for, if any (a day before the last two years loads the earlier wells before the first paint)
