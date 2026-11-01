@@ -23,9 +23,9 @@ export const GRADES = {
   D: 'Nothing public, blocked or paid',
 };
 export const REACH = {
-  ok: 'reachable from here',
-  'blocked-403': 'refused this machine (HTTP 403)',
-  'blocked-proxy': 'not reachable from here (blocked or behind a login)',
+  ok: 'open to anyone',
+  'blocked-403': 'refused automated requests (403)',
+  'blocked-proxy': 'could not be reached when researched (blocked or behind a login)',
   timeout: 'timed out',
   'not-tested': 'not tested',
 };
@@ -67,7 +67,7 @@ export function headline(doc) {
   const mets = doc.metrics.map((m) => [m, metricScore(doc, m.key)]).sort((a, b) => b[1].data - a[1].data || a[0].label.localeCompare(b[0].label));
   const cells = ids.length * doc.metrics.length;
   const unknown = ids.reduce((n, id) => n + stateScore(doc, id).unknown, 0);
-  return { agencies: ids.length, metrics: doc.metrics.length, best: best && best[1].data > 0 ? { id: best[0], n: best[1].data } : null, topMetric: mets[0] && mets[0][1].data > 0 ? { m: mets[0][0], n: mets[0][1].data } : null, unknownShare: cells ? unknown / cells : 0 };
+  return { agencies: ids.length, metrics: doc.metrics.length, best: best && best[1].data > 0 ? { id: best[0], n: best[1].data } : null, topMetric: mets[0] && mets[0][1].data > 0 ? { m: mets[0][0], n: mets[0][1].data, tied: mets.filter((x) => x[1].data === mets[0][1].data).map((x) => x[0]) } : null, unknownShare: cells ? unknown / cells : 0 };
 }
 // the states that give a metric each status, for the metric panel
 export function byStatus(doc, key) {

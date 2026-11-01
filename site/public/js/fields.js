@@ -5,6 +5,7 @@ import { icon } from './icons.js';
 import { segmented } from './ui.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import * as F from './fields-data.js';
+import * as N from './national-data.js';
 
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
 const dot = (s) => el('span', { class: 'fx-dot s-' + s, 'aria-hidden': 'true', text: s === 'unknown' ? '?' : null });
@@ -33,7 +34,8 @@ export function createFieldsView({ root }) {
       { label: 'Agencies compared', value: String(h.agencies), note: 'every producing state, the BLM and the offshore, as researched' },
       { label: 'Metrics compared', value: String(h.metrics), note: 'seven groups, from the operator to the well logs' },
       h.best ? { label: 'Most published as data', value: doc.states[h.best.id].name, note: h.best.n + ' of ' + h.metrics + ' metrics in downloadable data' } : null,
-      h.topMetric ? { label: 'Published by the most agencies', value: h.topMetric.m.label, note: h.topMetric.n + ' of ' + h.agencies + ' agencies as data' } : null,
+      h.topMetric && h.topMetric.tied.length > 1 ? { label: 'Published by the most agencies', value: h.topMetric.tied.length + ' metrics tie', note: h.topMetric.tied.map((m) => m.label).join(', ') + ': each as data by ' + h.topMetric.n + ' of ' + h.agencies + ' agencies' }
+        : h.topMetric ? { label: 'Published by the most agencies', value: h.topMetric.m.label, note: h.topMetric.n + ' of ' + h.agencies + ' agencies as data' } : null,
       { label: 'Not verified', value: F.percent(h.unknownShare, 1) + '%', note: 'of cells: marked so, never guessed' },
     ].filter(Boolean).map((x) => el('div', { class: 'dr-tile' }, el('dt', { text: x.label }), el('dd', { text: x.value }), el('small', { text: x.note }))));
   }
@@ -95,7 +97,7 @@ export function createFieldsView({ root }) {
       el('p', {}, el('strong', { text: st.label + '. ' }), st.def),
       c.n ? el('p', { text: c.n }) : null,
       el('p', { class: 'fine', text: 'Evidence: ' + F.EVIDENCE[c.e] + '.' }),
-      el('p', { class: 'nat-links' }, el('button', { type: 'button', class: 'link', text: 'All of ' + s.name, onclick: () => choose({ s: sid, m: null }) }), el('button', { type: 'button', class: 'link', text: 'Every agency on “' + m.label + '”', onclick: () => choose({ s: null, m: key }) })));
+      el('p', { class: 'nat-links' }, el('button', { type: 'button', class: 'link', text: 'All of ' + N.inName(sid, s.name), onclick: () => choose({ s: sid, m: null }) }), el('button', { type: 'button', class: 'link', text: 'Every agency on “' + m.label + '”', onclick: () => choose({ s: null, m: key }) })));
   }
   function statePanel(sid) {
     const s = doc.states[sid]; const sc = F.stateScore(doc, sid);
@@ -109,7 +111,6 @@ export function createFieldsView({ root }) {
       el('div', { class: 'nat-sub' }, el('h4', { text: 'What its permit captures' }), statusBar(sc, sc.total)),
       el('div', { class: 'nat-sub' }, el('h4', { text: 'The permit form' }), el('p', { text: s.form.name + (s.form.number ? ' (' + s.form.number + ')' : '') + (s.form.read ? '' : '. Not read: the cells are unverified.') }), s.form.url ? ext(s.form.url, 'Open the form') : null),
       el('div', { class: 'nat-sub' }, el('h4', { text: 'What it publishes' }), srcs),
-      s.producer_plan ? el('div', { class: 'nat-sub' }, el('h4', { text: 'How a monthly count could be built' }), el('p', { class: 'fine', text: s.producer_plan })) : null,
       s.unknowns.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Not determined' }), el('ul', { class: 'fx-unk' }, s.unknowns.map((u) => el('li', { text: u })))) : null,
       el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#national?s=' + sid }, 'See its permits in the national report', icon('arrow', 16)), s.agency.url ? ext(s.agency.url, 'The agency') : null));
   }
@@ -143,10 +144,10 @@ export function createFieldsView({ root }) {
     const gseg = segmented({ label: 'Group of metrics', tabs: false, prefix: 'fxg', value: group, options: [{ id: 'all', label: 'All' }, ...doc.groups.map((g) => ({ id: g.id, label: g.label }))], onChange: (id) => { group = id; redraw(); writeHash(); } });
     const sseg = segmented({ label: 'Order of agencies', tabs: false, prefix: 'fxs', value: sort, options: [{ id: 'coverage', label: 'Most published first' }, { id: 'name', label: 'A to Z' }], onChange: (id) => { sort = id; redraw(); } });
     root._g = gseg;
-    const card = el('section', { class: 'card nat-card reveal is-in' }, hdr('The matrix', 'layers', 'Agency by metric', 'Every cell is checked against the permit form or a real data file, and says which. “Not verified” is an honest answer, not a gap in the page.', el('div', { class: 'card-tools' }, sseg.el)),
+    const card = el('section', { class: 'card nat-card reveal is-in' }, hdr('The matrix', 'layers', 'Agency by metric', 'Every cell says which permit form or data file it was checked against, or that it could not be verified. “Not verified” is an honest answer, not a gap in the page.', el('div', { class: 'card-tools' }, sseg.el)),
       el('div', { class: 'fx-tools' }, gseg.el), legend(), slots.matrix);
     root.replaceChildren(el('div', { class: 'stack' }, figures(), card, el('section', { class: 'card nat-card reveal is-in' }, hdr('Detail', 'pin', 'Why a cell says what it says', null), slots.panel),
-      el('p', { class: 'fine', text: 'Researched from each agency’s permit application and its published data, with the evidence named on every cell. An agency whose form or data could not be read from here says so; those cells read “not verified”.' })));
+      el('p', { class: 'fine', text: 'Researched from each agency’s permit application and its published data, with the evidence named on every cell. An agency whose form or data could not be read says so; those cells read “not verified”.' })));
     redraw();
     return true;
   }
