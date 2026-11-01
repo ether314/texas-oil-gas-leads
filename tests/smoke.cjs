@@ -1297,7 +1297,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(!wrong.length, 'each old address of the Map or the National report opens the Overview on the state it named, typed or followed, with the address rewritten and no states bar (' + cases.length + ' addresses)' + (wrong.length ? ' [' + wrong.join(' | ') + ']' : ''));
       // the states bar is gone from every view: its last view, the Map, is part of the Overview
       const bar = [];
-      for (const [v, ready] of [['#overview', '.ov-row'], ['#companies', '#co-root table'], ['#fields', '#fields-root button.fx-c']]) {
+      for (const [v, ready] of [['#overview', '.ov-row'], ['#companies', '#ops-root tbody tr'], ['#fields', '#fields-root button.fx-c']]) {
         await page.goto('about:blank');
         await page.goto(base + v, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
