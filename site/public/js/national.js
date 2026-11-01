@@ -9,7 +9,11 @@ import * as N from './national-data.js';
 
 const MEASURE_NAME = { permits: 'Permits approved', spuds: 'Wells spudded' };
 const MEASURE_ONE = { permits: 'new-drill permits', spuds: 'wells spudded' };
+// what one count is and what a state's places are called: the BLM counts APDs approved by state office; the others new-drill permits or wells spudded by county or area
+const unitOf = (s) => s.unit || MEASURE_ONE[s.measure];
 const OWN_VIEW = { TX: 'tx', OK: 'ok', NM: 'nm', FO: 'fo' }; // the jurisdictions that also have the full Overview, Map and Operators pages
+// Element.append writes the word "null" for a null child, so nothing is appended without dropping the empty ones first
+const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
 const sizeWord = ['', 'smallest', 'small', 'medium', 'large', 'largest'];
 
@@ -44,7 +48,7 @@ export function createNationalView({ root }) {
 
   /* ---------- the tile map and the state panel ---------- */
   function tileLabel(id, k) {
-    if (k.kind === 'data') return k.s.name + ': ' + fmt.format(k.s.p12) + ' ' + MEASURE_ONE[k.s.measure] + ' in the last 12 months' + (N.OVERLAP.has(id) ? ' (on federal land, overlaps the states)' : '');
+    if (k.kind === 'data') return k.s.name + ': ' + fmt.format(k.s.p12) + ' ' + unitOf(k.s) + ' in the last 12 months' + (N.OVERLAP.has(id) ? ' (on federal land, overlaps the states)' : '');
     if (k.kind === 'gap') return k.g.name + ': producing state, no permit data read yet';
     return (N.QUIET_NAMES[id] || id) + ': no oil production in the EIA tables';
   }
@@ -73,7 +77,7 @@ export function createNationalView({ root }) {
   function tipFor(id, k) {
     if (k.kind === 'data') {
       const s = k.s; const f = N.change(s);
-      return [el('div', { class: 'tip-head', text: s.name }), tipRow(fmt.format(s.p12), MEASURE_ONE[s.measure] + ', last 12 months'),
+      return [el('div', { class: 'tip-head', text: s.name }), tipRow(fmt.format(s.p12), unitOf(s) + ', last 12 months'),
         f != null ? tipRow((f > 0 ? '+' : f < 0 ? '−' : '') + Math.round(Math.abs(f) * 100) + '%', 'on the 12 months before') : null,
         tipRow(fmtDate(s.through), 'data through')];
     }
@@ -108,42 +112,42 @@ export function createNationalView({ root }) {
     const k = N.tileKind(doc, id);
     const box = el('div', { class: 'nat-panel', 'aria-live': 'polite' });
     if (k.kind === 'quiet') {
-      box.append(el('h3', { text: N.QUIET_NAMES[id] || id }), el('p', { class: 'nd', text: 'The EIA’s state tables show no oil production here, so there is no oil permit data to show. If that changes it is added.' }));
+      put(box, el('h3', { text: N.QUIET_NAMES[id] || id }), el('p', { class: 'nd', text: 'The EIA’s state tables show no oil production here, so there is no oil permit data to show. If that changes it is added.' }));
       return box;
     }
     const f = fields && fields.states && fields.states[id];
     const links = el('p', { class: 'nat-links' });
     if (k.kind === 'gap') {
       const g = k.g;
-      box.append(el('div', { class: 'nat-ph' }, el('h3', { text: g.name }), el('span', { class: 'badge', text: 'Not read yet' })),
+      put(box, el('div', { class: 'nat-ph' }, el('h3', { text: g.name }), el('span', { class: 'badge', text: 'Not read yet' })),
         g.agency ? el('p', { class: 'nat-agency', text: g.agency }) : null,
         el('p', { text: g.why || 'Nothing has been built for this agency yet.' }),
         el('p', { class: 'fine', text: 'It is counted as not available, never as zero.' }));
       if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
-      if (links.childNodes.length) box.append(links);
+      if (links.childNodes.length) put(box, links);
       return box;
     }
     const s = k.s; const c = N.change(s);
     const first = s.bands.new.findIndex((v) => v != null);
     const vals = s.bands.new.slice(Math.max(first, s.bands.new.length - 36)).filter((v) => v != null);
-    box.append(
+    put(box, 
       el('div', { class: 'nat-ph' }, el('h3', { text: s.name }), el('span', { class: 'badge', text: MEASURE_NAME[s.measure] })),
       el('p', { class: 'nat-agency', text: s.agency + ' · counted by ' + s.basis }),
-      el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' ' + MEASURE_ONE[s.measure] + ' in the 12 months to ' + monthLabel(s.through.slice(0, 7)) }), c != null ? delta(c) : null),
-      vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: N.SERIES_COLOR[id] || 'var(--s1)', label: s.name + ', ' + MEASURE_ONE[s.measure] + ' by month, last ' + vals.length + ' months' })) : null);
+      el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' ' + unitOf(s) + ' in the 12 months to ' + monthLabel(s.through.slice(0, 7)) }), c != null ? delta(c) : null),
+      vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: N.SERIES_COLOR[id] || 'var(--s1)', label: s.name + ', ' + unitOf(s) + ' by month, last ' + vals.length + ' months' })) : null);
     const m = N.mix(s);
-    if (m) box.append(el('div', { class: 'nat-sub' }, el('h4', { text: 'Kinds of permits, last 12 months' }), bandBar(m), el('ul', { class: 'nat-mixkeys' }, m.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', {}, sw, b.label + ' ' + fmt.format(b.n)); }))));
-    else box.append(el('p', { class: 'fine', text: 'This source gives new wells only: kinds of permits (re-entries, reworks, injection wells, amendments) are not available for ' + s.name + '.' }));
+    if (m) put(box, el('div', { class: 'nat-sub' }, el('h4', { text: 'Kinds of permits, last 12 months' }), bandBar(m), el('ul', { class: 'nat-mixkeys' }, m.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', {}, sw, b.label + ' ' + fmt.format(b.n)); }))));
+    else put(box, el('p', { class: 'fine', text: 'This source gives ' + (s.unit || 'new wells') + ' only: kinds of permits (re-entries, reworks, injection wells, amendments) are not available for ' + s.name + '.' }));
     const fl = N.fluidMix(s);
-    if (fl) box.append(el('p', { class: 'fine', text: 'By fluid: ' + fl.parts.map((x) => fmt.format(x.n) + ' ' + x.id).join(', ') + (fl.unknown ? ', ' + fmt.format(fl.unknown) + ' not recorded' : '') + '.' }));
-    box.append(
-      el('div', { class: 'nat-lists' }, list(s.measure === 'spuds' ? 'Top areas' : 'Top counties', s.counties, MEASURE_ONE[s.measure]), list('Top operators', s.operators, MEASURE_ONE[s.measure])),
+    if (fl) put(box, el('p', { class: 'fine', text: 'By fluid: ' + fl.parts.map((x) => fmt.format(x.n) + ' ' + x.id).join(', ') + (fl.unknown ? ', ' + fmt.format(fl.unknown) + ' not recorded' : '') + '.' }));
+    put(box, 
+      el('div', { class: 'nat-lists' }, list('Top ' + (s.place || (s.measure === 'spuds' ? 'areas' : 'counties')), s.counties, unitOf(s)), list('Top operators', s.operators, unitOf(s))),
       s.operators.length && s.namedShare != null ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round(s.namedShare * 100) + '% of the year’s new wells.' }) : null,
       s.note ? el('p', { class: 'fine', text: s.note }) : null);
     if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#overview?st=' + OWN_VIEW[id] }, 'Open ' + s.name + ' in the Overview', icon('arrow', 16)));
     if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
     if (s.source && s.source.url) links.append(el('a', { class: 'more-link', href: s.source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Source: ' + s.source.name, icon('arrow', 16)));
-    box.append(links);
+    put(box, links);
     return box;
   }
   function select(id, { fromHash = false } = {}) {

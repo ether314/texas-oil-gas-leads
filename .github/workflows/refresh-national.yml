@@ -1,0 +1,91 @@
+# Reads every state agency's permits for the National report (the files site/public/data/nat/<ST>.json, one per state, written by site/pipeline/d11_nat_<st>.py),
+# rebuilds site/public/data/national.json from them and from the four earlier jurisdictions' files, commits what changed and publishes the site.
+# Once a week, after refresh-monthly.yml (05:40), whose Oklahoma, New Mexico and offshore files national.json also reads: agencies publish at different rhythms and
+# none of them needs a nightly visit. Each producer runs isolated (its own process, its own time limit) inside site/pipeline/d11_nat_run.py, which puts a failed
+# producer's file back exactly as committed, treats a server's refusal as an answer and not an error, and rebuilds national.json from what survived; a state that
+# fails one week keeps last week's file. The run shares the nightly capture's concurrency group, so the two never run at once.
+name: National permit files (every state agency)
+
+on:
+  schedule:
+    # Mondays 06:20 UTC: after the nightly capture (03:15, backup 04:20) and the monthly files (05:40), which are done by then
+    - cron: "20 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-rrc-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # pdftotext (poppler-utils) reads the BLM's monthly PDF reports (d11_nat_bl.py). Its own limit: a package mirror that hangs must not hold the job, and without it only the BLM's producer fails
+      - name: Install the tool that reads PDF reports
+        id: tools
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+
+      # every producer, one at a time, each under its own limit and a budget of 40 minutes in all; the runner restores a failed producer's file and rebuilds national.json
+      - name: Read every state agency's permits
+        id: nat_run
+        continue-on-error: true
+        timeout-minutes: 45
+        run: python3 -I site/pipeline/d11_nat_run.py --budget 2400
+
+      # if the step above was cut off at its limit, national.json may lag the files that were written: rebuild it from what is there
+      - name: Rebuild the national report's file
+        id: nat_build
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: python3 -I site/pipeline/d11_nat_build.py
+
+      - name: Check the national files
+        id: nat_check
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: python3 -I site/pipeline/d11_nat_build.py --check
+
+      # a failed check must not put data on main: put every national file back as it was committed (and remove the ones that are new)
+      - name: Drop the national files if their check failed
+        if: ${{ steps.nat_check.outcome == 'failure' }}
+        run: |
+          echo "::warning title=National files::the check failed; the national files are left as committed."
+          git checkout -- site/public/data/national.json
+          git checkout -- site/public/data/nat 2>/dev/null || true
+          git clean -fdq -- site/public/data/nat
+
+      - name: Commit the new files
+        run: |
+          git config user.name "refresh-national"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/data/nat site/public/data/national.json
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "National permit files $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # a commit made with the workflow's own token starts neither CI nor the publish after a merge, so this publishes itself
+      - name: Publish the site to GitHub Pages
+        run: bash .github/scripts/publish_pages.sh
+
+      - name: Fail the run if a producer or a check failed
+        if: ${{ !cancelled() && (steps.nat_run.outcome == 'failure' || steps.nat_build.outcome == 'failure' || steps.nat_check.outcome == 'failure') }}
+        run: |
+          echo "::error title=National files::producers ${{ steps.nat_run.outcome }}, rebuild ${{ steps.nat_build.outcome }}, check ${{ steps.nat_check.outcome }}. What succeeded was committed and published; a state that failed keeps its earlier file (the run's log says which)."
+          exit 1

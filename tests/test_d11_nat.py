@@ -178,6 +178,16 @@ check(nat["totals"]["permits12"] == p12["ND"] + p12["KS"] and nat["totals"]["spu
       "totals add within a measure only, and the BLM's onshore permits are shown but never added into the states' totals")
 ak = next(s for s in nat["states"] if s["id"] == "AK")
 check(len(ak["bands"]["new"]) == len(nat["months"]) and ak["bands"]["new"][-1] is None and ak["bands"]["new"][-3] is not None, "a state that ends earlier is padded with null after its last month, never with zero")
+late = C.Tally("BL")
+for i in range(40):
+    late.add(date(2023 + (i + 1) // 12, (i + 1) % 12 + 1, 15), "new", n=3)
+bl_doc = late.document(agency="BLM", source_name="Reports", source_url="https://example.gov/x", basis="approval date", cadence="monthly", asof=date(2026, 10, 15), first="2023-02")
+nat_late = B.build(dict(docs, BL=bl_doc), {}, today)
+bl = next(s for s in nat_late["states"] if s["id"] == "BL")
+check(B.validate(nat_late) == [] and bl["bands"]["new"][0] is None and bl["bands"]["new"][-1] is not None, "a state that starts later than the axis is padded with null in front too (and validates)")
+holey = copy.deepcopy(nat_late)
+next(s for s in holey["states"] if s["id"] == "BL")["bands"]["new"][-20] = None
+check(B.validate(holey), "a gap inside a state's months (a null between figures) is refused")
 check(nat["months"][-1] == "2026-09" and ak["through"].startswith("2026-07"), "the axis runs to the newest month any state reaches")
 check(ak["mix12"]["new"] == ak["p12"] and ak["mix12"].get("redrill") is None, "the mix covers only the bands the state can tell")
 gap = next(g for g in B.build(docs, {"states": {"CO": {"agency": {"name": "ECMC"}, "grade": "D", "grade_reason": "blocked"}}}, today)["gaps"] if g["id"] == "CO")
