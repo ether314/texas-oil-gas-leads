@@ -7,7 +7,7 @@
 export const CODES = [
   { id: 'data', label: 'Published as data', def: 'A field in a downloadable file or API.' },
   { id: 'query', label: 'In a lookup only', def: 'On the agency’s record page, one well at a time, not in a download.' },
-  { id: 'form', label: 'On the form only', def: 'Asked for on the application, but published nowhere.' },
+  { id: 'form', label: 'On the form only', def: 'Asked for on the application or required by rule, but not published by the agency.' },
   { id: 'none', label: 'Not captured', def: 'The permit does not ask for it.' },
   { id: 'unknown', label: 'Not verified', def: 'Could not be checked from the form or a real file.' },
 ];
@@ -31,7 +31,7 @@ export const REACH = {
   timeout: 'timed out',
   'not-tested': 'not tested',
 };
-export const GRAIN = { aggregate: 'totals only', well: 'one row a well', permit: 'one row a permit', disclosure: 'one row a disclosure' };
+export const GRAIN = { aggregate: 'totals only', well: 'one row a well', permit: 'one row a permit', disclosure: 'one row a disclosure', treatment: 'one row a treatment' };
 export const FIELD_GROUPS = { well: 'The well and who filed', where: 'Where', job: 'The fracturing job', water: 'Water', chem: 'Chemicals' };
 export const SHORT = { FO: 'Gulf', BL: 'BLM' };
 export const shortCode = (id) => SHORT[id] || id;
@@ -42,7 +42,7 @@ export const cellOf = (doc, sid, key) => {
 };
 
 const zero = () => ({ data: 0, query: 0, form: 0, none: 0, unknown: 0 });
-// what one state captures: counts of each status over the 48 metrics, and how many it asks for at all (data, query or form)
+// what one state captures: counts of each status over every metric, and how many it asks for at all (data, query or form)
 export function stateScore(doc, sid) {
   const t = zero();
   Object.values(doc.states[sid].cells).forEach((c) => { t[c[0]]++; });
@@ -97,9 +97,13 @@ export function registryGroups(doc, rid) {
     }),
   })).filter((g) => g.fields.length);
 }
-// What a registry captures that few agencies publish as data: its metrics answered `data`, fewest agencies first (ties by label), at most `max`.
-export function registryAdds(doc, rid, max = 3) {
+// "Few" agencies: at most this share of them publish a metric as data.
+export const FEW = 0.2;
+// What a registry captures that few agencies publish as data: its metrics answered `data` that at most `few` of the agencies publish as data, fewest agencies first (ties by label).
+export function registryAdds(doc, rid, few = FEW) {
+  const total = doc.order.length;
   return doc.metrics.filter((m) => { const c = cellOf(doc, rid, m.key); return c && c.s === 'data'; })
-    .map((m) => ({ m, n: metricScore(doc, m.key).data, total: doc.order.length }))
-    .sort((a, b) => a.n - b.n || a.m.label.localeCompare(b.m.label)).slice(0, max);
+    .map((m) => ({ m, n: metricScore(doc, m.key).data, total }))
+    .filter((x) => x.n <= few * total)
+    .sort((a, b) => a.n - b.n || a.m.label.localeCompare(b.m.label));
 }

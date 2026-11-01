@@ -38,11 +38,11 @@ export function createFieldsView({ root }) {
     const adds = regs.length ? F.registryAdds(doc, regs[0]) : [];
     return el('dl', { class: 'dr-tiles nat-kpis' }, [
       { label: 'Agencies compared', value: String(h.agencies), note: 'every producing state, the BLM and the offshore, as researched' + (regs.length ? '; FracFocus is shown beside them' : '') },
-      { label: 'Metrics compared', value: String(h.metrics), note: 'seven groups, from the operator to the well logs' },
+      { label: 'Metrics compared', value: String(h.metrics), note: doc.groups.length + ' groups, from the operator to the well logs' },
       h.best ? { label: 'Most published as data', value: doc.states[h.best.id].name, note: h.best.n + ' of ' + h.metrics + ' metrics in downloadable data' } : null,
       h.topMetric && h.topMetric.tied.length > 1 ? { label: 'Published by the most agencies', value: h.topMetric.tied.length + ' metrics tie', note: h.topMetric.tied.map((m) => m.label).join(', ') + ': each as data by ' + h.topMetric.n + ' of ' + h.agencies + ' agencies' }
         : h.topMetric ? { label: 'Published by the most agencies', value: h.topMetric.m.label, note: h.topMetric.n + ' of ' + h.agencies + ' agencies as data' } : null,
-      adds.length ? { label: 'What FracFocus adds', value: adds.length + ' metrics', note: 'that few agencies publish as data: ' + adds.map((a) => a.m.label + ' ' + a.n + ' of ' + a.total).join('; ') } : null,
+      adds.length ? { label: 'What FracFocus adds', value: adds.length + ' metrics', note: 'that ' + Math.floor(F.FEW * adds[0].total) + ' or fewer of ' + adds[0].total + ' agencies publish as data: ' + adds.slice(0, 3).map((a) => a.m.label + ' ' + a.n).join('; ') + (adds.length > 3 ? '; and ' + (adds.length - 3) + ' more' : '') } : null,
       { label: 'Not verified', value: F.percent(h.unknownShare, 1) + '%', note: 'of cells: marked so, never guessed' },
     ].filter(Boolean).map((x) => el('div', { class: 'dr-tile' }, el('dt', { text: x.label }), el('dd', { text: x.value }), el('small', { text: x.note }))));
   }
@@ -171,9 +171,9 @@ export function createFieldsView({ root }) {
       el('div', { class: 'fx-rf-name' }, el('strong', { text: f.label }), el('code', { text: f.column })),
       el('p', { class: 'fx-rf-what', text: f.plain }),
       f.matches ? el('div', { class: 'fx-rf-link' }, el('button', { type: 'button', class: 'link', text: f.matches.label, onclick: () => choose({ s: null, m: f.matches.key }) }), el('small', { text: f.matches.data + ' of ' + f.matches.total + ' agencies publish it as data' }))
-        : el('div', { class: 'fx-rf-link' }, el('small', { class: 'nd', text: 'Not one of the permit metrics' })));
+        : el('div', { class: 'fx-rf-link' }, el('small', { class: 'nd', text: 'Not one of the metrics above' })));
     return el('section', { class: 'card nat-card reveal is-in', id: 'fx-registry' },
-      hdr(s.name, 'drop', 'What a ' + s.name + ' disclosure holds', total + ' fields in the registry’s download, in plain words. ' + matched + ' of them match a permit metric above; the rest, such as the job’s dates, the water’s sources and every chemical, are what a disclosure adds. It is filed after the job, so it records what was done and is not a permit.'),
+      hdr(s.name, 'drop', 'What a ' + s.name + ' disclosure holds', total + ' fields in the registry’s download, in plain words. ' + matched + ' of them match a metric above; the rest identify a record or add a note. A disclosure is filed after the job, so it records what was done and is not a permit.'),
       groups.map((g) => el('div', { class: 'fx-rg', key: g.id }, el('h3', { text: g.label }), el('ul', { class: 'fx-rfs' }, g.fields.map(row)))),
       el('p', { class: 'fine', text: 'From the data dictionary inside the registry’s download and the real column names of its three kinds of file. The site publishes none of the API numbers, well names or chemical lists in it (README, Privacy).' }));
   }

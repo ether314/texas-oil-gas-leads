@@ -66,6 +66,8 @@ export function createDailyView({ root }) {
     return out;
   }
   const typ = () => D.typicalDay(dt.doc, iso(day), sel); // wells a day in the 12 months the chosen day sits in, for all states or the chosen one
+  // whether the chart's dashed line (the typical day, its label and its note, drawn by `drawChart`) is for other months than the chosen day's now: a day in another month has other twelve, and the line must follow it
+  const typicalMoved = () => { const t = typ(); return !S.typ || t.from !== S.typ.from || t.perDay !== S.typ.perDay; };
 
   /* ---------- the address: #daily?d=2026-08-12&s=TX ---------- */
   function writeHash() {
@@ -154,7 +156,7 @@ export function createDailyView({ root }) {
     S.summary.replaceChildren(summary());
     paintStats();
     S.date.textContent = weekday(ms(day)) + ', ' + dayLabel(ms(day));
-    if (moved) drawChart(); else drawMarker();
+    if (moved || typicalMoved()) drawChart(); else drawMarker();
     syncSlider();
     S.dateInput.value = iso(day);
     S.prev.disabled = ms(day) <= firstMs(); S.next.disabled = day >= dt.P.span;
@@ -275,7 +277,7 @@ export function createDailyView({ root }) {
     drawYears();
     const { P } = dt; const cd = chartData(); const W = 720; const H = 230; const L = 40; const R = 6; const T = 10; const B = 26;
     const tot = new Array(cd.n).fill(0); cd.series.forEach((s) => s.values.forEach((v, i) => { tot[i] += v; }));
-    const tp = typ();
+    const tp = typ(); S.typ = tp; // kept so `typicalMoved` can tell when the chosen day needs another line
     const ov = flags().permits && raw.oil ? Oil.valuesOver(raw.oil, iso(S.win), cd.n, sel) : null; // the permits approved each day of the chart (null: no count that day), a line of rings beside the bars
     const { top, ticks } = D.niceTop(Math.max(...tot, tp.perDay * 1.1, ov ? Math.max(0, ...ov.filter((v) => v != null)) : 0, 1));
     const slot = (W - L - R) / cd.n; const bw = Math.max(1.5, slot * 0.78); const y = (v) => T + (H - T - B) * (1 - v / top);
@@ -460,7 +462,9 @@ export function createDailyView({ root }) {
       await data();
       if (want && Date.parse(want + 'T00:00:00Z') < dt.P.t0) { try { await loadFull(); } catch (e) { /* the last two years: the day is then the first of them */ } }
     } catch (e) { root.replaceChildren(el('div', { class: 'fail' }, el('p', { text: 'Could not load the new-wells data. Reload the page to try again.' }))); return false; }
-    day = Math.min(day, dt.P.span);
+    // the day the report opens on is set before the first draw, so the chart's dashed line is the typical day of the day it shows (it was drawn for day 0, the first day of the points, and kept)
+    const w = want ? D.dayOfIso(dt.P, want) : NaN; // an address that is not a date (2026-13-45) opens on the newest busy day
+    day = Math.min(dt.P.span, Math.max(0, Number.isFinite(w) ? w : dt.start));
     render();
     return true;
   }
