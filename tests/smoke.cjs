@@ -1259,7 +1259,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const rows = await page.evaluate(() => [...document.querySelectorAll('#national-root .nat-cov tbody tr')].map((r) => ({ gap: r.classList.contains('is-gap'), upd: r.children[4].textContent.trim() })));
       check(rows.filter((r) => r.gap).every((r) => r.upd === '—') && rows.filter((r) => !r.gap).every((r) => /^(Publishes|Weekly|Monthly|Nightly|Daily|Irregular|Live|Quarterly|Monthly)/i.test(r.upd) || r.upd.length > 3), 'a state not read yet has a dash under Updates; the others say how they update');
       await page.click('#national-root button.nat-tile[data-id="FO"]');
-      check(/Open the federal offshore in the Overview/.test(await page.locator('#national-root .nat-panel').innerText()), 'a link inside a sentence names "the federal offshore"');
+      check(/Open the federal offshore in the Map/.test(await page.locator('#national-root .nat-panel').innerText()), 'a link inside a sentence names "the federal offshore"');
       await page.click('#national-root button.nat-tile[data-id="UT"]');
       const href = await page.locator('#national-root .nat-panel a[target="_blank"]').first().getAttribute('href');
       check(!!href && !/\.(zip|csv|xlsx?)(\?|$)/i.test(href) && !/FeatureServer|MapServer|rest\/services/i.test(href), 'a panel\'s source link is a page, not a raw download or a service root: ' + href);
