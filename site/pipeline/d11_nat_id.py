@@ -154,7 +154,7 @@ def operator_name(raw):
     return OPERATOR_FULL.get(n.upper(), n)
 
 
-def build(get=C.polite_get, today=None, pause=PAUSE, old_total=None):
+def build(get=C.polite_get, today=None, pause=PAUSE, committed=None):
     today = today or date.today()
     index = get(INDEX, max_bytes=2_000_000).decode("utf-8", "replace")
     urls = parse_index(index)
@@ -180,7 +180,7 @@ def build(get=C.polite_get, today=None, pause=PAUSE, old_total=None):
         raise RuntimeError("only %d of %d well pages give a permit date in the file name (expected %d or more): the naming changed" % (dated, len(urls), MIN_DATED))
     if not permits:
         raise RuntimeError("no permit approved since %s was found" % C.FIRST_MONTH)
-    old_total = previous() if old_total is None else old_total
+    old_total = previous(committed)
     if old_total is not None and len(permits) < old_total:
         raise RuntimeError("the index lists %d permits since %s but the committed file holds %d: a permit does not go away, so the index is cut short or changed" % (len(permits), C.FIRST_MONTH, old_total))
     t = C.Tally(STATE, bands=("new",), fluid=False)

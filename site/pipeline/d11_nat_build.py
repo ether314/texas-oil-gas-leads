@@ -60,7 +60,6 @@ def load(name, default=None):
 # Why a producing state is not read yet, in a visitor's words (the researched reason, with the researchers' own account of what they tried, is in the permit-fields matrix).
 GAP_WHY = {
     "AR": "Arkansas publishes a wells map layer with a status date only (no permit or spud date), and no bulk file with an issue date was found, so permits cannot be counted by month.",
-    "ID": "Idaho has about 34 wells since 2007 (about one permit a year, none in some years), too few for a monthly count.",
     "MO": "Missouri publishes no current permit list: its wells map layer has no permit dated after August 2019, and the Geological Survey's wells list (updated August 2024) gives spud dates only, the newest in August 2023. It is a very small producer (41 wells spudded since 2019, 39 of them in Cass County).",
     "OH": "Ohio publishes a permit list with issue dates, free and with no login, but as a query page rather than a bulk file, and a reader for it has not been built yet.",
 }

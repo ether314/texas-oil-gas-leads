@@ -130,12 +130,13 @@ class Net:
         raise RuntimeError("not served: " + url)
 
 
+NOTHING = os.path.join(tempfile.mkdtemp(prefix="id-none-"), "ID.json")  # a committed file that does not exist: the tests never read the repository's own nat/ID.json
 SLEEPS = []
 ID.time = types.SimpleNamespace(sleep=lambda s: SLEEPS.append(s))
 
 
 def run(net, **kw):
-    return ID.build(get=net.get, today=kw.pop("today", TODAY), old_total=kw.pop("old_total", None) or 0, **kw)
+    return ID.build(get=net.get, today=kw.pop("today", TODAY), committed=kw.pop("committed", NOTHING), **kw)
 
 
 def fails(pages=None, index=None, needle="", **kw):
@@ -145,8 +146,8 @@ def fails(pages=None, index=None, needle="", **kw):
 
 # ------------------------------------------------------------------------------------------------ the file name's date
 D = lambda s: ID.file_day(UP + s, TODAY)  # noqa: E731
-check(D("2026.02.04_1107520041_James1-10_APDApproved_Combined_PTS.pdf") == date(2026, 2, 4), "2026.02.04_... is February 4, 2026")
-check(D("20211002_1107520037-APPROVED-Fallon1-11_PTS.pdf") == date(2021, 10, 2), "20211002_... is October 2, 2021")
+check(D("2026.02.04_1107520041_Invented1-10_APDApproved_Combined_PTS.pdf") == date(2026, 2, 4), "2026.02.04_... is February 4, 2026")
+check(D("20211002_1107520037-APPROVED-Invented1-11_PTS.pdf") == date(2021, 10, 2), "20211002_... is October 2, 2021")
 check(D("2022-09-27_x.pdf") == date(2022, 9, 27) and D("2022.09.27 x.pdf") == date(2022, 9, 27), "dashes and a space after the day read as well")
 check(D("1101920011_CPC17_1_APDandAmendment_PTS.pdf") is None and D("11-019-20014-federal-20-3.pdf") is None and D("2017/07/11-019-20014-federal-20-3.pdf") is None,
       "an API number at the start of a file name (10 digits) or a path ending in 11-019-... is not a date")
@@ -289,20 +290,20 @@ def refusing(url, **kw):
 
 with tempfile.TemporaryDirectory() as tmp:
     committed = os.path.join(tmp, "ID.json")
-    check(C.run_producer("ID", lambda: ID.build(get=Net(build_site()).get, today=TODAY, old_total=0), tmp, argv=[]) == 0 and os.path.exists(committed), "run_producer writes nat/ID.json for a good run")
+    check(C.run_producer("ID", lambda: ID.build(get=Net(build_site()).get, today=TODAY, committed=NOTHING), tmp, argv=[]) == 0 and os.path.exists(committed), "run_producer writes nat/ID.json for a good run")
     before = open(committed, "rb").read()
     check(C.check_dir(tmp) == [] and C.run_producer("ID", lambda: None, tmp, argv=["--check"]) == 0, "the written file reloads and passes --check")
-    check(C.run_producer("ID", lambda: ID.build(get=refusing, today=TODAY, old_total=0), tmp, argv=[]) == 2, "a refusal by the server exits 2 (an answer, not an error)")
-    check(C.run_producer("ID", lambda: ID.build(get=Net(build_site(), index="<html>").get, today=TODAY, old_total=0), tmp, argv=[]) == 1, "a failure exits 1")
+    check(C.run_producer("ID", lambda: ID.build(get=refusing, today=TODAY, committed=NOTHING), tmp, argv=[]) == 2, "a refusal by the server exits 2 (an answer, not an error)")
+    check(C.run_producer("ID", lambda: ID.build(get=Net(build_site(), index="<html>").get, today=TODAY, committed=NOTHING), tmp, argv=[]) == 1, "a failure exits 1")
     check(open(committed, "rb").read() == before and os.listdir(tmp) == ["ID.json"], "and the committed file is exactly as it was, with nothing else written")
     check(ID.previous(committed) == 8 and ID.previous(os.path.join(tmp, "nothing.json")) is None, "the committed file's total is read (8); no file is none")
     fewer = build_site()
     fewer.pop(slug(20042, "invented-20042"))
-    check(raises(lambda: ID.build(get=Net(fewer).get, today=TODAY, old_total=ID.previous(committed)), "does not go away"), "an index with fewer permits than the committed file (a well page gone) fails the run")
-    check(sum(ID.build(get=Net(fewer).get, today=TODAY, old_total=ID.previous(os.path.join(tmp, "nothing.json")))["bands"]["new"]) == 7, "with no committed file the same index is accepted (7 permits)")
+    check(raises(lambda: ID.build(get=Net(fewer).get, today=TODAY, committed=committed), "does not go away"), "an index with fewer permits than the committed file (a well page gone) fails the run")
+    check(sum(ID.build(get=Net(fewer).get, today=TODAY, committed=NOTHING)["bands"]["new"]) == 7, "with no committed file the same index is accepted (7 permits)")
     more = build_site()
     more[slug(20043, "invented-20043")] = well_page("2026.09.10_1199900043_x_PTS.pdf", created="2026-09-12", operator="Invented Operating, Inc.", more=DECOYS)
-    d6 = ID.build(get=Net(more).get, today=TODAY, old_total=ID.previous(committed))
+    d6 = ID.build(get=Net(more).get, today=TODAY, committed=committed)
     check(sum(d6["bands"]["new"]) == 9 and d6["bands"]["new"][d6["months"].index("2026-09")] == 1, "a new permit is added, in its month")
 
 # ------------------------------------------------------------------------------------------------ pages read from the real site, when given
@@ -312,7 +313,7 @@ if real:
     for f in sorted(os.listdir(os.path.join(real, "pages"))):
         pages[f[:-5]] = open(os.path.join(real, "pages", f), encoding="utf-8").read()
     net = Net(pages, index=open(os.path.join(real, "index.html"), encoding="utf-8").read())
-    d = ID.build(get=net.get, today=TODAY, old_total=0)
+    d = ID.build(get=net.get, today=TODAY, committed=NOTHING)
     yrs = {y: sum(n for m, n in zip(d["months"], d["bands"]["new"]) if m.startswith(str(y))) for y in range(2019, 2027)}
     check(C.validate(d, TODAY) == [] and yrs == {2019: 0, 2020: 0, 2021: 3, 2022: 2, 2023: 0, 2024: 0, 2025: 1, 2026: 2}, "the real pages: 3 permits in 2021, 2 in 2022, 1 in 2025, 2 in 2026 (2021 and 2022 month by month as the Commission's quarterly APDs-approved counts have them): %s" % yrs)
     check(d["counties"] == [["Payette", 2], ["Canyon", 1]] and d["operators"][0] == ["SNAKE RIVER OIL AND GAS LLC", 2], "the real pages' last 12 months: Payette 2, Canyon 1; Snake River twice")
