@@ -844,6 +844,15 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check((await page.locator('#national-root button.nat-tile[aria-pressed="true"]').count()) === 1, 'a ranking row selects its tile');
       const text = await page.locator('#view-national').innerText();
       check(!/NaN|undefined|Infinity|\bnull\b/.test(text), 'the national view shows no NaN, undefined, null or Infinity');
+      // every tile's panel, one after the other (a state with no operators printed the word null once: native append writes it for a null child)
+      const ids = await page.evaluate(() => [...document.querySelectorAll('#national-root button.nat-tile')].map((b) => b.dataset.id));
+      const dirty = [];
+      for (const id of ids) {
+        await page.click('#national-root button.nat-tile[data-id="' + id + '"]');
+        const t = await page.locator('#national-root .nat-panel').innerText();
+        if (/NaN|undefined|Infinity|\bnull\b/.test(t) || t.trim().length < 20) dirty.push(id);
+      }
+      check(ids.length === 35 && !dirty.length, 'the panel of every one of the ' + ids.length + ' tiles reads clean' + (dirty.length ? ' (not: ' + dirty.join(', ') + ')' : ''));
       await page.goto(base + '#national?s=ZZ', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
       await page.waitForSelector('#national-root button.nat-tile', { timeout: 25000 });

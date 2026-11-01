@@ -101,7 +101,11 @@ def collect():
     if os.path.isdir(NAT):
         for name in sorted(os.listdir(NAT)):
             if name.endswith(".json"):
-                doc = json.load(open(os.path.join(NAT, name), encoding="utf-8"))
+                try:
+                    doc = json.load(open(os.path.join(NAT, name), encoding="utf-8"))
+                except (OSError, ValueError) as e:
+                    log("%s: unreadable (%s); left out" % (name, C.privacy_check.clean_error(e, 80)))
+                    continue
                 bad = C.validate(doc)
                 if bad:
                     log("%s: %s; left out" % (name, "; ".join(bad[:2])))
@@ -132,6 +136,7 @@ def build(docs=None, fields=None, today=None):
             "id": sid, "name": d["name"], "agency": d["agency"], "measure": d["measure"], "basis": d["basis"], "source": d["source"], "asOf": d["asOf"],
             "through": d["through"], "cadence": d["cadence"], "bands": bands, "p12": p12, "prev12": prev, "mix12": mix, "fluid": d.get("fluid"),
             "counties": d["counties"], "operators": d["operators"], "namedShare": d.get("namedShare"), "note": d.get("note", ""), "read": d["read"],
+            **{k: d[k] for k in ("unit", "place") if d.get(k)},
         })
     have = {s["id"] for s in states}
     fstates = fields.get("states", {}) if isinstance(fields, dict) else {}
@@ -166,7 +171,8 @@ def validate(doc):
         real = [v for v in new if v is not None]
         ok(s["p12"] == sum(real[-12:]) and s["prev12"] == sum(real[-24:-12]), "%s p12 must be the last 12 real months" % s["id"])
         ok(s["measure"] in C.MEASURES, "%s measure" % s["id"])
-        ok(new[len(real) - 1] is not None and all(v is None for v in new[len(real):]), "%s: padding must be a tail of nulls" % s["id"])
+        have = [i for i, v in enumerate(new) if v is not None]
+        ok(bool(have) and have == list(range(have[0], have[-1] + 1)), "%s: the months with figures must be one unbroken run, with nulls only before it (a state that starts later) and after it (one that ends earlier)" % s["id"])
         for o in s["operators"]:
             ok(C.nameable(o[0]), "%s operator the rule refuses: %s" % (s["id"], C.privacy_check.mask(o[0])))
     t = doc["totals"]
