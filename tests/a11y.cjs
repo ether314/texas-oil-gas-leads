@@ -56,16 +56,17 @@ const VIEWS = [
   ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'],
   ['overview, oil permits only', '#overview?k=permits', '#nw-slot .bar-row'],
   ['map', '#map', '#map-root canvas'],
-  ['operators', '#operators', '#ops-root table.grid tbody tr'],
-  ['operators, three states', '#operators?st=tx,ok,nm', '#ops-root table.grid tbody tr'],
-  ['companies', '#companies', '#co-root table.grid tbody tr'],
+  ['companies, operators', '#companies', '#ops-root table.grid tbody tr'],
+  ['companies, Texas', '#companies?s=TX', '#ops-root table.grid tbody tr'],
+  ['companies, Texas directory', '#companies?kind=directory', '#co-root table.grid tbody tr'],
   ['daily', '#daily', '#daily-root .dd-nav'],
   ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
   ['daily, a day in 2014', '#daily?d=2014-03-12&s=TX', '#daily-root .dd-date:has-text("2014")'],
   // the federal offshore last: the bar keeps its choice from one view to the next, and the views above are meant for the states they name
   ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'],
   ['map, federal offshore', '#map?st=fo', '#map-root canvas'],
-  ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
+  ['companies, North Dakota', '#companies?s=ND', '#ops-root table.grid tbody tr'],
+  ['companies, federal offshore', '#companies?s=FO', '#ops-root table.grid tbody tr'],
   ['sources', '#about', '#view-about h1'],
   ['national', '#national', '#national-root .nat-tile'],
   ['national, Oklahoma panel', '#national?s=OK', '#national-root .nat-panel h3'],
@@ -260,10 +261,10 @@ function targets() {
   {
     const REFLOW = [
       ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'], ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'], ['overview, oil permits only', '#overview?k=permits', '#nw-slot .bar-row'],
-      ['map', '#map', '#map-root canvas'], ['operators', '#operators', '#ops-root table.grid tbody tr'], ['operators, New Mexico', '#operators?st=nm', '#ops-root table.grid tbody tr'],
-      ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
+      ['map', '#map', '#map-root canvas'], ['companies, operators', '#companies', '#ops-root table.grid tbody tr'], ['companies, New Mexico', '#companies?s=NM', '#ops-root table.grid tbody tr'],
+      ['companies, Texas directory', '#companies?kind=directory', '#co-root table.grid tbody tr'],
       ['daily', '#daily', '#daily-root .dd-nav'], ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'], ['daily, a day in 2014', '#daily?d=2014-03-12&s=TX', '#daily-root .dd-date:has-text("2014")'],
-      ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
+      ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['companies, North Dakota', '#companies?s=ND', '#ops-root table.grid tbody tr'], ['companies, federal offshore', '#companies?s=FO', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
       ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
       ['permit data', '#fields', '#fields-root button.fx-c'], ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
@@ -351,7 +352,7 @@ function targets() {
     const doc = await page.evaluate(() => ({ lang: document.documentElement.lang, mains: document.querySelectorAll('main').length, h1s: [...document.querySelectorAll('h1')].filter((h) => h.offsetParent !== null).length, title: document.title }));
     check(doc.lang === 'en' && doc.mains === 1 && doc.h1s === 1, 'the page has a language, one main landmark and one visible h1: ' + JSON.stringify(doc));
     const titles = [];
-    for (const hash of ['#map', '#operators', '#companies', '#daily', '#about']) {
+    for (const hash of ['#map', '#companies', '#daily', '#about']) {
       await page.evaluate((h) => { location.hash = h; }, hash);
       await page.waitForFunction((h) => document.title !== 'Oil tracker' || h === '#overview', hash, { timeout: 10000 }).catch(() => {});
       titles.push(await page.title());
