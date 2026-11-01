@@ -1220,6 +1220,53 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     }
   }
 
+  // 20. the National report and the matrix speak to a visitor (2026-11-01): the researchers' own words (this machine, from here, I tried, the tracker) are not on the pages, the offshore and the BLM are common nouns inside a sentence,
+  //     a state that is not read yet says why in plain words and what grade its data has, the matrix shows no producer plan, and the Sources page lists the state agencies from the report's own data (a file download is not a link)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const VOICE = /\b(this machine|from here|I tried|I read|I saw|the tracker|polite request|the brief|sandbox|WebFetch|HEAD request|reachable)\b/i;
+    try {
+      const natDoc = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'national.json'), 'utf8'));
+      await page.goto(base + '#national', { waitUntil: 'load' });
+      await page.waitForSelector('#national-root .nat-cov', { timeout: 25000 });
+      const kpiText = await page.locator('#national-root .nat-kpis').innerText();
+      check(/the federal offshore/.test(kpiText) && !/, Federal offshore|and Federal offshore/.test(kpiText), 'the top figures say "the federal offshore" inside a sentence: ' + kpiText.replace(/\s+/g, ' ').slice(0, 260));
+      const cov = await page.locator('#national-root .nat-cov').innerText();
+      check(!VOICE.test(cov) && natDoc.gaps.every((g) => cov.includes(g.name)), 'the coverage table has a plain reason for every state not read yet, with none of the researchers\' words');
+      check(/Its published data, as researched \(grade [A-D]\): /.test(cov) && !/\bgrade [A-D]\s*$/m.test(cov), 'and a gap\'s grade is explained, not left as a bare letter in the Updates column');
+      const rows = await page.evaluate(() => [...document.querySelectorAll('#national-root .nat-cov tbody tr')].map((r) => ({ gap: r.classList.contains('is-gap'), upd: r.children[4].textContent.trim() })));
+      check(rows.filter((r) => r.gap).every((r) => r.upd === '—') && rows.filter((r) => !r.gap).every((r) => /^(Publishes|Weekly|Monthly|Nightly|Daily|Irregular|Live|Quarterly|Monthly)/i.test(r.upd) || r.upd.length > 3), 'a state not read yet has a dash under Updates; the others say how they update');
+      await page.click('#national-root button.nat-tile[data-id="FO"]');
+      check(/Open the federal offshore in the Overview/.test(await page.locator('#national-root .nat-panel').innerText()), 'a link inside a sentence names "the federal offshore"');
+      await page.click('#national-root button.nat-tile[data-id="UT"]');
+      const href = await page.locator('#national-root .nat-panel a[target="_blank"]').first().getAttribute('href');
+      check(!!href && !/\.(zip|csv|xlsx?)(\?|$)/i.test(href) && !/FeatureServer|MapServer|rest\/services/i.test(href), 'a panel\'s source link is a page, not a raw download or a service root: ' + href);
+      await page.goto(base + '#fields?s=AK', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root .nat-panel', { timeout: 25000 });
+      const fx = await page.locator('#fields-root .nat-panel').innerText();
+      check(!VOICE.test(fx) && !/How a monthly count could be built/.test(fx) && /Provisional/.test(fx), 'the matrix\'s panel for an agency that refused automated requests is in a visitor\'s words and shows no producer plan: ' + fx.replace(/\s+/g, ' ').slice(0, 220));
+      const ties = await page.locator('#fields-root .nat-kpis').innerText();
+      check(!/\d\d?\s+of\s+\d+ agencies as data\s*$/.test('x') && /Published by the most agencies/.test(ties), 'the matrix\'s figures load: ' + ties.replace(/\s+/g, ' ').slice(0, 200));
+      await page.goto(base + '#about', { waitUntil: 'load' });
+      await page.waitForSelector('#src-national li', { timeout: 25000 });
+      await page.waitForFunction(() => document.querySelectorAll('#src-national li').length > 5, null, { timeout: 15000 });
+      const src = await page.evaluate(() => ({ n: document.querySelectorAll('#src-national li').length, hrefs: [...document.querySelectorAll('#src-national a')].map((a) => a.getAttribute('href')), text: document.querySelector('#src-national').innerText }));
+      const wantRows = natDoc.states.filter((x) => !['TX', 'OK', 'NM', 'FO'].includes(x.id)).length + 2;
+      check(src.n === wantRows && src.hrefs.every((h) => h && !/\.(zip|csv|xlsx?)(\?|$)/i.test(h) && !/FeatureServer|MapServer|rest\/services/i.test(h)) && !VOICE.test(src.text) && /Not read yet/.test(src.text),
+        'the Sources page lists the state agencies behind the National report from its own data (' + src.n + ' lines for ' + (wantRows - 2) + ' agencies and the unread ones), none linked to a raw download');
+      check(await page.evaluate(() => [...document.querySelectorAll('.toc button')].some((b) => /State agencies behind the National report/.test(b.textContent))), 'and its heading is in the page\'s table of contents');
+    } catch (e) {
+      check(false, 'the wording block: ' + e.message.split('\n')[0].slice(0, 240));
+    }
+    check(!errs.length, 'the wording pages load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

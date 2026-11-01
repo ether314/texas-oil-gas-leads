@@ -8,6 +8,7 @@ import { createMapView } from './map.js';
 import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { createNationalView } from './national.js';
+import { sourceHref } from './national-data.js';
 import { createImagesView } from './images.js';
 import { createFieldsView } from './fields.js';
 import { icon } from './icons.js';
@@ -54,6 +55,21 @@ async function fillFromFiles(meta) {
   fillMeta(meta, extra);
 }
 
+/* the Sources page's list of the state agencies behind the National report is made from national.json (each state's source, cadence and what it counts), so it cannot go stale;
+   the four jurisdictions that have their own entries above are left out, and a missing file leaves the one line of text that is already there */
+async function fillNational() {
+  const [doc, fields] = await Promise.all([loadOpt('national'), loadOpt('permit-fields')]);
+  const ul = $('#src-national');
+  if (!doc || !Array.isArray(doc.states) || !ul) return;
+  const rows = doc.states.filter((s) => !['TX', 'OK', 'NM', 'FO'].includes(s.id)).map((s) => {
+    const h = sourceHref(s, fields);
+    return el('li', {}, el('small', { class: 'fresh-cad src-cad', text: s.cadence ? s.cadence.charAt(0).toUpperCase() + s.cadence.slice(1) : 'Irregular' }), ' ',
+      h ? el('a', { href: h.href, rel: 'noopener noreferrer', text: s.agency }) : el('span', { text: s.agency }), ': ' + s.source.name + '; counted by ' + s.basis + '.');
+  });
+  const gaps = doc.gaps && doc.gaps.length ? [el('li', {}, 'Not read yet, with the reason for each in the report’s coverage table: ' + doc.gaps.map((g) => g.name).join(', ') + '.')] : [];
+  ul.append(...rows, ...gaps);
+}
+
 // Sources & method is long: a sticky "on this page" list on wide screens. Buttons, not links, so the hash router is left alone.
 function buildToc() {
   const prose = $('#view-about .prose');
@@ -86,6 +102,7 @@ async function boot() {
   }
   fillMeta(meta);
   fillFromFiles(meta).catch(() => {});
+  fillNational().catch(() => {});
   renderSegments(meta);
   const overview = createOverview(meta);
 
