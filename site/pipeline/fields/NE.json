@@ -175,6 +175,26 @@
    "e": "none",
    "n": "Rule 267-3-041 covers stimulation under drilling permits; what the form asks is unknown"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus, which shows job start and end (Rule 3-043); Form 5 asks only completion dates"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus (Rule 3-043: all elements it shows); Form 5 gives only fluid types and volumes"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus (trade name, supplier, purpose); the Commission's own forms and data hold none"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus (percent per ingredient); Form 5 summarizes fluid volumes only"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "doc",
@@ -537,7 +557,9 @@
   "Whether the HTTPS address works in a visitor's browser (the source links use the https addresses)",
   "Whether the Commission's site answers GitHub's servers (the producer reads plain http; a reset exits with an error and keeps the file)",
   "The 2022 Richardson difference of one permit, and the 2023 year (no summary table to check against)",
-  "What GIS Data Mining shows publicly (not opened)"
+  "What GIS Data Mining shows publicly (not opened)",
+  "Whether the Commission's GIS Data Mining page or scanned well files show anything from FracFocus; not opened",
+  "Text of Rule 267-3-044 (trade secrets) and the statute behind 3-043, not read"
  ],
  "researched": "2026-10-31"
 }

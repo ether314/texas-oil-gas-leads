@@ -174,6 +174,26 @@
    "e": "none",
    "n": ""
   },
+  "frac_dates": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Treatment report (Form OGB-6) is due 30 days after fracturing; the form was not found, so its fields are unverified"
+  },
+  "frac_chemicals": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rules ask only for 'the method used in treating the well'; no chemical or FracFocus rule found; form not read"
+  },
+  "frac_additives": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No rule found naming trade names, suppliers or purposes; Form OGB-6, which could ask for them, was not found"
+  },
+  "frac_amounts": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No rule found asking for ingredient amounts; Form OGB-6 was not found and the well layer has no such field"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "file",
@@ -369,7 +389,9 @@
   "Whether PermitDate is the original permit date or the latest amendment",
   "Contents of the Bottomhole layers and the Comment field",
   "Whether the web application offers a CSV export or documents (plats, forms)",
-  "Operator ID and business type (Form OGB-5)"
+  "Operator ID and business type (Form OGB-5)",
+  "What Form OGB-6 asks (dates, fluids, additives, amounts); no copy of the form was found.",
+  "Whether the rules were revised after the 12/31/2009 supplement for any fracturing disclosure; only these chapters were read."
  ],
  "researched": "2026-10-31"
 }

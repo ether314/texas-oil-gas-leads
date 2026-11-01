@@ -174,6 +174,26 @@
    "e": "none",
    "n": ""
   },
+  "frac_dates": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Completion form has no frac date; the frac tickets filed within 30 days may show one, not seen"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Frac tickets documenting materials injected are filed within 30 days (10 CSR 50-2.055); not published"
+  },
+  "frac_additives": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule asks for 'materials injected' on tickets; trade names and suppliers may be on them, not seen"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "form",
+   "n": "Completion form 780-0215 asks one amount per treatment (pounds for a frac); not per ingredient; not published"
+  },
   "spacing_unit": {
    "s": "unknown",
    "e": "none",
@@ -478,7 +498,9 @@
   "What the PERMIT_LINK, DOWN_LINK and STRAT_LINK documents contain (not opened)",
   "Permit number, bond, validity period and notice requirements",
   "Whether a new wells list or permit list is coming (no Council packet says; the Oct 2026 meeting was cancelled)",
-  "Why the layer stopped in 2021"
+  "Why the layer stopped in 2021",
+  "Contents of the frac tickets the rule requires: whether they show start and end dates, trade names, suppliers or CAS numbers",
+  "Whether the written pre-frac notice names a planned date"
  ],
  "researched": "2026-10-31"
 }

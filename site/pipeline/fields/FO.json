@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Not asked on BSEE-0123 or BSEE-0123S"
   },
+  "frac_dates": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No rule or APD form asks for stimulation dates; weekly well activity reports may mention a job, fields not seen"
+  },
+  "frac_chemicals": {
+   "s": "none",
+   "e": "web",
+   "n": "Federal offshore rules (30 CFR 250) have no fracturing disclosure; the APD forms ask for no chemicals"
+  },
+  "frac_additives": {
+   "s": "none",
+   "e": "web",
+   "n": "No federal offshore rule or APD form asks for products, suppliers or purposes of frac fluids"
+  },
+  "frac_amounts": {
+   "s": "none",
+   "e": "web",
+   "n": "No federal offshore rule or APD form asks for ingredient amounts"
+  },
   "spacing_unit": {
    "s": "none",
    "e": "form",
@@ -492,7 +512,9 @@
   "Whether any current APD form revision replaced BSEE-0123 and BSEE-0123S after their 10/31/2026 OMB expiry",
   "Whether scanned APDs, plats, completion reports (End of Operations) and logs are online per well (menu items seen, pages not opened)",
   "Fees, APD expiry terms, lease owner details and the layout of production and directional survey files",
-  "The delimited borehole layout beyond the 914 rows read (sorted by API number, mostly old wells)"
+  "The delimited borehole layout beyond the 914 rows read (sorted by API number, mostly old wells)",
+  "The columns of the eWell Well Activity Report, Application for Permit to Modify and End of Operations queries (grids load only after a query), and whether they show any stimulation job or its dates",
+  "Whether the Application for Permit to Modify form or its instructions ask for stimulation fluids when a stimulation is proposed; the form was not read"
  ],
  "researched": "2026-10-31"
 }

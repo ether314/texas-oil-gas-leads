@@ -174,6 +174,26 @@
    "e": "form",
    "n": "No frac item on Form 2; only a free-text 'proposed operations' box"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule 74:12:02:19: the fracture date is posted to FracFocus; a Sundry Notice also reports it; no agency data"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus (rule 74:12:02:19), trade secrets excepted; the agency's own data holds none"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus: trade name, supplier and purpose of each additive; the agency's own data holds none"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus: maximum concentration in each additive and in the fluid; agency data holds none"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -500,7 +520,9 @@
   "Differences in the 4-1-2026 edition of Form 2 (link 404; the 6-6-2023 copy was read)",
   "Fields of the geodatabase and of the UIC injection workbook",
   "Whether 'Permit file URL' scans include the plat",
-  "Update cadence of the zip (members dated 2026-09-14 to 2026-10-20)"
+  "Update cadence of the zip (members dated 2026-09-14 to 2026-10-20)",
+  "The 4-1-2026 editions of Forms 4 and 6 were not read; the 6-6-2023 copies were.",
+  "What a filed Form 6 for a fracture treatment holds in practice; no filled-in example was read."
  ],
  "researched": "2026-10-31"
 }

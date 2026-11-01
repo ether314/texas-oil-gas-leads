@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Form 1 item 17 yes/no 'hydraulic fracturing?' per casing string; item 13 volumes"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Well summary card lists the stimulation date; not in the permit export or the map layer"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Some well cards link a scanned Form 8B with chemicals and CAS numbers; others rely on FracFocus; no bulk file"
+  },
+  "frac_additives": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned Form 8B on some well cards gives trade name, supplier and purpose; not in bulk data"
+  },
+  "frac_amounts": {
+   "s": "query",
+   "e": "web",
+   "n": "Card lists fluid volume and proppant; scanned Form 8B gives each ingredient's amount and percent where filed"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "file",
@@ -574,7 +594,9 @@
   "Whether the map service's status values include permitted-not-yet-drilled wells",
   "The meaning of the export's VARIANCE, POOL_AMT and PROP_WELL_CLASS columns (empty or zero in the sample)",
   "Why some applications are listed twice, and whether the 3 percent gap to the annual reports is voided applications",
-  "Whether the redirect habit is the same for GitHub's servers (a refusal exits 2 and keeps last week's file)"
+  "Whether the redirect habit is the same for GitHub's servers (a refusal exits 2 and keeps last week's file)",
+  "The agency's main site answered 404 to automated requests, so its own forms and chemical-disclosure pages could not be read.",
+  "How many wells' cards carry a scanned Form 8B instead of only a FracFocus filing: two horizontal wells were opened."
  ],
  "researched": "2026-10-31"
 }

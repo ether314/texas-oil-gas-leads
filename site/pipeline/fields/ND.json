@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Instruction 11/12: 'general completion technique' must accompany the application"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 6 asks the date stimulated; the 24-hour frac notice gives the start. Scanned forms sit in paid well files"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus within 60 days of the job (NDAC 43-02-03-27.1); the agency's free data holds none"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus (all elements it shows); the agency's free data holds no trade name or supplier"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "form",
+   "n": "Required through FracFocus; Form 6 also asks fluid volume and pounds of proppant for each stimulation"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "file",
@@ -560,7 +580,9 @@
   "Whether the layer's td field is proposed or actual depth",
   "Fields of the Directional_Well_Bore and Cases_Docketed layers (listed in the services root, not read)",
   "What the NorthSTAR public screens show per well, and whether they need a login",
-  "Update cadence of the Wells layer (a 2022 notice says hourly)"
+  "Update cadence of the Wells layer (a 2022 notice says hourly)",
+  "Whether the paid scout ticket or well file shows the stimulation table (Form 6) for each well; the paid services were not opened",
+  "Whether NorthSTAR's Well Stimulation feature replaced the paper Form 6 for operators, and what it collects"
  ],
  "researched": "2026-10-31"
 }

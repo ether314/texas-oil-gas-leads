@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Form 1 box Stimulation Completion Plan; stimulation must be approved on Form 1, Form 4 or a fieldwide plan"
   },
+  "frac_dates": {
+   "s": "data",
+   "e": "file",
+   "n": "Treatment Data Download has a treatment day, month and year; one date per treatment, no start and end"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned frac disclosure with CAS numbers is in a well's Sundries; no bulk file lists chemicals"
+  },
+  "frac_additives": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned disclosure lists trade name, supplier and purpose; reached from the well's Sundries page"
+  },
+  "frac_amounts": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned disclosure gives percent and pounds per ingredient; bulk file has only total volume and proppant"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -577,6 +597,38 @@
    ],
    "reachable": "ok",
    "tested": "GET / 200, 211 KB HTML shell of an OpenLayers/Angular app (title WOGCC Data Explorer); no API call tried."
+  },
+  {
+   "id": "wogcc-treatments-download",
+   "name": "WOGCC Treatment Data Download (tab-delimited text: a row for each treatment of a well, with its treatment day, month and year and the volumes; no chemicals)",
+   "url": "https://pipeline.wyo.gov/urecordsMenu.cfm",
+   "kind": "bulk",
+   "format": "tab-delimited text",
+   "grain": "treatment",
+   "free": true,
+   "login": false,
+   "reachable": "ok",
+   "columns": [
+    "Company",
+    "Apino",
+    "Tret_Top_M",
+    "Tret_Bot_M",
+    "Treatment",
+    "Treatday",
+    "Treatmonth",
+    "Treatyear",
+    "Csg_Pres",
+    "Treat_Type",
+    "Flowbk_Vol",
+    "Proppant",
+    "NumFrac",
+    "TtlFracVol"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false
   }
  ],
  "grade": "A",
@@ -596,7 +648,9 @@
   "Contents of the production zip, the Download Received export and the by-county count pages (not opened)",
   "The eForm filing screens and the horizontal-well application (not fetched)",
   "Whether H2S, lateral length, operator code or business type appear on any lookup page",
-  "A strict reading of the rubric would make this a B (no work type)"
+  "A strict reading of the rubric would make this a B (no work type)",
+  "Whether every well's Sundries or completion report carries the disclosure: one well's scans were opened.",
+  "Whether the single treatment date in the data is the first or last day of a multi-stage job."
  ],
  "researched": "2026-10-31"
 }

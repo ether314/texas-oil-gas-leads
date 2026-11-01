@@ -174,6 +174,26 @@
    "e": "none",
    "n": ""
   },
+  "frac_dates": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 8 has workover from-to dates only; the workover rule asks for no frac job date"
+  },
+  "frac_chemicals": {
+   "s": "none",
+   "e": "web",
+   "n": "No Florida statute or rule found requiring frac chemical disclosure; the workover rule does not mention it"
+  },
+  "frac_additives": {
+   "s": "none",
+   "e": "web",
+   "n": "Nothing found requires additive names; Form 8's stimulation record has only a free-text comments column"
+  },
+  "frac_amounts": {
+   "s": "none",
+   "e": "web",
+   "n": "Nothing found requires ingredient amounts; Form 8's stimulation record has only a free-text comments column"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -398,7 +418,9 @@
   "Form 1 Organization Report fields (operator ID, business type)",
   "Whether BOP, H2S, water, pit or frac plans are required in the site plans",
   "Update cadence of the production files",
-  "Whether any permit after Dec 2019 is recorded beyond the pending 1388"
+  "Whether any permit after Dec 2019 is recorded beyond the pending 1388",
+  "Rules 62C-25 to 62C-30 were not read in full; the workover rule, Form 8, Form 9 and all of Chapter 377 were.",
+  "Whether operators file stimulation details with a workover notice (no form found) or in the per-permit document list; its contents were not read."
  ],
  "researched": "2026-10-31"
 }

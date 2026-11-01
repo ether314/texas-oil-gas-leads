@@ -12,6 +12,7 @@ const { chromium } = require('playwright');
 const previewStub = require('./preview-stub.cjs');
 
 const ROOT = path.join(__dirname, '..', 'site', 'public');
+const permitFields = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'permit-fields.json'), 'utf8')); // the matrix's own data: its counts are read from it, not written here
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 
 // the well archive is served from a fixture (tests/fixtures/wells.json), so these tests do not depend on what the nightly has published
@@ -96,7 +97,7 @@ const VIEWS = [
   ['#about', '#view-about h1'],
   ['#images', '#images-root .img-stage', async (page) => ((await page.locator('#images-root .img-stage').count()) === 3 ? null : 'the images view should show the three stages of a well')],
   ['#images?d=2026-10-30', '#images-root .img-pack', async (page) => ((await page.locator('#images-root .img-pack').count()) === 3 ? null : 'a day should show its three packs')],
-  ['#fields', '#fields-root button.fx-c', async (page) => ((await page.locator('#fields-root tr[data-m]').count()) === 48 ? null : 'the matrix should have a row for each of the 48 metrics')],
+  ['#fields', '#fields-root button.fx-c', async (page) => ((await page.locator('#fields-root tr[data-m]').count()) === permitFields().metrics.length ? null : 'the matrix should have a row for each of the ' + permitFields().metrics.length + ' metrics')],
   ['#fields?s=BL&g=when', '#fields-root .nat-panel h3', async (page) => (/Federal onshore/.test(await page.locator('#fields-root .nat-panel h3').first().innerText()) && (await page.locator('#fields-root tr[data-m]').count()) === 6 ? null : 'an address naming an agency and a group should open its panel and filter the rows')],
   // the National report and the Map were tabs of their own: their old addresses open the Overview, on the state they named (and the address says so)
   ['#national', OV_PANEL, async (page) => (/^#overview$/.test(await hashNow(page)) && /^All states$/.test(await page.locator(OV_PANEL).first().innerText()) ? null : 'an old #national link should open the Overview: ' + (await hashNow(page)))],
@@ -698,9 +699,9 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         regCells: document.querySelectorAll('#fields-root td.fx-cell.is-reg').length, rows: document.querySelectorAll('#fields-root tr[data-m]').length,
         total: document.querySelector('#fields-root tr[data-m="api_number"] td.fx-n:last-child').textContent, score: document.querySelector('#fields-root tr.fx-score td.fx-n.is-reg').textContent,
         label: document.querySelector('#fields-root tr[data-m="water"] td.fx-cell.is-reg button').getAttribute('aria-label'), kpis: document.querySelector('#fields-root .nat-kpis').innerText.replace(/\s+/g, ' ') }));
-      check(ffm.heads.length === 36 && ffm.heads[0] === 'FracFocus' && ffm.reg === 1 && ffm.regCells === ffm.rows && ffm.rows === 48, 'the matrix has FracFocus as its first column, a cell on each of the 48 rows, and 35 agencies after it: ' + ffm.heads.slice(0, 3).join(','));
-      check(/^\d+ of 35$/.test(ffm.total) && ffm.score === '9' && /published as data/.test(ffm.label) && /Agencies compared 35/.test(ffm.kpis) && /What FracFocus adds 3 metrics/.test(ffm.kpis) && /Hydraulic fracturing plan 0 of 35/.test(ffm.kpis),
-        'FracFocus is not counted as an agency (a row still totals "of 35"), its score is 9 metrics as data and the figures say what it adds: ' + ffm.total + ' / ' + ffm.score + ' / ' + ffm.kpis.slice(0, 200));
+      check(ffm.heads.length === 36 && ffm.heads[0] === 'FracFocus' && ffm.reg === 1 && ffm.regCells === ffm.rows && ffm.rows === permitFields().metrics.length, 'the matrix has FracFocus as its first column, a cell on each of its ' + ffm.rows + ' rows, and 35 agencies after it: ' + ffm.heads.slice(0, 3).join(','));
+      check(/^\d+ of 35$/.test(ffm.total) && ffm.score === String(Object.values(permitFields().states.FF.cells).filter((c) => c[0] === 'data').length) && /published as data/.test(ffm.label) && /Agencies compared 35/.test(ffm.kpis) && /What FracFocus adds \d+ metrics that 7 or fewer of 35 agencies publish as data: /.test(ffm.kpis),
+        'FracFocus is not counted as an agency (a row still totals "of 35"), its score is the number of metrics it publishes as data and the figures say what it adds: ' + ffm.total + ' / ' + ffm.score + ' / ' + ffm.kpis.slice(0, 200));
       await page.goto(base + '#fields?s=FF', { waitUntil: 'load' });
       await page.waitForSelector('#fields-root .nat-panel', { timeout: 25000 });
       const ffp = await page.locator('#fields-root .fx-panel-slot').innerText();
@@ -708,7 +709,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/What a disclosure captures/i.test(ffp) && /The disclosure/i.test(ffp) && !/The permit form/i.test(ffp) && /one row a disclosure/.test(ffp) && /one well at a time/.test(ffp) && ffHref === '#overview', 'FracFocus\'s panel speaks of a disclosure, not a permit, says what each file holds and links to the map: ' + ffHref);
       const card = await page.evaluate(() => ({ groups: document.querySelectorAll('#fx-registry .fx-rg').length, rows: document.querySelectorAll('#fx-registry li.fx-rf').length, text: document.querySelector('#fx-registry').innerText,
         links: [...document.querySelectorAll('#fx-registry .fx-rf-link button')].length, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
-      check(card.groups === 5 && card.rows === 34 && /CASNumber/.test(card.text) && /TotalBaseWaterVolume/.test(card.text) && /JobStartDate/.test(card.text) && /1 of 35 agencies publish it as data/.test(card.text) && /Not one of the permit metrics/.test(card.text) && card.links >= 15 && !card.sideways,
+      check(card.groups === 5 && card.rows === 34 && /CASNumber/.test(card.text) && /TotalBaseWaterVolume/.test(card.text) && /JobStartDate/.test(card.text) && /1 of 35 agencies publish it as data/.test(card.text) && /Not one of the metrics above/.test(card.text) && card.links >= 15 && !card.sideways,
         'the card lists the registry\'s 34 fields in five groups, the permit metric each matches with how many agencies publish it, and the page does not scroll sideways: ' + card.rows + ' rows');
       await page.click('#fx-registry .fx-rf-link button >> nth=0');
       await page.waitForTimeout(200);
@@ -1914,6 +1915,79 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
     }
     check(!errs.length, label + ': the national Daily report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 22b. the Daily chart's dashed line is the typical day of the day that is shown (2026-11-01). It was drawn once, before the report had chosen its day, for the first day of the loaded points (Nov 1, 2024: "typical day, 33"
+  //      over Jun 2024 to May 2025) while the day card said 30.5 over Jun 2025 to May 2026, and it stayed so while days were chosen inside the chart's 150 days, though a day's twelve months follow its month. The label, the note and the
+  //      day card must name the same months and figure on the opening load and after every way of choosing a day: a click on the chart, the date box, the slider, the month strip, the arrows, a state.
+  for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mi = (mon, yr) => +yr * 12 + MON.indexOf(mon); // a month as one number, to compare
+    // what the chart (its dashed label, its note) and the day card say about a typical day, for the day shown
+    const said = () => page.evaluate(() => {
+      const lab = [...document.querySelectorAll('#daily-root .dd-chart text.ax')].map((t) => t.textContent).find((t) => /^typical day, \d+$/.test(t));
+      const card = [...document.querySelectorAll('#daily-root .nat-panel p.fine')].map((p) => p.textContent).find((t) => /^A typical /.test(t));
+      return { date: document.querySelector('#daily-root .dd-date').textContent, lines: document.querySelectorAll('#daily-root .dd-chart .dd-typ').length, label: lab ? +lab.replace(/\D/g, '') : null, note: document.querySelector('#daily-root .dd-chartbox + p.fine').textContent, card: card || '' };
+    });
+    // null when the chart says what the card says; else what each said. A card that names twelve months (a settled day of another year) needs the same twelve in the note, and the day's month inside them; a day
+    // in the newest months is set against "the 12 settled months". The label is the card's figure to a whole number (the card gives a tenth), so they may differ by 0.55 and no more.
+    const agree = (t) => {
+      const dm = t.date.match(/, (\w{3}) \d+, (\d{4})$/); const at = dm ? mi(dm[1], dm[2]) : NaN;
+      const fig = +((t.card.match(/(?:has|had) about (\d+\.\d)/) || [])[1]);
+      const cw = t.card.match(/in the 12 months (\w{3}) (\d{4}) to (\w{3}) (\d{4})/); const nw = t.note.match(/over the 12 months (\w{3}) (\d{4}) to (\w{3}) (\d{4})/);
+      const months = cw ? !!nw && nw.slice(1).join(' ') === cw.slice(1).join(' ') && mi(nw[3], nw[4]) - mi(nw[1], nw[2]) === 11 && mi(nw[1], nw[2]) <= at && at <= mi(nw[3], nw[4]) : /over the 12 settled months \(/.test(t.note);
+      return Number.isFinite(fig) && t.label != null && Math.abs(t.label - fig) <= 0.55 && months && t.lines === 1 ? null
+        : t.date + ': the chart says "typical day, ' + t.label + '" ' + (t.note.match(/over (the 12 [^(]*)\(/) || ['', '?'])[1].trim() + ', the day card says "' + t.card.slice(0, 90) + '"';
+    };
+    // check the chart against the card now; `want` (when given) says the day really is the one the step chose, so a click that did nothing cannot pass for a chart that follows
+    const follows = async (what, want = null) => {
+      const t = await said(); const why = want && !want.test(t.date) ? t.date + ' is not the day the step chose' : agree(t);
+      check(!why, label + ': ' + what + (why ? ': ' + why : ''));
+      return t;
+    };
+    const dateBox = async (iso) => { await page.fill('#daily-root input[type=date]', iso); await page.locator('#daily-root input[type=date]').dispatchEvent('change'); };
+    try {
+      // the opening load, before anything is chosen: the report opens on the newest day with ten wells, which is still filling in
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForFunction(() => /\d{4}$/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 25000 });
+      const t0 = await follows('on the opening load the dashed line is the typical day of the day shown, the figure and months the day card gives');
+      check(/over the 12 settled months \(/.test(t0.note), label + ': on the opening load the chart\'s note says the dashed line is over "the 12 settled months": "' + t0.note.slice(-95) + '"');
+      // a day in 2014 (the earlier wells are fetched): the twelve months hold March 2014
+      await page.goto(base + '?again=1#daily?d=2014-03-15', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Mar 15, 2014/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
+      await follows('a day in 2014 is set against twelve months that hold March 2014, in the chart and on the card', /Mar 15, 2014/);
+      // every way of choosing another day inside the chart's 150 days (a different month each time, so the twelve months are different)
+      await page.locator('#daily-root .dd-chartbox').scrollIntoViewIfNeeded();
+      await page.locator('#daily-root .dd-chart .nat-hit').first().dispatchEvent('click');
+      await follows('a click on the first day of the chart (December 2013) moves the line and the note with it', /Dec \d+, 2013/);
+      await dateBox('2014-02-10');
+      await follows('the date box (February 2014)', /Feb 10, 2014/);
+      await page.locator('#daily-root .tl-range').fill(await page.evaluate(() => document.querySelector('#daily-root .tl-range').max));
+      await follows('the slider at its last day (May 2014)', /May \d+, 2014/);
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(36).dispatchEvent('click'); // the strip starts in Jan 2011: bar 36 is Jan 2014
+      await follows('a month on the strip (January 2014)', /Jan 1, 2014/);
+      await dateBox('2014-03-01');
+      await page.click('button[aria-label="The day before"]');
+      await follows('the arrow back across a month end (Mar 1 to Feb 28)', /Feb 28, 2014/);
+      await page.click('button[aria-label="The day after"]');
+      await follows('the arrow forward across it (Feb 28 to Mar 1)', /Mar 1, 2014/);
+      // a state: its own typical day over the same months, and a day chosen with it
+      await page.selectOption('#daily-root select.nw-pick', 'TX');
+      await follows('choosing Texas gives Texas\'s own typical day, over the same months', /Mar 1, 2014/);
+      await page.locator('#daily-root .dd-chart .nat-hit').first().dispatchEvent('click');
+      await follows('a click on the chart with Texas chosen', /Dec \d+, 2013/);
+      check(/s=TX/.test(await hashNow(page)) && !BAD_TEXT.test(await page.locator('#daily-root .dd-chartbox').innerText() + ' ' + (await said()).note), label + ': the state stays chosen (s=TX) and the chart and its note hold no NaN, undefined, null or Infinity');
+    } catch (e) {
+      check(false, label + ': the Daily chart\'s typical day: ' + e.message.split('\n')[0].slice(0, 220));
+    }
+    check(!errs.length, label + ': the Daily chart\'s typical day loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

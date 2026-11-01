@@ -174,6 +174,26 @@
    "e": "none",
    "n": ""
   },
+  "frac_dates": {
+   "s": "none",
+   "e": "form",
+   "n": "No frac date on the completion report; a permit condition only calls for advance notice to the agency"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Agency asks for chemical names and CAS numbers before permitting, by staff guidance not rule; not published"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "form",
+   "n": "Completion report asks additive names and types for each zone treated; supplier not asked; not published"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "form",
+   "n": "Completion report asks additive volumes; permit guidance asks percent by weight; neither is published"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "file",
@@ -384,7 +404,9 @@
   "whether Permit_Issued is overwritten by later permits",
   "fill of True_vertical_depth and Measured_depth on new permits",
   "online scans, logs, completion reports and production links behind the LINK column",
-  "license"
+  "license",
+  "Chemical disclosure rests on the IOGCC state profile, which says the agency asks by internal guidance; no agency page or rule stating it was found.",
+  "No stimulation notice form was found; whether the advance notice before stimulation records a date was not seen."
  ],
  "researched": "2026-10-31"
 }
