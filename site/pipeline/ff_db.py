@@ -15,9 +15,10 @@ FracFocus publishes, so it can be queried and joined on one machine. This module
                     supplier, CAS number, chemical name, percent of the job, mass; the header columns they repeat are not repeated here, they are in ff_disclosures
   views             v_ff_new_wells (the first disclosure of each well) and v_ff_new_wells_by_month (by state and month)
 
-This is the registry as FracFocus publishes it, and it names things the site never does: API numbers, well names, and operators that are people. It is for
-the owner's machine only. The database file is kept out of git (`db/`, `*.sqlite`), `ensure_local_only` refuses to write these tables anywhere that could be
-published, and nothing here is ever copied into `site/public/data`.
+This is the registry as FracFocus publishes it, and it names things the site never does: API numbers, well names, and operators that are people. The database file is
+kept out of git (`db/*`, `*.sqlite`) with one exception, by the owner's decision of 2026-11-01: a compressed snapshot without the ingredients, `db/oil-tracker.sqlite.gz`,
+is committed (README, Privacy). `ensure_local_only` still refuses to write these tables anywhere that could be published (under `site/`, or to a name git would track), and
+nothing here is ever copied into `site/public/data`.
 
 Sources: the disclosure list and the water sources are read by HTTP range requests (about 19 MB of the 443 MB zip, as `d13_newwells.py` does), or from a local
 copy of the zip (`--fracfocus-zip`). The ingredients need the whole zip, so --chemicals needs a local copy too: `--fracfocus-download DIR` fetches it once into a new
@@ -200,7 +201,7 @@ def load(db, zip_path=None, chemicals=False, today=None, log=lambda m: None):
                 log("  %s: %d ingredient rows so far" % (name, counts["ff_ingredients"]))
     meta = [("fracfocus_source", ("a local copy of " if zip_path else "range requests to ") + "FracFocusCSV.zip (fracfocus.org/data-download)"), ("fracfocus_disclosures", str(counts["ff_disclosures"])),
             ("fracfocus_water_sources", str(counts["ff_water_sources"])), ("fracfocus_ingredients", str(counts.get("ff_ingredients", "not loaded"))),
-            ("fracfocus_note", "Local only: holds API numbers, well names and operators that are people, which the site never publishes. Never commit or publish this file.")]
+            ("fracfocus_note", "Holds API numbers, well names and operators that are people, which the site never publishes. The owner committed one compressed snapshot (db/oil-tracker.sqlite.gz) on 2026-11-01; do not copy any of it into the site's data.")]
     db.executemany("INSERT OR REPLACE INTO meta VALUES (?,?)", meta)
     return counts
 
