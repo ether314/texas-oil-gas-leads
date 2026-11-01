@@ -405,6 +405,19 @@ def gh(args, timeout=900):
     raise last
 
 
+def quota_line():
+    """GitHub's REST quota for this token as one log line (asking for it is free), or None when gh cannot say: what the two runs of 2026-11-01 ran into was never visible in a log."""
+    try:
+        res = json.loads(d7_release._gh(["api", "rate_limit"], timeout=60, retry=False)).get("resources", {})
+        parts = []
+        for k in ("core", "integration_manifest", "code_scanning_upload"):
+            if k in res and res[k].get("limit"):
+                parts.append("%s %d of %d left, resets %s UTC" % (k, res[k]["remaining"], res[k]["limit"], datetime.fromtimestamp(res[k]["reset"], timezone.utc).strftime("%H:%M")))
+        return "GitHub quota: " + "; ".join(parts) if parts else None
+    except Exception:  # noqa: BLE001 - a log line is never worth a failure
+        return None
+
+
 def tag_name(day, pack, n):
     return "wells-%s-%s-%02d" % (day.isoformat(), pack, n)
 
@@ -805,6 +818,8 @@ def run(a, io=None, now=None, log=log):
     log("to do: %s" % (", ".join("%s %s" % (u["day"], u["pack"]) for u in todo) or "nothing"))
     work = tempfile.mkdtemp(prefix="d12-", dir=a.dl)
     failures, cache, uploaded = 0, {}, 0
+    if upload and todo and quota_line():
+        log(quota_line())
     try:
         for u in todo:
             if time.time() - started > a.budget * 60:
@@ -818,10 +833,15 @@ def run(a, io=None, now=None, log=log):
             except Exception as e:  # noqa: BLE001 - one pack must not stop the next; nothing was recorded for it
                 failures += 1
                 log("%s %s FAILED: %s" % (u["day"], u["pack"], privacy_check.clean_error(e)))
+                if RATE_LIMITED.search(str(e)):  # the next pack would meet the same limit after downloading 300 MB: the third run of 2026-11-01 spent 40 minutes that way
+                    log("GitHub is rate limiting uploads: no further pack is started in this run (it will not clear sooner for being asked again)")
+                    break
                 continue
             state.save(out, lk, datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), repo)  # after each pack, so a later failure keeps this one
     finally:
         shutil.rmtree(work, ignore_errors=True)
+    if upload and uploaded and quota_line():
+        log("after %d files uploaded: %s" % (uploaded, quota_line()))
     if gone:  # the aged-out days leave the files even on a night with nothing new
         state.save(out, lk, datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), repo)
     if gone and upload:
