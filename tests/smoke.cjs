@@ -335,6 +335,21 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.goto(base + '#about', { waitUntil: 'load' });
       await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'start', null, { timeout: 10000 });
       check((await more()) === 'start', 'and at the left edge once the current tab has been brought into view');
+      // the current tab is always whole in the tabs' window, and the tabs do not move for a tab that is already in view (the first ones stay put while they fit)
+      const seen = [];
+      for (const v of ['#overview', '#national', '#fields', '#map', '#operators', '#companies', '#daily', '#images', '#about']) {
+        await page.evaluate((h) => { location.hash = h; }, v);
+        await page.waitForTimeout(250);
+        seen.push(await page.evaluate((h) => {
+          const nav = document.querySelector('.nav'); const a = nav.querySelector('a[aria-current="page"]');
+          if (!a) return h + ': no current tab';
+          const left = a.offsetLeft; const right = left + a.offsetWidth;
+          const whole = left >= nav.scrollLeft - 1 && right <= nav.scrollLeft + nav.clientWidth + 1;
+          const needless = nav.scrollLeft > 1 && right <= nav.clientWidth - 28; // it was in view without moving the tabs
+          return whole && !needless ? '' : h + (whole ? ': the tabs moved for a tab already in view' : ': the current tab is cut off');
+        }, v));
+      }
+      check(seen.every((s) => !s), 'on a phone the current tab is whole in the tabs\' window for every view, and the tabs move only for a tab that is out of it' + (seen.filter(Boolean).length ? ': ' + seen.filter(Boolean).join(' | ') : ''));
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.waitForFunction(() => document.querySelector('.nav').dataset.more === 'none', null, { timeout: 10000 });
       check((await more()) === 'none', 'and not at all where the tabs all fit');
