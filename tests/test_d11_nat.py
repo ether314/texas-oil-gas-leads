@@ -85,6 +85,18 @@ check(doc["bands"]["inj"] is None and doc["bands"]["redrill"] is None and isinst
       "a band the source cannot tell is null, never a list of zeros")
 check(all(v == 2 for v in doc["bands"]["new"]) and all(v == 1 for v in doc["bands"]["amend"]), "the counts are per month (two new, one amendment a month)")
 check(doc["operators"] == [["ACME OIL & GAS LLC", 12]] and doc["namedShare"] == 0.5, "an individual's name is counted in the share but never named: %s share %s" % (doc["operators"], doc["namedShare"]))
+# the named share of Texas, Oklahoma, New Mexico and the offshore counts every nameable operator over the permits of the same window, not the 15 that are listed (Texas read 35%, a top-15 share, for 80%)
+for sid, spec in B.BUILT.items():
+    adapted = B.adapt(sid, spec)
+    ops_file = B.load(spec["operators"])
+    ni, ci = ops_file["cols"].index("name"), ops_file["cols"].index("new12")
+    named_all = sum(r[ci] for r in ops_file["rows"] if r[ci] and C.nameable(r[ni]))
+    window = sum(v.get("p12", 0) for v in B.load(spec["county"])["counties"].values())
+    listed = sum(n for _, n in adapted["operators"])
+    check(abs(adapted["namedShare"] - min(1.0, named_all / window)) < 0.001 and adapted["namedShare"] >= listed / window - 0.001,
+          "%s: the named share is every nameable operator over the same window (%s of %s), never less than the listed operators' share" % (sid, named_all, window))
+check(B.adapt("TX", B.BUILT["TX"])["namedShare"] > 0.7, "Texas's named share is the share of all its permits (about 80%), not of its 15 largest operators' (35%)")
+
 # California's real shape: a layer that starts in 2024-11, 8 new-drill permits in all of 2025, then 60 to 93 a month in 2026
 cal = C.Tally("CA")
 for i, ym in enumerate(C.month_list("2024-11", "2026-10")):

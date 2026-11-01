@@ -91,6 +91,8 @@ would read as a fall. Mississippi stays a gap in the report ("not read yet", wit
 
 ## Known limits
 
+- **`asOf` is the day a state's data is current to.** For most states that is the newest record's day. Nevada's page is edited by hand and Virginia's layers publish no update time, so for those two it is the day of the read (their `note` says so, and Nevada's `lag_days` keeps a month with no permit from reading as a real zero too early); the National page's top figure is therefore called "Latest update", not "newest record".
+
 - Texas's monthly series is application type 01 only; it says nothing about the other bands (its Daily report holds only the last 92 days). Oklahoma's, New Mexico's and the offshore's the same.
 - The 12-month figures are each state's own last 12 complete months, so a spud-counting state's window ends two months before a permit-counting state's.
 - The tile map is a cartogram, not geography: no state outlines are loaded (no external requests).
