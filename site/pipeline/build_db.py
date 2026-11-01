@@ -21,6 +21,8 @@ Two layers, so nothing is lost and common questions are easy:
     companies               the Texas Comptroller's company pool as published here
     daily_reports, daily_permits      the Daily reports by state and day, and each Texas permit row of those days
     tx_image_packs          the three Texas image packs by day: size, documents and kinds
+    wells, well_documents, well_packs     the Texas well-image archive (d12_wells.py): each well (API number) with its county, district, field and operator, every scanned document tied to a
+                            well (stage, kind, pages, bytes, the GitHub release it is a file of, and the address of the document and of its page-one picture), and the packs read (documents held, tied, not tied)
     metrics, field_states, field_cells, field_sources     the matrix of what each agency's permit captures (when permit-fields.json exists)
   views                     v_permits_by_month (permits and spuds kept apart), v_latest_12_months
 
@@ -64,6 +66,10 @@ CREATE TABLE daily_reports(state TEXT, day TEXT, kind TEXT, status TEXT, permits
 CREATE TABLE daily_permits(state TEXT, day TEXT, permit TEXT, county TEXT, district TEXT, operator_num TEXT, operator TEXT, depth_ft INTEGER, direction TEXT, api TEXT,
   lat REAL, lon REAL, documents TEXT);
 CREATE TABLE tx_image_packs(day TEXT, pack TEXT, pack_day TEXT, bytes INTEGER, modified TEXT, is_empty INTEGER, documents INTEGER, kinds TEXT, PRIMARY KEY(day, pack));
+CREATE TABLE wells(api TEXT PRIMARY KEY, county TEXT, county_name TEXT, district TEXT, field TEXT, operator_num TEXT, operator TEXT, documents INTEGER);
+CREATE TABLE well_documents(api TEXT, stage TEXT, kind TEXT, day TEXT, pages INTEGER, bytes INTEGER, ext TEXT, file TEXT, release_tag TEXT, has_preview INTEGER, url TEXT, preview_url TEXT, PRIMARY KEY(release_tag, file));
+CREATE TABLE well_packs(day TEXT, pack TEXT, name TEXT, bytes INTEGER, documents INTEGER, tied INTEGER, untied INTEGER, rejected INTEGER, wells INTEGER, PRIMARY KEY(day, pack));
+CREATE INDEX i_wd ON well_documents(api);
 CREATE TABLE metrics(key TEXT PRIMARY KEY, grp TEXT, label TEXT, help TEXT);
 CREATE TABLE field_states(state TEXT PRIMARY KEY, name TEXT, agency TEXT, agency_url TEXT, grade TEXT, grade_reason TEXT, form_name TEXT, form_number TEXT, form_url TEXT,
   form_read INTEGER, producer_plan TEXT, researched TEXT);
@@ -228,6 +234,30 @@ def load_daily(db, data):
     return nrep, nrows
 
 
+def load_wells(db, data):
+    """The well-image archive: wells, the documents tied to them (with their addresses on GitHub) and the packs they came from. Nothing when the index does not exist yet."""
+    p = os.path.join(data, "wells", "index.json")
+    if not os.path.exists(p):
+        return 0, 0
+    idx = jload(p)
+    repo = idx.get("repo")
+    stage = {"p": "permit", "d": "drilling", "c": "completion"}
+    db.executemany("INSERT INTO well_packs VALUES (?,?,?,?,?,?,?,?,?)", [(u["d"], u["p"], u.get("name"), u.get("bytes"), u.get("docs"), u.get("tied"), u.get("untied"), u.get("rejected"), u.get("wells")) for u in idx.get("units", [])])
+    nw = nd = 0
+    for path in sorted(glob.glob(os.path.join(data, "wells", "county", "*.json"))):
+        sh = jload(path)
+        for w in sh["wells"]:
+            db.execute("INSERT INTO wells VALUES (?,?,?,?,?,?,?,?)", (w["a"], sh["county"], sh.get("name"), w.get("di"), w.get("fl"), w.get("o"), w.get("on"), len(w["docs"])))
+            nw += 1
+            for x in w["docs"]:
+                tag = sh["tags"][x["t"]]
+                base = "https://github.com/%s/releases/download/%s/%s." % (repo, tag, x["f"])
+                db.execute("INSERT INTO well_documents VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (w["a"], stage.get(x["s"], x["s"]), x["k"], x["d"], num(x.get("pg")), x["b"], x["x"], x["f"], tag, 1 if x.get("v") else 0,
+                                                                                         base + x["x"], base + "jpg" if x.get("v") else None))
+                nd += 1
+    return nw, nd
+
+
 def load_fields(db, data):
     p = os.path.join(data, "permit-fields.json")
     if not os.path.exists(p):
@@ -266,10 +296,11 @@ def build(out=DEFAULT_OUT, data=DATA, now=None):
         load_points(db, data)
         load_companies(db, data)
         nrep, nrows = load_daily(db, data)
+        nwells, nwdocs = load_wells(db, data)
         nfields = load_fields(db, data)
         stamp = (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
         db.executemany("INSERT INTO meta VALUES (?,?)", [("built", stamp), ("source", "site/public/data (committed files)"), ("documents", str(ndocs)), ("series_rows", str(nseries)),
-                                                          ("daily_reports", str(nrep)), ("daily_permit_rows", str(nrows)), ("field_states", str(nfields)),
+                                                          ("daily_reports", str(nrep)), ("daily_permit_rows", str(nrows)), ("wells", str(nwells)), ("well_documents", str(nwdocs)), ("field_states", str(nfields)),
                                                           ("note", "Counts of different measures (permits approved, wells spudded) are never added: see jurisdictions.measure.")])
         db.commit()
         ok = db.execute("PRAGMA integrity_check").fetchone()[0]
@@ -312,6 +343,9 @@ def check(out):
             want = sum(1 for s in d["states"] for v in s["bands"].values() if v is not None for x in v if x is not None)
             if db.execute("SELECT COUNT(*) FROM national_months").fetchone()[0] != want:
                 p.append("national_months does not match national.json")
+        wdocs = sum(sum(len(w["docs"]) for w in json.loads(t)["wells"]) for (t,) in db.execute("SELECT json FROM documents WHERE path GLOB 'wells/county/*.json'"))
+        if db.execute("SELECT COUNT(*) FROM well_documents").fetchone()[0] != wdocs:
+            p.append("well_documents does not match the county files")
         ndaily = db.execute("SELECT COUNT(*) FROM documents WHERE path GLOB 'daily*/????-??-??.json'").fetchone()[0]
         if db.execute("SELECT COUNT(*) FROM daily_reports").fetchone()[0] != ndaily:
             p.append("daily_reports does not match the day files")

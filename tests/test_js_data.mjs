@@ -289,5 +289,55 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(real.order.every((id) => Fd.stateScore(real, id).total === real.metrics.length) && real.order.every((id) => Fd.stateScore(real, id).data + Fd.stateScore(real, id).query + Fd.stateScore(real, id).form + Fd.stateScore(real, id).none + Fd.stateScore(real, id).unknown === 48), 'fields: every committed state answers all 48 metrics');
 }
 
+/* ---------- wells-data.js ---------- */
+{
+  const Wd = await imp('wells-data.js');
+  check(Wd.apiText('28337830') === '42-283-37830' && Wd.apiText('00335757') === '42-003-35757', 'wells: an API number is written the way the Commission writes it (42, county, well)');
+  const ok = (t, api8, county) => { const r = Wd.parseApi(t); return r && r.api8 === api8 && r.county === county; };
+  check(ok('42-283-37830', '28337830', '283') && ok('4228337830', '28337830', '283') && ok('28337830', '28337830', '283') && ok(' 283-37830 ', '28337830', '283') && ok('42-283-37830-00-00', '28337830', '283'), 'wells: an API number is read with or without the 42, the dashes and the sidetrack digits');
+  check(ok('283', null, '283') && ok('42-283', null, '283') && ok('283-37', null, '283') && Wd.parseApi('28') === null && Wd.parseApi('abc') === null && Wd.parseApi('') === null && Wd.parseApi(null) === null, 'wells: the start of a number gives a county and no well; too little, or no digits, gives nothing');
+  const U = (repo, tag, stem, ext) => Wd.assetUrl(repo, tag, stem, ext);
+  check(U('o/r', 'wells-2026-10-29-ci-01', '28337830_c1', 'pdf') === 'https://github.com/o/r/releases/download/wells-2026-10-29-ci-01/28337830_c1.pdf' && U('o/r', 'wells-2026-10-29-w1-02', '28337830_p12', 'jpg') !== null, 'wells: a document and its picture are addressed on the repository\'s releases');
+  check([U('o/r/x', 'wells-2026-10-29-ci-01', '28337830_c1', 'pdf'), U('o/r', 'daily-2026-10-29', '28337830_c1', 'pdf'), U('o/r', 'wells-2026-10-29-ci-01', '../x', 'pdf'), U('o/r', 'wells-2026-10-29-ci-01', '28337830_c1', 'html'), U('o r', 'wells-2026-10-29-ci-01', '28337830_c1', 'pdf'), U('', 'wells-2026-10-29-ci-01', '28337830_c1', 'pdf'), U('o/r', 'wells-2026-10-29-ci-01/../../x', '28337830_c1', 'pdf'), U('javascript:alert(1)//a/b', 'wells-2026-10-29-ci-01', '28337830_c1', 'pdf')].every((x) => x === null), 'wells: anything in the data that is not what the producer writes builds no address');
+  const shard = { county: '283', name: 'La Salle', tags: ['wells-2026-10-28-ci-01', 'wells-2026-10-29-ci-01'], wells: [
+    { a: '28337830', fl: 'EAGLEVILLE (EAGLE FORD-1)', di: '01', o: '102886', on: 'VERDUN OIL EF II LLC', docs: [
+      { d: '2026-10-29', s: 'c', k: 'W-2 form', pg: 3, b: 24000, x: 'pdf', f: '28337830_c2', t: 1, v: 1 },
+      { d: '2026-10-29', s: 'c', k: 'Plat', pg: null, b: 4200000, x: 'tif', f: '28337830_c1', t: 1, v: 0 },
+      { d: '2026-10-28', s: 'p', k: 'Approved W-1', pg: 1, b: 9000, x: 'pdf', f: '28337830_p1', t: 0, v: 1 }] },
+    { a: '28300001', fl: null, di: null, o: '999999', on: null, docs: [{ d: '2026-10-28', s: 'd', k: 'Directional survey', pg: 40, b: 800000, x: 'pdf', f: '28300001_d1', t: 0, v: 1 }] },
+    { a: '28300002', fl: 'PHANTOM (WOLFCAMP)', di: '08', o: '102886', on: 'VERDUN OIL EF II LLC', docs: [{ d: '2026-10-28', s: 'c', k: 'P-4 form', pg: 1, b: 7000, x: 'pdf', f: '28300002_c1', t: 0, v: 1 }] }] };
+  const well = shard.wells[0];
+  const docs = Wd.docsOf('o/r', shard, well);
+  check(docs[0].file === 'https://github.com/o/r/releases/download/wells-2026-10-29-ci-01/28337830_c2.pdf' && docs[0].preview.endsWith('/28337830_c2.jpg') && docs[1].preview === null && docs[1].file.endsWith('.tif') && docs[2].file.includes('wells-2026-10-28-ci-01'),
+    'wells: each document has its address, and a picture only when one was drawn');
+  const st = Wd.byStage(docs);
+  check(st.map((x) => x.stage).join() === 'p,d,c' && st[0].docs.length === 1 && st[1].docs.length === 0 && st[2].docs.length === 2 && st[2].docs[0].f === '28337830_c1', 'wells: the stages run permit, drilling, completion; a stage with nothing is an empty list, not missing; a day\'s documents are in a fixed order');
+  const sm = Wd.summary(well);
+  check(sm.docs === 3 && sm.n.p === 1 && sm.n.d === 0 && sm.n.c === 2 && sm.bytes === 4233000 && sm.newest === '2026-10-29', 'wells: a well\'s summary counts its documents by stage, its bytes and its newest day');
+  check(Wd.docMeta(docs[0]) === '3 pages · 24 KB' && Wd.docMeta({ pg: 2, b: 300 }) === '2 pages · 1 KB' && Wd.docMeta({ pg: 1, b: 4200000 }) === '1 page · 4.2 MB', 'wells: a document says its pages and size, in KB under a megabyte (never "0.0 MB")');
+  check(Wd.docMeta(docs[1]) === Wd.sizeText(4.2) && !/page/.test(Wd.docMeta(docs[1])) && !/ 0 /.test(Wd.docMeta(docs[1])), 'wells: a file whose pages could not be counted says no page count, never 0 pages');
+  check(Wd.docMeta({ pg: 1, b: 9000 }).startsWith('1 page · '), 'wells: one page is "1 page"');
+  const names = (t) => Wd.matchWells(shard.wells, t).map((w) => w.a).join();
+  check(names('') === '28337830,28300001,28300002' && names('283378') === '28337830' && names('37830') === '28337830' && names('283') === '28337830,28300001,28300002' && names('wolfcamp') === '28300002' && names('verdun') === '28337830,28300002' && names('999999') === '28300001' && names('district 08') === '28300002' && names('zzz') === '', 'wells: a search matches the start of an API number or of its own part, a field, an operator\'s name or number, or a district');
+  check(Wd.rank(shard.wells).map((w) => w.a).join() === '28337830,28300001,28300002', 'wells: the wells with the most documents come first, then by API number');
+  const idx = { repo: 'o/r', keepDays: 92, counties: [['283', 'La Salle', 3, 5], ['389', 'Reeves', 20, 100], ['003', 'Andrews', 20, 90]], totals: { wells: 43, docs: 195, bytes: 5000000000, stages: { p: 1, d: 1, c: 1 } },
+    units: [{ d: '2026-10-29', p: 'ci', docs: 10, tied: 9, untied: 1, rejected: 0, wells: 4 }, { d: '2026-10-28', p: 'w1', docs: 5, tied: 5, untied: 0, rejected: 0, wells: 5 }] };
+  check(Wd.countyChoices(idx).map((c) => c.fips).join() === '003,389,283', 'wells: the counties are listed most wells first, ties by name');
+  check(same(Wd.tieLine(idx, '2026-10-29', 'ci'), { docs: 10, tied: 9, untied: 1, rejected: 0, wells: 4 }) && Wd.tieLine(idx, '2026-10-29', 'ds') === null && Wd.tieLine(idx, '2020-01-01', 'ci') === null, 'wells: what a pack held and tied is read from the index, and a pack not in the archive is null, not zero');
+  const hl = Wd.headline(idx);
+  check(hl.wells === 43 && hl.docs === 195 && hl.counties === 3 && hl.newest === '2026-10-29' && hl.oldest === '2026-10-28', 'wells: the headline is the totals and the days the archive covers');
+  check(Wd.headline(null) === null && Wd.headline({ totals: { wells: 0, docs: 0 }, units: [] }) === null && Wd.headline({}) === null, 'wells: an empty or missing archive has no headline');
+  check(Wd.RRC_LOOKUPS.length === 3 && Wd.RRC_LOOKUPS.every((l) => /^https:\/\/(webapps2?|rrcsearch3)\.(rrc\.texas\.gov|neubus\.com)\//.test(l.href) && !/\d{8}/.test(l.href)), 'wells: the Commission\'s look-up forms are linked without any API number in the address (it has none that opens one document)');
+  check(Wd.STAGE_ORDER.every((k) => Wd.blurb(k).length > 20), 'wells: each stage has the same plain-words blurb as the images page');
+  // the committed index and county files, whatever they hold, read cleanly
+  const real = read('wells/index');
+  check(real.repo === 'ether314/texas-oil-gas-leads' && Array.isArray(real.units) && real.counties.length === Wd.countyChoices(real).length, 'wells: the committed index names the repository and lists its counties');
+  for (const [fips] of real.counties) {
+    const sh = read('wells/county/' + fips);
+    const bad = sh.wells.flatMap((w) => Wd.docsOf(real.repo, sh, w)).filter((x) => !x.file || (x.v && !x.preview));
+    check(!bad.length, 'wells: every document in county ' + fips + ' has an address');
+  }
+}
+
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
 process.exit(fails ? 1 : 0);

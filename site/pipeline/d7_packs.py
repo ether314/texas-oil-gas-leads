@@ -13,8 +13,9 @@ draw the sheet; without either the counts are still produced and the sheet is sk
 
 The one exception, decided on 2026-10-31 and recorded in the README: with --publish-docs the W-1 and survey packs are also
 staged readable (stage_pack, below) so d7_release.py can attach them to a GitHub release and each drill's page can link
-to its own filings. Completion images are never staged. Widened on 2026-11-01 (README, Privacy): each staged document also gets
+to its own filings. Widened on 2026-11-01 (README, Privacy): each staged document also gets
 a readable JPEG of its page one (render_preview, below), a file of the same release that the Texas images view shows inline.
+This module stages only what the drill pages link to; every document of all three packs, completion images included, is published under its well by d12_wells.py.
 
 The pack is untrusted data. Members are read one at a time, capped in size, rendered under a timeout and never run.
 Python standard library, plus Pillow and pdftoppm when a sheet is wanted.
@@ -221,7 +222,7 @@ def inspect_pack(zip_path, ds, sheet_path, log=print):
 # Decided 2026-10-31 (README, Privacy): the approved W-1 letters, permit plats and directional surveys are republished
 # readable, unmodified, as files of one GitHub release a day (d7_release.py), and each drill's page links to its own. They are the
 # RRC's public records but can carry the names, phone numbers and addresses of individuals, and nothing here redacts them.
-# Completion images are not published (the contact sheet above stays blurred). Only run when asked (--publish-docs).
+# This staging is only for the drill pages' links (d12_wells.py publishes every document of the three packs under its well); the contact sheet above stays blurred. Only run when asked (--publish-docs).
 #
 # Decided 2026-11-01 (README, Privacy): page one of each of those documents is also published as a readable JPEG, <document>.jpg
 # (render_preview, Previewer below), so the Texas images view can show it inline. It is the same page the Commission publishes,
@@ -450,7 +451,7 @@ def stage_surveys(zf, docs, out_dir, log=print, previewer=None):
 
 def stage_pack(zip_path, ds, out_dir, log=print, previews=False, deadline=None):
     """Copy the publishable documents of a pack into out_dir. {'permits': ...} for the W-1 pack, {'surveys': ...} for the survey
-    pack, None for any other (completion images are never published). With previews=True each document also gets a readable JPEG of
+    pack, None for any other (completion images are published by d12_wells.py, not here). With previews=True each document also gets a readable JPEG of
     its page one beside it (<document>.jpg, see Previewer) and the result adds 'previews': the names drawn, sorted ([] when the tools
     are missing or none could be drawn); `deadline` is a time.time() value after which no preview is started."""
     if ds not in ("w1images", "dirsurveys"):

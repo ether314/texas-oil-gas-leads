@@ -80,7 +80,7 @@ request returns the whole file with status 200), so a pack can only be read whol
 | directional surveys (28 MB) | 57 PDFs `dir_survey_<id>.pdf` and one CSV | directional survey 57 |
 | completion images (306 MB) | 908 files in 123 `<district>/trackingNo_<n>_Images_Submitted/` folders: the forms the system makes (`cmpl_<Form>Form_PID_<n>.pdf`) and whatever the operator attached | W-2 87, P-4 71, L-1 63, G-1 36, other forms 43; well logs 87, W-15 cementing reports 89, plats 49, P-16 43, surveys 60, other attachments 274 |
 
-**What is published, and what is not.** `images[<pack>].docs` is the document count, the counts by kind (`types`, largest
+**What the Daily report publishes, and what it does not** (the documents themselves are `NOTES_D12.md`'s). `images[<pack>].docs` is the document count, the counts by kind (`types`, largest
 first, `Other` last, adding up to `n`) and, for completions, the number of packets. `images[<pack>].sheet` names one JPEG,
 `img/<day>-<pack>.jpg`: page one of up to 16 documents, one kind after another (chosen by a hash of the name, so the same
 whatever the zip's order), each tile **112 px wide and blurred (Gaussian radius 1.2)**, 22-29 KB, 1-3 s to draw. The layout
@@ -136,7 +136,7 @@ than the oldest kept day).
 a local run with an authenticated gh never publishes by accident. Only the live day gets files (a pack is 30-450 MB, and a rebuilt
 day would be 92 of them). Staging copies a member only if it is under 40 MB and starts with the PDF or TIFF signature, under a name
 this code makes up, never the pack's. Only permits in the report's rows are uploaded (36 of the pack's 74 on 2026-10-29; the
-others are amendments with no page). Completion images are never published.
+others are amendments with no page). Completion images are not published here: from 2026-11-01 `d12_wells.py` publishes every document of all three packs, completion images included, under its well (`NOTES_D12.md`).
 
 **The privacy decision.** The filings are the RRC's public records, but a W-1 letter and a plat can carry the names, phone numbers
 and addresses of individuals, which the README's rule used to exclude. The repository's owner chose on 2026-10-31 to publish them
@@ -154,7 +154,7 @@ and a zoomed one takes the drag. Checked in a browser: 36 dots and 57 diamonds, 
 ## Readable previews (added 2026-11-01)
 
 **Decision.** The owner widened the privacy exception on 2026-11-01 (README, Privacy; CLAUDE.md, Guardrails): the Texas W-1 letters, plats and directional surveys that are already published readable are also *shown*, as a readable JPEG of page one.
-The page's Content-Security-Policy allows `https://github.com` and `https://*.githubusercontent.com` in `img-src` for it (and nothing else changed). Completion images are not part of this and stay blurred and unpublished; Oklahoma's documents are never published.
+The page's Content-Security-Policy allows `https://github.com` and `https://*.githubusercontent.com` in `img-src` for it (and nothing else changed). Completion images are not part of this: `d12_wells.py` publishes them, and every other document of the three packs, under their wells (`NOTES_D12.md`); Oklahoma's documents are never published.
 
 **Drawing (`d7_packs.py`).** `render_preview(src, dest)` draws page one of a staged document: `pdftoppm -f 1 -l 1 -scale-to-x 900` (a TIFF through Pillow), grayscale unless the page has color in it (more than 0.1% of its pixels with channels over 24 apart: a red stamp keeps its color),
 progressive JPEG at quality 60 with no metadata, recompressed (quality 52, 44, 36, then widths 750 and 600) until it is at most 200 KB, and refused with no half-written file when nothing fits. The safe machinery is the contact sheet's: the document was already copied

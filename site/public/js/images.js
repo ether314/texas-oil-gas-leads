@@ -1,23 +1,30 @@
 // The Texas images view: the scanned filings the Railroad Commission publishes about each well, as three packs a business day. What a well leaves behind as images,
 // by stage of its life (permit, drilling, completion), how much arrives each day, and, for any day, what its packs hold and which permits' filings are published.
-// Data: the Daily archive's index and day files (d7_daily.py); nothing new is read here.
+// Data: the Daily archive's index and day files (d7_daily.py), and above them the well finder (wells.js: every document of the packs, tied to its well by d12_wells.py).
 import { el, svg, load, loadOpt, fmt, fmtDate } from './util.js';
 import { icon } from './icons.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { niceMax } from './national-data.js';
 import * as I from './images-data.js';
 import { previewGrid } from './previews.js';
+import { createWellsPanel } from './wells.js';
+import { tieLine } from './wells-data.js';
 
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
 const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const short = (iso) => MONTH[+iso.slice(5, 7) - 1] + ' ' + +iso.slice(8);
 
 export function createImagesView({ root }) {
-  let rows = []; let started = false; let day = null; let latest = {}; // latest: the newest day each pack was counted by kind, {pack: {day, p}}
+  let rows = []; let building = null; let day = null; let latest = {}; // latest: the newest day each pack was counted by kind, {pack: {day, p}}
   const slots = {};
+  const wells = createWellsPanel();
+  let wantedDay;
 
+  // the day goes into the address beside whatever else it holds (a well, a county)
   function writeHash() {
-    const next = '#images' + (day ? '?d=' + day : '');
+    const q = new URLSearchParams(location.hash.split('?')[1] || '');
+    if (day) q.set('d', day); else q.delete('d');
+    const next = '#images' + (q.toString() ? '?' + q : '');
     if (location.hash !== next) history.replaceState(null, '', next);
   }
 
@@ -89,7 +96,13 @@ export function createImagesView({ root }) {
   }
 
   /* ---------- one day ---------- */
-  function dayPanel(file, d) {
+  const CODE = { w1images: 'w1', dirsurveys: 'ds', complimages: 'ci' };
+  function tieNote(p, wi) {
+    const t = wi && p.packDay ? tieLine(wi, p.packDay, CODE[p.id]) : null;
+    if (!t) return null;
+    return el('p', { class: 'fine', text: t.tied ? fmt.format(t.tied) + ' of its ' + fmt.format(t.docs) + ' documents are published under ' + fmt.format(t.wells) + ' wells (Find a well, above).' + (t.untied ? ' ' + fmt.format(t.untied) + ' could not be tied to a well and are not published.' : '') : 'None of its ' + fmt.format(t.docs) + ' documents could be tied to a well, so none is published.' });
+  }
+  function dayPanel(file, d, wi) {
     const packs = I.packsOf(file);
     const filed = I.filedPermits(file);
     const rel = file && file.release;
@@ -100,6 +113,7 @@ export function createImagesView({ root }) {
         el('h3', {}, p.label, el('span', { class: 'badge', text: I.bytesText(p.bytes) })),
         p.empty ? el('p', { class: 'nd', text: 'The pack was listed empty.' }) : null,
         p.kinds ? el('ul', { class: 'img-kinds compact' }, p.kinds.map((k) => el('li', {}, el('span', { class: 'img-kn', text: k.k, title: I.kindInfo(k.k) }), el('span', { class: 'img-kv', text: fmt.format(k.n) })))) : el('p', { class: 'fine', text: 'Documents are counted by kind only for days captured live.' }),
+        tieNote(p, wi),
         p.districts.length ? el('div', { class: 'nat-list' }, el('h4', { text: 'Size by RRC district' }), el('ul', {}, p.districts.slice(0, 8).map((x) => {
           const bar = el('i', { class: 'nat-lb' }); bar.style.setProperty('--p', String(x.bytes / top));
           return el('li', {}, el('span', { class: 'nat-ln', text: 'District ' + x.d }), el('span', { class: 'nat-lt' }, bar), el('span', { class: 'nat-lv', text: I.bytesText(x.bytes) }));
@@ -129,18 +143,19 @@ export function createImagesView({ root }) {
     if (!day) { slots.day.replaceChildren(el('p', { class: 'nd', text: 'No day with a pack yet.' })); return; }
     slots.day.replaceChildren(el('p', { class: 'status', text: 'Loading ' + fmtDate(day) + '…' }));
     const mine = day;
-    const file = await loadOpt('daily/' + day);
+    const [file, wi] = await Promise.all([loadOpt('daily/' + day), loadOpt('wells/index')]);
     if (mine !== day) return; // another day was chosen meanwhile
     slots.dayHead.textContent = fmtDate(day);
-    slots.day.replaceChildren(file ? dayPanel(file, day) : el('p', { class: 'nd', text: 'The report for this day could not be loaded.' }));
+    slots.day.replaceChildren(file ? dayPanel(file, day, wi) : el('p', { class: 'nd', text: 'The report for this day could not be loaded.' }));
     if (!fromHash) writeHash();
   }
 
   async function build() {
-    root.replaceChildren(el('p', { class: 'status', text: 'Loading the image archive…' }));
+    slots.rest = el('div', { class: 'stack' }, el('p', { class: 'status', text: 'Loading the image archive…' }));
+    root.replaceChildren(el('div', { class: 'stack' }, wells.node, slots.rest));
     let index;
     try { index = await load('daily/index'); } catch (e) {
-      root.replaceChildren(el('div', { class: 'fail' }, el('p', { text: 'Could not load the archive. Reload the page to try again.' })));
+      slots.rest.replaceChildren(el('div', { class: 'fail' }, el('p', { text: 'Could not load the day-by-day archive. Reload the page to try again.' })));
       return false;
     }
     rows = I.daySeries(index);
@@ -152,15 +167,19 @@ export function createImagesView({ root }) {
     }
     slots.day = el('div', {}); slots.dayHead = el('h2', { text: '' });
     const dayBox = el('section', { class: 'card nat-card reveal is-in', 'aria-live': 'polite' }, el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'One day'), slots.dayHead, el('p', { class: 'sub', text: 'What the three packs of this report day hold.' }))), slots.day);
-    root.replaceChildren(el('div', { class: 'stack' }, figures(), lifeCard(), dayCard(), dayBox,
-      el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; the permit letters, plats and surveys themselves are published readable: page one of each shows here and on its drill page in the Daily report, and the whole document is linked.' })));
+    slots.rest.replaceChildren(figures(), lifeCard(), dayCard(), dayBox,
+      el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; every document itself is published readable and unmodified under its well (Find a well, above), and can carry the names, phone numbers and addresses of individuals. A day’s permit letters, plats and surveys also show page one here and on their drill page in the Daily report.' }));
     return true;
   }
   return {
     async activate(params) {
-      if (!started) { started = true; if (!(await build())) { started = false; return; } }
-      await choose(params && params.get('d'), { fromHash: true });
+      const well = wells.show({ well: params && params.get('well'), c: params && params.get('c'), q: params && params.get('q') });
+      if (!building) building = build().then((ok) => { if (!ok) building = null; else wantedDay = undefined; return ok; });
+      if (!(await building)) { await well; return; }
+      const want = (params && params.get('d')) || null;
+      if (want !== wantedDay || !day) { wantedDay = want; await choose(want, { fromHash: true }); } // a well or a county chosen does not reload the day
+      await well;
     },
-    deactivate() { hideTip(); },
+    deactivate() { hideTip(); wells.hide(); },
   };
 }
