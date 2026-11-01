@@ -219,5 +219,33 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(nat.states.every((s) => Nt.change(s) === null || isFinite(Nt.change(s))) && Nt.stack(nat, 'permits').series.length >= 1, 'national: the committed file draws a stack with finite changes');
 }
 
+/* ---------- images-data.js ---------- */
+{
+  const Im = await imp('images-data.js');
+  const rows = Im.daySeries({ days: [{ d: '2026-10-29', k: 'reconstructed', w1: 54.1, ds: 41.6, cm: 361.8 }, { d: '2026-10-30', k: 'live', w1: 31.2, ds: 27.0, cm: 306.0 }, { d: '2026-10-31', k: 'live', w1: null, ds: 39.3, cm: 446.8 }, { d: '2026-11-01', k: 'live', w1: null, ds: null, cm: null }] });
+  check(rows[2].w1images === null && rows[1].live === true && rows[0].live === false, 'images: a pack not listed for a day is null, never zero');
+  check(Math.abs(Im.dayTotal(rows[1]) - 364.2) < 1e-9 && Im.dayTotal(rows[2]) === 39.3 + 446.8 && Im.havePacks(rows[2]) && !Im.havePacks(rows[3]), 'images: a day\'s total adds the packs it has; a day with none has no packs');
+  const sm = Im.summary(rows);
+  check(sm.withPacks === 3 && sm.peak.d === '2026-10-31' && Math.abs(sm.avgMB - (457.5 + 364.2 + 486.1) / 3) < 1e-9, 'images: the summary averages only the days that had a pack and names the busiest');
+  check(Im.summary([]).avgMB === null && Im.summary([]).peak === null, 'images: an empty archive has no average and no busiest day');
+  check(Im.sizeText(null) === '—' && Im.sizeText(5.25) === '5.3 MB' && Im.sizeText(54.1) === '54 MB' && Im.sizeText(1500) === '1.50 GB' && Im.bytesText(32673628) === '33 MB', 'images: sizes read as MB or GB, and a missing size as a dash');
+  const day = { images: { w1images: { day: '2026-10-29', bytes: 100, districts: [['08', 60], ['03', 40]], docs: { n: 168, types: [['Permit plat', 94], ['Approved W-1', 74]], packets: null }, sheet: { file: 'a.jpg' } }, dirsurveys: null, complimages: { bytes: 5, empty: true, docs: null } },
+    permits: { rows: [['0919696', '301', '08', '1', 'X LLC', 100, 'H', null, null, null, ['W1.pdf', 'Plat_1.pdf']], ['0919697', '301', '08', '1', null, 100, 'H']] } };
+  const pk = Im.packsOf(day);
+  check(pk[0].present && pk[0].n === 168 && pk[0].kinds[0].k === 'Permit plat' && pk[0].districts[0].d === '08' && pk[0].sheet === 'a.jpg' && !pk[1].present && pk[2].present && pk[2].kinds === null && pk[2].empty === true, 'images: a day file\'s packs: documents by kind, districts, sheet; a missing pack and a pack with no counts are told apart');
+  check(Im.packsOf(null).every((p) => !p.present) && Im.packsOf({}).length === 3, 'images: no day file means no packs, not an error');
+  const f = Im.filedPermits(day);
+  check(f.length === 1 && f[0].permit === '0919696' && Im.fileKind('W1.pdf') === 'W-1 letter' && Im.fileKind('Plat_1.pdf') === 'plat' && Im.fileKind('survey_5.pdf') === 'survey', 'images: only permits whose files are published are listed, and files are named by kind');
+  const lc = Im.lifecycle(pk);
+  check(lc.map((s) => s.id).join() === 'permit,drilling,completion' && lc[0].n === 168 && lc[1].present === false && lc[1].kinds === null, 'images: the lifecycle has three stages, in order, and a stage with no pack has no kinds');
+  check(Im.liveCandidates(rows).join() === '2026-11-01,2026-10-31,2026-10-30', 'images: live days are tried newest first');
+  check(Im.PACKS.every((p) => Im.STAGES.some((s) => s.pack === p.id)) && Object.keys(Im.KIND_INFO).length >= 14 && Im.kindInfo('Well log').length > 10 && Im.kindInfo('nothing') === '', 'images: every pack has a stage, and the kinds are described');
+  const idx = read('daily/index');
+  const real = Im.daySeries(idx);
+  const kinds = new Set();
+  for (const d of idx.days.filter((x) => x.k === 'live')) for (const p of Im.packsOf(read('daily/' + d.d))) (p.kinds || []).forEach((k) => kinds.add(k.k));
+  check(real.length === idx.days.length && [...kinds].every((k) => Im.KIND_INFO[k]), 'images: every kind in the committed live days has a description (' + [...kinds].filter((k) => !Im.KIND_INFO[k]).join(', ') + ')');
+}
+
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
 process.exit(fails ? 1 : 0);

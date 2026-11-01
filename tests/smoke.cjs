@@ -47,6 +47,8 @@ const VIEWS = [
   ['#daily?st=nm&v=full', '#daily-root .dr-sec'],
   ['#oklahoma', '#daily-root .dr-hero', async (page) => (/st=ok/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open #daily?st=ok')],
   ['#about', '#view-about h1'],
+  ['#images', '#images-root .img-stage', async (page) => ((await page.locator('#images-root .img-stage').count()) === 3 ? null : 'the images view should show the three stages of a well')],
+  ['#images?d=2026-10-30', '#images-root .img-pack', async (page) => ((await page.locator('#images-root .img-pack').count()) === 3 ? null : 'a day should show its three packs')],
   ['#national', '#national-root button.nat-tile', async (page) => ((await page.locator('#national-root button.nat-tile').count()) === 35 ? null : 'the national tile map should have one button for each of the 35 jurisdictions')],
   ['#national?s=NM&m=spuds', '#national-root .nat-panel h3', async (page) => (/New Mexico/.test(await page.locator('#national-root .nat-panel h3').first().innerText()) ? null : 'an address naming New Mexico should open its panel')],
 ];
@@ -811,6 +813,36 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the national report: ' + e.message.split('\n')[0].slice(0, 200));
     }
     check(!errs.length, 'the national report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // the Texas images view: the chart's days, the day list, a day's three packs, no NaN
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    try {
+      await page.goto(base + '#images', { waitUntil: 'load' });
+      await page.waitForSelector('#images-root .img-pack', { timeout: 25000 });
+      check((await page.locator('#images-root .nat-hit').count()) >= 60, 'the day-by-day chart has a column for each report day');
+      const options = await page.locator('#images-root select.img-day option').count();
+      check(options >= 60, 'the day list holds the days that had a pack (' + options + ')');
+      const first = await page.locator('#images-root select.img-day option').nth(options - 1).getAttribute('value');
+      await page.selectOption('#images-root select.img-day', first);
+      await page.waitForFunction((d) => location.hash.includes('d=' + d), first, { timeout: 10000 });
+      check(/\d+(\.\d)? MB|GB/.test(await page.locator('#images-root .img-pack').first().innerText()) || /No pack listed/.test(await page.locator('#images-root .img-pack').first().innerText()), 'choosing a day shows its packs and puts the day in the address');
+      const imgs = await page.evaluate(() => [...document.querySelectorAll('#images-root img')].map((i) => ({ ok: i.complete && i.naturalWidth > 0, src: i.getAttribute('src') })));
+      check(imgs.every((i) => i.ok) && imgs.every((i) => /^data\/daily\/img\//.test(i.src)), 'any contact sheet on the page loaded, from the site itself (' + imgs.length + ')');
+      const text = await page.locator('#view-images').innerText();
+      check(!/NaN|undefined|Infinity|\bnull\b/.test(text), 'the images view shows no NaN, undefined, null or Infinity');
+      check(/Not counted by kind yet|documents/.test(text), 'the stages say what is counted, or that it is not yet');
+    } catch (e) {
+      check(false, 'the Texas images view: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the Texas images view loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

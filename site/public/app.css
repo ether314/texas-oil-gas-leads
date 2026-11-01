@@ -1070,6 +1070,32 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
   .nat-mixrows .nat-mn { grid-area: n; } .nat-mixrows .nat-mv { grid-area: v; } .nat-mixrows .nat-mix { grid-area: b; }
 }
 
+/* ---------- Texas images ---------- */
+.img-life { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-5); margin: var(--sp-4) 0 0; padding: 0; list-style: none; counter-reset: stage; }
+.img-stage { min-width: 0; padding: var(--sp-5); border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
+.img-st-head { display: flex; align-items: center; gap: var(--sp-3); }
+.img-num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--page); font-size: var(--fs-sm); font-weight: 700; }
+.img-blurb { margin: var(--sp-2) 0 var(--sp-3); font-size: var(--fs-sm); color: var(--ink-2); }
+.img-kinds { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-2); }
+.img-kinds li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--sp-3); align-items: baseline; }
+.img-kn { font-weight: 620; font-size: var(--fs-md); }
+.img-kv { font-weight: 700; font-variant-numeric: tabular-nums; }
+.img-kinds small { grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--ink-2); }
+.img-kinds.compact li { grid-template-columns: minmax(0, 1fr) auto; }
+.img-kinds.compact .img-kn { font-weight: 560; font-size: var(--fs-sm); }
+.img-day { max-width: 100%; }
+.img-day-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-5); margin-top: var(--sp-3); }
+.img-pack { min-width: 0; padding: var(--sp-4); border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); display: grid; align-content: start; gap: var(--sp-3); }
+.img-pack h3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.img-sheet { margin: 0; }
+.img-sheet img { display: block; width: 100%; height: auto; border-radius: var(--r-xs); box-shadow: 0 0 0 1px var(--border); }
+.img-sheet figcaption { margin-top: var(--sp-1); }
+.img-files { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--fs-sm); }
+.img-files a { display: inline-flex; align-items: center; min-height: 24px; }
+.img-files small { color: var(--ink-2); }
+.nat-bar-seg.on { stroke: var(--ink); stroke-width: 1.5; }
+@media (max-width: 860px) { .img-life { grid-template-columns: minmax(0, 1fr); } }
+
 @media print {
   :root, :root[data-theme="dark"] { color-scheme: light; }
   @page { margin: 0.55in; }
