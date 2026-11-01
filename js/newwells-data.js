@@ -180,6 +180,58 @@ export function typicalDay(doc, iso, state = null) {
   const days = months.reduce((t, ym) => t + new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5), 0)).getUTCDate(), 0);
   return { perDay: wells / days, from: months[0], to: months[11], latest: start === si - 11 };
 }
+// ------------------------------------------------------------------------------------------------ oil permits, on the wells' days
+// The state agencies' records that have a published point and a date (the files the Map tab reads: permits.json for Texas, permits-ok, permits-nm, permits-fo). Texas and Oklahoma count permits
+// approved; New Mexico and the federal offshore count wells spudded, because their regulators publish no approval date by well. Each row is [lat, lon, operator, t, depth, county]: degrees times
+// 10,000, an index into the file's operators or -1 (only a corporation, LLC or partnership is named), days since the file's own t0, hundreds of feet, a county code. Texas's points are partial
+// (the Commission adds a surface location late: about 40% of the last 12 months' permits have one), so a count made from them is "with a location", never "all".
+export const PERMIT_SOURCES = [
+  { id: 'TX', file: 'permits', name: 'Texas', spud: false }, { id: 'OK', file: 'permits-ok', name: 'Oklahoma', spud: false },
+  { id: 'NM', file: 'permits-nm', name: 'New Mexico', spud: true }, { id: 'FO', file: 'permits-fo', name: 'Federal offshore', spud: true },
+];
+export const permitStateName = (id) => (PERMIT_SOURCES.find((x) => x.id === id) || {}).name || id;
+// decodePermits(docs, t0): docs is [{ id, pm }] (a state's id and its parsed file, the states in the order given), t0 the ISO date the wells' day numbers count from. The result has the wells' shape:
+// n, day (days since t0, sorted), lat, lon, s (index into states), op (index into ops, or -1), tvd; rows before t0 are left out. spud[k] is 1 when state k counts wells spudded.
+export function decodePermits(docs, t0) {
+  const base = isoMs(t0); const rows = []; const ops = []; const oix = new Map();
+  docs.forEach((d, k) => {
+    const off = Math.round((isoMs(d.pm.t0) - base) / DAY);
+    for (const p of d.pm.pts) {
+      const day = p[3] + off; if (day < 0) continue;
+      let o = -1;
+      if (p[2] >= 0 && d.pm.ops[p[2]]) { const nm = d.pm.ops[p[2]]; if (!oix.has(nm)) { oix.set(nm, ops.length); ops.push(nm); } o = oix.get(nm); }
+      rows.push([day, k, p[0], p[1], o, p[4]]);
+    }
+  });
+  rows.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const n = rows.length; const Q = { n, t0: base, states: docs.map((d) => d.id), ops, spud: Uint8Array.from(docs.map((d) => (PERMIT_SOURCES.find((x) => x.id === d.id) || {}).spud ? 1 : 0)),
+    day: new Int32Array(n), s: new Uint8Array(n), lat: new Float32Array(n), lon: new Float32Array(n), op: new Int16Array(n), tvd: new Uint16Array(n), last: new Int32Array(docs.length).fill(-1) };
+  rows.forEach((r, i) => { Q.day[i] = r[0]; Q.s[i] = r[1]; Q.lat[i] = r[2] / 1e4; Q.lon[i] = r[3] / 1e4; Q.op[i] = r[4]; Q.tvd[i] = r[5]; if (r[0] > Q.last[r[1]]) Q.last[r[1]] = r[0]; });
+  return Q; // last[k]: the newest day state k has a point on, or -1
+}
+export const permitState = (Q, i) => Q.states[Q.s[i]];
+export const permitOperator = (Q, i) => (Q.op[i] >= 0 ? Q.ops[Q.op[i]] : null);
+export const permitWord = (Q, i) => (Q.spud[Q.s[i]] ? 'Well spudded' : 'Permit approved');
+// the first index whose day is at least d
+export function firstPermitAtOrAfter(Q, d) {
+  let lo = 0; let hi = Q.n;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (Q.day[mid] < d) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+// the permits (indexes) of one day, for one state when `state` is given
+export function permitsOfDay(Q, d, state = null) {
+  const si = state ? Q.states.indexOf(state) : -1; const out = [];
+  if (state && si < 0) return out; // a state with no permit source has none, not "every one"
+  for (let i = firstPermitAtOrAfter(Q, d); i < Q.n && Q.day[i] === d; i++) if (si < 0 || Q.s[i] === si) out.push(i);
+  return out;
+}
+// permits and spuds per state over [d0, d1]: [{ id, n, spud }] ranked, only states with a point in the range
+export function permitsPerState(Q, d0, d1) {
+  const n = new Array(Q.states.length).fill(0);
+  for (let i = firstPermitAtOrAfter(Q, d0); i < Q.n && Q.day[i] <= d1; i++) n[Q.s[i]]++;
+  return Q.states.map((id, k) => ({ id, n: n[k], spud: Q.spud[k] === 1 })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+}
+
 // where a day sits on the series' month axis, in months from the first month's first day: Jan 1, 2011 is 0, Feb 1, 2011 is 1, Jan 16, 2011 is about 0.5. The Daily report's overview strip
 // uses it to mark the days of its chart on a bar a month. The day is an ISO date; a day before the series gives a negative number and one after it a number past the last month.
 export function monthPos(doc, iso) {
