@@ -15,8 +15,8 @@ What it counts, and what it cannot tell:
     2019 to 2025); the Commission's own summary counts it under its newest date only, so its table for 2021 is one permit short of the list (and 2022's, by one in Richardson County);
   - the lists carry no type of well or of work, so the bands are told only by what is printed: `redrill` when the API number's last four digits are not 0000 (the Commission gives a re-entry of an
     old well the old well's number with a new event, and prints "(OWWO)", old well worked over, in its name) or the name says OWWO; `inj` when the well's name has the word SWD (salt water disposal),
-    WIW, INJ, INJECTION or DISPOSAL; every other permit is `new`. A disposal or injection well not named so is counted as new, and two test wells for carbon storage (stratigraphic wells under
-    the same permit form) are counted as new, as the Commission's own wildcat and development totals count them. `rework`, `amend` and `other` are null: an amendment or a recompletion is not on a
+    WIW, INJ, INJECTION or DISPOSAL; every other permit is `new`. A disposal or injection well not named so is counted as new, and two wells of carbon-storage companies (2021 and 2024, one named
+    TEST WELL) are counted as new, as the Commission's own wildcat and development totals count them. `rework`, `amend` and `other` are null: an amendment or a recompletion is not on a
     list of permits to drill. The fluid is not printed (null);
   - the counties (top 15 of the last 12 months) and the operators (only corporations, LLCs and partnerships: `nameable()`; a person's or a trade name is counted but never named) are read from the
     list. The well's name, the API number, the footage, the driller, the field and the formation are never kept;

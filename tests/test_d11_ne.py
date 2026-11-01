@@ -37,10 +37,14 @@ def check(cond, msg):
         FAILS.append(msg)
 
 
-def raises(fn, kind=RuntimeError):
+def raises(fn, contains=None, kind=RuntimeError):
+    """True when fn raises `kind` (and, if given, the message holds `contains`): a failure for the wrong reason is not a pass."""
     try:
         fn()
-    except kind:
+    except kind as e:
+        if contains is not None and contains not in str(e):
+            print("     raised, but not for this reason (%r not in %r)" % (contains, str(e)[:120]))
+            return False
         return True
     except Exception as e:  # noqa: BLE001
         print("     raised %s: %s" % (type(e).__name__, e))
@@ -173,13 +177,16 @@ def run(fs=None, old=None, today=TODAY, min_total=10):
 lists, sums = NE.parse_page(PAGE)
 check(sorted(lists) == list(range(2019, 2026)) and sorted(sums) == list(range(2019, 2026)), "the lists and summaries from 2019 to the newest: %s %s" % (sorted(lists), sorted(sums)))
 check(all(u == "http://nogcc.ne.gov/Publications/%dWellPermits.pdf" % y for y, u in lists.items()), "each year's list is its own file on the Commission's host")
-check(NE.parse_page(PAGE.replace("http://nogcc.ne.gov/Publications/2025", "NOGCC/../Publications/2025"))[0][2025] == "http://nogcc.ne.gov/Publications/2025WellPermits.pdf", "a relative link is resolved against the page")
-check(NE.parse_page(PAGE.replace("http://example.org/Publications/2026WellPermits.pdf", "http://example.org/x") + '<a href="http://nogcc.ne.gov/Publications/2026WellPermits.pdf">2026</a>')[0].get(2026), "a newer year's list is found when it is linked")
-check(2026 not in lists, "a file with a list's name on another host is not a list")
-check(raises(lambda: NE.parse_page(PAGE.replace("http://nogcc.ne.gov/Publications/2021WellPermits.pdf", "http://nogcc.ne.gov/Publications/x.pdf"))), "a year missing between 2019 and the newest fails (a series with a hole)")
-check(raises(lambda: NE.parse_page(PAGE.replace("Drilling Permits</h3>", "Permits</h3>").replace("Drilling Permits", "Permits"))), "a page that lost its Drilling Permits section fails")
-check(raises(lambda: NE.parse_page(PAGE.replace("WellPermits", "Permits"))), "a page with no list at all fails")
-check(NE.parse_page(PAGE.replace("http://nogcc.ne.gov/Publications/2021WellPermits.pdf", "http://nogcc.ne.gov/Publications/2021WellPermits.pdf").replace("<h3>Drilling", '<a href="http://nogcc.ne.gov/Publications/2021WellPermits.pdf?x=1">again</a><h3>Drilling'))[0][2021].endswith("2021WellPermits.pdf"), "a year linked twice keeps one address, without a query")
+rel = PAGE.replace("http://nogcc.ne.gov/Publications/2025WellPermits.pdf", "Publications/2025WellPermits.pdf")
+check(NE.parse_page(rel)[0][2025] == "http://nogcc.ne.gov/Publications/2025WellPermits.pdf", "a link relative to the page is resolved against it")
+newer = PAGE + '<a href="http://nogcc.ne.gov/Publications/2026WellPermits.pdf">2026 Drilling Permits</a>'
+check(NE.parse_page(newer)[0].get(2026) == "http://nogcc.ne.gov/Publications/2026WellPermits.pdf", "a newer year's list is found when it is linked")
+check(2026 not in lists, "a file with a list's name on another host (example.org's 2026) is not a list")
+twice = PAGE.replace("<h3>Drilling", '<a href="http://nogcc.ne.gov/Publications/2021WellPermits.pdf?x=1">again</a><h3>Drilling')
+check(NE.parse_page(twice)[0][2021] == "http://nogcc.ne.gov/Publications/2021WellPermits.pdf", "a year linked twice keeps its first address, without a query")
+check(raises(lambda: NE.parse_page(PAGE.replace("http://nogcc.ne.gov/Publications/2021WellPermits.pdf", "http://nogcc.ne.gov/Publications/x.pdf")), "for 2021"), "a year missing between 2019 and the newest fails (a series with a hole)")
+check(raises(lambda: NE.parse_page(PAGE.replace("Drilling Permits", "Permits")), "Drilling Permits section"), "a page that lost its Drilling Permits section fails")
+check(raises(lambda: NE.parse_page(PAGE.replace("WellPermits", "Permits")), "no list"), "a page with no list at all fails")
 
 # ------------------------------------------------------------------------------------------------ a list
 new_rows = TRUTH[2022]
@@ -216,30 +223,30 @@ check(tally == {"new": 4, "inj": 2, "redrill": 0} or tally == collections.Counte
 
 # a list that is damaged
 good = list_text(2022, new_rows)
-check(raises(lambda: NE.parse_list(good + "   A NOTE THE COMMISSION ADDED\n", 2022, TODAY)), "a line this does not know fails the list")
-check(raises(lambda: NE.parse_list(good.replace("RICHARDSON", "ATLANTIS", 1), 2022, TODAY)), "a county that is not a Nebraska county fails")
+check(raises(lambda: NE.parse_list(good + "   A NOTE THE COMMISSION ADDED\n", 2022, TODAY), "does not know"), "a line this does not know fails the list")
+check(raises(lambda: NE.parse_list(good.replace("RICHARDSON", "ATLANTIS", 1), 2022, TODAY), "not in the shape"), "a county that is not a Nebraska county fails")
 first_api = re.search(r"API #: (\d{14})", good).group(1)
-check(raises(lambda: NE.parse_list(good.replace(first_api, first_api[:13], 1), 2022, TODAY)), "an API number of the wrong length fails")
-check(raises(lambda: NE.parse_list(good.replace(first_api, "36" + first_api[2:], 1), 2022, TODAY)), "an API number of another state fails")
-check(raises(lambda: NE.parse_list(good.replace("05/04/2022", "05/04/2021"), 2022, TODAY)), "a date outside the list's year fails")
-check(raises(lambda: NE.parse_list(good.replace("05/04/2022", "02/30/2022"), 2022, TODAY)), "a date that is not a day fails")
-check(raises(lambda: NE.parse_list(good.replace("11/04/2022", "01/04/2022"), 2022, TODAY)), "dates out of order fail")
-check(raises(lambda: NE.parse_list(good, 2022, date(2022, 3, 1))), "a date after today fails")
-check(raises(lambda: NE.parse_list("Nebraska Permitted Wells\n", 2022, TODAY)), "a list with no permit fails (it may not be the list)")
+check(raises(lambda: NE.parse_list(good.replace(first_api, first_api[:13], 1), 2022, TODAY), "not in the shape"), "an API number of the wrong length fails")
+check(raises(lambda: NE.parse_list(good.replace(first_api, "36" + first_api[2:], 1), 2022, TODAY), "not in the shape"), "an API number of another state fails")
+check(raises(lambda: NE.parse_list(good.replace("05/04/2022", "05/04/2021"), 2022, TODAY), "not a day of 2022"), "a date outside the list's year fails")
+check(raises(lambda: NE.parse_list(good.replace("05/04/2022", "02/30/2022"), 2022, TODAY), "not a day of 2022"), "a date that is not a day fails")
+check(raises(lambda: NE.parse_list(good.replace("11/04/2022", "01/04/2022"), 2022, TODAY), "out of order"), "dates out of order fail")
+check(raises(lambda: NE.parse_list(good, 2022, date(2022, 3, 1)), "not a day of 2022"), "a date after today fails")
+check(raises(lambda: NE.parse_list("Nebraska Permitted Wells\n", 2022, TODAY), "holds no permit"), "a list with no permit fails (it may not be the list)")
 check(raises(lambda: NE.parse_list("<html>Not Found</html>", 2022, TODAY)), "an error page fails")
-check(raises(lambda: NE.parse_list(list_text(2019, old_rows, old=True).replace("Total Permits for Period = 5", "Total Permits for Period = 6"), 2019, TODAY)), "a footer total that is not the count fails")
+check(raises(lambda: NE.parse_list(list_text(2019, old_rows, old=True).replace("Total Permits for Period = 5", "Total Permits for Period = 6"), 2019, TODAY), "own total"), "a footer total that is not the count fails")
 check(raises(lambda: NE.parse_list("\n".join(list_text(2022, new_rows).splitlines()[:3]) + "\n   TEST PLAINS ENERGY, INC    Driller: X\n", 2022, TODAY)), "a permit cut off after its first line fails")
 many = [permit(1 + i % 12, 1 + i % 28, OPS[0], "W%d" % i, "DUNDY") for i in range(NE.MAX_PER_YEAR + 1)]
 many.sort(key=lambda r: (r[0], r[1]))
-check(raises(lambda: NE.parse_list(list_text(2022, many), 2022, TODAY)), "a list of more permits than a year can hold fails")
+check(raises(lambda: NE.parse_list(list_text(2022, many), 2022, TODAY), "more than"), "a list of more permits than a year can hold fails")
 
 # ------------------------------------------------------------------------------------------------ the Commission's summary
 tx = summary_text(2022, new_rows)
 check(NE.parse_summary(tx, 2022) == (4, {"HITCHCOCK": 1, "RICHARDSON": 3}), "the permitted-wells table: the total and each county's total (a blank column is skipped): %s" % (NE.parse_summary(tx, 2022),))
 check(NE.parse_summary(summary_text(2023, TRUTH[2023], table=False), 2023) is None, "a summary with no permitted-wells table gives None (2023's)")
-check(raises(lambda: NE.parse_summary("<html>Not Found</html>", 2022)), "a file that is not the Commission's summary fails")
-check(raises(lambda: NE.parse_summary(tx, 2021)), "a table for another year fails")
-check(raises(lambda: NE.parse_summary(tx.replace("TOTAL            4", "SOMETHING ELSE   4"), 2022)), "a table that loses its TOTAL row fails")
+check(raises(lambda: NE.parse_summary("<html>Not Found</html>", 2022), "not the Commission"), "a file that is not the Commission's summary fails")
+check(raises(lambda: NE.parse_summary(tx, 2021), "another year"), "a table for another year fails")
+check(raises(lambda: NE.parse_summary(tx.replace("TOTAL            4", "SOMETHING ELSE   4"), 2022), "no TOTAL row"), "a table that loses its TOTAL row fails")
 S = NE.parse_summary(tx, 2022)
 check(NE.agrees(got, S), "a list and a summary that are the same agree")
 check(NE.agrees(got + got[:1], S) and NE.agrees(got[1:], S), "one permit more or fewer still agrees (the Commission counts a re-issued permit once)")
@@ -276,16 +283,17 @@ check(d_open["through"] == "2025-09-30" and d_open["asOf"] == "2025-10-14" and d
 check(sum(d_open["bands"]["new"]) == sum(doc["bands"]["new"]) - 1, "and the October permit is not in it (a partial month is never counted)")
 d_early, _g = run(files(), today=date(2025, 12, 15))
 check(d_early["asOf"] == "2025-10-14" and d_early["months"][-1] == "2025-09", "a summary read before the year has ended does not close it")
-check(raises(lambda: run(files(shift={2025: 4}))[0]), "a list that disagrees with the Commission's summary (four more in its table) fails the run")
+check(raises(lambda: run(files(shift={2025: 4}))[0], "do not agree"), "a list that disagrees with the Commission's summary (four more in its table) fails the run")
+check(raises(lambda: run(files(no_table=set(range(2019, 2026))))[0], "could be checked"), "a full read in which no summary has a permitted-wells table fails (nothing checks the lists: the summaries' layout may have changed)")
 check(run(files(shift={2021: 1, 2022: 2}))[0]["through"] == "2025-12-31", "a difference of one or two in older years is the Commission's own (a re-issued permit) and passes")
-check(raises(lambda: run(files(years=[2019, 2020, 2021, 2022, 2023, 2024]))[0], RuntimeError), "a page that links a year whose file is not there fails")
+check(raises(lambda: run(files(years=[2019, 2020, 2021, 2022, 2023, 2024]))[0], "no such file"), "a page that links a year whose file is not there fails")
 boom = lambda b: (_ for _ in ()).throw(RuntimeError("x"))  # noqa: E731
-check(raises(lambda: NE.build(get=net(files()), to_text=boom, pause=0, today=TODAY, old={}, min_total=10)), "a file that cannot be read as text fails")
-check(raises(lambda: NE.build(get=net(files()), to_text=text_of, pause=0, today=TODAY, old={})), "a read of fewer permits than the floor (100) fails: the lists may be cut short")
+check(raises(lambda: NE.build(get=net(files()), to_text=boom, pause=0, today=TODAY, old={}, min_total=10), "x"), "a file that cannot be read as text fails")
+check(raises(lambda: NE.build(get=net(files()), to_text=text_of, pause=0, today=TODAY, old={}), "only 30 permits"), "a read of fewer permits than the floor (100) fails: the lists may be cut short")
 old_page = dict(files())
 old_page[NE.PAGE] = re.sub(r'<li><a href="http://nogcc.ne.gov/Publications/(2023|2024|2025)[A-Za-z]*\.pdf">[^<]*</a></li>', "", PAGE.replace("ANNSUM", "ANNSUM")).encode()
-check(raises(lambda: run(old_page)[0]), "a page whose newest list is for 2022 is stale in 2026 (the newest list must be for 2024 or later)")
-check(raises(lambda: run(files(), today=date(2028, 3, 1))[0]), "a page whose newest list is for 2025 is stale in 2028")
+check(raises(lambda: run(old_page)[0], "stale"), "a page whose newest list is for 2022 is stale in 2026 (the newest list must be for 2024 or later)")
+check(raises(lambda: run(files(), today=date(2028, 3, 1))[0], "stale"), "a page whose newest list is for 2025 is stale in 2028")
 check(run(files(), today=date(2027, 2, 1))[0]["through"] == "2025-12-31", "in February 2027, before the 2026 list is posted, the series stays at December 2025")
 
 # the committed file stands for the older years
@@ -324,7 +332,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(C.run_producer("NE", lambda: doc, tmp, argv=["--check"]) == 0, "--check reloads what is committed")
 
 # the real parser rejects what is not a PDF
-check(raises(lambda: NE.pdf_to_text(b"<html>Not Found</html>")), "a file that is not a PDF is refused before it reaches pdftotext")
+check(raises(lambda: NE.pdf_to_text(b"<html>Not Found</html>"), "not one"), "a file that is not a PDF is refused before it reaches pdftotext")
 
 print()
 print("FAILED %d: %s" % (len(FAILS), FAILS[:4]) if FAILS else "all passed")

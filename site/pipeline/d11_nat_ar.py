@@ -228,10 +228,16 @@ def well_id(api, permit):
     return digits if len(digits) >= 8 else "permit" + (permit or "")
 
 
+QUIET = frozenset({"NONE", "DONE"})  # what a section with no permit says: NONE (the Commission once typed DONE, for a whole week's south sections)
+
+
 def check_sections(end, headings, none, found):
-    """A report must have all eight section headings, and each of its two Form 2 sections must list permits or say NONE."""
-    if len(headings) != 8 or len(set(headings)) != 8:
-        raise RuntimeError("the weekly report for %s has %d of the 8 sections" % (end.isoformat(), len(set(headings))))
+    """A report must be the whole weekly report: both Form 2 headings and both well-completion headings (which close the Form 2 sections), and at least 6 of the 8 headings (the Commission once left out one
+    heading of a long list). Each Form 2 section must list permits or say NONE."""
+    names = set(headings)
+    need = {("NORTH", "DRILLING PERMITS"), ("SOUTH", "DRILLING PERMITS"), ("NORTH", "WELL COMPLETIONS"), ("SOUTH", "WELL COMPLETIONS")}
+    if len(names) != len(headings) or not need <= names or len(names) < 6:
+        raise RuntimeError("the weekly report for %s has %d of the 8 sections (or one twice)" % (end.isoformat(), len(names)))
     for sec in ("NORTH", "SOUTH"):
         if not none.get(sec) and not found.get(sec):
             raise RuntimeError("the weekly report for %s has neither permits nor NONE in its %s Arkansas drilling permits" % (end.isoformat(), sec.lower()))
@@ -254,11 +260,11 @@ def week_from_rows(rows):
             continue
         if sec is None or not r or a == "Permit Number":
             continue
-        if a.upper() == "NONE":
+        if len(r) == 1 and next(iter(r.values())).upper() in QUIET:
             none[sec], cur = True, None
         elif PERMIT_NO.match(a):
             found[sec] = True
-            cur = {"no": a.split(".")[0], "api": r.get(2, ""), "rows": []}
+            cur = {"no": a.split(".")[0], "api": r.get(2, ""), "top": r.get(4, ""), "rows": []}
             blocks.append(cur)
         elif cur is not None:
             cur["rows"].append(r)
@@ -266,7 +272,7 @@ def week_from_rows(rows):
     out = []
     for b in blocks:
         first = b["rows"][0] if b["rows"] else {}
-        out.append({"id": well_id(b["api"], b["no"]), "operator": clean_operator(first.get(2, "")), "county": county_of(first.get(4, ""))})
+        out.append({"id": well_id(b["api"], b["no"]), "operator": clean_operator(first.get(2, "")), "county": county_of(first.get(4, "")) or county_of(b["top"])})  # the field and the county sit one above the other, and once in the other order
     return end, out
 
 
@@ -283,3 +289,132 @@ def pdf_to_text(data):
         if r.returncode != 0:
             raise RuntimeError("pdftotext could not read a report")
         return r.stdout
+
+
+def read_report(data, to_text=pdf_to_text):
+    """(week end, listings) of one report by what the file is (a workbook is a zip, a PDF starts with %PDF), whatever its name says."""
+    if data[:4] == b"PK\x03\x04":
+        return week_from_rows(sheet_rows(data))
+    if data[:5] == b"%PDF-":
+        return week_from_text(to_text(data))
+    raise RuntimeError("a weekly report is neither a workbook nor a PDF")
+
+
+# ------------------------------------------------------------------------------------------------ the run
+
+def previous(keep_from, path=None):
+    """The committed nat/AR.json when it can stand for the months before `keep_from` ({month: {band: count}}); {} when there is none or it does not cover them."""
+    path = path or os.path.join(C.OUT, STATE + ".json")
+    try:
+        d = json.load(open(path, encoding="utf-8"))
+        months, bands = d["months"], d["bands"]
+        ok = d.get("state") == STATE and months[0] == FIRST and months == C.month_list(months[0], months[-1]) and months[-1] >= C.add_months(keep_from, -1)
+        ok = ok and all(isinstance(bands[b], list) and len(bands[b]) == len(months) for b in ("new", "amend"))
+        return {ym: {b: bands[b][i] for b in ("new", "amend")} for i, ym in enumerate(months) if ym < keep_from} if ok else {}
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
+        return {}
+
+
+def nearest_friday(d):
+    """The Friday a report's date stands for: the date itself when it is a Friday, else the nearest one (a title was once a Monday, three days after the Friday its file is named for)."""
+    return min((d + timedelta(days=k) for k in range(-3, 4) if (d + timedelta(days=k)).weekday() == 4), key=lambda x: (abs((x - d).days), x))
+
+
+def week_month(end):
+    """The month a week is counted in: the one that holds most of its days (its Wednesday)."""
+    return C.month_of(end - timedelta(days=2))
+
+
+def build(get=C.polite_get, post=polite_post, to_text=pdf_to_text, pause=PAUSE, today=None, old=None):
+    today = today or date.today()
+    page = get(PAGE, max_bytes=MAX_PAGE).decode("utf-8", "replace")
+    years, state = year_options(page), hidden_fields(page)
+    if not state.get("__VIEWSTATE") or not state.get("__EVENTVALIDATION") or today.year not in years or 2019 not in years:
+        raise RuntimeError("the reports page has no year list or form state it needs (years %s): its layout may have changed" % (years,))
+    keep_from = C.add_months(C.month_of(today), -REREAD)
+    kept = (previous(keep_from) if old is None else old) if keep_from > FIRST else {}
+    if not kept:
+        keep_from = FIRST
+    read_from = max(FIRST, C.add_months(keep_from, -LOOKBACK))
+    first_day = date(int(read_from[:4]), int(read_from[5:]), 1) - timedelta(days=8)  # a week counted in `read_from` may end a few days after its first
+    files = []
+    for y in range(first_day.year, today.year + 1):
+        time.sleep(pause)
+        fields = dict(state)
+        fields["__EVENTTARGET"], fields[YEAR_FIELD] = YEAR_FIELD, str(y)
+        got = parse_tree(post(PAGE, fields).decode("utf-8", "replace"))
+        if not got and y < today.year:
+            raise RuntimeError("the page listed no reports for %d: its layout may have changed" % y)
+        files += [g for g in got if g[0] == str(y)]
+    todo = sorted(((name_day(n), (y, f, n)) for y, f, n in files), key=lambda t: (t[0] or date.min, t[1]))
+    todo = [t for t in todo if t[0] is None or t[0] >= first_day]
+    if not todo or (kept == {} and len(todo) < MIN_FILES_ALL):
+        raise RuntimeError("the page lists %d weekly reports (expected %s): its layout may have changed" % (len(todo), "%d or more" % MIN_FILES_ALL if not kept else "some"))
+    weeks, repeats = {}, []
+    for i, (nd, (y, f, n)) in enumerate(todo):
+        if i:
+            time.sleep(pause)
+        end, listings = read_report(get(file_url(y, f, n), max_bytes=MAX_REPORT), to_text)
+        if end in weeks:
+            repeats.append(end)  # two files for one week: the first stands
+            continue
+        weeks[end] = listings
+    ends = sorted(weeks)
+    newest = ends[-1]
+    if newest < today - timedelta(days=STALE_DAYS):
+        raise RuntimeError("the newest weekly report is for the week ending %s: the archive looks stale" % newest.isoformat())
+    # weeks with no report: every Friday between the first and the newest that no report claims (a report's title may be a day or two off a Friday: it claims the Friday nearest to it)
+    claimed = {nearest_friday(end) for end in ends}
+    missing, d = [], ends[0]
+    d += timedelta(days=(4 - d.weekday()) % 7)
+    while d <= newest:
+        if d not in claimed:
+            missing.append(d)
+        d += timedelta(days=7)
+    if len(missing) > MAX_MISSING or len(repeats) > MAX_MISSING:
+        raise RuntimeError("%d weeks have no report and %d have two: the archive's layout may have changed" % (len(missing), len(repeats)))
+    seen, new_n, amend_n, unread, rows = set(), 0, 0, 0, []
+    for end in ends:
+        ym = week_month(end)
+        counted = ym >= keep_from
+        here = set()
+        for L in weeks[end]:
+            if L["id"] in here:
+                continue  # a well listed twice in one report counts once
+            here.add(L["id"])
+            band = "amend" if L["id"] in seen else "new"
+            if counted and ym >= FIRST:
+                rows.append((end - timedelta(days=2), band, L["county"], L["operator"]))
+                unread += L["county"] is None
+        seen |= here
+    if len(rows) < (MIN_LISTINGS_WINDOW if kept else MIN_LISTINGS_ALL):
+        raise RuntimeError("only %d listings in all (expected %d or more): the reports may be cut short" % (len(rows), MIN_LISTINGS_WINDOW if kept else MIN_LISTINGS_ALL))
+    if unread > max(MAX_UNREAD, 0.03 * len(rows)):
+        raise RuntimeError("%d of %d listings have no readable county: the layout may have changed" % (unread, len(rows)))
+    t = C.Tally(STATE, bands=("new", "amend"))
+    for ym, counts in sorted(kept.items()):
+        for b, n in counts.items():
+            if isinstance(n, int) and n > 0:
+                t.add(date(int(ym[:4]), int(ym[5:]), 15), b, n=n)
+    for day, band, county, operator in rows:
+        t.add(day, band, county=county, operator=operator)
+    note = ("Every Form 2 drilling permit on the Commission's weekly reports (North and South Arkansas). A report names a week, not a day, so each week is counted in the month that holds most of its days. "
+            "The Commission lists a permit again when it renews or amends it, without saying which: the first listing of a well is counted as new and every later one as an amendment or renewal. "
+            "The list gives no well type, so disposal, brine-supply and carbon-storage wells are among the new ones, and no other kind of permit and no fluid can be told. "
+            "The permit-by-permit record starts with the report for the week ending January 4, 2019. "
+            "A renewal of a permit first listed before the months a run reads (8 months before the 14 it counts) is counted as new.")
+    known = [d for d in missing if d in KNOWN_MISSING]
+    other = [d for d in missing if d not in KNOWN_MISSING]
+    if known or other:
+        note += " Weeks with no report in the Commission's archive, so a month that holds one may be short: %s." % ", ".join("%s %d, %d" % (calendar.month_name[d.month], d.day, d.year) for d in sorted(set(known + other)))
+    if repeats:
+        note += " The archive holds two files for the week ending %s: the first is read." % ", ".join("%s %d, %d" % (calendar.month_name[d.month], d.day, d.year) for d in sorted(set(repeats)))
+    doc = t.document(agency="Arkansas Oil and Gas Commission", source_name="Permit and Completion Reports (one workbook a week)", source_url=PAGE, basis="week of issue (the weekly report of Form 2 permits)",
+                     cadence="weekly (a report for each week ending Friday)", measure="permits", asof=newest, first=FIRST, unit="drilling permits", note=note)
+    C.log("%s: %d weekly reports read%s, %d listings counted (%d new, %d renewals or amendments), %d with no readable county, %d weeks with no report"
+          % (STATE, len(weeks), " (months before %s are the committed file's)" % keep_from if kept else " (all of them)", len(rows), sum(1 for r in rows if r[1] == "new"), sum(1 for r in rows if r[1] == "amend"), unread, len(missing)))
+    return doc
+
+
+if __name__ == "__main__":
+    sys.exit(C.run_producer(STATE, build))

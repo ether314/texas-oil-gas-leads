@@ -169,7 +169,7 @@ def starts_table(page):
         rows.append([html.unescape(re.sub(r"<[^>]+>", "", c)).replace("\xa0", " ").strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, flags=re.S | re.I)])
     head = next((r for r in rows if r and r[0].lower() == "county"), None)
     total = next((r for r in rows if r and r[0].upper() == "TOTAL"), None)
-    if not head or not total or len(head) != len(total) or len(head) < 5:
+    if not head or not total or len(head) != len(total) or len(head) < 6:  # the real table has 24 years; one of fewer than five is not that table
         return {}
     out = {}
     for y, v in zip(head[1:], total[1:]):

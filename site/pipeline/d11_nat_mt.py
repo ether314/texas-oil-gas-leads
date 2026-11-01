@@ -19,9 +19,10 @@ Everything else in the history (notices of intent and subsequent reports, comple
 file does not know fails the run (a silent drop would read as a fall). A re-drill the Board files under an ordinary horizontal permit type is counted as new (the type of work cannot tell).
 
 The Board's annual reviews give the check: its "Wells Permitted" (new vertical, new horizontal and re-entry of abandoned wells together) is 79, 37, 41, 54 and 58 for 2019 to 2023, with these exact
-splits, and 67 for 2024; and its "Re-issued Permits" are 37, 50, 79, 52, 48 and 47 for 2019 to 2024. This file has the same figures for every one of them but 2024's wells permitted (66 against 67:
-one horizontal permit). Against the 41 weekly letters of 2026, 218 of 225 permit entries match an event of this file by API number, date and type; the letters list six permits twice, and this file has
-14 approvals no letter lists.
+splits, and 67 for 2024; and its "Re-issued Permits" are 37, 50, 79, 52, 48 and 47 for 2019 to 2024. The history has the same figures for every one of them but 2024's wells permitted (66 against 67:
+one horizontal permit); of the twenty quarters of the review's own five-year table (2020 to 2024) eighteen are equal and two (2022 Q3, 2023 Q2) are one below the history, as the table is one below the
+review's own headline in those years. Against the 42 weekly letters of 2026, 218 of 225 permit entries match an event of this file by API number, date and type (the letters list six permits
+twice, and the history has 14 approvals no letter lists). The totals above are of the permit types the review counts: this file's bands add the other re-drill types and the modifications.
 
 Montana is small and, in 2026, busy: 37 to 66 permits to drill a year from 2020 to 2024 and 62 in 2025, then 186 in the first ten months of 2026 (two Williston Basin counties, Richland and Roosevelt,
 hold most of them). The Board's database is updated as approvals are entered, its letter follows each Friday, and the newest month is shown only a week after it ends (`lag_days`).
@@ -270,9 +271,9 @@ def build(fetch=None, today=None, pause=PAUSE):
         agency="Montana Board of Oil and Gas Conservation (Department of Natural Resources and Conservation)", source_name="Dataminer, Well History (every event on every well, with the day it was approved)", source_url=PAGE,
         basis="approval date (the day the Board approved the permit)", cadence="as the Board enters approvals (its weekly activity letter follows each Friday)", measure="permits", lag_days=LAG_DAYS,
         note="Every permit the Board's well history shows, by the day it was approved: permits to drill (vertical and horizontal), injection, disposal and storage wells, re-entries and re-drills of existing wells, "
-             "and, as amendments, re-issued permits (a lapsed permit approved again for the same location) and permit modifications. Workovers and recompletions are filed on notices, not permits, so that band is not "
-             "available. The Board's annual reviews give the same number of permits to drill for 2019 to 2023 and one fewer for 2024, and the same number of re-issued permits for every year. A well's type and its "
-             "operator are the Board's record today. The newest month is shown a week after it ends.")
+             "and, as amendments, re-issued permits (a lapsed permit approved again for the same location) and permit modifications. Workovers and recompletions are filed on notices, not permits, so those bands "
+             "are not available. Checked against the Board's annual reviews: their counts of wells permitted (new vertical and horizontal wells and re-entries of abandoned wells) and of re-issued permits match this "
+             "file for 2019 to 2023, and for 2024 the review counts one more well permitted. A well's type and its operator are the Board's record today. The newest month is shown a week after it ends.")
     C.log("%s: %d events read, %d permit events (%d new, %d injection, %d re-entry, %d amendment), newest %s, %d permit events undated"
           % (STATE, stats["rows"], len(events), *(sum(1 for e in events if e["band"] == b) for b in ("new", "inj", "redrill", "amend")), max(e["day"] for e in events).isoformat(), stats["undated"]))
     return doc
