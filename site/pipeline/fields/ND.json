@@ -1,0 +1,566 @@
+{
+ "state": "ND",
+ "name": "North Dakota",
+ "agency": {
+  "name": "North Dakota Industrial Commission, Department of Mineral Resources, Oil and Gas Division",
+  "short": "NDIC-OGD",
+  "url": "https://www.dmr.nd.gov/dmr/oilgas"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Form 1 (vertical or directional) and Form 1H (horizontal)",
+  "number": "SFN 4615 (10-2014) for Form 1; SFN 54269 (12-2016) for Form 1H",
+  "url": "https://www.dmr.nd.gov/oilgas/forms/form1.PDF",
+  "read": true,
+  "notes": "Read both blank PDFs (text extracted with pdftotext), including the instruction pages (15 numbered rules for Form 1H). The agency forms page lists them as filed online in NorthSTAR (older form text still mentions an ePermit user ID); the PDFs read may be older than the online screens, and the Type of Work and Type of Well choices are drop-down lists not visible in the text. Injection and disposal wells use Form 14 (Application for Injection) through the same permit process, not read. Form 1H adds lateral, KOP, azimuth and survey boxes. Companion forms not read: Form 14, Form 4 sundry notices, Form 6 completion report. The Form 1H PDF is at the forms folder under the name form1H.PDF."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells layer fields api_no and api; also in the state-use box of Form 1/1H"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field fileno (NDIC file number); the form's state-use box is one 'Permit and File Number'"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field well_name; Form 1 has Well Name and Well Number boxes"
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1/1H have no lease or unit name box (well name and number only)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field operator"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 1 asks operator name only; no operator number seen in any file read"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1 does not ask; entity details sit on the separate Form 2 organization report"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Instruction 5: bond must accompany or already be on file; no bond box; bond view in NorthSTAR not checked"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field County"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form or in the layers read; a separate inspector-areas polygon layer exists"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field field_name; Field and Pool boxes are in the form's state-use area"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer fields latitude, longitude; form asks wellhead lat/long and NAD reference"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer fields qq, sec, twp, rng, feet_ns, fnsl, feet_ew, fewl"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 'Proposed Bottom Hole Location' and Form 1H footages; Wells layer holds the surface point only"
+  },
+  "lateral_path": {
+   "s": "data",
+   "e": "file",
+   "n": "Horizontal_Well_Bore polylines, 'derived from surveys' (as drilled), keyed by fileno; Form 1H asks for the plan"
+  },
+  "elevation": {
+   "s": "query",
+   "e": "web",
+   "n": "Daily report prints 'xxxx GROUND'; not a layer field; form asks ground elevation"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 'Name of Surface Owner or Tenant' plus dwelling-notice boxes; not published"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field well_type (codes such as ST, OG, SWD, WI, GI, AGD); form asks Type of Well"
+  },
+  "work_type": {
+   "s": "query",
+   "e": "web",
+   "n": "Daily report headings (approved, recompletion, renewal, modification); no layer field; Form 1 has a Type of Work box"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "Choice of Form 1 (vertical or directional) or Form 1H (horizontal); no direction field in the layers read"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 Estimated Total Depth (Feet MD); Form 1H longstring and lateral depths; layer 'td' not verified as proposed or MD"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 and 1H ask Feet TVD"
+  },
+  "lateral_length": {
+   "s": "data",
+   "e": "file",
+   "n": "Shape__Length of the survey-derived Horizontal_Well_Bore line (as drilled, Web Mercator units); form: KOP, lateral depth"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 'Objective Horizons'; the spacing-units layer names a formation per unit, not per well"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "Boxes for Pierre Shale, Dakota Sand, base of last salt; instruction 9 asks estimated geologic tops"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Proposed surface and longstring casing: size, weight, depth"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Cement volume (sacks) and cement top; instruction 9 asks the cementing plan"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP or pressure-control box or attachment on Form 1/1H or its 15 instructions"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No H2S box or attachment on Form 1/1H"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Instruction 7: pad layout with cut and fill and the proposed cuttings pit location"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "No water source or volume box; only a note that the surface hole is drilled with fresh water"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Instruction 11/12: 'general completion technique' must accompany the application"
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "file",
+   "n": "DrillingSpacingUnits layer (formation, caseno, orderno, dssize, dstype; no well id); form asks acres, setback, order"
+  },
+  "spacing_exception": {
+   "s": "query",
+   "e": "web",
+   "n": "Daily report adds 'location outside of spacing unit' or 'drill-back outside of spacing unit' to an entry; no data field"
+  },
+  "mineral_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1/1H ask for the surface owner or tenant only"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "$100 permit fee (instructions 13/14); the agency now collects fees by an online payment service"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Dwelling-notice boxes (1,320 ft and 500 ft); hearing cases are a separate docket layer and pages not read"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form has a signature date only; no receipt date seen in any file or report read"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "The daily report's date (entries are under PERMITS APPROVED); form's state-use 'Date Approved'; not in the layers"
+  },
+  "date_expires": {
+   "s": "form",
+   "e": "form",
+   "n": "Instruction 14/15: lapses after one year unless drilling below surface casing; layer gives only a day-range bucket"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field spud_date (37,029 of 44,030 wells have one)"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the free layers; scout tickets (paid subscription) are described as holding completion data"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field status (A, PA, DRY, PNC, LOC, DRL, Confidential and others)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Certified surveyor's plat required; scanned well files are a paid-subscription item"
+  },
+  "form_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Filed application sits in scanned well files, a paid-subscription item"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 6 is a separate filing; scanned well files are paid-subscription items"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Digital and image logs are described on a paid-subscription page; free access not verified"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Monthly production report PDFs from 2003 and by-well volumes in paid tables; well-level content of free PDFs unchecked"
+  }
+ },
+ "sources": [
+  {
+   "id": "nd-wells-layer",
+   "name": "NDIC Oil and Gas Division GIS: Wells feature layer (OGD_Wells), one point per well file",
+   "url": "https://gis.dmr.nd.gov/dmrpublicservices/rest/services/Wells/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "1922",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated; agency disclaimer says the data may be out of date",
+   "columns": [
+    "OBJECTID",
+    "fileno",
+    "api_no",
+    "operator",
+    "well_name",
+    "td",
+    "spud_date",
+    "field_name",
+    "qq",
+    "sec",
+    "twp",
+    "rng",
+    "feet_ns",
+    "fnsl",
+    "feet_ew",
+    "fewl",
+    "latitude",
+    "longitude",
+    "well_type",
+    "status",
+    "api",
+    "County",
+    "symbol"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells by status incl. permitted-not-drilled (LOC, PNC), drilling (DRL), active, plugged, dry, expired (EXP), confidential"
+   ],
+   "reachable": "ok",
+   "tested": "Services root listing GET 200 (3,138 bytes JSON, ArcGIS 10.91); layer metadata read earlier in this pass; grouped-count query GET 200: 44,030 wells (A 21,177; PA 6,455; DRY 6,347; PNC 5,767; IA 1,215; Confidential 986; AB 833; LOC 607; DRL 337; others small); count query for spuds in Aug 2026 = 90 (agency monthly stats say 91); earliest spud date 1922; max 2,000 rows per page, so about 23 pages for a full copy. Full download not done (size not measured). Agency notice dated Jan 2022 says well data is updated hourly (not verified)."
+  },
+  {
+   "id": "nd-daily-activity-reports",
+   "name": "Daily Activity Report, one text PDF per business day: permits approved, recompletion permits, modifications, renewals, cancellations, operator changes, released from confidential, rig count",
+   "url": "https://www.dmr.nd.gov/oilgas/dailyindex.asp",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "1997",
+   "size_mb": 0.16,
+   "free": true,
+   "login": false,
+   "license": "No license stated; state public records",
+   "columns": [
+    "permit/file number (#nnnnn)",
+    "operator",
+    "well name and number",
+    "quarter-quarter, section, township, range",
+    "county",
+    "footages from section lines",
+    "permit type (e.g. DEVELOPMENT)",
+    "field",
+    "ground elevation",
+    "API number",
+    "spacing unit sections",
+    "spacing-exception note",
+    "'previously' values (modification entries)",
+    "report date and report number",
+    "section headings"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "permit approved (new drill)",
+    "permitted for recompletion",
+    "permit modification: surface hole location",
+    "permit modification: spacing unit change",
+    "permit renewal",
+    "permit cancellation",
+    "change of operator",
+    "released from confidential status"
+   ],
+   "reachable": "ok",
+   "tested": "Index page loaded through WebFetch (year list 1997 to 2026, one PDF per business day, 22 for Oct 2026). Files sit in a per-year folder named drMMDDYY.pdf. HEAD on the Aug 10, 2026 report: HTTP 200, 162,700 bytes, application/pdf. Full GET of the Oct 29, 2026 report (148,418 bytes) and Aug 10, 2026 report (162,700 bytes, earlier in this pass); pdftotext -layout gave clean text with one numbered entry per permit. Two reports read only; headings of older years not checked."
+  },
+  {
+   "id": "nd-monthly-statistical-update",
+   "name": "Monthly Statistical Update, one PDF per year: oil production, wells producing, permits (development, extension, wildcat), spuds, rig count by month",
+   "url": "https://www.dmr.nd.gov/oilgas/stats/2026monthlystats.pdf",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "1980",
+   "size_mb": 0.06,
+   "free": true,
+   "login": false,
+   "license": "No license stated; state public records",
+   "columns": [
+    "Month",
+    "Monthly Oil Production",
+    "Wells Producing",
+    "Average Daily Production",
+    "Permits: Dev",
+    "Permits: Ext",
+    "Permits: WC",
+    "Permits: Total",
+    "Spuds",
+    "Rig Count"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permits by exploration class (development, extension, wildcat)",
+    "spuds"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD HTTP 200, 58,666 bytes, application/pdf; text read with pdftotext: Aug 2026 = 83 development + 1 wildcat = 84 permits, 91 spuds; Jan to Aug 2026 permit totals 70, 55, 57, 83, 93, 85, 89, 84. Earlier years listed on the agency statistics page (2026 back to 1980); only 2026 fetched."
+  },
+  {
+   "id": "nd-permit-status-before-spud",
+   "name": "Permit Status Before Spud feature layer (permits waiting to be drilled, by days from renewal or expiration)",
+   "url": "https://gis.dmr.nd.gov/dmrpublicservices/rest/services/PermitStatusBeforeSpud/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "OBJECTID",
+    "Api",
+    "Operator",
+    "DayRange",
+    "TimesRenew",
+    "Lat",
+    "Lon",
+    "FileNo"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "open permits not yet spud, with renewal count"
+   ],
+   "reachable": "ok",
+   "tested": "Layer metadata read earlier in this pass (HTTP 200); no record query made. DayRange is a bucket (1-90, 91-180, 181-270, 271-365 days), not a date."
+  },
+  {
+   "id": "nd-horizontal-well-bore",
+   "name": "Horizontal Well Bore lines (survey-derived polylines, one per horizontal well file)",
+   "url": "https://gis.dmr.nd.gov/dmrpublicservices/rest/services/Horizontal_Well_Bore/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "OBJECTID",
+    "linekey",
+    "created_user",
+    "created_date",
+    "last_edited_user",
+    "last_edited_date",
+    "fileno",
+    "Shape__Length"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "as-drilled horizontal paths"
+   ],
+   "reachable": "ok",
+   "tested": "Layer metadata read earlier in this pass (HTTP 200); no record query. A sibling Directional_Well_Bore service is listed but its fields were not read."
+  },
+  {
+   "id": "nd-drilling-spacing-units",
+   "name": "Drilling and Spacing Units polygons (layer named '160 Bakken DS' in the metadata)",
+   "url": "https://gis.dmr.nd.gov/dmrpublicservices/rest/services/DrillingSpacingUnits/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "aggregate",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "OBJECTID",
+    "formation",
+    "refcode",
+    "caseno",
+    "orderno",
+    "welltype",
+    "mapsymbol",
+    "dssize",
+    "dstype"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "spacing units by commission case and order"
+   ],
+   "reachable": "ok",
+   "tested": "Layer metadata read earlier in this pass (HTTP 200); no record query. No well id field, so it cannot be joined to wells by key."
+  },
+  {
+   "id": "nd-well-index-excel",
+   "name": "Well Index, 'a complete index of all wells permitted in North Dakota' (Excel in a zip), part of the paid Basic and Premium subscriptions",
+   "url": "https://www.dmr.nd.gov/oilgas/basicservice.asp",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": false,
+   "login": true,
+   "license": "Paid subscription (agency page: Basic $100 a year, Premium $500 a year from Jan 1, 2026)",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Only the agency's description page was read (WebFetch); the file is behind a paid subscription, was not requested and its columns are unknown. Whether it holds an approval date is unknown."
+  },
+  {
+   "id": "nd-well-search",
+   "name": "Well search page (by operator, field, section, township, range)",
+   "url": "https://www.dmr.nd.gov/oilgas/findwellsvw.asp",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Page loaded through WebFetch (search form only; no login, no fee notice). No search submitted, so result columns are unknown."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "The only free bulk or API source (the Wells map layer, 44,030 wells) has a spud date, well type and status but no approval date or work type, so by the grading rule it measures spuds. The approval dates exist only in the free Daily Activity Report text PDFs (one per business day since 1997, well-level, with section headings that give the activity type) and in the monthly statistics PDF (aggregate). Those make approvals countable, but from PDFs, which the rubric rates C; the well index Excel file is paid.",
+ "producer_plan": "Approvals and activity types: read the Daily Activity Report PDFs (one per business day, a per-year folder, file name drMMDDYY.pdf, about 150 KB, text-based; pdftotext -layout worked on two 2026 reports). Treat the report date as the approval day (assumption: not checked against the filing system). Each entry starts '#fileno - OPERATOR, well name, location, county...'. Count entries by heading: PERMITS APPROVED = new drill; PERMITTED FOR RECOMPLETION = recomplete; PERMIT MODIFICATION (surface hole location, spacing unit change) = amend; PERMIT RENEWALS, PERMIT CANCELLATIONS, CHANGE OF OPERATOR and RELEASED FROM CONFIDENTIAL STATUS = other (never count renewals as new). Injection and disposal permits have no heading of their own: join the file number to the Wells layer well_type (SWD, WI, GI and similar) or read SWD in the well name; whether such permits appear under PERMITS APPROVED was not verified. Only two reports were read, so check the headings against a sample from each year before trusting a long history; be polite (a pause between files, a few hundred files a night at most). Cross-check each month against the Monthly Statistical Update PDF for the year (permits Dev, Ext, WC and spuds): Aug 2026 shows 84 permits and 91 spuds. Spuds and drilling status: query the Wells layer (about 23 pages of 2,000 rows, or a spud_date range filter); Aug 2026 gave 90 spud-dated wells against 91 in the statistics. Fallback for approvals if the PDFs become unreadable: permit file numbers rise in sequence (#43197 on Aug 10, 2026; #43440 on Oct 29, 2026), so the Wells layer's fileno could place permits in time roughly, but the numbers are not approval dates and the 90xxx and 99xxx series are not sequential. Caveats: confidential wells are shown with limited detail; the Wells layer is a current snapshot, not a history of statuses.",
+ "activity_bands_possible": [
+  "new",
+  "recomplete",
+  "amend",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The layers and daily reports name operators (companies) and wells; I saw no individual's name in the fields read, but an operator can be an individual or carry a 'DBA' name, so apply the project's name rule before publishing. The blank forms ask for operator telephone and e-mail, surface-owner names and addresses; those are filed data, not published in the layers or reports I read. Daily reports end with an agency contact line (not copied).",
+ "unknowns": [
+  "Columns of the paid Well Index Excel file and whether it carries a permit approval date",
+  "Whether the daily report's date always equals the approval date, and the headings used in earlier years (only two 2026 reports read)",
+  "Whether injection and disposal permits (Form 14) appear in the daily reports under PERMITS APPROVED",
+  "Values of Type of Work (for example whether re-entry is offered) and Type of Well on Form 1",
+  "Meaning of each status code in the Wells layer (LOC, PNC, PNS, NJ and others); only the codes were seen",
+  "Whether the layer's td field is proposed or actual depth",
+  "Fields of the Directional_Well_Bore and Cases_Docketed layers (listed in the services root, not read)",
+  "What the NorthSTAR public screens show per well, and whether they need a login",
+  "Update cadence of the Wells layer (a 2022 notice says hourly)"
+ ],
+ "researched": "2026-10-31"
+}
