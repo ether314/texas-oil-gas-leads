@@ -75,3 +75,13 @@ A refusal by the server is exit 2, an answer. The same registry read again write
 - Wells fractured before a state required disclosure, or whose first disclosure was filed under another API number, can read as new once.
 - FracFocus operator names are the names operators submit: one company can appear under two spellings (the summary groups by upper-case text; a merger changes the name).
 - `LAG_DAYS` is one number for every state; Texas is about 94% complete at four months, some small states less. The newest months of a small state are noisy by nature.
+
+## The whole registry in the local database (2026-11-01)
+
+The site publishes a slice (24 months of points, monthly counts); the owner's local SQLite database (`build_db.py`) can hold the whole registry, through `ff_db.py`: `python3 -I site/pipeline/build_db.py --fracfocus [--chemicals] [--fracfocus-zip PATH | --fracfocus-download DIR]`. Tables: `ff_disclosures` (all 251,953 rows of the disclosure list,
+23 columns, nothing dropped: 274 rows have no usable job date and are marked `date_ok = 0`, their text kept), `ff_water_sources` (25,878), and with `--chemicals` `ff_ingredients` (about 7 million rows from the 15 `FracFocusRegistry_N.csv` files; the header columns they repeat live in `ff_disclosures`). `is_first` is the definition above, so on the same registry `v_ff_new_wells` has
+the same 239,133 wells as `summary.json` and `v_ff_new_wells_by_month` agrees with every one of its 2,068 state-months (checked on 2026-11-01). The disclosure list and water sources come by range requests (19 MB), or from a local copy of the zip; the ingredients need the whole zip, which `--fracfocus-download` fetches once into a new folder (one request, resumed once, never
+retried in a loop). Built on 2026-11-01: 12 seconds without ingredients (121 MB file), a few minutes with them (about 2.5 GB).
+
+**Local only.** These tables carry API numbers, well names and operators that are people ("Clay Hamilton"), none of which is ever published: the database is git-ignored, `ff_db.ensure_local_only` refuses to write the tables anywhere under `site/` or to a name git would track, a database built without `--fracfocus` has none of them, and `tests/test_build_db_fracfocus.py` pins all of it.
+
