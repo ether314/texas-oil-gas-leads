@@ -33,6 +33,7 @@ def check(cond, msg):
 
 
 # ------------------------------------------------------------------------------------------------ words: bands, fluids, dates
+check(C.place_title("MCKENZIE") == "McKenzie" and C.place_title("ST. CLAIR") == "St. Clair" and C.place_title("DE SOTO") == "De Soto" and C.place_title("MACON") == "Macon" and C.place_title("O'BRIEN") == "O'Brien", "place_title: McKenzie keeps its capital K, and other names stay in plain title case")
 check(C.band_of("New Drill", "Oil") == "new" and C.band_of("Original", "") == "new" and C.band_of("", "") == "new" and C.band_of("Permit to Drill", "Gas") == "new",
       "band_of: a new drill, an original application, a blank type and a permit to drill are new wells")
 check(C.band_of("Amended permit", "") == "amend" and C.band_of("Extension", "") == "amend" and C.band_of("Change of operator", "") == "amend" and C.band_of("Revision of APD", "oil") == "amend",
@@ -84,6 +85,16 @@ check(doc["bands"]["inj"] is None and doc["bands"]["redrill"] is None and isinst
       "a band the source cannot tell is null, never a list of zeros")
 check(all(v == 2 for v in doc["bands"]["new"]) and all(v == 1 for v in doc["bands"]["amend"]), "the counts are per month (two new, one amendment a month)")
 check(doc["operators"] == [["ACME OIL & GAS LLC", 12]] and doc["namedShare"] == 0.5, "an individual's name is counted in the share but never named: %s share %s" % (doc["operators"], doc["namedShare"]))
+# California's real shape: a layer that starts in 2024-11, 8 new-drill permits in all of 2025, then 60 to 93 a month in 2026
+cal = C.Tally("CA")
+for i, ym in enumerate(C.month_list("2024-11", "2026-10")):
+    big = ym >= "2026-01"
+    cal.add(date(int(ym[:4]), int(ym[5:]), 15), "new", n=([60, 93, 70, 88, 90, 85, 80, 75, 82, 79][int(ym[5:]) - 1] if big else 1))
+jump = cal.document(agency="CalGEM", source_name="Notices", source_url="https://example.gov/x", basis="approval date", cadence="daily", asof=date(2026, 11, 1), first="2024-11")
+check(C.validate(jump, date(2026, 11, 2)) == [], "a real regime change (1 a month, then 60 to 93 a month: California's) is not mistaken for a parse error: %s" % C.validate(jump, date(2026, 11, 2))[:2])
+spike = copy.deepcopy(doc)
+spike["bands"]["new"][40] = 99000
+check(any("wildly" in x or "non-negative" in x for x in C.validate(spike, today)), "but one month 1,000 times the rest still is")
 check(doc["counties"][0][0] == "Williams" and [c[0] for c in doc["counties"]] == ["Mckenzie County", "Williams"] or doc["counties"][0][1] == 12, "counties are ranked place names: %s" % doc["counties"])
 check(doc["fluid"] == {"oil": 12, "gas": 12, "both": 0, "other": 0, "unknown": 0}, "the fluid of the year's new wells: %s" % doc["fluid"])
 check(make(fluid=False)["fluid"] is None, "a state that records no fluid has fluid null")
