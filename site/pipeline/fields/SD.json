@@ -1,0 +1,506 @@
+{
+ "state": "SD",
+ "name": "South Dakota",
+ "agency": {
+  "name": "South Dakota Department of Agriculture and Natural Resources, Minerals, Mining and Superfund Program (Oil and Gas), Rapid City; well database kept with the SD Geological Survey",
+  "short": "SD DANR",
+  "url": "https://danr.sd.gov/Environment/MineralsMining/OilGas/Data.aspx"
+ },
+ "form": {
+  "name": "Form 2: Application for Permit to Drill",
+  "number": "Form 2 (ARSD 74:12:02:01), file dated 6-6-2023",
+  "url": "https://danr.sd.gov/Environment/MineralsMining/OilGas/docs/forms/New%2006.06.23/Form%202%20Flattened%20-%20APD%20(6-6-2023).pdf",
+  "read": true,
+  "notes": "One-page form read (the 2023 flattened copy; the page also offers a 4-1-2026 fillable edition whose link answered 404 on my one try, so edition differences are unchecked). Fields: type of work (drill new, reenter, directional, other), type of well (oil, gas, injection, other), operator, surface owner, drilling contractor and rig, surface location with footages and optional lat/lon, directional top of pay and bottom hole, spacing unit acres and description, well name and number, elevation, field and pool, proposed depth and formation, casing and cement table, proposed operations text, pit liner, office-use permit no., API no., date issued. Filed with Form 1 (organization report), Form 3 (bond), Forms 8, 9 and 13, none read."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "'API Number' in Wells.xlsx; 'API No.' is an office-use box on Form 2"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "'Permit' in Wells.xlsx; 'Permit No.' office-use box on Form 2"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "'Well Name' in Wells.xlsx; Form 2 asks well name and number"
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 has no lease-name field (describes the spacing unit instead)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "'Operator' in Wells.xlsx; Form 2 asks operator name and address"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 asks name and address only; Form 1 Organization Report not read"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 2; Form 1 Organization Report not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "web",
+   "n": "Form 3 plugging and performance bond ($50,000 well, $100,000 multiple) goes with the application"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "'County' in Wells.xlsx; also in Form 2's surface location"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district or region on Form 2 or in the files"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "'Oil or Gas Field' and 'Enhanced Recovery Unit'; Form 2 asks field and pool or wildcat"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude and Longitude (GCS NAD 83) in Wells.xlsx; Form 2 asks them 'if available'"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "'Location Description' and 'Measured Directions' (footages) in Wells.xlsx"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Completions 'Bottom Hole Location Description' (after completion); Form 2: directional wells"
+  },
+  "lateral_path": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 asks only top of pay and bottom hole for directional wells, no survey"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "'Kelly Bushing Elevation' and 'Ground Surface Elevation' in Wells.xlsx; Form 2 asks elevation"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: name and address of surface owner; Forms 8 and 9 (inspect, notice) not read"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "'Permitted Well Type' and 'Current Well Type' in Wells.xlsx; Form 2: oil, gas, injection, other"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: drill new well, reenter well, drill directional well, other; not in the files"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "'Wellbore Type' in Well_Completions; 'Oil-Horizontal' in Permitted Well Type"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2 'Proposed Depth and Formation' (MD or TVD not stated); files hold actual depths"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form's proposed depth does not say TVD; completions file has actual TVD only after drilling"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 2"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "'Bottom Hole Formation' and 'Producing Formation' (actual); Form 2 asks proposed formation"
+  },
+  "formation_tops": {
+   "s": "data",
+   "e": "file",
+   "n": "Formation_Tops.xlsx: picked tops per well (actual, not expected tops at permit time)"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2 table: hole size, casing size, weight, depth (4 strings)"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: cementing program (amount, type, yield, additives) and top of cement"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP or pressure-control item on Form 2"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No H2S item on Form 2"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: 'Pit Liner Specifications' only"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "No water source or volume item on Form 2"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "No frac item on Form 2; only a free-text 'proposed operations' box"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: acres in spacing (drilling) unit and its description"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "form",
+   "n": "No exception request on Form 2"
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 2; Forms 9 (notification) and 13 (certification) not read"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 2; fee amount not verified"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "web",
+   "n": "Form 9 certificate of notification is submitted with the application; form not read"
+  },
+  "date_received": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 office-use box has approved by, permit no., API no., date issued; no date received"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "'Date Permit Issued' in Wells.xlsx (newest 2024-07-16); 'Date Issued' on Form 2"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Status key mentions expired permits and extensions; no expiry date column"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "'Spud Date' in Wells.xlsx and Well_Completions"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "'Completion Date' in Wells.xlsx and Well_Completions"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "'Administrative Status' (Producing, Never drilled, Plugged and Abandoned, Shut In...)"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "'Permit file URL' is a scan of the permit; whether it holds the plat is unknown"
+  },
+  "form_image": {
+   "s": "data",
+   "e": "file",
+   "n": "'Permit file URL' in Wells.xlsx: scanned image of the permit, filled for every row"
+  },
+  "completion_report": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Completions.xlsx holds completion data (depths, intervals); report image not verified"
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "'Elogs URL', 'Core Available', 'Cuttings Available' in Wells.xlsx"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "Oil_Gas_Production_All_Years.xlsx: monthly production by well, keyed by API_No"
+  }
+ },
+ "sources": [
+  {
+   "id": "sd-wells-xlsx",
+   "name": "SDOIL export: Wells.xlsx (one row per well, permit dates, types, status, links)",
+   "url": "https://sddenr.net/pubs/og/SDOILexport.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "monthly",
+   "history_from": "1909",
+   "size_mb": 18.1,
+   "free": true,
+   "login": false,
+   "license": "State disclaimer: informational use, no warranty; no restriction stated",
+   "columns": [
+    "API Number",
+    "Permit",
+    "Operator",
+    "Well Name",
+    "Administrative Status",
+    "Oil or Gas Field",
+    "Enhanced Recovery Unit",
+    "Measured Directions",
+    "Location Description",
+    "County",
+    "Kelly Bushing Elevation",
+    "Ground Surface Elevation",
+    "Current Well Type",
+    "Permitted Well Type",
+    "Well Completion Type",
+    "Date Permit Issued",
+    "Spud Date",
+    "Completion Date",
+    "Plug Date",
+    "Bottom Hole Formation",
+    "Latitude (GCS NAD 83)",
+    "Longitude (GCS NAD 83)",
+    "Permit file URL",
+    "Elogs URL",
+    "Core Available",
+    "Cuttings Available",
+    "Export Date",
+    "UIC Permit"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil",
+    "oil-horizontal",
+    "gas",
+    "oil and gas exploration",
+    "injection",
+    "injection-horizontal"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD 200 (18,122,495 bytes, modified 2026-10-20), then one full download 200. Zip holds Wells.xlsx (2,137 rows, export date 2026-10-01), Well_Completions.xlsx (2,048 rows), Formation_Tops.xlsx (15,559 rows), Oil_Gas_Production_All_Years.xlsx, UIC_InjectionData_All_Years.xlsx. Date Permit Issued: 2,065 rows, 1909-03-01 to 2024-07-16 (dates are Excel serials; early ones look like placeholders); permits per year in file 2019: 4, 2021: 4, 2022: 11, 2023: 4, 2024: 1, matching the DANR page table. Permitted Well Type: Oil 962, Oil and Gas Exploration 550, Gas 361, Oil-Horizontal 236, Injection 19, Injection-Horizontal 5, blank 4."
+  },
+  {
+   "id": "sd-well-completions-xlsx",
+   "name": "SDOIL export: Well_Completions.xlsx (completion data per well)",
+   "url": "https://sddenr.net/pubs/og/SDOILexport.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 0.26,
+   "free": true,
+   "login": false,
+   "license": "as above",
+   "columns": [
+    "API Number",
+    "Permit Number",
+    "Well Name",
+    "Latitude (GCS83)",
+    "Longitude (GCS83)",
+    "Location Description",
+    "Current Well Type",
+    "Administrative Status",
+    "Spud Date",
+    "Completion Date",
+    "Wellbore Type",
+    "Measured Depth",
+    "True Vertical Depth",
+    "Top Producing Interval MD",
+    "Bottom Producing Interval MD",
+    "Top Producing Interval TVD",
+    "Bottom Producing Interval TVD",
+    "Producing Formation",
+    "Bottom Hole Location Description",
+    "Export_Date"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Header read from the downloaded zip (2,048 data rows); inside the same file as Wells.xlsx."
+  },
+  {
+   "id": "sd-production-xlsx",
+   "name": "Monthly production by well, 1950 to present (also in the zip)",
+   "url": "https://sddenr.net/pubs/og/Oil_Gas_Production_All_Years.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "monthly",
+   "history_from": "1950",
+   "size_mb": 14.3,
+   "free": true,
+   "login": false,
+   "license": "as above",
+   "columns": [
+    "API_No",
+    "Facility_ID",
+    "County",
+    "Well_Name",
+    "Qsec_location",
+    "Reported_Well_Status_A",
+    "Date_Production",
+    "Prod_Days",
+    "Oil_bbls",
+    "Total_Gas_mcf",
+    "Marketed_Gas_mcf",
+    "Water_bbls",
+    "Total_oil_On_Hand_End_Month",
+    "Prod_Comments",
+    "Reported_Operator_Name",
+    "Field_Name",
+    "Enhanced_Recovery_Unit",
+    "Production_Confidential",
+    "Export Date"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Header and first row read from the copy inside the zip (export date 2026-10-19; strict-OOXML workbook with two summary tabs and one 95 MB data sheet). The standalone URL was taken from the DANR data page and not requested."
+  },
+  {
+   "id": "sd-oil-gas-gdb",
+   "name": "SDOIL geodatabase: wells, recovery units, field boundaries",
+   "url": "https://sddenr.net/pubs/og/SDOIL.gdb.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 1.1,
+   "free": true,
+   "login": false,
+   "license": "as above",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "HEAD 200 only (1,157,005 bytes, modified 2026-08-11). Not downloaded; field list unknown."
+  },
+  {
+   "id": "sd-danr-permits-table",
+   "name": "DANR 'Oil and Gas Drilling Permits Issued' tables on the Permits/Forms page",
+   "url": "https://danr.sd.gov/Environment/MineralsMining/OilGas/OilGasForms.aspx",
+   "kind": "report",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "2019",
+   "size_mb": 0.09,
+   "free": true,
+   "login": false,
+   "license": "public record",
+   "columns": [
+    "Permit No.",
+    "API No.",
+    "Issue Date",
+    "Well Name",
+    "Operator",
+    "Legal Location",
+    "County",
+    "Status"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "new permit",
+    "new permit extension"
+   ],
+   "reachable": "ok",
+   "tested": "GET 200, 91 KB HTML. One table per year with caption 'Permits issued in YYYY (n)': 2024 (1), 2023 (4), 2022 (11), 2021 (4), 2019 (4); newest issue date 07/15/24 (the file says 2024-07-16). The text says 'Issued From 2009-2024' but only these five tables are on the page. Each permit number links to a scanned permit PDF."
+  },
+  {
+   "id": "sd-sdgs-online-db",
+   "name": "SDGS Oil and Gas Online Database and Interactive Data Map",
+   "url": "https://usd-asp.usd.edu/SDGS/oilandgas",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "state disclaimer",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Linked from the DANR data page and the SDGS databases page; not opened, because the bulk export covers the same wells."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "A free, reachable 18 MB zip (modified 2026-10-20, no login) holds Wells.xlsx with one row per well, 'Date Permit Issued', spud, completion and plug dates, permitted and current well type (incl. horizontal), county, field, footages and lat/lon, and production by API number. Monthly permit counts can be built and match the DANR page's yearly tables. Weak points: no work-type column (new drill versus re-entry exists only on Form 2), dates are Excel serials with a few placeholder years, and South Dakota is nearly dormant (1 permit in 2024, none dated after 2024-07-16 in the 2026-10-01 export).",
+ "producer_plan": "Download SDOILexport.zip (about 18 MB; once a month is plenty), read Wells.xlsx (sheet Export__wells_Table_4_Web) with a standard-library reader, turn 'Date Permit Issued' (Excel serial days from 1899-12-30) into dates, drop pre-1950 placeholders, and count permits by month, split by 'Permitted Well Type' (Oil, Oil-Horizontal, Gas, Oil and Gas Exploration, Injection, Injection-Horizontal; four rows are blank). Spuds by month from 'Spud Date', completions from 'Completion Date', plugging from 'Plug Date', and status from 'Administrative Status'. County from 'County'. Join production by API (Oil_Gas_Production_All_Years.xlsx, 'Date_Production', 'Oil_bbls', 'Total_Gas_mcf'). Cross-check the permit counts against the yearly tables on the DANR Permits/Forms page. Caveats: no re-entry versus new-drill split; the export is a full replacement each time so earlier months can be revised; volumes are tiny, so show counts, not rates.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "Wells.xlsx and the DANR table name the operator of each well; some operators may be individuals, so publish names only for corporations, LLCs and partnerships. Form 2 asks the surface owner's name and address and the files link to scanned permits that may carry personal details; none of that is copied here.",
+ "unknowns": [
+  "Whether any permits were issued after 2024-07-16 (file exported 2026-10-01 shows none)",
+  "Contents of Forms 1, 3, 8, 9 and 13 and the permit fee",
+  "Differences in the 4-1-2026 edition of Form 2 (link 404; the 6-6-2023 copy was read)",
+  "Fields of the geodatabase and of the UIC injection workbook",
+  "Whether 'Permit file URL' scans include the plat",
+  "Update cadence of the zip (members dated 2026-09-14 to 2026-10-20)"
+ ],
+ "researched": "2026-10-31"
+}

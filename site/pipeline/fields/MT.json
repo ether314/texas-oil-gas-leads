@@ -1,0 +1,454 @@
+{
+ "state": "MT",
+ "name": "Montana",
+ "agency": {
+  "name": "Montana Board of Oil and Gas Conservation (MBOGC), part of the Department of Natural Resources and Conservation",
+  "short": "MBOGC",
+  "url": "https://dnrc.mt.gov/BOGC"
+ },
+ "form": {
+  "name": "Form 22, Application for Permit To Drill, Deepen or Re-enter",
+  "number": "Form 22 (R 10/09)",
+  "url": "https://dnrc.mt.gov/_docs/bogc/Forms/FORM-22_Fillable.pdf",
+  "read": true,
+  "notes": "Read the fillable PDF (fetched with WebFetch, text extracted with pdftotext; file last modified 4 Apr 2016, printed revision R 10/09). Cites ARM 36.22.307 and 36.22.601. Submitted in quadruplicate to the Billings office; no online filing found on the operator page. Companion pages not read: APD process checklist (2018-APD-Process.pdf), Bond Overview, ARM 36.22.601 and 36.22.1308. The agency's main host bogc.dnrc.mt.gov is blocked by the sandbox proxy."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "APIWellNumber (14 digits) in the BOG_Wells layer; Form 22 board-use box API Number 25-; letters show county-seq"
+  },
+  "permit_number": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 board-use box Permit Number; letters print a 5-digit number unlabeled (not verified as the permit no.)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WellName in the BOG_Wells layer; Form 22 asks lease name and well number"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 Lease Name and Unit Name (if applicable); not in the layer or the letters"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "CompanyName in the BOG_Wells layer; Form 22 operator box"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 22 asks operator name, address and phone only; the layer DOR_ID looks like a revenue ID (not decoded)"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "No business-type box on Form 22; none in any source read"
+  },
+  "bond": {
+   "s": "none",
+   "e": "form",
+   "n": "No bond box on Form 22; bonding is handled apart from the APD (ARM 36.22.1308, Bond Overview PDF not read)"
+  },
+  "county": {
+   "s": "query",
+   "e": "web",
+   "n": "Weekly letters and Dataminer County column; not a field of the ArcGIS layer (API digits 3-5 encode it)"
+  },
+  "district": {
+   "s": "query",
+   "e": "web",
+   "n": "Dataminer Permits grid has a Dist column (not opened with rows); not asked on Form 22"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Reg_Field, ProductionField, FieldNumber in the layer; Form 22 Field Name or Wildcat"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Point geometry of the BOG_Wells layer (schema read, coordinates not pulled); Form 22 asks quarter-quarter, not lat/long"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Township, Range, Section, Quarter in the layer; footages (FSL/FWL) only in weekly letters and on Form 22"
+  },
+  "bottom_hole_loc": {
+   "s": "query",
+   "e": "web",
+   "n": "Weekly letters print PBHL for horizontals (PDF); Form 22 asks bottom-hole location; not in the layer"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 22 asks only the bottom-hole location; Dataminer has a Direction/Horizontal Wells page, not opened"
+  },
+  "elevation": {
+   "s": "query",
+   "e": "web",
+   "n": "Weekly letters print EL ... GR; Form 22 asks GL or KB; not in the layer"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 prints the surface-owner notice duty (82-10-503 MCA); no ownership field"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Type column (Oil, Gas, Injection, Coal Bed Methane...) is the current type; Form 22 Oil/Gas/Other boxes"
+  },
+  "work_type": {
+   "s": "query",
+   "e": "web",
+   "n": "Letters split New, Horizontal and Re-Issued Locations; Form 22 has Drill/Deepen/Re-enter; no work-type column"
+  },
+  "well_direction": {
+   "s": "query",
+   "e": "web",
+   "n": "Dataminer Slant column; letters have a Horizontal Wells section; Form 22 asks bottom hole if directional/horizontal"
+  },
+  "proposed_depth_md": {
+   "s": "query",
+   "e": "web",
+   "n": "Letters print Proposed Depth for vertical wells; Form 22 Proposed Total Depth; layer DTD not shown to be proposed"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 22 has one Proposed Total Depth box; MD or TVD not stated"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not asked on Form 22; PBHL in the letters would allow an estimate"
+  },
+  "target_formation": {
+   "s": "query",
+   "e": "web",
+   "n": "Letters print the formation(s); Dataminer Formation column; Form 22 Objective Formation(s) and Formation at TD"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on Form 22 (the form notes extra information may be required by rule)"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 table: hole size, casing size, weight/ft, API grade, depth"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 table: sacks of cement and type of cement"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22: describe or attach a labeled diagram of blowout preventer equipment"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No H2S box on Form 22; a rule-based plan may be required, not checked"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 supplemental items 3 to 5: site and reserve-pit sketches, liner, plan for pit fluids and solids"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22: topo map showing water wells within 1/2 mile; checkbox for a DNRC water-use permit; no volume"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on Form 22; hydraulic fracturing proposals are a separate filing (approved ones posted as PDFs)"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22: size and description of drilling/spacing unit and applicable order"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "form",
+   "n": "No exception-location question on Form 22"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 Lease Type (Private/State/Federal); not in the layer or the letters"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 board-use boxes Permit Fee and Check Number; amount not read; not published per well"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 notice to surface owner; ARM 36.22.601 notice and protest hearing (from a search summary, rule not opened)"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No received-date box on Form 22; none seen in the letters or Dataminer headers"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "Letters print Approved: mm/dd/yyyy; Dataminer Dt Effect column; Form 22 Approved (date); not in the layer"
+  },
+  "date_expires": {
+   "s": "query",
+   "e": "web",
+   "n": "Letters list Expired Permits with Expired: mm/dd/yyyy; Form 22 board-use box Permit Expires"
+  },
+  "spud_date": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 asks Anticipated Spud Date and requires the actual spud reported within 72 hours; no spud column seen"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Completed column in the layer (text mm/dd/yyyy); letters print Completed date, TD and initial production"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Status column (Producing, Permit to Drill, Spudded, P&A - Approved, Shut In...)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 22 requires a certified survey plat; whether scans are online was not verified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Whether filed Form 22 images are online was not verified"
+  },
+  "completion_report": {
+   "s": "query",
+   "e": "web",
+   "n": "Weekly letters have a Completions section; Dataminer has Completions and Well History pages, not opened"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Dataminer has Cores and Cuttings; well logs not verified"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Dataminer Production pages (by well, field, county); historical production zips listed but not opened"
+  }
+ },
+ "sources": [
+  {
+   "id": "mt-weekly-activity-letters",
+   "name": "MBOGC Weekly Activity Letters (one PDF a week: new locations, horizontal wells, re-issued locations, completions, expired permits, abandoned wells)",
+   "url": "https://bogwebfiles.dnrc.mt.gov/WeeklyActivityLetter/",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2016",
+   "size_mb": 0.11,
+   "free": true,
+   "login": false,
+   "license": "No license stated; state public records",
+   "columns": [
+    "county",
+    "field or Wildcat",
+    "API number (county-sequence)",
+    "operator",
+    "well name",
+    "5-digit number (unlabeled)",
+    "SHL (quarter-quarter section-township-range, footages, GR elevation)",
+    "Proposed Depth and formation (vertical) or PBHL and formation (horizontal)",
+    "Approved date",
+    "section headings: New Locations; New Locations - Horizontal Wells; Re-Issued Locations; Completions; Expired Permits; Abandoned Wells"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new location",
+    "new location - horizontal",
+    "re-issued location",
+    "completion",
+    "expired permit",
+    "abandoned well (plugging approval)"
+   ],
+   "reachable": "ok",
+   "tested": "Folder listing GET 200 (bogwebfiles.dnrc.mt.gov, 5 KB) and 2026 folder GET 200 (43 weekly PDFs, Week 4 of 09-25-26 to 10-23-26 at the end; 2016 letters appear in search results). Newest letter (10-23-26, 3 pages, 109 KB) fetched through WebFetch, not curl, and read with pdftotext: 6 permit actions that week (1 vertical, 4 horizontal, 1 re-issued). The letters are on bogfiles.dnrc.mt.gov, which answered 403 to curl HEAD for two zip files, so a runner may need a test."
+  },
+  {
+   "id": "mt-dataminer-permits",
+   "name": "MBOGC Dataminer: Wells > Permits (default Last 24 Months; filter by Dt Effect, API, operator, county, field, formation; Csv and Text export links)",
+   "url": "https://bogapps.dnrc.mt.gov/dataminer/Wells/WellPermits.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "Dt Effect",
+    "API #",
+    "Operator",
+    "County",
+    "Well Name",
+    "Location (T-R-S)",
+    "Location (T-R)",
+    "Section",
+    "Field",
+    "Slant",
+    "Current Type",
+    "Current Status",
+    "Formation",
+    "Dist"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permit (type not split)",
+    "horizontal permits have their own page WellHorzPermits.aspx"
+   ],
+   "reachable": "ok",
+   "tested": "GET 200 (44 KB ASP.NET page; headers read from the filter list and grid). No data rows came back from a plain GET or from one plain form POST (the grid needs the browser's partial postback), and Export.aspx?type=csv answered 'Content must be selected to export data' (200, 61 bytes). Dt Effect is assumed to be the permit's effective/approval date: not verified against rows. Sibling pages seen in the menu: Horizontal Permits, Completions, Abandonments, Permit Count (5 Year Permit Count by Year and Quarter), Horizontal Well Permit Count."
+  },
+  {
+   "id": "mt-bog-wells-featureserver",
+   "name": "MBOGC BOG_Wells ArcGIS feature layer (all Montana oil and gas wells, current status)",
+   "url": "https://services2.arcgis.com/DRQySz3VhPgOv7Bo/ArcGIS/rest/services/BOG_Wells/FeatureServer/1",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not stated on the layer (empty description)",
+   "columns": [
+    "OBJECTID",
+    "Status",
+    "Type",
+    "MapSymbol",
+    "Completed",
+    "St_FldNo",
+    "Reg_Field",
+    "DTD",
+    "DOR_ID",
+    "APIWellNumber",
+    "WellName",
+    "CompanyName",
+    "Township",
+    "Range",
+    "Section",
+    "Quarter",
+    "ProductionField",
+    "FieldNumber"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "current status per well, including Permit to Drill (103 oil) and Spudded (89 oil)"
+   ],
+   "reachable": "ok",
+   "tested": "layers?f=json 200 (58 KB; one layer, 17 fields plus OBJECTID, max 2,000 records per call); one statistics query 200: 42,041 wells; dataLastEditDate 22 Sep 2026. It is a snapshot of status, with no permit or spud date, so it cannot give monthly counts."
+  },
+  {
+   "id": "mt-bog-reporting-zips",
+   "name": "MBOGC Reporting downloads: MT_CompleteWellList.zip, MT_MonthlyUpdate.zip and production zips",
+   "url": "https://bogwebfiles.dnrc.mt.gov/Reporting/",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "not read: the two zips answered 403"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "blocked-403",
+   "tested": "Listing GET 200 (7 KB) shows the files. HEAD on MT_CompleteWellList.zip and MT_MonthlyUpdate.zip (bogfiles.dnrc.mt.gov, backslash path sent as %5C) returned 403 Forbidden; not retried. The 403 may come from the HEAD method or the path encoding; contents and columns unknown. 'Monthly' is taken from the folder name MonthlyUpdates."
+  },
+  {
+   "id": "mt-main-host",
+   "name": "MBOGC main site host bogc.dnrc.mt.gov",
+   "url": "https://bogc.dnrc.mt.gov/",
+   "kind": "none",
+   "format": "html",
+   "grain": "aggregate",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "n/a",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "blocked-proxy",
+   "tested": "One HEAD: curl 56, CONNECT tunnel failed, response 502. Not retried or worked around. The agency's pages on dnrc.mt.gov, bogapps.dnrc.mt.gov, bogwebfiles.dnrc.mt.gov and the Esri-hosted layer did answer."
+  }
+ ],
+ "grade": "C",
+ "grade_reason": "No bulk file or API with an approval date was verified. Approval dates are published only in weekly PDF letters (reachable, text-extractable, about 6 actions a week) and in the Dataminer Permits query, whose CSV export could not be driven here. The one machine-readable layer has status but no permit date. Could become A or B if the Dataminer export or the MT_MonthlyUpdate.zip proves to carry Dt Effect.",
+ "producer_plan": "Best fragment today: the Weekly Activity Letters. Read the folder listing (one request), fetch each weekly PDF once (about 110 KB), extract text with pdftotext -layout, and walk the section headings. 'New Locations' and 'New Locations - Horizontal Wells' entries are new permits, 'Re-Issued Locations' are reissues, 'Expired Permits' carry Expired: dates, 'Abandoned Wells' entries also print Approved: but are plugging approvals and must not be counted as permits. An entry starts with county, field and API number (county-sequence, with a 5-digit number beside the well name) and ends with 'Approved: mm/dd/yyyy'; month = that date, not the letter's week. Counts are by date approved; no well class on new locations (horizontal vs other is the only split). Back-fill from 2016 by walking the folders. Better option to test first, in a browser or by a person: Dataminer Wells > Permits with the Csv export (one row per permit with Dt Effect, API, county, formation, slant, type, status), and the 5 Year Permit Count and Horizontal Permit Count pages for cross-checks; and the monthly zips. Caveats: the weekly letters are a layout-fragile PDF; the bogfiles host refused curl HEADs (403); the main host is blocked here; the Dataminer is an ASP.NET postback app, so a scripted run would need session and view-state handling and care not to hammer it.",
+ "activity_bands_possible": [
+  "new",
+  "other"
+ ],
+ "privacy_notes": "The letters and the layer name operators (companies in the pages read) and carry no phone numbers except the Board's own office. Form 22 collects an operator address and phone and a signing agent; the surface owner is not named on the form. Nothing copied.",
+ "unknowns": [
+  "What Dt Effect means and whether the Dataminer CSV export returns rows (needs a browser-like session)",
+  "Contents and columns of MT_CompleteWellList.zip and MT_MonthlyUpdate.zip (403 on HEAD, not retried)",
+  "Whether the 5-digit number beside the well name in the letters is the permit number",
+  "Whether Form 22 has a newer revision than R 10/09 (the PDF was last modified April 2016); the APD checklist and eForm status were not read",
+  "Fee amount, bond rules, and ARM 36.22.601 notice details (rule pages not opened)",
+  "Whether scanned forms, plats and logs are online per well",
+  "Weekly letters before 2026 were not opened (2016 to 2025 folders seen only in search results)"
+ ],
+ "researched": "2026-10-31"
+}

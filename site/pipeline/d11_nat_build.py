@@ -57,6 +57,17 @@ def load(name, default=None):
         return json.load(f)
 
 
+def short_reason(text, n=240):
+    """The research's reason for a state's grade, as one or two sentences that fit a table cell (the whole reason is in the permit-fields matrix)."""
+    text = " ".join(str(text or "").split())
+    out = ""
+    for part in re.split(r"(?<=[.!?])\s+", text):
+        if len(out) >= 60 and len(out) + len(part) + 1 > n:  # at least a real sentence: "Provisional." alone says nothing
+            break
+        out = (out + " " + part).strip()
+    return out if len(out) <= n + 60 else out[:n].rstrip() + "…"
+
+
 def adapt(sid, spec):
     """One of the four earlier jurisdictions in the normalized shape (new only; the other bands are not available)."""
     ser = load(spec["series"])
@@ -141,7 +152,7 @@ def build(docs=None, fields=None, today=None):
             continue
         f = fstates.get(sid) or {}
         gaps.append({"id": sid, "name": name, "agency": (f.get("agency") or {}).get("name"), "grade": f.get("grade"),
-                     "why": f.get("grade_reason") or "Not read yet: no producer for this agency has been built."})
+                     "why": short_reason(f.get("grade_reason")) or "Not read yet: no producer for this agency has been built."})
     addable = [s for s in states if s["id"] not in C.OVERLAP]  # the BLM's onshore permits overlap the states' own: never in a total
     tot = {"permits12": sum(s["p12"] for s in addable if s["measure"] == "permits"), "spuds12": sum(s["p12"] for s in addable if s["measure"] == "spuds"),
            "permitStates": sum(1 for s in addable if s["measure"] == "permits"), "spudStates": sum(1 for s in addable if s["measure"] == "spuds")}

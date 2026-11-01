@@ -1,0 +1,473 @@
+{
+ "state": "BL",
+ "name": "Federal onshore (BLM)",
+ "agency": {
+  "name": "Bureau of Land Management, U.S. Department of the Interior",
+  "short": "BLM",
+  "url": "https://www.blm.gov"
+ },
+ "form": {
+  "name": "Application for Permit to Drill or Reenter (APD); Sundry Notices and Reports on Wells",
+  "number": "Form 3160-3 (October 2024), OMB 1004-0220; Form 3160-5 (October 2024), OMB 1004-0220",
+  "url": "https://www.blm.gov/sites/blm.gov/files/3160-003.pdf",
+  "read": true,
+  "notes": "Read both blank forms (edition October 2024, expiring Oct 31, 2027; 3160-5 at https://www.blm.gov/sites/blm.gov/files/3160-005.pdf) and Onshore Oil and Gas Order No. 1 (72 FR 10308, March 7, 2007; https://muleapi.blm.gov/sites/default/files/Order_1_2007.pdf) for the APD package: well plat, Drilling Plan, Surface Use Plan of Operations (SUPO), bond, operator certification. Drilling Plan and SUPO contents in the cells come from Order 1 III.D.3 and III.D.4; Order No. 2 and 43 CFR 3170 were not read in full. The form instructions say operators must file electronically in AFMSS (43 CFR 3171.5) since May 13, 2017; that system is login-only and was not opened. 3160-3 has no APD number, operator ID, fee, receipt date or spud date; the approval date sits in the 'Approved by' block."
+ },
+ "cells": {
+  "api_number": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 9 'API Well No.' (asked on the APD; not published per well)"
+  },
+  "permit_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No APD-number item on 3160-3; AFMSS assigns its own ID (not verified, login-only)"
+  },
+  "well_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 8 'Lease Name and Well No.'"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 8 lease name; item 5 lease serial no.; item 7 unit or CA agreement"
+  },
+  "operator_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 2 'Name of Operator'"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "3160-3 asks the name only; an AFMSS operator ID was not verified (login-only)"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on 3160-3 (name, address and phone only: items 2, 3a, 3b)"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 20 'BLM/BIA Bond No. in file'; bond is attachment 4 of item 24"
+  },
+  "county": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 12 'County or Parish' (item 13 State)"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "Aggregate only: State Office (monthly PDFs), Field Office (Table 16 xlsx); no per-APD row"
+  },
+  "field_pool": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 10 'Field and Pool, or Exploratory'"
+  },
+  "surface_latlon": {
+   "s": "form",
+   "e": "doc",
+   "n": "Surveyor plat plus geospatial data in NAD83 lat/long (Order 1 III.D.2); no 3160-3 item"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 4 'At surface'; item 11 Sec., T., R., M. or Blk. and Survey; footages on plat"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 4 'At proposed prod. zone'"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "doc",
+   "n": "Directional design, plan view, vertical section in the Drilling Plan (Order 1 III.D.3.i)"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 21 'Elevations (Show whether DF, KDB, RT, GL, etc.)'"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "SUPO: surface access agreement or bond if surface is private (Order 1 III.D.4); no form item"
+  },
+  "well_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 1b: Oil Well, Gas Well or Other"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 1a: DRILL or REENTER; sundry 3160-5 adds deepen, recomplete, plug back and more"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "doc",
+   "n": "No checkbox; directional or horizontal design goes in the Drilling Plan (Order 1 III.D.3.i)"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 19 'Proposed Depth' (form does not say measured or vertical)"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "doc",
+   "n": "True and measured depths in the directional design (Order 1 III.D.3.i); item 19 unspecified"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "No item; only implied by the directional plan attachment"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "doc",
+   "n": "Drilling Plan lists formations and expected oil or gas zones (Order 1 III.D.3.a-b); form: Field and Pool"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "doc",
+   "n": "Names and estimated tops of formations in the Drilling Plan (Order 1 III.D.3.a)"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Drilling Plan: size, grade, weight, thread, depth, hole size per string (Order 1 III.D.3.d)"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Drilling Plan: cement type, amount, yield, top and excess per string (Order 1 III.D.3.e)"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "doc",
+   "n": "Drilling Plan: BOP and diverter specs, pressure rating, test plan (Order 1 III.D.3.c)"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "doc",
+   "n": "Drilling Plan: expected pressures and hazards incl. H2S, with mitigation (Order 1 III.D.3.h)"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "doc",
+   "n": "SUPO: waste containment and disposal, reserve pit construction and lining (Order 1 III.D.4.g)"
+  },
+  "water": {
+   "s": "form",
+   "e": "doc",
+   "n": "SUPO: water source, haul route and transport method; volume not named (Order 1 III.D.4.e)"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 1c 'Hydraulic Fracturing' box; item 24 cites 43 CFR 3162.3-3 'as applicable'"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 17 spacing unit; item 16 acres in lease; item 7 unit or CA agreement"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "form",
+   "n": "No item; Order 1 variances (sec. X) are a separate request, not read in full"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 5 Lease Serial No. and item 6 Indian allottee or tribe; lessor is Federal or Indian"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not a 3160-3 item; BLM counts an APD as received only once its fee is paid (report note)"
+  },
+  "notice_hearing": {
+   "s": "query",
+   "e": "web",
+   "n": "30-day public posting (Order 1 III.E.1); report listed at reports.blm.gov, not openable here"
+  },
+  "date_received": {
+   "s": "none",
+   "e": "form",
+   "n": "Form has the signature date only; monthly PDFs give COUNTS received (fee paid), no per-APD date"
+  },
+  "date_approved": {
+   "s": "form",
+   "e": "form",
+   "n": "'Approved by' date block on the form; public only as monthly COUNTS by state office"
+  },
+  "date_expires": {
+   "s": "none",
+   "e": "doc",
+   "n": "No field; Order 1 III.G: valid 2 years; status reports cite 3 to 4 years for newer APDs"
+  },
+  "spud_date": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on 3160-3 or -5; BLM counts wells spud per FY by state (Table 8) and field office (Table 16)"
+  },
+  "completion_date": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on 3160-3 or -5 (3160-5 cites completion report 3160-4); counts only, in Table 16"
+  },
+  "status": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Public only as counts (pending, processed, approved, available to drill); per-APD status not seen"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "doc",
+   "n": "Certified well plat is a required attachment (Order 1 III.D.2); no public image found"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "AFMSS filing is login-only; no public application images found"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "3160-5 says Form 3160-4 is filed after testing; not found online"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not checked; no public BLM well-log source found"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No BLM production link found; the statistics page points to revenuedata.doi.gov"
+  }
+ },
+ "sources": [
+  {
+   "id": "blm-apd-status-monthly",
+   "name": "BLM Application for Permit to Drill (APD) Status Report, monthly, by BLM state office",
+   "url": "https://www.blm.gov/programs/energy-and-minerals/oil-and-gas/operations-and-production/permitting/applications-permits-drill",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "2021-02",
+   "size_mb": 0.2,
+   "free": true,
+   "login": false,
+   "license": "U.S. Government work; no license stated on the page",
+   "columns": [
+    "State Office (Alaska, California, Colorado, Eastern States, Montana, Nevada, New Mexico, Utah, Wyoming)",
+    "APDs Received (A)",
+    "APDs Pending (B)",
+    "APDs Processed (C)",
+    "APDs Approved (D)",
+    "Approved Permits Available for Drilling on <report date> (*)",
+    "rows: Total, Federal Well Total, Indian Well Total, Fiscal Year Totals"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "APD approved (new drill and re-entry together; Federal and Tribal lands together)"
+   ],
+   "reachable": "ok",
+   "tested": "APD page GET: HTTP 200, 180 KB, links to 65 PDFs (Feb-Mar 2021 combined through Sep 2026; Oct and Nov 2022 not linked). Sep 2026 PDF GET: HTTP 200, 199,689 bytes, pdftotext -layout gives two tables (the month, then fiscal year to date) for 9 state offices. Also read Sep 2025, Jan 2025, Sep 2023, Apr 2021, Mar 2021 and Jan 2021 (unlinked URL, cumulative only): same table, headings differ by year. FY2025 totals in the Sep 2025 PDF (received 3,927, approved 6,106) equal Table 16."
+  },
+  {
+   "id": "blm-stats-table7-approved-by-state",
+   "name": "BLM Oil and Gas Statistics, Tables 1-10 workbook (Table 7: Federal drilling permits approved by fiscal year, by state; Table 8: wells spud)",
+   "url": "https://www.blm.gov/sites/default/files/docs/2026-04/All%20Fed%20O_G%20Statistics%20by%20Year%20by%20State_Web%20Stats_Tabs%20w%20Table%20Numbers_FY25.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "aggregate",
+   "cadence": "annual",
+   "history_from": "2001",
+   "size_mb": 0.2,
+   "free": true,
+   "login": false,
+   "license": "U.S. Government work; no license stated on the page",
+   "columns": [
+    "Geographic State",
+    "FY 2001",
+    "FY 2002",
+    "... one column per fiscal year ...",
+    "FY 2025"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "APD approved (Federal lands only, by the state the well is in)"
+   ],
+   "reachable": "ok",
+   "tested": "Statistics page GET: HTTP 200, 239 KB (index of Tables 1-16 for FY2017 to FY2025, zip per year). Workbook GET: HTTP 200, 203,586 bytes, 11 sheets, 'As of 10/1/2025'; one row per state (50 states and TOTAL). Federal-only; excludes Indian lands. FY2025 TOTAL 5,740 = Federal approvals in Table 16."
+  },
+  {
+   "id": "blm-stats-table16-field-office",
+   "name": "BLM Table 16: APD Status Report by BLM state and field office (fiscal year)",
+   "url": "https://www.blm.gov/sites/default/files/docs/2026-04/Table%2016%20APD%20Status%20Report%202025b.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "aggregate",
+   "cadence": "annual",
+   "history_from": "2017",
+   "size_mb": 0.02,
+   "free": true,
+   "login": false,
+   "license": "U.S. Government work; no license stated on the page",
+   "columns": [
+    "BLM Admin State",
+    "Field Office",
+    "APDs Received",
+    "APDs Approved",
+    "APDs Other Than Approved",
+    "Total APDs Processed",
+    "APDs Pending",
+    "Wells Spud",
+    "Wells Completed"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "APD approved, by field office; Federal and Indian shown on separate '- Indian' rows"
+   ],
+   "reachable": "ok",
+   "tested": "GET: HTTP 200, 22,558 bytes, one sheet, about 66 rows with notes (FY 10/1/2024 to 9/30/2025). Year-by-year files from FY2018 (xlsx) and FY2017 (pdf) are linked on the statistics page; FY2020 is also a PDF (read). Field-office rows add up to Table 7 (e.g. North Dakota FO 196 approved = ND in Table 7)."
+  },
+  {
+   "id": "blm-afmss2-public-reports",
+   "name": "BLM AFMSS 2 public reports: Approved APDs Report - Federal; 30 Day Federal Public Posting; Idled Federal Wells (grain and columns not verified)",
+   "url": "https://reports.blm.gov/reports/AFMSS",
+   "kind": "query",
+   "format": "other",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "blocked-proxy",
+   "tested": "Index page GET: HTTP 200, lists the three reports (no login on the index). Report page /report/AFMSS/81/ (Approved APDs Report - Federal): HTTP 200, loads the report in a frame at /iReport/AFMSS/81/l. That frame: HTTP 302 to an Oracle BI dashboard path on reports.blm.gov, which answered 302 to a login page on an internal host (name ending .blm.doi.net, port 9503), not reachable from outside. Stopped there: no cookies, no other route, no retries. Whether a browser session reaches a guest view, its columns and any CSV or Excel export are NOT verified; grain 'permit' and the null flags are assumptions."
+  },
+  {
+   "id": "blm-mlrs-oil-gas-leases",
+   "name": "BLM National MLRS Oil and Gas Leases (ArcGIS layer; one polygon per lease case, not wells or APDs)",
+   "url": "https://nlsdbpubgis.blm.gov/arcgishub/rest/services/HUB/BLM_Natl_MLRS_Oil_and_Gas_Leases/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "aggregate",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown here; the data.gov listing is described as public domain in search results (not opened)",
+   "columns": [
+    "OBJECTID",
+    "ID",
+    "CSE_NAME",
+    "BLM_PROD",
+    "CSE_TYPE_NR",
+    "CSE_NR",
+    "LEG_CSE_NR",
+    "SF_ID",
+    "CSE_DISP",
+    "SRC",
+    "QLTY",
+    "CSE_META",
+    "RCRD_ACRS",
+    "CMMDTY",
+    "FRMTN",
+    "EFF_DT",
+    "PRDCNG",
+    "SALE_DT",
+    "Created",
+    "Modified",
+    "ADMIN_STATE",
+    "GEO_STATE",
+    "EXP_DT",
+    "Shape__Length",
+    "Shape__Area"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Layer ?f=json GET: HTTP 200; polygon layer 'Oil and Gas Leases', max 2000 records per call, 25 fields. Context only: CSE_NR and LEG_CSE_NR look like lease case numbers (item 5 of Form 3160-3 is the lease serial no.) and ADMIN_STATE and GEO_STATE name states, but no values were read; the layer holds no APD or well records. The services folder root on the same host (/arcgis/rest/services/HUB?f=json) answered 'Token Required' (error 499)."
+  },
+  {
+   "id": "blm-hub-no-wells-layer",
+   "name": "BLM Geospatial Business Platform hub: no wells or APD layer found",
+   "url": "https://gbp-blm-egis.hub.arcgis.com/api/search/v1/collections/all/items?q=oil&limit=50",
+   "kind": "none",
+   "format": "json",
+   "grain": "aggregate",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "n/a",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Hub search API, two GETs: q='oil gas well APD' returned 0 items; q='oil' returned 34 items (leases, lease-sale parcels, agreements, participating areas, mineral estate, sage-grouse habitat, one hub page). None is a well or APD layer. (A third-party issue tracker says the same of 90 BLM services; not verified here.)"
+  }
+ ],
+ "grade": "C",
+ "grade_reason": "No free per-APD or per-well file with an approval date was found. What exists: (1) monthly APD status PDFs with counts of APDs received, pending, processed and approved by nine BLM state offices (Federal and Tribal lands together; new drill and re-entry together), monthly from April 2021 (February and March 2021 as one two-month report); (2) an annual workbook (Table 7) with Federal APDs approved by the state the well is in, FY2001 to FY2025 (FY2019 to FY2025 totals: 3,181; 4,226; 4,914; 2,852; 3,519; 3,322; 5,740; New Mexico: 1,420; 2,460; 2,441; 1,862; 2,354; 2,241; 4,327); (3) Table 16 by field office with wells spud and completed. That is grade C: aggregates in PDF and Excel. The AFMSS 2 public reports on reports.blm.gov ('Approved APDs Report - Federal', '30 Day Federal Public Posting') may be per-APD, which would be grade A, but the plain request ended at a login redirect to an internal host, so it is unverified.",
+ "producer_plan": "Answer to the key question: monthly APDs APPROVED by the state the well is in, back to 2019, is NOT available free. Monthly counts exist only by BLM state office and only from April 2021 (Feb-Mar 2021 as one report; Oct 2020 to Jan 2021 only cumulative; FY2019 and FY2020 only annual). No file splits by action type (new drill, re-entry, sundry). Plan for the best fragment: (1) scrape the APD page for its PDF links (65 files) and download each once, 4 s or more apart (about 0.2 MB each); (2) run pdftotext -layout (poppler, already used by d7_packs.py via pdftoppm); (3) read the FIRST table of each file (the month named in its title, e.g. '9/1/2026 to 9/30/2026'), matching the nine office names (Alaska, California, Colorado, Eastern States, Montana, Nevada, New Mexico, Utah, Wyoming) and the 'Federal Well Total' and 'Indian Well Total' rows; column order changes: 2021 files read Received, Approved, Processed, AAPD, Pending; 2023 onward read Received, Pending, Processed, Approved, Available. Match columns by heading, not position; (4) check each month sum against the file's own fiscal-year-to-date table and against Table 16 (annual; FY2025 matched on received and approved, processed differed by 7), keep the newest value; (5) label the series 'BLM state office', not 'state'. Table 7 shows the offices mix states: the New Mexico office includes the Oklahoma Field Office (FY2025 Federal approvals 46 = OK 20 + KS 0 + TX 26 in Table 7) and the Montana office includes North Dakota (FY2025: 204 = MT 8 + ND 196). Use Table 7 only for annual, Federal-only, true-state splits. Counts are APDs, not wells: one pad can hold several APDs, and a Master Development Plan approves many at once. Monthly PDFs include Indian-land APDs and are revised ('accurate on the date it is pulled'). The fiscal year runs October to September. Do next, by hand: open reports.blm.gov/reports/AFMSS in a real browser once; if 'Approved APDs Report - Federal' shows API number, operator and approval date and exports CSV or Excel, regrade to A and build monthly counts by state from it. Idea, unverified: state agencies' permit files (ND, WY, CO, UT, NM) may flag federal minerals and could give by-state monthly counts of permits on federal land.",
+ "activity_bands_possible": [
+  "new"
+ ],
+ "privacy_notes": "Files read (monthly PDFs, statistics workbooks, the lease layer's field list) hold counts and lease-case fields only: no individuals' names, phone numbers or addresses. The forms ask for the operator's address and phone (items 3a, 3b) and the notice of staking asks for a surface owner's name and phone, so per-APD records inside AFMSS would hold contact details; none are published in what I read. The AFMSS public reports were not opened, so whether they list operator names (possibly sole proprietors) is unknown.",
+ "unknowns": [
+  "Grain, columns and export formats of the AFMSS 2 public reports (Approved APDs Report - Federal; 30 Day Federal Public Posting; Idled Federal Wells): the plain request ended at a login redirect to an internal host",
+  "Whether any public file carries a per-APD approval date, API number, well type or work type (none found)",
+  "Text of IM 2017-074 (says the 30-day posting list is refreshed nightly at reports.blm.gov): seen only as a search snippet; the page returned a bot-protection stub",
+  "FY2019 status report PDF (linked, not opened) and the Oct and Nov 2022 monthly reports (not linked on the APD page)",
+  "Whether AFMSS records an operator ID, APD number, expiry date or fee (login-only); the fee amount",
+  "Exactly which states each BLM state office covers (inferred only from Table 7 against Table 16 for FY2025)",
+  "Whether the monthly PDFs are revised after release (they say changes may result from data quality reviews)",
+  "Several Table 7 cells look odd and were not checked (for example Oklahoma FY2021 = 0, Texas FY2024 = 3, FY2005 zeros for ND, MT, TX, OK)",
+  "Whether state agencies' permit files can isolate federal-mineral wells (not examined)"
+ ],
+ "researched": "2026-10-31"
+}

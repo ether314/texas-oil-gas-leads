@@ -1,0 +1,498 @@
+{
+ "state": "KY",
+ "name": "Kentucky",
+ "agency": {
+  "name": "Kentucky Energy and Environment Cabinet, Department for Natural Resources, Division of Oil and Gas (Kentucky Geological Survey keeps the public well database)",
+  "short": "KY DOG / KGS",
+  "url": "https://eec.ky.gov/Natural-Resources/Oil-and-Gas/Pages/default.aspx"
+ },
+ "form": {
+  "name": "Application for Permit (OG-1), rev 06/19, 5 pages with attachment pages for mineral and surface owners",
+  "number": "OG-1 (Rev 06/19)",
+  "url": "https://eec.ky.gov/Natural-Resources/Oil-and-Gas/Forms Library/Application for Permit (OG-1 ) rev 06-19 fill-in 20210427.pdf",
+  "read": true,
+  "notes": "Read all 22 items (pdftotext on the fillable PDF). Curl got 403 from eec.ky.gov; the PDF came through WebFetch (not retried). Notarized; $350 fee; one original and two copies of the well location plat. Items: drill/deepen/reopen, operator, mineral owner, county, Carter coordinates, elevation, deepest formation and max TVD, USGS quad, well type A-H, coal strata notice, gas storage buffer, surface owner and notice, mud system, coal bond land, pooling, twin well, horizontal/deviated endpoint and measured depth, entity type. No casing, cement, BOP, H2S, water or frac items on this form."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API # in weekly list; API (14 digits) in KGS shapefile"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT # in weekly list; KGS_Permit in shapefile"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL # in weekly list (OG-1 item 6)"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "LEASE NAME in weekly list; OG-1 asks farm/lease only as mineral owner (item 5)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "COMPANY NAME in weekly list; OG-1 item 2 (must match bond name)"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "form",
+   "n": "OG-1 asks the operator name only; no operator number"
+  },
+  "operator_type": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 item 21: type of entity and state of registration"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 item 2: applicant must match name on bond; BOND box for office use"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "COUNTY in weekly list and shapefile"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district on OG-1 or in the lists"
+  },
+  "field_pool": {
+   "s": "none",
+   "e": "form",
+   "n": "OG-1 asks formation (item 9), not field or pool"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude and Longitude (NAD 27) in weekly list; Lat/Lng 27 and 83 in shapefile"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Carter coordinate (section, letter, number) and footages; Kentucky is not PLSS"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 item 20: endpoint of wellbore if horizontal or deviated"
+  },
+  "lateral_path": {
+   "s": "data",
+   "e": "doc",
+   "n": "KGS permitted deviated traces and inflection points since 2006 (weekly)"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ELEVATION in weekly list; Surf_Elev in shapefile; OG-1 item 8"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 items 14 and 15: surface owner and notice of intent to drill"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "PURPOSE in weekly list (OG-1 item 11: oil, gas, storage, water, CBM, EOR, strat, obs)"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT FOR in weekly list (OG-1 item 1: drill, deepen, reopen); only 'Drilling' seen"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "SLANT and MULTILATERAL in weekly list; OG-1 item 20"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 item 20: proposed total measured depth, horizontal or deviated only"
+  },
+  "proposed_depth_tvd": {
+   "s": "data",
+   "e": "file",
+   "n": "PROJECTED DEPTH in weekly list; OG-1 item 9 is max true vertical depth (inferred)"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "FORMATION in weekly list; OG-1 item 9 deepest formation to be tested"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "casing_program": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "cement_program": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "pit_waste": {
+   "s": "none",
+   "e": "form",
+   "n": "OG-1 item 16 only asks whether a mud system is used (water loss 10 cc)"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-1"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 item 18: pooled or unitized well, and the authority"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "form",
+   "n": "No exception request on OG-1 (item 19 asks only about a twin well)"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 item 5: mineral owner (lessor), with lease expiration date"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "$350.00 stated on OG-1; FEE box for office use"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 items 12, 13, 15: certified-mail notice to coal owners, storage owners, surface owner"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in lists; OG-1 has a RECORD NO box for office use only"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "DATE ISSUED in weekly list (Excel serial date); date_permit_issued in deviated layer"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on OG-1 (item 6 is the lease expiration, not the permit)"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No spud field in weekly list or KGS shapefile"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Cmpl_Date in KGS shapefile (blank for new permits)"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Org_Result (LOC = location only), Plug_Date in shapefile; approved flag in deviated layer"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "OG-1 foot: original and two copies of the well location plat; online copy unverified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "Elog, Core, Cuttings flags in KGS shapefile (flags only)"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  }
+ },
+ "sources": [
+  {
+   "id": "ky-weekly-permit-lists",
+   "name": "Weekly Permit Lists (Permit List for Week Ending YYYY-MM-DD.xlsx), current year",
+   "url": "https://eec.ky.gov/Natural-Resources/Oil-and-Gas/Resources/Pages/Permit-Lists.aspx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2026-01",
+   "size_mb": 0.02,
+   "free": true,
+   "login": false,
+   "license": "none stated on the page",
+   "columns": [
+    "SAMPLES",
+    "PERMIT #",
+    "API #",
+    "LEASE NAME",
+    "WELL #",
+    "DATE ISSUED",
+    "PERMIT FOR",
+    "PURPOSE",
+    "COUNTY",
+    "CARTER COORDINATE LOCATION",
+    "Latitude (NAD 27)",
+    "Longitude (NAD 27)",
+    "FORMATION",
+    "ELEVATION",
+    "PROJECTED DEPTH",
+    "SLANT",
+    "MULTILATERAL",
+    "COMPANY NAME",
+    "ADDRESS",
+    "ADDRESS",
+    "CITY",
+    "STATE",
+    "ZIP"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "Drilling (seen)",
+    "deepen and reopen (named on OG-1, not seen in a list)"
+   ],
+   "reachable": "blocked-403",
+   "tested": "Page read through WebFetch: 42 files, weeks ending 2026-01-02 to 2026-10-23, e.g. https://eec.ky.gov/Natural-Resources/Oil-and-Gas/Product ReportsNEW/Permit List for Week Ending 2026-10-23.xlsx. Curl to the host (form PDF) answered 403 (Azure front door, 1.4 KB HTML); the xlsx was NOT requested by curl, so the 403 is the host's answer, not the file's. The 17.6 KB workbook came through WebFetch: one sheet, header row of 23 columns, 2 permits (both dated 2026-10-22, Drilling, OIL, Vertical) plus blank rows. DATE ISSUED is an Excel serial number."
+  },
+  {
+   "id": "ky-archived-permit-lists",
+   "name": "Archived Permit Lists (same file naming, 2017 to 2025)",
+   "url": "https://eec.ky.gov/Natural-Resources/Oil-and-Gas/Resources/Pages/Archived-Permit-Lists.aspx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2017",
+   "size_mb": 0.02,
+   "free": true,
+   "login": false,
+   "license": "none stated; page says archived for reference, research or recordkeeping",
+   "columns": [
+    "same as the current lists (23 columns; older .xls files not opened)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "as the current lists"
+   ],
+   "reachable": "blocked-403",
+   "tested": "Page read through WebFetch (first 100,000 characters): .xlsx for weeks ending 2022-08-19 to 2025-12-26, .xls for 2022-08-12 and earlier; visible entries start 2020-03-13, an earlier page says 2017 to 2025. Example URL: https://eec.ky.gov/Natural-Resources/Oil-and-Gas/Permit Lists Library/Permit List for Week Ending 2025-12-26.xlsx. No file opened; same host refusal as above."
+  },
+  {
+   "id": "kgs-well-shapefile",
+   "name": "KGS Kentucky Oil and Gas Well Location Shapefile (kyog_dd.zip)",
+   "url": "https://kgs.uky.edu/ogdata/kyog_dd.zip",
+   "kind": "bulk",
+   "format": "shp",
+   "grain": "well",
+   "cadence": "weekly",
+   "history_from": "unknown",
+   "size_mb": 17.0,
+   "free": true,
+   "login": false,
+   "license": "KGS copyright; free to use for maps, charts, reports and to redistribute the shapefiles with their documentation (kygs.uky.edu/data/oilgas)",
+   "columns": [
+    "uniqueID",
+    "API",
+    "KGS_Recno",
+    "Letter",
+    "Number",
+    "Section",
+    "FNS",
+    "NS",
+    "FEW",
+    "EW",
+    "Surf_Elev",
+    "USGS_Quad",
+    "County",
+    "Org_Farm",
+    "Org_Oper",
+    "Org_WellNo",
+    "measured_d",
+    "TVD",
+    "Tdfm",
+    "Deepst_Pay",
+    "IOF_IP",
+    "Org_WClass",
+    "Org_Result",
+    "Cmpl_Date",
+    "Plug_Date",
+    "Plug_Afdvt",
+    "Core",
+    "Cuttings",
+    "Elog",
+    "PlotSymbol",
+    "KGS_Permit",
+    "images",
+    "bore_type",
+    "Rec_Lat27",
+    "Rec_Lng27",
+    "Rec_Lat83",
+    "Rec_Lng83"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "Org_Result codes: D&A, OIL, GAS, LOC (location, no result yet), TRM, SRI, O&G, GS, WI, DG, IA"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD 200 (16,968,600 bytes, last-modified 2026-10-30); GET 200; zip holds a 132 MB DBF of 162,166 records (read in memory, nothing extracted; 140,019 have a permit number; Cmpl_Date max 2026-06-08). Rebuilt every Friday about 02:35 per kyog_info.txt (page says monthly; the file says weekly since March 2026). New permits appear as Org_Result LOC with no dates; highest permit number in it was 113696 against 113698 on the 2026-10-23 list. No permit issue date and no spud date."
+  },
+  {
+   "id": "kgs-deviated-wells",
+   "name": "KGS Permitted Deviated Oil and Gas Wells (ArcGIS MapServer, layer 0 points and layer 1 traces)",
+   "url": "https://kgs.uky.edu/arcgis/rest/services/KYOilGas/KYDeviatedWells_public/MapServer",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "weekly",
+   "history_from": "2006",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "KGS terms as above",
+   "columns": [
+    "OBJECTID",
+    "Shape",
+    "recno",
+    "permit",
+    "well_number",
+    "point_name",
+    "point_status",
+    "point_comments",
+    "operator",
+    "farm_name",
+    "carter_string",
+    "target_depth",
+    "target_formation",
+    "date_entered",
+    "purpose",
+    "approved",
+    "date_permit_issued",
+    "well_elevation",
+    "dev_point_id",
+    "pending_permit_id",
+    "latitude_27",
+    "longitude_27",
+    "elevdatum",
+    "date_updated"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "non-vertical (deviated and horizontal) permits only"
+   ],
+   "reachable": "ok",
+   "tested": "MapServer ?f=json 200 (5.9 KB; layers 0 'deviated well points' and 1 'deviated well traces'; maxRecordCount 1000; Query supported) and layer 0 ?f=json 200 (7.3 KB). No records queried. KGS page: 4,802 traces and 8,227 points, weekly, wells permitted since 2006, covers only wells KGS reviewed for permitting."
+  },
+  {
+   "id": "kgs-oilgas-search",
+   "name": "KGS Oil and Gas Data Search (KY Geode)",
+   "url": "https://kgs.uky.edu/kygeode/services/oilgas/",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "KGS terms as above",
+   "columns": [
+    "not read"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "not-tested",
+   "tested": "Listed on kygs.uky.edu/data/oilgas as the search behind the shapefile (same well header data); not opened."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "The weekly Excel permit lists are per permit with DATE ISSUED, work type, well type, depth, formation and location: A-quality content, free, no login, current to 2026-10-23, history back to 2017. But the host eec.ky.gov answered this machine's one curl request with 403 (the files only came through WebFetch), and the lists are one file per week (about 52 a year). The reachable KGS shapefile has no issue date (completion date only). Upgrade to A if a GitHub runner can fetch the xlsx files.",
+ "producer_plan": "Download each 'Permit List for Week Ending YYYY-MM-DD.xlsx' (current page, then the archive page for 2017-2025; .xls before 2022-08-19 needs a different reader), read Sheet1, keep rows with a numeric PERMIT #, turn DATE ISSUED (Excel serial) into a date, and count permits per month, split by PERMIT FOR (work type: drilling; OG-1 also allows deepen and reopen) and PURPOSE (well type). SLANT and MULTILATERAL separate vertical from horizontal; FORMATION, PROJECTED DEPTH, ELEVATION and Latitude/Longitude (NAD27, some values carry stray tab or space characters) are in the same row; the county comes with the row. Sanity check: a few rows per week (2 on the latest), so monthly counts are small and a missing week shows as a hole. Cross-check permit numbers (113697 and 113698 issued 2026-10-22) against the KGS shapefile's KGS_Permit, where new permits show as Org_Result LOC a week or more later. Test the host from the real runner first (one request, default user agent); the 403 seen here may be a front-door rule. Do not publish the ADDRESS, CITY, STATE and ZIP columns or lease names.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "other"
+ ],
+ "privacy_notes": "Weekly lists carry the applicant's mailing address columns and lease names that are often a landowner's name (e.g. 'farm of <person>'); OG-1 also holds mineral and surface owner addresses, phones and e-mails (not published). Operators can be sole proprietors (OG-1 item 21), so any build needs a corporate-name filter. None copied here.",
+ "unknowns": [
+  "whether eec.ky.gov serves the xlsx to a runner",
+  "other PERMIT FOR and PURPOSE values (only one week opened)",
+  "date range and column layout of the 2017-2022 .xls files",
+  "permit expiry rule",
+  "spud dates anywhere in open data",
+  "online plat or document images",
+  "KGS 'images' column contents",
+  "production data link",
+  "whether DATE ISSUED is ever revised"
+ ],
+ "researched": "2026-10-31"
+}

@@ -1,0 +1,390 @@
+{
+ "state": "NY",
+ "name": "New York",
+ "agency": {
+  "name": "New York State Department of Environmental Conservation (DEC), Division of Mineral Resources",
+  "short": "NYSDEC DMN",
+  "url": "https://dec.ny.gov/environmental-protection/oil-gas"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Deepen, Plug Back or Convert a Well (APD)",
+  "number": "85-12-5 (4/22)",
+  "url": "https://extapps.dec.ny.gov/docs/materials_minerals_pdf/appdrillinstr.pdf",
+  "read": true,
+  "notes": "Read the 2-page instructions for form 85-12-5 (4/22) (section by section: general information, well location, proposed well, spacing, casing and cement, signature); the blank form and the OGePermit screens were not read, so items missing from the instructions are 'unknown', not 'none'. Filed in the OGePermit system or on paper, with an Environmental Assessment Form, the permit fee and 3 copies of the well plat (stamped plat, spacing map and certification in OGePermit). An Organizational Report must be on file."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_WellNo (14 digits) in wellspublic.csv"
+  },
+  "permit_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No permit-number column; the API number identifies the permit"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Name; form: well name and number (name is usually last name + initial)"
+  },
+  "lease_name": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No lease field; State_lease is only a code for state land"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Company_name (well owner)"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "Operator_number (well owner code)"
+  },
+  "operator_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Form signature section: Individual or Organization"
+  },
+  "bond": {
+   "s": "data",
+   "e": "file",
+   "n": "Financial_security (True/False: operator has financial security)"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "County, Cnty, town"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "Region (DEC administrative region)"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Producing_name; form: Field/Pool Name ('New Field Wildcat' if none)"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Surface_latitude, Surface_Longitude (NAD83); Location_Verified flag"
+  },
+  "surface_plss": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Data has quad and A-I quad section only; plat (not read) may show footages"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "Bottom_hole_latitude, Bottom_hole_longitude; form asks 5 locations"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Form: kickoff, target top and bottom, bottom hole; wellbore diagram if directional"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "Elevation; form also asks how it was obtained"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Type, Original_well_type (type on application), GeneralWellType"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Planned operation: drill, deepen, plug back, convert, sidetrack; not a CSV column"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Slant: Vertical, Horizontal, Directional"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "Proposed_depth (MD or TVD not stated); blank on 172 of 179 permits issued since 2024"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Form asks TVD and TMD per location; file's True_vertical_depth value not checked"
+  },
+  "lateral_length": {
+   "s": "data",
+   "e": "file",
+   "n": "DrilledDepth (feet past kickoff); fill on recent permits not checked"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "Objective_formation (filled on 179 of 179 since 2024); form: proposed formation"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form: hole size, casing type, size, weight, depths, centralizers"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form: class, sacks, slurry weight, yield, volume, tops and bottoms"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "file",
+   "n": "Spacing, Spacing_Acres, Integration; form: spacing type, acres, unit control"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form: percent of acreage and bore-hole rights controlled by applicant"
+  },
+  "fee": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit_Fee, Depth_Fee"
+  },
+  "notice_hearing": {
+   "s": "data",
+   "e": "file",
+   "n": "Dt_Hearing (integration hearing date), Integration code"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "Date_Permit_Application"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit_Issued (issued or approved); newest 2026-10-27"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Date_Spudded"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Date_Well_Completed, Date_Total_Depth"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Status code (AR application received, PI permit issued, ...), Date_Status"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Instructions: 3 copies of the well plat; OGePermit takes a stamped plat"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  }
+ },
+ "sources": [
+  {
+   "id": "ny-wells-csv",
+   "name": "DEC downloadable well data: wellDOS.zip (wellspublic.csv and OilandGasMetadata.html)",
+   "url": "https://www.dec.ny.gov/fs/data/wellDOS.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "1953",
+   "size_mb": 3.1,
+   "free": true,
+   "login": false,
+   "license": "none stated on the documentation page; locations about 300 ft accurate, some records show CONFIDENTIAL",
+   "columns": [
+    "API_WellNo",
+    "Cnty",
+    "Hole",
+    "SideTrck",
+    "Completion",
+    "Well_Name",
+    "Company_name",
+    "Operator_number",
+    "Well_Type",
+    "Map_Symbol",
+    "Well_Status",
+    "Date_Status",
+    "Date_Permit_Application",
+    "Permit_Issued",
+    "Date_Spudded",
+    "Date_Total_Depth",
+    "Date_Well_Completed",
+    "Date_well_plugged",
+    "Date_well_confidential",
+    "confid",
+    "town",
+    "quad",
+    "quadsec",
+    "Producing_name",
+    "Producing_formation",
+    "Financial_security",
+    "Slant",
+    "County",
+    "Region",
+    "State_lease",
+    "Proposed_depth",
+    "Surface_location",
+    "Surface_Longitude",
+    "Surface_latitude",
+    "Bottom_hole_location",
+    "Bottom_hole_longitude",
+    "Bottom_hole_latitude",
+    "True_vertical_depth",
+    "Measured_depth",
+    "Kickoff",
+    "DrilledDepth",
+    "Elevation",
+    "Original_well_type",
+    "Permit_Fee",
+    "Objective_formation",
+    "Depth_Fee",
+    "Spacing",
+    "Spacing_Acres",
+    "Integration",
+    "Dt_Hearing",
+    "Dt_Mod",
+    "LINK",
+    "Location_Verified",
+    "GeneralWellType",
+    "GeneralWellStatus"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "Original_well_type on the application: OD oil development, GD gas development, BR brine, ST storage, SG, GE, GW, TH, IW injection, MS, OW, MB, NL",
+    "Well_Status AR application received, PI permit issued"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD on www.dec.ny.gov/fs/data/wellDOS.zip: 301 to https://extapps.dec.ny.gov/fs/data/wellDOS.zip; HEAD there 200 (3,136,323 bytes, last-modified 2026-10-30); GET 200, same size. Zip holds a 29.9 MB CSV, 47,486 rows, 55 columns (names mixed case, the dictionary shows upper case), read in memory only. Permit_Issued is filled on 18,327 rows, 1953-07-17 to 2026-10-27, text 'YYYY-MM-DD 00:00:00'. Permits issued per year: 2019 188, 2020 87, 2021 110, 2022 72, 2023 17, 2024 63, 2025 68, 2026 48 to Oct 27. Date_Permit_Application max 2026-10-09, Date_Spudded max 2026-10-27, Dt_Mod max 2026-10-29. Page says nightly Monday to Friday. 4 requests to the DEC hosts in all, 4-5 s apart."
+  },
+  {
+   "id": "ny-gasoil-db",
+   "name": "New York's Oil and Gas Searchable Database (DEC extapps GasOil)",
+   "url": "https://extapps.dec.ny.gov/cfmx/extapps/GasOil/",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "30+ search parameters, export to Excel or CSV (from a search summary and the CSV's LINK column); not read"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "as the CSV"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested. A search summary says a search download should stay near 800 records and the full set is the CSV; the CSV's LINK column points to this database's record for each well."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "One free CSV with no login, answered from here, one row per well (API number) with the application date, the permit issue date, the spud date, well type, slant, depth, formation, spacing and fee, refreshed on weekdays. Work type (drill, deepen, plug back, convert) is on the form but not a column. New York is small: 48 permits issued so far in 2026, 63 in 2024, 68 in 2025.",
+ "producer_plan": "Download wellDOS.zip (3 MB, from extapps.dec.ny.gov after the 301 from www.dec.ny.gov), read wellspublic.csv as latin-1 and match columns case-insensitively. Count rows whose Permit_Issued falls in the month (text 'YYYY-MM-DD 00:00:00'); Date_Permit_Application gives applications received (10 rows are status AR with no issue date). Split by Original_well_type (the type on the application; Well_Type is the current type) and by Slant (Vertical, Horizontal, Directional); SideTrck and Completion greater than 0 may mark sidetracks and later completions (2 and 8 of 179 since 2024), inferred, not documented. Spud counts come from Date_Spudded the same way. Caveats: a row is a well bore, so a deepen, plug-back or convert permit on an existing well probably does not appear as a new row and Permit_Issued may show only one date (not verified); 28 of 179 rows issued since 2024 carry status 'Confidential' (names still present, some fields may read CONFIDENTIAL); the file is rewritten nightly, so earlier counts can move; locations are within about 300 ft unless Location_Verified.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "Well_Name follows the 'last name first initial' convention (the instructions say so), so many names are a landowner's name, and Company_name can be an individual: a build must drop Well_Name and filter operators to corporations. No contact details in the column list. None copied here.",
+ "unknowns": [
+  "the blank form 85-12-5 and OGePermit screens",
+  "how deepen, plug-back and convert permits show in the CSV",
+  "BOP, H2S, pit, water and frac items (not in the instructions)",
+  "surface owner and notice items (the EAF is separate)",
+  "permit expiry",
+  "whether Permit_Issued is overwritten by later permits",
+  "fill of True_vertical_depth and Measured_depth on new permits",
+  "online scans, logs, completion reports and production links behind the LINK column",
+  "license"
+ ],
+ "researched": "2026-10-31"
+}
