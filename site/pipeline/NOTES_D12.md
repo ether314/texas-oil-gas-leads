@@ -99,6 +99,12 @@ Counting every document of the live index against the actual assets of the nine 
 `gh release upload --clobber` **deletes the old file and then uploads the new one**, so a refusal in between loses a file that was fine. Now `publish_chunk` reads what the release holds (name, size, state and, where `gh` gives it, the SHA-256), sends only what is missing, and uses `--clobber` only for a file that
 differs (or whose upload never finished); what is already there whole is not touched, so a refused run can lose at most a file that had to be replaced, and a re-read pack costs the files that changed instead of all of them. The run's cap counts files really sent. The three lost files come back the next time that pack is read.
 
+**The fifth run, the first clean one** (04:31 UTC, 3 minutes, 339 files sent): 10-30's completion pack was read again for the PNG rule and sent only the 9 files it lacked (800 + 797 + 514 were already there, left untouched), 10-29's W-1 pack went up whole, the log's quota line went from `core 4995 of 5000` to
+`4308 of 5000`, and the audit then found all 2,454 indexed documents intact. **Uploads cost about two REST calls a file**, so 5,000 an hour is about 2,400 files: one new day (about 2,300) can use the whole hour, which is what made the site's own deploy fail after the second run.
+So **the uploader looks at the quota before each batch** (`wait_for_quota`): it needs `2 x the files it will send + 500` calls (the reserve is for the deploy); when fewer are left it waits for GitHub's reset if that fits the run's time, and otherwise stops with nothing recorded for the pack (`QuotaLow`, exit 0, a line
+saying it was deferred; the files already sent stay and the next run sends only the rest). A run also checks it has some quota before it downloads a pack. Packs are done small first (W-1, surveys, then the completion pack), so a shortage defers the big one and not the others, and the run's budget is 75 minutes
+(step limit 95, job 120) because one wait for a reset can be most of an hour.
+
 ## Checked before the first run (2026-11-01)
 
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its
