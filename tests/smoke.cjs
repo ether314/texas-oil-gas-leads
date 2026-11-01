@@ -1478,7 +1478,8 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/North Dakota publishes no oil permit locations/.test(nd) && !/oil permits and spuds with a location/.test(nd) && !/oil permit/.test(await tableHead()), label + ': a state that publishes no location says so instead of showing none');
       // fractured wells found and oil well permits approved, day by day, marked and never added (2026-11-02)
       const readIdx = (d) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', d, 'index.json'), 'utf8')).days;
-      const idxTx = readIdx('daily'); const newestIdx = idxTx[idxTx.length - 1].d;
+      // the card's newest row is the newest day any of the three states has a report for (Texas's capture can end a day before Oklahoma's and New Mexico's), not Texas's newest
+      const newestIdx = ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const days = readIdx(dir); return days[days.length - 1].d; }).sort().pop();
       const oilOf = (d) => ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const e = readIdx(dir).find((x) => x.d === d && x.s === 'ok'); return e ? e.pn : 0; });
       const arrCard = page.locator('section[aria-labelledby="dd-arr-h"]');
       await page.goto(base + '?fresh=8#daily', { waitUntil: 'load' });
