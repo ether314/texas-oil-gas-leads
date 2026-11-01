@@ -7,12 +7,13 @@ import { icon } from './icons.js';
 // label is the replay's name ("Watch Texas drill"), thing what is counted ({ one, many }), lead and note the sentence under the bar, seconds how long the replay takes
 export function createTimelapse({ engine, t0, label, thing, lead, note, seconds = 12 }) {
   const [tMin, tMax] = engine.tlRange;
+  const noun = () => (typeof thing === 'function' ? thing() : thing); // what is counted may change while the replay is open (the map shows wells, permits or both)
   const DUR = seconds * 1000; const calm = reduced();
   let cur = tMax; let playing = false; let raf = 0; let last = 0; let open = false;
   const playBtn = calm ? null : el('button', { type: 'button', class: 'ibtn tl-play', 'aria-label': 'Play' }, icon('play', 18));
   const range = el('input', { type: 'range', class: 'tl-range', min: tMin, max: tMax, step: 1, value: tMax, 'aria-label': 'Replay date' });
   const dateEl = el('span', { class: 'tl-date' }); const countEl = el('span', { class: 'tl-count' });
-  const bar = el('div', { class: 'tl-bar' + (calm ? ' calm' : ''), hidden: true, role: 'group', 'aria-label': label + ': replay of ' + thing.many + ' by date' },
+  const bar = el('div', { class: 'tl-bar' + (calm ? ' calm' : ''), hidden: true, role: 'group', 'aria-label': label + ': replay of ' + noun().many + ' by date' },
     playBtn,
     el('div', { class: 'tl-mid' }, range, el('div', { class: 'tl-ends' }, el('span', { text: dayLabel(t0 + tMin * 864e5) }), el('span', { text: dayLabel(t0 + tMax * 864e5) }))),
     el('div', { class: 'tl-read', 'aria-hidden': 'true' }, dateEl, countEl),
@@ -24,7 +25,7 @@ export function createTimelapse({ engine, t0, label, thing, lead, note, seconds 
     if (+range.value !== day) range.value = day;
     const n = engine.tlCount(cur); const d = dayLabel(t0 + day * 864e5);
     if (dateEl.textContent !== d) dateEl.textContent = d;
-    const c = fmt.format(n) + ' ' + (n === 1 ? thing.one : thing.many) + ' so far';
+    const c = fmt.format(n) + ' ' + (n === 1 ? noun().one : noun().many) + ' so far';
     if (countEl.textContent !== c) countEl.textContent = c;
     range.setAttribute('aria-valuetext', d + ', ' + c);
   }
