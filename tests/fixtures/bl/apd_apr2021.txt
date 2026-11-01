@@ -1,0 +1,46 @@
+        Application for Permit to Drill Status Report: 4/1/2021 to 4/30/2021
+State Office                       Received      Approved      Processed      APDs Approved           Pending
+                                                                              and Available to
+                                                                               Drill (AAPD)
+Alaska                                 0             0             0                 20                  0
+California                             6             7             7                244                 31
+Colorado                               0             0             0                575                 27
+Eastern States                         0             7             7                 50                 35
+Montana                               29             45           51                495                 232
+Nevada                                 0             0             0                  3                  9
+New Mexico                           153            456           457              3,618               3,975
+Utah                                  35             28           28                415                 282
+Wyoming                               29            128           131              3,050                604
+April Totals*                        252            671           681
+Federal Well Total                   222            643           653                                  4,971
+Indian Well Total                     30            28             28                                   224
+Fiscal Year Totals**                4,065          3,378         3,456             8,470               5,195
+Individual State Office data includes APD activity for both Federal and Tribal lands
+*APDs Approved and Available to Drill and Pending APDs are reported in Fiscal Year Totals
+** Fiscal Year Totals Cover 10/1/2020 to 4/30/2021.
+Fiscal Year Totals may change slightly in monthly reports due to ongoing data migration between the
+Automated Fluid Minerals Support System (AFMSS) 1 and AFMSS 2 databases.
+
+
+
+
+      Application for Permit to Drill Status Report: 10/1/2020 to 4/30/2021*
+State Office                       Received      Approved      Processed      APDs Approved           Pending
+                                                                              and Available to
+                                                                               Drill (AAPD)
+Alaska                                 15             15            15               20                 0
+California                             59             37            38              244                31
+Colorado                               65            269           271              575                27
+Eastern States                         42             11            11               50                35
+Montana                               330            276           295              495                232
+Nevada                                  3             0              0                3                 9
+New Mexico                           2,319          1,468         1,489            3,618              3,975
+Utah                                  320            187           198              415                282
+Wyoming                               912           1,115         1,139            3,050               604
+Total                                4,065          3,378         3,456            8,470              5,195
+Federal Well Total                   3,816          3,228         3,289                               4,971
+Indian Well Total                     249            150           167                                 224
+Includes APD activity for both Federal and Tribal lands
+* Fiscal Year Totals may change slightly in monthly reports due to ongoing data migration between the
+Automated Fluid Minerals Support System (AFMSS) 1 and AFMSS 2 databases.
+

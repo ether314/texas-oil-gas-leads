@@ -101,7 +101,11 @@ def collect():
     if os.path.isdir(NAT):
         for name in sorted(os.listdir(NAT)):
             if name.endswith(".json"):
-                doc = json.load(open(os.path.join(NAT, name), encoding="utf-8"))
+                try:
+                    doc = json.load(open(os.path.join(NAT, name), encoding="utf-8"))
+                except (OSError, ValueError) as e:
+                    log("%s: unreadable (%s); left out" % (name, C.privacy_check.clean_error(e, 80)))
+                    continue
                 bad = C.validate(doc)
                 if bad:
                     log("%s: %s; left out" % (name, "; ".join(bad[:2])))
@@ -132,6 +136,7 @@ def build(docs=None, fields=None, today=None):
             "id": sid, "name": d["name"], "agency": d["agency"], "measure": d["measure"], "basis": d["basis"], "source": d["source"], "asOf": d["asOf"],
             "through": d["through"], "cadence": d["cadence"], "bands": bands, "p12": p12, "prev12": prev, "mix12": mix, "fluid": d.get("fluid"),
             "counties": d["counties"], "operators": d["operators"], "namedShare": d.get("namedShare"), "note": d.get("note", ""), "read": d["read"],
+            **{k: d[k] for k in ("unit", "place") if d.get(k)},
         })
     have = {s["id"] for s in states}
     fstates = fields.get("states", {}) if isinstance(fields, dict) else {}

@@ -88,6 +88,9 @@ Then open http://localhost:8000. Any static host works.
 loads every view in a real browser at desktop and phone width and `node tests/a11y.cjs` checks text contrast in both themes, keyboard focus and that nothing is cut off at 360 px;
 `.github/workflows/ci.yml` runs them on every pull request. See `tests/README.md`.
 
+Every Monday at 06:20 UTC `.github/workflows/refresh-national.yml` runs each state's producer isolated (`site/pipeline/d11_nat_run.py`: a failed producer's file is put back as committed, a server's refusal is an answer and not an error) and rebuilds
+`national.json`; `refresh-monthly.yml` rebuilds it too after refreshing Oklahoma's, New Mexico's and the offshore's files.
+
 The national report's files are `site/public/data/nat/<ST>.json` (one per state, written by `site/pipeline/d11_nat_<st>.py`) merged into `national.json` by
 `python3 -I site/pipeline/d11_nat_build.py`; `NOTES_D11.md` has the shape and the rules every producer follows.
 
