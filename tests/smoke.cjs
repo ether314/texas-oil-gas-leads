@@ -1709,10 +1709,25 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const [dl] = await Promise.all([page.waitForEvent('download'), csvBtn.click()]);
       const csv = parseCsv(fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim());
       const ci = (c) => csv[0].indexOf(c); const cw = csv.slice(1).filter((r) => r[0] === 'Fracked well');
-      check(csv[0].join() === 'kind,date,state,county,operator,api_number,latitude,longitude,datum,job_start,job_end,depth_ft,base_water_gal,non_water_gal,land' && csv.length - 1 === nCsv && /^oil-tracker-\d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename()),
-        label + ': "Download this day" saves a CSV of the day\'s ' + nCsv + ' records with all fifteen columns (' + dl.suggestedFilename() + ')');
+      check(csv[0].join() === 'kind,date,state,county,operator,operator_number,api_number,latitude,longitude,datum,job_start,job_end,depth_ft,base_water_gal,non_water_gal,land' && csv.length - 1 === nCsv && /^oil-tracker-\d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename()),
+        label + ': "Download this day" saves a CSV of the day\'s ' + nCsv + ' records with all sixteen columns (' + dl.suggestedFilename() + ')');
       check(cw.length >= wellRows.length && cw.every((r) => /^\d\d-\d{3}-\d{5}$/.test(r[ci('api_number')]) && +r[ci('latitude')] > 15 && +r[ci('longitude')] < -60 && !/^'/.test(r[ci('longitude')]) && /^\d{4}-\d\d-\d\d$/.test(r[ci('job_start')]) && (r[ci('job_end')] === '' || r[ci('job_end')] >= r[ci('job_start')]) && ['NAD27', 'NAD83', 'WGS84', ''].includes(r[ci('datum')]) && r[ci('depth_ft')] !== '0'),
         label + ': every fractured well in the CSV has its API number, a GPS point (a negative longitude stays a number, with no formula-proofing apostrophe), job days that do not run backwards and a datum');
+      // a day with Oklahoma's permits: each has its API number (Oklahoma's 35), its county by name, its GPS position and its operator number in the CSV
+      const pg2 = await ctx.newPage(); // its own page: the checks after this block need the first one as it is
+      await pg2.goto(base + '#daily?d=2026-10-14', { waitUntil: 'load' });
+      await pg2.waitForSelector('section[aria-labelledby="dd-table-h"] table tbody tr', { timeout: 25000 });
+      const day = await pg2.evaluate(() => { const t = document.querySelector('section[aria-labelledby="dd-table-h"] table'); return { heads: [...t.querySelectorAll('thead th')].map((x) => x.textContent), rows: [...t.querySelectorAll('tbody tr')].map((r) => [...r.children].map((c) => c.textContent)) }; });
+      const permitRows = day.rows.filter((r) => r[0] === 'Permit approved');
+      const [ai2, pi2] = [day.heads.indexOf('API number'), day.heads.indexOf('Position')];
+      check(permitRows.length > 0 && permitRows.every((r) => /^35-\d{3}-\d{5}$/.test(r[ai2]) && r[2] !== '—' && /^[A-Z][A-Za-z ]+$/.test(r[2]) && /^\d{2}\.\d{4}, -\d{2,3}\.\d{4}$/.test(r[pi2])),
+        label + ': an Oklahoma permit has its API number (35-...), its county by name and its GPS position (' + permitRows.length + ' permits: ' + (permitRows[0] || []).slice(1, 6).join(' | ') + ')');
+      const [dl2] = await Promise.all([pg2.waitForEvent('download'), pg2.locator('section[aria-labelledby="dd-table-h"] button.btn').click()]);
+      const csv2 = parseCsv(fs.readFileSync(await dl2.path(), 'utf8').replace(/^﻿/, '').trim()); const c2 = (c) => csv2[0].indexOf(c);
+      const cp = csv2.slice(1).filter((r) => r[0] === 'Permit approved');
+      check(cp.length === permitRows.length && cp.every((r) => /^35-\d{3}-\d{5}$/.test(r[c2('api_number')]) && r[c2('county')] !== '' && /^\d+$/.test(r[c2('operator_number')]) && +r[c2('depth_ft')] >= 0 && r[c2('job_start')] === ''),
+        label + ': the CSV rows of the Oklahoma permits have the API number, the county, the operator number and no job days (a permit has none)');
+      await pg2.close();
       const ink = await page.evaluate(() => { const c = document.querySelector('#daily-root .nw-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; });
       check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
       const first = await page.locator('#daily-root .dd-date').innerText();

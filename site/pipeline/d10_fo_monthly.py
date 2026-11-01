@@ -213,7 +213,8 @@ def reliable_asof(today, lag=LAG_DAYS):
 
 
 SPEC = {
-    "names": NAMES, "box": BOX, "new_kind": "SP", "county_of": lambda r: r["county"],
+    "api_state": ("60", "17", "42", "01", "23"), "names": NAMES,  # BSEE: 60 is the federal offshore; a borehole near the coast can carry its nearest Gulf state's code (2 of 90 in 2026: Louisiana's 17)
+    "box": BOX, "new_kind": "SP", "county_of": lambda r: r["county"],
     "calendar_windows": True,  # the files end on a month end, so "the last 12 months" are 12 calendar months, as the monthly series counts them
     "src": lambda asof, modified: ("Bureau of Safety and Environmental Enforcement, borehole data (the weekly all-releasable-borehole file%s): wells by spud date, one per "
                                    "API well number, by month spudded. A spud is reported with some delay, so the series ends with the newest month that ended at least "

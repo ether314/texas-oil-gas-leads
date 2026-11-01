@@ -101,6 +101,11 @@ check( one("SELECT COUNT(*) FROM new_wells_months") == len(nws["states"]) * len(
 check(one("SELECT COUNT(*) FROM new_wells WHERE lat NOT BETWEEN 15 AND 75 OR lon NOT BETWEEN -180 AND -60 OR day IS NULL OR day < ?", nwh["t0"]) == 0, "new wells decode to places in the country and to real days from 2011")
 check(one("SELECT SUM(wells) FROM new_wells_months WHERE state = ?", nws["states"][0]["id"]) == sum(nws["states"][0]["new"]) and one("SELECT COUNT(*) FROM new_wells WHERE operator IS NOT NULL") == sum(1 for o in nwp["o"] if o >= 0) + sum(1 for o in nwh["o"][:hist_rows] if o >= 0), "a state's months add up to the file's, and an operator is only on the wells whose operator may be named")
 check(sorted(r[0] for r in q("SELECT DISTINCT land FROM new_wells")) == ["federal", "federal and tribal", "private or state", "tribal"], "land is a word, not a bit: federal, tribal, both or neither")
+okp, nmp, fop = J("permits-ok"), J("permits-nm"), J("permits-fo")
+check(one("SELECT COUNT(*) FROM permit_points WHERE state = 'TX' AND api10 IS NOT NULL") == 0 and one("SELECT COUNT(*) FROM permit_points WHERE state IN ('OK','NM','FO') AND api10 IS NULL") == 0
+      and one("SELECT COUNT(api10) FROM permit_points") == len(okp["pts"]) + len(nmp["pts"]) + len(fop["pts"]) and one("SELECT COUNT(*) FROM permit_points WHERE api10 IS NOT NULL AND length(api10) != 10") == 0,
+      "an Oklahoma, New Mexico or offshore permit point has its API number (ten digits) in the database, a Texas one has none")
+check(q("SELECT api10 FROM permit_points WHERE state = 'OK' ORDER BY rowid LIMIT 1")[0][0] == "%010d" % okp["pts"][0][6] and one("SELECT COUNT(*) FROM permit_points WHERE state = 'OK' AND substr(api10, 1, 2) != '35'") == 0, "the first Oklahoma point has its own API number, and every Oklahoma one begins with 35")
 if os.path.exists(os.path.join(DATA, "newwells", "detail.json")):
     ndet, ndh = J("newwells/detail"), J("newwells/detail-history")
     check(one("SELECT COUNT(api10) FROM new_wells") == one("SELECT COUNT(*) FROM new_wells") and one("SELECT COUNT(DISTINCT api10) FROM new_wells") == one("SELECT COUNT(*) FROM new_wells") and one("SELECT COUNT(*) FROM new_wells WHERE length(api10) != 10") == 0,

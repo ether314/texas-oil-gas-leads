@@ -121,3 +121,7 @@ came out byte-identical to the committed ones and nothing was committed. A week 
 
 Permits by approval date (an online query only), depth, production by area or operator (the EIA's state-wide offshore series is all there is), jobs, rig counts, a Daily report (BSEE's file is weekly,
 so there is no day to report). The pages say "not available", never zero.
+
+## The points' API number (2026-11-02)
+
+`permits-fo.json`'s points have a seventh column, `api`, the first ten digits of BSEE's 12-digit number, through the shared builder (`NOTES_D8.md`). 88 of 90 begin with 60, the federal offshore's code; 2 begin with 17, Louisiana's: the validator accepts 60, 17, 42, 01 and 23. Run for real on 2026-11-02 the file had moved on from the committed one (one point 0.001 degree off, a sentence's trailing space), so all four files were committed from the new run.

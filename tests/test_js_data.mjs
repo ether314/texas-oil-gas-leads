@@ -365,6 +365,22 @@ check(S.spudCaveat(['TX', 'OK', 'NM']) === '' && S.spudCaveat(['NM']) === '' && 
   const wantN = pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, pts.t0) >= 0).length, 0);
   check(Qp.n === wantN && wantN > 10000 && Qp.states.join() === 'TX,OK,NM,FO' && Qp.spud.join() === '0,0,1,1' && Qp.day.every((d, i) => i === 0 || d >= Qp.day[i - 1]) && Qp.day[0] >= 0,
     'permits: ' + Qp.n + ' points from the four agencies, sorted by day, none before the wells\' first day; Texas and Oklahoma count permits, New Mexico and the offshore spuds');
+  // what a permit row carries besides its place: the well's API number (Oklahoma, New Mexico and the offshore: the seventh column), the operator's number (named operators only) and its county by name
+  const cnames = read('county-names');
+  const permitIdx = (id) => { const out = []; for (let i = 0; i < Qp.n; i++) if (Qp.states[Qp.s[i]] === id) out.push(i); return out; };
+  const prefix = (i) => String(Math.round(Qp.api[i])).padStart(10, '0').slice(0, 2);
+  check(permitIdx('OK').length > 50 && permitIdx('OK').every((i) => prefix(i) === '35') && permitIdx('NM').length > 50 && permitIdx('NM').every((i) => prefix(i) === '30') && permitIdx('FO').length > 50 && permitIdx('FO').every((i) => ['60', '17', '42', '01', '23'].includes(prefix(i)))
+    && permitIdx('TX').length > 5000 && permitIdx('TX').every((i) => Qp.api[i] === 0),
+    'permits: every Oklahoma (35), New Mexico (30) and offshore (60, or a Gulf state\'s code near the coast) point has its API number and no Texas point has one (Texas\'s permit file carries none): ' + ['OK', 'NM', 'FO'].map((id) => id + ' ' + permitIdx(id).length).join(', '));
+  const iOK = permitIdx('OK')[0];
+  check(NW.apiText(Qp.api[iOK]).startsWith('35-') && NW.apiText(Qp.api[iOK]).slice(3, 6) === String(Qp.fips[iOK]).padStart(3, '0') && NW.permitCounty(Qp, iOK, cnames) === cnames.states.OK[String(Qp.fips[iOK]).padStart(3, '0')],
+    'permits: an Oklahoma permit\'s API number carries its county code, which is the county named for it (' + NW.apiText(Qp.api[iOK]) + ' is ' + NW.permitCounty(Qp, iOK, cnames) + ')');
+  const txNamed = permitIdx('TX').filter((i) => Qp.op[i] >= 0); const txUnnamed = permitIdx('TX').filter((i) => Qp.op[i] < 0);
+  check(txNamed.length > 100 && txNamed.every((i) => /^\d{3,6}$/.test(Qp.opNum[i])) && txUnnamed.length > 0 && txUnnamed.every((i) => Qp.opNum[i] === ''), 'permits: an operator\'s number goes with its name and only then: a permit whose operator may not be named has no number either');
+  check(permitIdx('TX').every((i) => NW.permitCounty(Qp, i, cnames) !== null) && permitIdx('NM').every((i) => NW.permitCounty(Qp, i, cnames) !== null) && permitIdx('OK').every((i) => NW.permitCounty(Qp, i, cnames) !== null) && permitIdx('FO').every((i) => NW.permitCounty(Qp, i, cnames) === null) && NW.permitCounty(Qp, iOK, null) === null,
+    'permits: every Texas, Oklahoma and New Mexico permit has a county by name, an offshore one has none (a protraction area is not a county), and no names file gives none');
+  const noApiDoc = NW.decodePermits([{ id: 'TX', pm: { t0: pdocs[0].pm.t0, ops: ['A LLC'], opNums: ['123456'], cols: ['lat', 'lon', 'op', 't', 'depth', 'fips'], pts: [[310000, -1020000, 0, 10, 50, 301]] } }], pdocs[0].pm.t0);
+  check(noApiDoc.n === 1 && noApiDoc.api[0] === 0 && noApiDoc.opNum[0] === '123456' && NW.permitCounty(noApiDoc, 0, cnames) === 'Loving', 'permits: a file with six columns (Texas\'s) decodes with no API number, and a document with no cols at all still decodes');
   const aDay = Qp.day[Math.floor(Qp.n / 2)]; const iso = NW.dayIso(NW.dayMs({ t0: Date.parse(pts.t0 + 'T00:00:00Z') }, aDay));
   const wantDay = pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, pts.t0) === aDay).length, 0);
   const perSt = NW.permitsPerState(Qp, aDay, aDay);

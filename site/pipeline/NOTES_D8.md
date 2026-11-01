@@ -155,6 +155,10 @@ master intent-to-drill workbook (154 MB, every application since 1999, about 75 
 - **Run** by hand: `python3 -I site/pipeline/d8_ok_monthly.py` (downloads both files, writes the four, checks them); `--check` only validates.
   `.github/workflows/refresh-monthly.yml` runs it weekly (Mondays 05:40 UTC), isolated from New Mexico's the same way as the nightly's captures.
 
+## The points' API number (2026-11-02)
+
+`permits-ok.json`'s points have a seventh column, `api`: the permit's API number, its first ten digits as a number (`api_number()`; 0 if the source gave fewer), by the owner's decision of 2026-11-02 (CLAUDE.md, Privacy, exception (d)). `build()` and `validate()` are shared by New Mexico and the offshore, so their `permits-nm.json` and `permits-fo.json` have it too: each state's spec says which prefixes its numbers may begin with (`api_state`: Oklahoma 35, New Mexico 30, the offshore 60 and the Gulf states' 17, 42, 01 and 23). `validate()` holds the column to whole numbers of that kind and lets it, and only it, through the ten-digit scan. A well permitted twice has two points and one number. Run for real on 2026-11-02, Oklahoma's first six columns came out identical to the committed ones (1,446 points).
+
 ## Rebuilt days
 
 `--history` downloads the two master files, keeps the rows from ten days before the oldest day wanted, adds those the daily files
