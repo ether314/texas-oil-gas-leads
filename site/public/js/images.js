@@ -125,15 +125,15 @@ export function createImagesView({ root }) {
     const surveys = I.filedSurveys(file).filter((x) => x.doc.preview);
     const seen = filed.slice(0, 12).reduce((t, f) => t + pages(f.docs, '').length, 0) + Math.min(12, surveys.length);
     const files = filed.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Permits whose filings are published (' + filed.length + ')' }),
-      el('ul', { class: 'img-files' + (seen ? ' pv' : '') }, filed.slice(0, 12).map((f) => el('li', {}, el('a', { href: '#daily?st=tx&d=' + d + '&drill=' + f.permit, text: 'Permit ' + f.permit }), el('small', { text: ' county ' + f.county + ', district ' + f.district + ' · ' + f.files.map(I.fileKind).join(', ') }),
+      el('ul', { class: 'img-files' + (seen ? ' pv' : '') }, filed.slice(0, 12).map((f) => el('li', {}, el('strong', { text: 'Permit ' + f.permit }), el('small', { text: ' county ' + f.county + ', district ' + f.district + ' · ' + f.files.map(I.fileKind).join(', ') }),
         pages(f.docs, 'Permit ' + f.permit).length ? previewGrid(pages(f.docs, 'Permit ' + f.permit)) : null))),
-      filed.length > 12 ? el('p', { class: 'fine', text: 'and ' + (filed.length - 12) + ' more in the Daily report.' }) : null,
+      filed.length > 12 ? el('p', { class: 'fine', text: 'and ' + (filed.length - 12) + ' more; find any well by its API number above.' }) : null,
       rel ? el('p', { class: 'fine', text: 'The files are the Commission’s scans, on one GitHub release for the day (' + rel.files + ' files' + (rel.previews ? ', ' + rel.previews + ' with a readable preview' : '') + ').' }) : null) : null;
     const surveyBlock = surveys.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Directional surveys with a preview (' + surveys.length + ')' }),
       previewGrid(surveys.slice(0, 12).map((x) => ({ title: 'Survey ' + x.id, label: x.doc.label, type: x.doc.type, preview: x.doc.preview, original: x.doc.original }))),
-      surveys.length > 12 ? el('p', { class: 'fine', text: 'The first 12 of ' + surveys.length + '; each survey has a page of its own in the Daily report.' }) : null) : null;
+      surveys.length > 12 ? el('p', { class: 'fine', text: 'The first 12 of ' + surveys.length + '; find any well by its API number above.' }) : null) : null;
     const privacy = seen ? el('p', { class: 'fine', text: 'Each preview is page one of a document the Commission publishes, drawn as a picture: readable, nothing blurred, cropped or hidden. They are public records and can carry the names, phone numbers and addresses of individuals. Click a page to enlarge it.' }) : null;
-    return el('div', {}, body, files, surveyBlock, privacy, el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#daily?st=tx&d=' + d }, 'The Daily report for ' + fmtDate(d), icon('arrow', 16))));
+    return el('div', {}, body, files, surveyBlock, privacy);
   }
   async function choose(d, { fromHash = false } = {}) {
     const r = rows.find((x) => x.d === d && I.havePacks(x));
