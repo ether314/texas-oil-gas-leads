@@ -34,3 +34,7 @@ A county is `[fips, name, suffix, label lon, label lat, rings]`: the Census's ba
 
 - A county line is as accurate as 1:10,000,000: about 1 to 2 km. A well on a county line can sit on the wrong side of it, which is why the Map counts a well in the county the registry names and uses its point only for a county name it cannot read (`counties-data.js`).
 - Names are the Census's. A name the registry spells another way is matched by `counties-data.js`, not here.
+
+## The county names (2026-11-02)
+
+`d14_county_names.py` writes `site/public/data/county-names.json` (5.9 KB): the 364 counties of Texas (254), Oklahoma (77) and New Mexico (33), keyed by their three-digit code, names without the suffix ("Loving", "Doña Ana"), from `us-counties.json`. The Daily report reads it to name the county of a permit (the permit points carry only the code); the offshore has none. `tests/test_d14_county_names.py` checks it against the outlines and that every county code of the 14,559 committed permit points has a name.

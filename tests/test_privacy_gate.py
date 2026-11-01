@@ -167,6 +167,9 @@ no_api = re.compile(r"(^|/)(daily-ok|daily-nm)/|-(ok|nm|fo)\.json$|(^|/)(operato
 for f in files:
     rel = os.path.relpath(f, DATA)
     text = open(f, encoding="utf-8").read()
+    if re.fullmatch(r"permits-(ok|nm|fo)\.json", rel):  # the points' seventh column is the well's API number (the owner's decision of 2026-11-02, exception (d)): the rest of the file is scanned as before
+        doc = json.loads(text)
+        text = json.dumps({**doc, "pts": [q[:6] for q in doc["pts"]]})
     hit = P.scan(text, digits=bool(no_api.search(rel)))
     for h in hit:
         if "web" in h:
@@ -176,6 +179,12 @@ for f in files:
             (phone if "phone" in h else mail if "e-mail" in h else digits).append(rel)
 check(not phone and not mail and not digits, "no e-mail address, phone number or API-like number in any of the %d published data files (%s)" % (len(files), (phone + mail + digits)[:3]))
 check(not urls, "no web address in any Daily day file or index (%s)" % urls[:3])
+
+# the permit points of Oklahoma, New Mexico and the federal offshore: an API number only in the seventh column, and only the state's own prefix
+for st, prefixes in (("ok", ("35",)), ("nm", ("30",)), ("fo", ("60", "17", "42", "01", "23"))):
+    d = json.load(open(os.path.join(DATA, "permits-%s.json" % st), encoding="utf-8"))
+    check(d["cols"] == ["lat", "lon", "op", "t", "depth", "fips", "api"] and all(len(q) == 7 and all(type(v) is int for v in q) and (q[6] == 0 or ("%010d" % q[6])[:2] in prefixes) for q in d["pts"]) and P.scan(json.dumps({**d, "pts": [q[:6] for q in d["pts"]]}), digits=True) == [],
+          "permits-%s.json: the seventh column holds only whole numbers that are API numbers of the state's own, and nothing else in the file is a run of ten digits (%d points)" % (st, len(d["pts"])))
 
 # the FracFocus wells' files (CLAUDE.md, Privacy, exception (d), the owner's decision of 2026-11-02): an API number is allowed in the two detail files and in no other file of the folder
 nw_dir = os.path.join(DATA, "newwells")

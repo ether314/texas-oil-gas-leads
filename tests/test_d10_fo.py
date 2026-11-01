@@ -337,8 +337,13 @@ def run_checks(quiet=False):
     chk(r_["SHELL OFFSHORE INC."]["type"] == "corporation" and r_["TALOS QN EXPLORATION LLC"]["type"] == "LLC" and r_["TALOS QN EXPLORATION LLC"]["newDrill"] in (0, 1)
         and r_["SHELL OFFSHORE INC."]["city"] == "" and r_["SHELL OFFSHORE INC."]["state"] == "", "the type is read from the name; no office is published")
     chk(len(pts["pts"]) > 15 and all(q[0] % 10 == 0 and q[1] % 10 == 0 for q in pts["pts"]), "points: located wells of the last 24 months, rounded to about 100 m")
-    text = "".join(json.dumps(d) for d in docs.values())
-    chk(P.scan(text, digits=True) == [] and "6081" not in text and "ST00BP00" not in text and "JOHN" not in text, "nothing names an API number, a well, a lease, an individual or an address in what is published")
+    # the points file's `api` column is the one place an API number is published (the owner's decision of 2026-11-02); everything else is scanned as before
+    def without_api(d):
+        return {**d, "pts": [q[:6] for q in d["pts"]]} if "pts" in d else d
+    text = "".join(json.dumps(without_api(d)) for d in docs.values())
+    chk(P.scan(text, digits=True) == [] and "6081" not in text and "ST00BP00" not in text and "JOHN" not in text, "nothing names a well, a lease, an individual or an address in what is published, and no API number is outside the points' api column")
+    chk(pts["cols"][-1] == "api" and all(len(q) == 7 and ("%010d" % q[6]).startswith("60") for q in pts["pts"]),
+        "every located well's API number is in the points' last column, ten digits starting with the federal offshore's 60")
 
     # ---- the validator, on what was built and on faults
     out = os.path.join(TMP, "good")
@@ -445,8 +450,14 @@ if all(os.path.exists(os.path.join(DATA, n)) for n in N.NAMES):
     check(ops["rows"] and all(D.nameable(x[2]) for x in ops["rows"]), "every operator in them passes the naming rule (%d operators)" % len(ops["rows"]))
     cp = json.load(open(os.path.join(DATA, "county-permits-fo.json")))
     check(all(c["depth"] is None for c in cp["counties"].values()) and set(cp["counties"]) <= set(names), "no area shows a depth, and every area is one of the 63")
-    text = "".join(open(os.path.join(DATA, n)).read() for n in N.NAMES)
-    check(P.scan(text, digits=True) == [], "no e-mail, address, phone number or API-like number in the committed files")
+    def committed(n):
+        d = json.load(open(os.path.join(DATA, n)))
+        return {**d, "pts": [q[:6] for q in d["pts"]]} if "pts" in d else d  # the points file's api column is allowed (the owner's decision of 2026-11-02)
+    text = "".join(json.dumps(committed(n)) for n in N.NAMES)
+    check(P.scan(text, digits=True) == [], "no e-mail, address, phone number or API-like number in the committed files other than the points' api column")
+    pts_c = json.load(open(os.path.join(DATA, "permits-fo.json")))
+    check(pts_c["cols"][-1] == "api" and all(q[6] == 0 or ("%010d" % q[6])[:2] in ("60", "17", "42", "01", "23") for q in pts_c["pts"]) and sum(1 for q in pts_c["pts"] if q[6] == 0) == 0,
+          "the committed offshore points carry their API numbers (the federal offshore's 60, or a Gulf state's code for a borehole near the coast), none missing")
 else:
     print("skip  the files are not committed yet")
 

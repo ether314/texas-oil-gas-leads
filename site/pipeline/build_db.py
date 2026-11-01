@@ -22,7 +22,7 @@ Two layers, so nothing is lost and common questions are easy:
     series                  every monthly or weekly series file, one row per (file, key, time): prices, crude production, rigs, jobs, tax, the EIA outlook, permit series
     county_permits, county_permit_months      per state and county: last 12 months, the 12 before, mean depth, and the 36 monthly counts
     operators               every state's published operator table (Texas's joined with its extras); the full row of each in `extra`
-    permit_points           one row per permit with a published location (latitude, longitude, day, depth)
+    permit_points           one row per permit with a published location (latitude, longitude, day, depth, and the API number where the agency's file gives one: Oklahoma, New Mexico, the offshore)
     new_wells_arrivals      the wells each daily FracFocus download added (by arrival day and state), and how many a state's daily report had already carried (null: that report lists no wells)
     new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well since 2011 (the last 24 months and the history file; with the API number, the job's last day, the exact depth and water, the other base fluid and the datum from the two detail files) with its
                             published GPS point (latitude, longitude, day, county, operator when it may be named, depth, water, land), and each state's top operators
@@ -73,7 +73,7 @@ CREATE TABLE county_permits(state TEXT, county TEXT, county_name TEXT, p12 INTEG
 CREATE TABLE county_permit_months(state TEXT, county TEXT, month TEXT, n INTEGER, PRIMARY KEY(state, county, month));
 CREATE TABLE operators(state TEXT, num TEXT, name TEXT, band TEXT, type TEXT, city TEXT, addr_state TEXT, new12 INTEGER, prev12 INTEGER, all12 INTEGER, all24 INTEGER,
   last_permit TEXT, extra TEXT, PRIMARY KEY(state, num));
-CREATE TABLE permit_points(state TEXT, day TEXT, lat REAL, lon REAL, operator TEXT, operator_num TEXT, depth_ft INTEGER, county_code INTEGER);
+CREATE TABLE permit_points(state TEXT, day TEXT, lat REAL, lon REAL, operator TEXT, operator_num TEXT, depth_ft INTEGER, county_code INTEGER, api10 TEXT);
 CREATE TABLE new_wells_months(state TEXT, month TEXT, wells INTEGER, PRIMARY KEY(state, month));
 CREATE TABLE new_wells(state TEXT, day TEXT, lat REAL, lon REAL, county TEXT, operator TEXT, depth_ft INTEGER, water_gal INTEGER, land TEXT,
   api10 TEXT, job_end TEXT, depth_exact_ft INTEGER, water_exact_gal INTEGER, non_water_gal INTEGER, datum TEXT);
@@ -225,8 +225,9 @@ def load_points(db, data):
         for pt in d["pts"]:
             op = pt[i["op"]]
             rows.append((st, decode_day(d["t0"], pt[i["t"]]), pt[i["lat"]] / 1e4, pt[i["lon"]] / 1e4, d["ops"][op] if 0 <= op < len(d["ops"]) else None,
-                         d["opNums"][op] if 0 <= op < len(d["opNums"]) else None, pt[i["depth"]] * 100 if pt[i["depth"]] else None, pt[i["fips"]]))
-        db.executemany("INSERT INTO permit_points VALUES (?,?,?,?,?,?,?,?)", rows)
+                         d["opNums"][op] if 0 <= op < len(d["opNums"]) else None, pt[i["depth"]] * 100 if pt[i["depth"]] else None, pt[i["fips"]],
+                         "%010d" % pt[i["api"]] if "api" in i and pt[i["api"]] else None))  # the API number: Oklahoma's, New Mexico's and the offshore's points have one, Texas's do not
+        db.executemany("INSERT INTO permit_points VALUES (?,?,?,?,?,?,?,?,?)", rows)
 
 
 LAND = {0: "private or state", 1: "federal", 2: "tribal", 3: "federal and tribal"}

@@ -57,7 +57,7 @@ KINDS = ("DR", "RC", "RE", "DP")  # application types counted as permits; AM (am
 # What differs between states in build() and validate(): the file names, the box the points must fall in, which kind of record is a
 # new-drill permit, how a record's county is found, and the source line. New Mexico passes its own (d9_nm_monthly.py).
 OK_SPEC = {
-    "names": NAMES, "box": (LAT_MIN, LAT_MAX, LON_MIN, LON_MAX), "new_kind": "DR", "county_of": lambda r: D.api_county(r["api"]),
+    "api_state": ("35",), "names": NAMES, "box": (LAT_MIN, LAT_MAX, LON_MIN, LON_MAX), "new_kind": "DR", "county_of": lambda r: D.api_county(r["api"]),
     "src": lambda asof, modified: ("Oklahoma Corporation Commission, intents to drill (%s and the daily file%s): application type DR, one count per API number "
                                    "and approval day (Central), by approval month; approvals through %s" % (MASTER, ", made " + modified[:10] if modified else "", asof.isoformat())),
 }
@@ -73,7 +73,7 @@ def office_place(city, state):
 
 
 OP_COLS = ["band", "num", "name", "type", "city", "state", "new12", "prev12", "all12", "all24", "last", "depth", "county", "counties", "newDrill", "m24"]
-PT_COLS = ["lat", "lon", "op", "t", "depth", "fips"]
+PT_COLS = ["lat", "lon", "op", "t", "depth", "fips", "api"]  # api: the well's API number, its first ten digits, as a number (0: not known); allowed in this one file by the owner's decision of 2026-11-02
 ASOF_KEYS = ("series-permits-ok.json", "county-permits-ok.json", "operators-ok.json", "permits-ok.json")
 log = D.log
 
@@ -87,6 +87,12 @@ def iter_rows(paths):
 
 def clean(text):
     return " ".join((text or "").split())
+
+
+def api_number(api):
+    """The first ten digits of an API number (hyphenated or not) as a number, 0 when it has fewer than ten digits."""
+    d = re.sub(r"\D", "", api or "")
+    return int(d[:10]) if len(d) >= 10 else 0
 
 
 def collect(rows, today=None):
@@ -273,13 +279,13 @@ def build(coll, county_names, asof=None, modified=None, spec=None):
         cov12[1] += iso >= w["cut12"]
         if 0 <= k < n24:
             month_located[k] += 1
-        chosen.append((iso, int(round(r["lat"] * 1000)) * 10, int(round(r["lon"] * 1000)) * 10, r["op"], r["depth"], int(fips)))
+        chosen.append((iso, int(round(r["lat"] * 1000)) * 10, int(round(r["lon"] * 1000)) * 10, r["op"], r["depth"], int(fips), api_number(r["api"])))
     per_op = collections.Counter(c[3] for c in chosen if c[3] in named)
     order = [op for op, _n in sorted(per_op.items(), key=lambda kv: (-kv[1], kv[0]))]
     index = {op: i for i, op in enumerate(order)}
     t0 = T0.toordinal()
-    pts = sorted(([lat, lon, index.get(op, -1), iso - t0, 0 if td <= 0 else max(1, int(td / 100 + 0.5)), fips] for iso, lat, lon, op, td, fips in chosen),
-                 key=lambda p: (p[3], p[0], p[1], p[2], p[4], p[5]))
+    pts = sorted(([lat, lon, index.get(op, -1), iso - t0, 0 if td <= 0 else max(1, int(td / 100 + 0.5)), fips, api] for iso, lat, lon, op, td, fips, api in chosen),
+                 key=lambda p: (p[3], p[0], p[1], p[2], p[4], p[5], p[6]))
     coverage = {"months": [D1.month_label(w["first24"] + i) for i in range(n24)], "total": month_total, "located": month_located,
                 "share12": round(cov12[1] / cov12[0], 3) if cov12[0] else 0.0, "share24": round(cov24[1] / cov24[0], 3) if cov24[0] else 0.0}
     points_doc = {"asOf": asof.isoformat(), "t0": T0.isoformat(), "ops": [named[op] for op in order], "opNums": order, "cols": PT_COLS, "pts": pts, "coverage": coverage}
@@ -322,7 +328,10 @@ def validate(out, county_names=None, spec=None):
             continue
         if size > BUDGET[OK_SPEC["names"][NAMES.index(name)]]:
             bad.append("%s is over its budget: %d bytes" % (name, size))
-        if re.search(r"\d{10,}|@|https?:|\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b", text):
+        scanned = text
+        if name == NAMES[3] and isinstance(docs[name].get("pts"), list):  # the points file's api column is the one place a run of ten digits is allowed: the text is scanned without it
+            scanned = json.dumps({**docs[name], "pts": [p[:6] for p in docs[name]["pts"] if isinstance(p, list)]})
+        if re.search(r"\d{10,}|@|https?:|\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b", scanned):
             bad.append("%s holds something like an API number, an e-mail address, a link or a phone number" % name)
     if len(docs) < len(NAMES):
         return bad
@@ -416,9 +425,10 @@ def validate(out, county_names=None, spec=None):
         lo, hi = w["cut24"] - T0.toordinal(), w["asofo"] - T0.toordinal()
         wrong = 0
         for p in pts["pts"]:
-            ok = isinstance(p, list) and len(p) == 6 and all(is_int(v) for v in p)
+            ok = isinstance(p, list) and len(p) == 7 and all(is_int(v) for v in p)
             ok = ok and LAT_MIN * 1e4 <= p[0] <= LAT_MAX * 1e4 and LON_MIN * 1e4 <= p[1] <= LON_MAX * 1e4 and p[0] % 10 == 0 and p[1] % 10 == 0
             ok = ok and -1 <= p[2] < len(pts["ops"]) and lo <= p[3] <= hi and p[4] >= 0 and "%03d" % p[5] in valid
+            ok = ok and (p[6] == 0 or ("%010d" % p[6])[:2] in spec["api_state"])  # an API number is ten digits and begins with a code this state's wells carry (0: not known)
             wrong += not ok
         if wrong:
             bad.append("%d permit points are malformed" % wrong)

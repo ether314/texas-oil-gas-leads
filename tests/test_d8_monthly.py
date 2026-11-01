@@ -153,6 +153,11 @@ def run_checks(M, quiet=False):
     p = pts["pts"]
     check(len(p) == 21 and pts["ops"] == ["ACME OIL LLC", "BIG CORP INC"] and pts["opNums"] == ["100", "200"], "21 located permits; operators indexed by how many they have: %d" % len(p))
     check(sorted(x[2] for x in p).count(-1) == 2, "an individual's permits are points with no operator (-1)")
+    # the seventh column is the permit's own API number (its first ten digits as a number): every point's number is one of the permits'
+    fixture_apis = {int(r_["API_Number"][:10]) for r_ in rows() if r_["Application_Type"] == "DR"}
+    c_own, c_state, c_county = all(x[6] in fixture_apis for x in p), all(("%010d" % x[6])[:2] == "35" for x in p), all(("%010d" % x[6])[2:5] == "%03d" % x[5] for x in p)
+    check(c_own and c_state and c_county, "every point carries the API number of its own permit (a well permitted twice has two points and one number): ten digits, Oklahoma's 35, and the county digits inside it are the point's county (%d points)" % len(p))
+    check(M.api_number("35-017-00060-00-00") == 3501700060 and M.api_number("3501700060") == 3501700060 and M.api_number("350170006") == 0 and M.api_number("") == 0 and M.api_number(None) == 0, "an API number is read with or without its hyphens, and one with fewer than ten digits is 0 (not known)")
     big = [x for x in p if x[5] == 51]
     check(sorted((x[0], x[1]) for x in big)[:2] == [(355000, -985000), (355120, -985120)] or (355120, -985120) in [(x[0], x[1]) for x in big], "locations are rounded to about 100 m: %s" % sorted((x[0], x[1]) for x in big))
     first = min(p, key=lambda x: x[3])
@@ -189,6 +194,12 @@ def run_checks(M, quiet=False):
     fault("an API-like number", lambda cur, d: cur["series-permits-ok.json"].update(src="made from 35017000100000"), "API number")
     fault("a point outside the state", lambda cur, d: cur["permits-ok.json"]["pts"].append([400000, -985000, -1, 100, 100, 17]), "points are malformed")
     fault("a point at full precision", lambda cur, d: cur["permits-ok.json"]["pts"][0].__setitem__(0, cur["permits-ok.json"]["pts"][0][0] + 3), "points are malformed")
+    # the points' seventh column is the well's API number, the one place these files may hold ten digits (the owner's decision of 2026-11-02)
+    fault("a point with no api column", lambda cur, d: cur["permits-ok.json"]["pts"].append(cur["permits-ok.json"]["pts"][0][:6]), "points are malformed")
+    fault("an API number that is not Oklahoma's", lambda cur, d: cur["permits-ok.json"]["pts"][0].__setitem__(6, 4231700001), "points are malformed")
+    fault("an API number of nine digits", lambda cur, d: cur["permits-ok.json"]["pts"][0].__setitem__(6, 350000001), "points are malformed")
+    fault("an API number that is text", lambda cur, d: cur["permits-ok.json"]["pts"][0].__setitem__(6, "3501700010"), "points are malformed")
+    fault("a ten-digit run in the points file outside its api column", lambda cur, d: cur["permits-ok.json"].update(ops=cur["permits-ok.json"]["ops"] + ["ACME 3501700010 LLC"]), "API number")
     fault("a wrong band", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(0, "A"), "operator 200")
     fault("an unnamed operator row", lambda cur, d: cur["operators-ok.json"]["rows"][1].__setitem__(2, "JOHN Q PUBLIC"), "operator 200")
     # the office city and state come straight from the file and are published: a place name and two letters, nothing else

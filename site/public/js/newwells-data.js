@@ -324,21 +324,29 @@ export function decodePermits(docs, t0) {
   const base = isoMs(t0); const rows = []; const ops = []; const oix = new Map();
   docs.forEach((d, k) => {
     const off = Math.round((isoMs(d.pm.t0) - base) / DAY);
+    const ci = (d.pm.cols || []).indexOf('api'); // the permit points of Oklahoma, New Mexico and the offshore carry the well's API number (the seventh column); Texas's file does not
     for (const p of d.pm.pts) {
       const day = p[3] + off; if (day < 0) continue;
       let o = -1;
       if (p[2] >= 0 && d.pm.ops[p[2]]) { const nm = d.pm.ops[p[2]]; if (!oix.has(nm)) { oix.set(nm, ops.length); ops.push(nm); } o = oix.get(nm); }
-      rows.push([day, k, p[0], p[1], o, p[4]]);
+      rows.push([day, k, p[0], p[1], o, p[4], ci >= 0 ? p[ci] : 0, p[5], p[2] >= 0 ? String(d.pm.opNums[p[2]] || '') : '']);
     }
   });
   rows.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const n = rows.length; const Q = { n, t0: base, states: docs.map((d) => d.id), ops, spud: Uint8Array.from(docs.map((d) => (PERMIT_SOURCES.find((x) => x.id === d.id) || {}).spud ? 1 : 0)),
-    day: new Int32Array(n), s: new Uint8Array(n), lat: new Float32Array(n), lon: new Float32Array(n), op: new Int16Array(n), tvd: new Uint16Array(n), last: new Int32Array(docs.length).fill(-1) };
-  rows.forEach((r, i) => { Q.day[i] = r[0]; Q.s[i] = r[1]; Q.lat[i] = r[2] / 1e4; Q.lon[i] = r[3] / 1e4; Q.op[i] = r[4]; Q.tvd[i] = r[5]; if (r[0] > Q.last[r[1]]) Q.last[r[1]] = r[0]; });
+    day: new Int32Array(n), s: new Uint8Array(n), lat: new Float32Array(n), lon: new Float32Array(n), op: new Int16Array(n), tvd: new Uint16Array(n), api: new Float64Array(n), fips: new Uint16Array(n), opNum: new Array(n),
+    last: new Int32Array(docs.length).fill(-1) };
+  rows.forEach((r, i) => { Q.day[i] = r[0]; Q.s[i] = r[1]; Q.lat[i] = r[2] / 1e4; Q.lon[i] = r[3] / 1e4; Q.op[i] = r[4]; Q.tvd[i] = r[5]; Q.api[i] = r[6]; Q.fips[i] = r[7]; Q.opNum[i] = r[8]; if (r[0] > Q.last[r[1]]) Q.last[r[1]] = r[0]; });
   return Q; // last[k]: the newest day state k has a point on, or -1
 }
 export const permitState = (Q, i) => Q.states[Q.s[i]];
 export const permitOperator = (Q, i) => (Q.op[i] >= 0 ? Q.ops[Q.op[i]] : null);
+// the county of permit i by name (names: county-names.json), or null: the offshore's permits are in protraction areas, and a code the file does not hold is not a county
+export const COUNTY_STATE = { TX: 'TX', OK: 'OK', NM: 'NM' };
+export function permitCounty(Q, i, names) {
+  const st = Q.states[Q.s[i]]; const by = names && names.states && COUNTY_STATE[st] ? names.states[st] : null;
+  return by ? by[String(Q.fips[i]).padStart(3, '0')] || null : null;
+}
 export const permitWord = (Q, i) => (Q.spud[Q.s[i]] ? 'Well spudded' : 'Permit approved');
 // the first index whose day is at least d
 export function firstPermitAtOrAfter(Q, d) {

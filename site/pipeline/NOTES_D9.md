@@ -107,3 +107,7 @@ The nightly `--check` also holds every day file to the privacy gate shared with 
 
 Permit approvals by date for older months, depth, office city and state, Baker Hughes rig counts and BLS jobs for New Mexico (sources not reached from the build host), a company
 list, production by county or operator (the OCD publishes C-115 production by operator and county; not read yet).
+
+## The points' API number (2026-11-02)
+
+`permits-nm.json`'s points have a seventh column, `api`, from the layer's well id (`30-015-58733` is written as the number 3001558733), through the shared builder (`NOTES_D8.md`); the first six columns of all 3,709 points came out identical when it was run for real on 2026-11-02.
