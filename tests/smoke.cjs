@@ -1042,6 +1042,53 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.locator('#nwy-recent').click();
       await page.waitForFunction(() => window.__nw.P.n < 30000, null, { timeout: 10000 });
       check(!/y=all/.test(await page.evaluate(() => location.hash)) && /s=TX/.test(await page.evaluate(() => location.hash)), label + ': choosing the last two years takes y out of the address and keeps the state');
+      // the oil permits and spuds beside the fracked wells (2026-11-02): rings and dots on one map, a switch, a legend that says which is which, a panel line that is never added to the wells
+      await page.goto(base + '?debug&fresh=10#overview', { waitUntil: 'load' });
+      await page.waitForFunction(() => window.__nw && window.__nw.map.ready && window.__nw.Q, null, { timeout: 30000 });
+      await page.waitForTimeout(600);
+      const rings0 = await page.evaluate(() => ({ n: window.__nw.map.drawnPermits, k: window.__nw.map.kinds, total: window.__nw.Q.n }));
+      check(rings0.total > 1000 && rings0.n === rings0.total && rings0.k.wells && rings0.k.permits && !(await page.evaluate(() => !!window.__nw.hero && window.__nw.hero.drawnPermits > 0)), label + ': the explorer draws the oil permits and spuds as rings beside the fracked wells\' dots (' + rings0.n + ' rings of ' + rings0.total + ' records: every one, including the permits newer than the newest well), and the hero\'s backdrop stays wells only');
+      const legend = await page.locator('.nw-legend').innerText();
+      check((await page.locator('.nw-legend .dd-dotkey').count()) === 1 && (await page.locator('.nw-legend .dd-ringkey').count()) === 1 && /Fracked well/.test(legend) && /Oil permit or spud/.test(legend) && /never added together/.test(legend) && /About \d+% of Texas/.test(legend) && (await page.locator('#nwk-both').getAttribute('aria-pressed')) === 'true',
+        label + ': the legend says which is which (a filled dot, a hollow ring), that Texas gives a location for part of its permits, and that the two are never added');
+      const ringLine = (await page.locator('.nw-grid .nw-ringline').innerText()).replace(/,/g, '');
+      const ringTotal = await page.evaluate(() => { const { P, doc, D, Q } = window.__nw; const [a, b] = D.settledRange(P, doc); return D.permitsPerState(Q, a, b).reduce((t, r) => t + r.n, 0); });
+      check(ringTotal > 1000 && ringLine.startsWith(String(ringTotal)) && /not added to the fracked wells/.test(ringLine), label + ': the panel counts the rings of the same 12 months apart from the wells (' + ringTotal + '), and says they are not added to them');
+      await page.locator('#nwk-wells').scrollIntoViewIfNeeded(); await page.locator('#nwk-wells').click();
+      const onlyWells = await page.evaluate(() => ({ n: window.__nw.map.drawnPermits, k: window.__nw.map.kinds }));
+      check(onlyWells.k.wells && !onlyWells.k.permits && onlyWells.n === 0 && /k=wells/.test(await page.evaluate(() => location.hash)) && (await page.locator('#nwk-wells').getAttribute('aria-pressed')) === 'true', label + ': "Fracked wells" hides the rings and writes k=wells in the address');
+      await page.locator('#nwk-permits').click();
+      const onlyRings = await page.evaluate(() => ({ n: window.__nw.map.drawnPermits, k: window.__nw.map.kinds }));
+      check(!onlyRings.k.wells && onlyRings.k.permits && onlyRings.n > 1000 && /k=permits/.test(await page.evaluate(() => location.hash)) && (await pixels('.nw-canvas')) > 300, label + ': "Oil permits" draws the rings alone (' + onlyRings.n + ') and writes k=permits');
+      const ring = await page.evaluate(() => { const { map, Q } = window.__nw; for (let j = Q.n - 1; j >= 0; j--) if (Q.states[Q.s[j]] === 'TX') { const [x, y] = map.screenOfQ(j); return { x, y }; } return null; });
+      await page.locator('.nw-stage').scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+      const rbox = await page.locator('.nw-canvas').boundingBox();
+      await page.mouse.move(rbox.x + ring.x - 15, rbox.y + ring.y - 15); await page.mouse.move(rbox.x + ring.x, rbox.y + ring.y);
+      await page.waitForSelector('.tip', { state: 'visible', timeout: 5000 });
+      const ringTip = await page.locator('.tip').innerText();
+      check(/Oil permit approved · Texas/.test(ringTip) && !/\d{10}/.test(ringTip), label + ': hovering a ring says what it is, with no API number: ' + ringTip.replace(/\s+/g, ' ').slice(0, 100));
+      await page.locator('.nw-explore .btn', { hasText: 'Watch' }).click();
+      await page.waitForSelector('.tl-range', { state: 'visible', timeout: 5000 });
+      const permitsSoFar = await page.locator('.tl-count').innerText();
+      await page.locator('#nwk-both').click();
+      const bothSoFar = await page.locator('.tl-count').innerText();
+      check(/oil permits? and spuds? so far/.test(permitsSoFar) && /fracked wells? so far/.test(bothSoFar), label + ': the replay counts what the map shows: ' + permitsSoFar + ' with only the rings, ' + bothSoFar + ' with both');
+      await page.locator('.nw-explore .btn', { hasText: 'Close the replay' }).click();
+      await page.selectOption('.nw-pick', 'ND');
+      await page.waitForFunction(() => /^North Dakota$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
+      check(/North Dakota publishes no oil permit locations/.test(await page.locator('.nw-grid .nw-ringline').innerText()), label + ': a state with no permit locations says so, not a zero');
+      await page.selectOption('.nw-pick', 'NM');
+      await page.waitForFunction(() => /^New Mexico$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
+      check(/oil wells spudded with a map location/.test(await page.locator('.nw-grid .nw-ringline').innerText()), label + ': New Mexico\'s rings are wells spudded, not permits approved');
+      await page.selectOption('.nw-pick', '');
+      await page.locator('#nwy-all').click();
+      await page.waitForFunction(() => window.__nw.P.n > 200000 && window.__nw.map.ready && window.__nw.map.drawnPermits > 1000, null, { timeout: 30000 });
+      check((await page.locator('.nw-legend .dd-ringkey').count()) === 1 && (await page.locator('#nwk-both').getAttribute('aria-pressed')) === 'true', label + ': with every year since 2011 the rings are still drawn (the permit files start in 2024) and the switch keeps its place');
+      await page.goto(base + '?debug&fresh=11#overview?s=TX&k=permits', { waitUntil: 'load' });
+      await page.waitForFunction(() => window.__nw && window.__nw.map.ready && window.__nw.Q, null, { timeout: 30000 });
+      await page.waitForFunction(() => /^Texas$/.test((document.querySelector('.nw-grid .nat-panel h3') || {}).textContent || ''), null, { timeout: 8000 });
+      check(await page.evaluate(() => !window.__nw.map.kinds.wells && window.__nw.map.kinds.permits) && (await page.locator('#nwk-permits').getAttribute('aria-pressed')) === 'true' && /k=permits/.test(await page.evaluate(() => location.hash)) && /s=TX/.test(await page.evaluate(() => location.hash)) && /oil permits approved with a map location/.test(await page.locator('.nw-grid .nw-ringline').innerText()),
+        label + ': an address with k=permits opens on the rings alone, and a state\'s line counts permits approved');
     } catch (e) {
       check(false, label + ': the national Overview: ' + e.message.split('\n')[0].slice(0, 200));
     }
