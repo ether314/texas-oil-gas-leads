@@ -1887,6 +1887,79 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 22b. the Daily chart's dashed line is the typical day of the day that is shown (2026-11-01). It was drawn once, before the report had chosen its day, for the first day of the loaded points (Nov 1, 2024: "typical day, 33"
+  //      over Jun 2024 to May 2025) while the day card said 30.5 over Jun 2025 to May 2026, and it stayed so while days were chosen inside the chart's 150 days, though a day's twelve months follow its month. The label, the note and the
+  //      day card must name the same months and figure on the opening load and after every way of choosing a day: a click on the chart, the date box, the slider, the month strip, the arrows, a state.
+  for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mi = (mon, yr) => +yr * 12 + MON.indexOf(mon); // a month as one number, to compare
+    // what the chart (its dashed label, its note) and the day card say about a typical day, for the day shown
+    const said = () => page.evaluate(() => {
+      const lab = [...document.querySelectorAll('#daily-root .dd-chart text.ax')].map((t) => t.textContent).find((t) => /^typical day, \d+$/.test(t));
+      const card = [...document.querySelectorAll('#daily-root .nat-panel p.fine')].map((p) => p.textContent).find((t) => /^A typical /.test(t));
+      return { date: document.querySelector('#daily-root .dd-date').textContent, lines: document.querySelectorAll('#daily-root .dd-chart .dd-typ').length, label: lab ? +lab.replace(/\D/g, '') : null, note: document.querySelector('#daily-root .dd-chartbox + p.fine').textContent, card: card || '' };
+    });
+    // null when the chart says what the card says; else what each said. A card that names twelve months (a settled day of another year) needs the same twelve in the note, and the day's month inside them; a day
+    // in the newest months is set against "the 12 settled months". The label is the card's figure to a whole number (the card gives a tenth), so they may differ by 0.55 and no more.
+    const agree = (t) => {
+      const dm = t.date.match(/, (\w{3}) \d+, (\d{4})$/); const at = dm ? mi(dm[1], dm[2]) : NaN;
+      const fig = +((t.card.match(/(?:has|had) about (\d+\.\d)/) || [])[1]);
+      const cw = t.card.match(/in the 12 months (\w{3}) (\d{4}) to (\w{3}) (\d{4})/); const nw = t.note.match(/over the 12 months (\w{3}) (\d{4}) to (\w{3}) (\d{4})/);
+      const months = cw ? !!nw && nw.slice(1).join(' ') === cw.slice(1).join(' ') && mi(nw[3], nw[4]) - mi(nw[1], nw[2]) === 11 && mi(nw[1], nw[2]) <= at && at <= mi(nw[3], nw[4]) : /over the 12 settled months \(/.test(t.note);
+      return Number.isFinite(fig) && t.label != null && Math.abs(t.label - fig) <= 0.55 && months && t.lines === 1 ? null
+        : t.date + ': the chart says "typical day, ' + t.label + '" ' + (t.note.match(/over (the 12 [^(]*)\(/) || ['', '?'])[1].trim() + ', the day card says "' + t.card.slice(0, 90) + '"';
+    };
+    // check the chart against the card now; `want` (when given) says the day really is the one the step chose, so a click that did nothing cannot pass for a chart that follows
+    const follows = async (what, want = null) => {
+      const t = await said(); const why = want && !want.test(t.date) ? t.date + ' is not the day the step chose' : agree(t);
+      check(!why, label + ': ' + what + (why ? ': ' + why : ''));
+      return t;
+    };
+    const dateBox = async (iso) => { await page.fill('#daily-root input[type=date]', iso); await page.locator('#daily-root input[type=date]').dispatchEvent('change'); };
+    try {
+      // the opening load, before anything is chosen: the report opens on the newest day with ten wells, which is still filling in
+      await page.goto(base + '#daily', { waitUntil: 'load' });
+      await page.waitForFunction(() => /\d{4}$/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 25000 });
+      const t0 = await follows('on the opening load the dashed line is the typical day of the day shown, the figure and months the day card gives');
+      check(/over the 12 settled months \(/.test(t0.note), label + ': on the opening load the chart\'s note says the dashed line is over "the 12 settled months": "' + t0.note.slice(-95) + '"');
+      // a day in 2014 (the earlier wells are fetched): the twelve months hold March 2014
+      await page.goto(base + '?again=1#daily?d=2014-03-15', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Mar 15, 2014/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
+      await follows('a day in 2014 is set against twelve months that hold March 2014, in the chart and on the card', /Mar 15, 2014/);
+      // every way of choosing another day inside the chart's 150 days (a different month each time, so the twelve months are different)
+      await page.locator('#daily-root .dd-chartbox').scrollIntoViewIfNeeded();
+      await page.locator('#daily-root .dd-chart .nat-hit').first().dispatchEvent('click');
+      await follows('a click on the first day of the chart (December 2013) moves the line and the note with it', /Dec \d+, 2013/);
+      await dateBox('2014-02-10');
+      await follows('the date box (February 2014)', /Feb 10, 2014/);
+      await page.locator('#daily-root .tl-range').fill(await page.evaluate(() => document.querySelector('#daily-root .tl-range').max));
+      await follows('the slider at its last day (May 2014)', /May \d+, 2014/);
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(36).dispatchEvent('click'); // the strip starts in Jan 2011: bar 36 is Jan 2014
+      await follows('a month on the strip (January 2014)', /Jan 1, 2014/);
+      await dateBox('2014-03-01');
+      await page.click('button[aria-label="The day before"]');
+      await follows('the arrow back across a month end (Mar 1 to Feb 28)', /Feb 28, 2014/);
+      await page.click('button[aria-label="The day after"]');
+      await follows('the arrow forward across it (Feb 28 to Mar 1)', /Mar 1, 2014/);
+      // a state: its own typical day over the same months, and a day chosen with it
+      await page.selectOption('#daily-root select.nw-pick', 'TX');
+      await follows('choosing Texas gives Texas\'s own typical day, over the same months', /Mar 1, 2014/);
+      await page.locator('#daily-root .dd-chart .nat-hit').first().dispatchEvent('click');
+      await follows('a click on the chart with Texas chosen', /Dec \d+, 2013/);
+      check(/s=TX/.test(await hashNow(page)) && !BAD_TEXT.test(await page.locator('#daily-root .dd-chartbox').innerText() + ' ' + (await said()).note), label + ': the state stays chosen (s=TX) and the chart and its note hold no NaN, undefined, null or Infinity');
+    } catch (e) {
+      check(false, label + ': the Daily chart\'s typical day: ' + e.message.split('\n')[0].slice(0, 220));
+    }
+    check(!errs.length, label + ': the Daily chart\'s typical day loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
   // 23. a change from a small base is not a percent (2026-11-01): California went from 2 permits to 372, which read "+18500%" in its panel; the panel says the base in words, and no ranking row, tile or tooltip shows the percent
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
