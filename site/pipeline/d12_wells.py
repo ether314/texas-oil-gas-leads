@@ -18,7 +18,7 @@ What is published, and where:
   data/wells/index.json          the packs done so far (day, pack, release tags, counts), the counties and the totals
   data/wells/county/<fips>.json  each well of the county: API, field, district, operator (a corporation, LLC or partnership only, as everywhere
                                  on the site) and its documents: stage, kind, pages, bytes, the file name and the release it is in
-  GitHub releases                `wells-<day>-<pack>-<nn>`, at most 800 files each (a release holds 1000): `<api>_<p|d|c><n>.pdf|tif` is the
+  GitHub releases                `wells-<day>-<pack>-<nn>`, at most 800 files each (a release holds 1000): `<api>_<p|d|c><n>.pdf|tif|png` is the
                                  document as the RRC made it, `<api>_<p|d|c><n>.jpg` page one as a picture 1000 px wide
 
 What is NOT published: lease names, well numbers and landowner names (the packets carry them; the documents themselves do) and any file
@@ -28,7 +28,7 @@ addresses of individuals. To remove one: delete its release file, then its entry
 
 A run does the newest `--days` (default 2) filing days that have a pack not done yet, newest first, so a pack that landed late or a night that
 failed is picked up the next day; `--days` and `--window` reach further back by hand. Everything downloaded is untrusted data: members
-are copied one at a time, size-limited and checked for the PDF or TIFF signature, never run; pdftoppm runs under a timeout and, where `prlimit`
+are copied one at a time, size-limited and checked for the PDF or TIFF signature (a scan saved as .tif that is really a PNG is kept as a .png), never run; pdftoppm runs under a timeout and, where `prlimit`
 exists, a memory limit, without the repository token. Standard library only, plus Pillow and pdftoppm (poppler-utils) for the previews.
 
   python3 -I site/pipeline/d12_wells.py                      the newest 2 days not done yet (needs GH_TOKEN, gh, Pillow, pdftoppm)
@@ -48,6 +48,7 @@ import tempfile
 import time
 import warnings
 import zipfile
+import zlib
 import zoneinfo
 from datetime import date, datetime, timedelta, timezone
 
@@ -73,6 +74,10 @@ PREVIEW_QUALITY = (60, 46, 34)
 PER_DOC_SECONDS = 25
 WORKERS = 4
 MIN_PACK_BYTES = 2048  # the RRC lists an empty day as a 0.26 KB zip
+RULES = 2  # what a run refuses, as a number: 2 since a scan saved as .tif that is a PNG is kept (as a .png) instead of refused. A pack recorded with refusals under older rules is done once more
+PNG = b"\x89PNG"
+# what a member's own first bytes may be, by the extension it is named with: the drill pages' table (PDF, TIFF), and a PNG under a .tif name (the RRC's completion packs hold a few)
+ALLOWED = dict(d7_packs.MAGIC, **{".tif": d7_packs.MAGIC[".tif"] + (PNG,), ".tiff": d7_packs.MAGIC[".tiff"] + (PNG,)})
 
 PACKS = {  # code: (stage letter, the Daily report's dataset id, label)
     "w1": ("p", "w1images", "W-1 permit letters and plats"),
@@ -207,6 +212,15 @@ def packet_ties(path):
     return out
 
 
+def sniff(zf, info):
+    """The first four bytes of a member (b"" when it cannot be read: staging refuses it)."""
+    try:
+        with zf.open(info) as f:
+            return f.read(4)
+    except (OSError, ValueError, zipfile.BadZipFile, zlib.error):
+        return b""
+
+
 def candidates(zf, pack, ties):
     """(docs, untied, rejected) for one pack: docs are the documents that tie to a well, each {info, api, district, op, field, kind, ext, stage};
     untied counts the documents no well could be found for."""
@@ -228,6 +242,8 @@ def candidates(zf, pack, ties):
             untied += 1
             continue
         ext = os.path.splitext(base)[1].lower().lstrip(".")
+        if ext in ("tif", "tiff") and sniff(zf, info) == PNG:
+            ext = "png"  # a PNG saved as .tif: kept under the name its content has, so a viewer opens it as what it is
         docs.append({"info": info, "api": tie["api"], "district": tie.get("district"), "op": tie.get("op"), "field": tie.get("field"),
                      "kind": kind_of(base), "ext": "tif" if ext == "tiff" else ext, "stage": PACKS[pack][0], "key": norm(info.filename)})
     # numbering must not depend on the zip's order: by well, then kind, then the member's own path
@@ -306,7 +322,7 @@ def render_pdf(src, dest):
 
 
 def render_tif(src, dest):
-    """(written, pages) for a TIFF: page one as a JPEG, no EXIF."""
+    """(written, pages) for a TIFF, or any scan Pillow reads by its content (a PNG saved as .tif): page one as a JPEG, no EXIF."""
     from PIL import Image
     Image.MAX_IMAGE_PIXELS = 120_000_000  # a TIFF that unpacks past this is refused rather than drawn
     try:
@@ -346,7 +362,7 @@ def stage(zf, docs, stage_dir, log=log):
     os.makedirs(stage_dir, exist_ok=True)
     kept, rejected = [], 0
     for d in docs:
-        size = d7_packs.copy_member(zf, d["info"], os.path.join(stage_dir, "%s.%s" % (d["f"], d["ext"])))
+        size = d7_packs.copy_member(zf, d["info"], os.path.join(stage_dir, "%s.%s" % (d["f"], d["ext"])), ALLOWED)
         if size is None:
             rejected += 1
             continue
@@ -394,7 +410,7 @@ def publish_chunk(repo, tag, day, pack, folder, names, log=log):
         d7_release._gh(["release", "view", tag, "--repo", repo, "--json", "tagName"], retry=False)
     except d7_release.ReleaseError:
         notes = ("The Railroad Commission's scanned %s of %s, each tied to the well (API number) it is about. Public records, unmodified; they can carry "
-                 "the names, phone numbers and addresses of individuals. A file named <api>_<p|d|c><n>.pdf or .tif is the document; the same name with .jpg is its page one. "
+                 "the names, phone numbers and addresses of individuals. A file named <api>_<p|d|c><n>.pdf, .tif or .png is the document; the same name with .jpg is its page one. "
                  "Removed when the day leaves the 92-day archive. Made by site/pipeline/d12_wells.py." % (PACKS[pack][2], day.isoformat()))
         gh(["release", "create", tag, "--repo", repo, "--prerelease", "--latest=false", "--title", "Well images, %s, %s" % (PACKS[pack][2], day.isoformat()), "--notes", notes], timeout=300)
     for i in range(0, len(names), d7_release.BATCH):
@@ -498,7 +514,9 @@ class State:
         return st
 
     def done(self):
-        return {(date.fromisoformat(d), p): (u["name"], u["bytes"]) for (d, p), u in self.units.items()}
+        """{(day, pack): (name, bytes)} of the packs that need no more work. A pack recorded with refusals under older rules (`rules` below RULES; a unit
+        written before there were rules has none) is not done: it is read again once, and what a newer rule now accepts is published."""
+        return {(date.fromisoformat(d), p): (u["name"], u["bytes"]) for (d, p), u in self.units.items() if not (u.get("rejected", 0) > 0 and u.get("rules", 1) < RULES)}
 
     def remove(self, day, pack):
         """Take a pack's documents (and its entry) out, wherever they are."""
@@ -623,7 +641,7 @@ def check(out, lk=None):
                 bad.append("%s: well %s has no documents" % (name, w["a"]))
             for x in w["docs"]:
                 m = STEM.fullmatch(x["f"])
-                if (not m or m.group(1) != w["a"] or m.group(2) != x["s"] or x["x"] not in ("pdf", "tif") or not isinstance(x["b"], int) or x["b"] <= 0
+                if (not m or m.group(1) != w["a"] or m.group(2) != x["s"] or x["x"] not in ("pdf", "tif", "png") or not isinstance(x["b"], int) or x["b"] <= 0
                         or not (0 <= x["t"] < len(sh["tags"])) or x["v"] not in (0, 1) or (x["pg"] is not None and not (isinstance(x["pg"], int) and x["pg"] > 0))):
                     bad.append("%s: well %s has a bad document %r" % (name, w["a"], x))
                     continue
@@ -735,14 +753,14 @@ def do_unit(u, io, state, lk, repo, work, upload, perms_cache, log=log):
         log("%s %s: %d documents, %d tied to a well, %d with no well found, %d refused" % (day, pack, total, len(kept), untied, rejected))
         if not kept:
             state.remove(day.isoformat(), pack)
-            state.units[(day.isoformat(), pack)] = {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": 0, "untied": untied, "rejected": rejected, "wells": 0, "tags": [], "assetBytes": 0}
+            state.units[(day.isoformat(), pack)] = {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": 0, "untied": untied, "rejected": rejected, "rules": RULES, "wells": 0, "tags": [], "assetBytes": 0}
             return
         if upload:
             publish_unit(repo, day, pack, stage_dir, kept, log)
         else:
             for d in kept:
                 d["tag"] = tag_name(day, pack, 1)
-        state.add(day.isoformat(), pack, {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": len(kept), "untied": untied, "rejected": rejected}, kept, lk)
+        state.add(day.isoformat(), pack, {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": len(kept), "untied": untied, "rejected": rejected, "rules": RULES}, kept, lk)
     finally:
         shutil.rmtree(folder, ignore_errors=True)
 
