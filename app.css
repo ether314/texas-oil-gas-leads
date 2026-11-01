@@ -777,6 +777,10 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .dd-years .nat-hit { cursor: pointer; }
 .dd-ywin { fill: color-mix(in srgb, var(--ring) 16%, transparent); stroke: var(--ring); stroke-width: 1; pointer-events: none; }
 .dd-yday { stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.nw-legend { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-2); }
+.nw-legend .nw-marks { margin: 0; }
+.nw-ringline { display: flex; align-items: baseline; gap: var(--sp-2); }
+.nw-ringline .dd-ringkey { transform: translateY(2px); }
 .nw-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-4); margin: var(--sp-3) 0 var(--sp-2); padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--ink-2); }
 .nw-marks li { display: inline-flex; align-items: center; gap: var(--sp-2); }
 /* a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud: the same two marks as on the map */
