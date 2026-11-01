@@ -14,8 +14,10 @@ const isGithub = (url) => url.protocol === 'https:' && (url.hostname === 'github
 
 function stubDay(root) {
   const days = JSON.parse(fs.readFileSync(path.join(root, 'data', 'daily', 'index.json'), 'utf8')).days.map((r) => r.d).sort();
-  const day = days[days.length - 1];
-  const stub = JSON.parse(fs.readFileSync(path.join(root, 'data', 'daily', day + '.json'), 'utf8'));
+  // the newest day that has a permits section: a day can have none (the first live capture of a month, when the Daily Permit File has no record yet: 2026-11-01), and the stub gives that section its rows
+  const read = (d) => JSON.parse(fs.readFileSync(path.join(root, 'data', 'daily', d + '.json'), 'utf8'));
+  const day = [...days].reverse().find((d) => read(d).permits);
+  const stub = read(day);
   const row = (n, depth, lat, lon, docs) => ['09000' + n, '301', '08', '1', null, depth, 'H', '301001' + n, lat, lon, docs];
   stub.permits = Object.assign({}, stub.permits, { rows: [row('01', 9000, 31.80, -103.60, ['W1.pdf', 'Plat_1.pdf']), row('02', 9100, 31.81, -103.61, ['W1.pdf', 'Plat_1.pdf']), row('03', 9200, 31.82, -103.62, ['W1.pdf'])] });
   const surveys = [];
