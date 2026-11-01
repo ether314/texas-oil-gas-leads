@@ -10,13 +10,17 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 ```
 
 - `test_d7_*.py`: the Texas Daily report producer (`d7_daily.py`, `d7_packs.py`, `rrc_share.py`): the one rule (a report shows what landed
-  on the shares that day), month-safe permit coverage, pack previews, download deadlines. The pack test needs Pillow and `pdftoppm`.
+  on the shares that day), month-safe permit coverage, pack previews, download deadlines. The pack test needs Pillow and `pdftoppm`. It also covers the readable page-one previews of the published documents (2026-11-01):
+  a JPEG about 900 px wide, at most 200 KB, gray unless the page has color, page one only, readable and not blurred, a damaged PDF or a hung `pdftoppm` leaving no preview and no failure, staging with and without previews,
+  the tools missing, a run of failures, a spent budget, `attach_documents` recording `previews` and `noPreview` only for what the release listing confirmed, the validator on those fields, and `d7_release.publish` uploading
+  previews after the documents as optional files (a failed upload costs nothing but itself, the asset limit trims them).
 - `test_d8.py`, `test_d8_context.py`, `test_ok_xlsx.py`: the Oklahoma producer, its monthly series and its workbook reader: rules,
   Central-time days across both clock changes, validation of the committed archive (with deliberate faults), privacy checks.
 - `test_d7_nights.py`: whole nights of the Texas producer with every socket blocked and the RRC's shares faked (synthetic permit file, pending sets, completions zip, pack names): the map service
   answering badly, a backup run that read less (or lost the document links), rebuilt days written partial, a damaged archive, the text of a failure, stray file names and dates, files that are
   delivered but are not the file (empty, an HTML page, a renamed column, a layout change), the real share client on listings that are not listings, the repair of an old day, the capture's time limit,
-  and 25 mutants that put the old behavior back (about 20 s).
+  a night with previews (the documents go up first, each preview a real JPEG, one that cannot be drawn named in `noPreview`, previews that cannot be uploaded costing nothing, `--no-previews`, no poppler),
+  and 28 mutants that put the old behavior back (about 45 s).
 - `test_d8_nights.py`: whole nights of the Oklahoma producer with the network faked: a permit with no county, an inventory that is an error page, empty,
   header-only, renamed, cut short or starts with a byte-order mark, a backup run that read less than the report it would replace, a master file that
   cannot be read, a rebuilt day left partial, no web address in a failure's text, and eleven mutants that put the old behavior back.
@@ -59,6 +63,8 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_js_data.mjs` also covers `national-data.js` (totals within a measure and never the BLM's, size classes, the stack and where its axis ends, the mix, the tile map covering every jurisdiction in the committed file).
 - `test_js_data.mjs` also covers `images-data.js` (a pack not listed is null and never zero, totals and the average over only the days that had a pack, a day file's packs and kinds, the permits whose files are published, the lifecycle, and that every kind in the committed live days is described).
 - `test_js_data.mjs` also covers `fields-data.js` (a state's and a metric's score, the order of the columns, the headline, the agencies of each status, that every committed agency answers all 48 metrics).
+- `test_js_data.mjs` also covers `images-data.js` (a pack not listed is null and never zero, totals and the average over only the days that had a pack, a day file's packs and kinds, the permits whose files are published, the lifecycle, and that every kind in the committed live days is described) and the readable previews: a release address is made only from a plain file name on a release named as a repository
+  and a daily tag, a preview is linked only when the day's release says it holds one (`previews`, `noPreview`), the files and previews of a permit and of a survey.
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
   preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs them all on every pull request and push to `main`.
   It also drives the states bar: choosing a state changes the Overview and the address, the Daily report and the Operators page follow (the State
@@ -81,10 +87,15 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   a ranking row selects its tile, and the view shows no NaN, undefined, null or Infinity.
   The Texas images view is driven too: a column for each report day, the day list, choosing a day shows its packs and the address, any contact sheet loads from the site itself, and no NaN.
   The permit-data matrix is driven too: a cell, an agency's code and a metric each open their panel and the address, a group tab filters the rows, no NaN, and the page says what it could not verify.
+  The previews are driven with a stubbed day (`tests/preview-stub.cjs`: the newest real day given three permits' filings, fourteen surveys and a release with `previews` and `noPreview`; GitHub's hosts are answered by the test with a one-pixel PNG, so nothing
+  touches the network): the Content-Security-Policy is exactly `default-src 'self'` with `img-src` also allowing `github.com` and `*.githubusercontent.com`; a lazy thumbnail for each preview the release holds and none for a document it does not; one preview answered
+  404 says "Preview unavailable" and keeps its link to the original; Enter opens the page in a dialog named for its permit with a link to the original, Tab never reaches the page behind it, Escape, the Close button and a click on the backdrop close it and focus goes back to the
+  thumbnail; an enlarged page that does not load says so; the drill page shows the same previews above its download buttons; no inline style, no sideways scroll on a phone, thumbnails of at least 24 px, no dialog animation with reduced motion; and a real day
+  with no previews makes no tile, no dialog and no request to GitHub.
   It checks that every button draws its words as one piece (a label split into two flex items gets the icon's gap between its words, which read as a double space).
   It downloads the Operators CSV (a State column, blank not zero where a state publishes no figure, no number turned into text) and walks the archive's days (the newest, the oldest, every tenth and each day with an empty Texas queue) for rendered NaN, undefined, null or Infinity.
 - `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to
-  WCAG 4.5:1 (3:1 for large text), against what is behind it (a gradient counts at its worst stop; disabled controls are exempt). Keyboard: Tab through six views;
+  WCAG 4.5:1 (3:1 for large text), against what is behind it (a gradient counts at its worst stop; disabled controls are exempt); the Texas images view is also audited with previews and with a page enlarged in its dialog (a stubbed day). Keyboard: Tab through seven views;
   every stop has a name and shows a focus ring and none sticks; one `main`, one visible `h1`, a language and a title per view. Reflow: at 360 px on 14 views and sets of
   states no content is cut off by an `overflow: hidden` box and nothing runs past the right edge outside a scroller (it found a Daily card's note and sparkline cut off). Target size: at the same width every button, field,
   tab and chip is at least 24 x 24 px (WCAG 2.2, 2.5.8; links in running text and table cells are left out). A state's own color (orange, purple, green) is

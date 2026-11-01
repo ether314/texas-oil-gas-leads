@@ -22,6 +22,7 @@ The owner asked for, and answered the questions about (so they are decided, not 
 with click-downs (`#images`); and **a local database** (a SQLite file built by a script from the committed data, kept out of git, sent to the owner as a file). They are new tabs in the Oil tracker, shipped as separate PRs, national report and matrix first.
 Two owner decisions change guardrails below, and are made: (1) the privacy exception is widened for **Texas** images: every document in the RRC's image packs, completion images included, may be published readable
 (not Oklahoma's, and no contact list); (2) the Content-Security-Policy may allow GitHub's image hosts for `img-src` so the readable previews load inline. Neither is done until the PR that does it says so and updates README, Privacy.
+Status, 2026-11-01: (2) is done, and (1) is done for the W-1 letters, permit plats and directional surveys (readable page-one previews, see Guardrails); the completion images are not published yet.
 
 ## The loop
 
@@ -74,7 +75,10 @@ One sentence.
 - **Privacy** (README, Privacy): business-, place- and market-level data only. No individuals' names, phone numbers, street addresses.
   Operators are named only when they are corporations, LLCs or limited partnerships, never a person's "dba" (`nameable()` in `d8_ok_daily.py` is the Oklahoma
   rule, the P-5 organization type is Texas's). There is one documented exception (the Texas drill pages link to the RRC's scanned W-1
-  documents). Do not extend it, and do not publish Oklahoma documents or any contact list.
+  documents), **widened on 2026-11-01 by the owner's decision**: those same Texas documents (W-1 letters, permit plats, directional surveys) are now also shown inline as
+  readable page-one previews, `<document>.jpg` files of the same release, drawn by `render_preview` in `d7_packs.py`. A preview is the first page of a document the Commission publishes,
+  readable and unmodified apart from being rendered to a JPEG (nothing cropped, blurred or redacted). Do not extend it further (the completion images stay blurred and unpublished
+  until a PR says otherwise), and do not publish Oklahoma documents or any contact list.
 - **Never commit secrets** (keys, tokens, `.env`, service-account files). **Never put the owner's e-mail address or any personal data
   in a request header, URL or payload** (a `User-Agent` for example); the owner's address is only for identifying them.
 - **Be a polite client of public servers.** The RRC has refused GitHub's runners for hours (HTTP 403, dropped TLS) after repeated runs;
@@ -84,8 +88,10 @@ One sentence.
 - **Never disable TLS verification** or unset the proxy variables.
 - **Do not change repository settings** (visibility, Pages source, secrets, branch rules), delete branches, releases or published data
   except through the documented prune, or touch any other repository.
-- **Keep the site static**: HTML, CSS and ES modules, no build step, no external requests, a Content-Security-Policy of
-  `default-src 'self'` (no inline scripts or styles: values go through classes and CSSOM custom properties; `el()` builds DOM from text).
+- **Keep the site static**: HTML, CSS and ES modules, no build step, no external requests except the document previews, a Content-Security-Policy of
+  `default-src 'self'` (no inline scripts or styles: values go through classes and CSSOM custom properties; `el()` builds DOM from text). **Loosened on 2026-11-01 by the owner's
+  decision, for `img-src` only:** it now also allows `https://github.com` and `https://*.githubusercontent.com` (a release download redirects to a githubusercontent host) so the previews
+  load inline. No other directive changed; `tests/smoke.cjs` checks the policy, so a further change to it is a decision to make and record here, not a convenience.
 - **Do not merge anything that breaks the site or the nightly.** If a change cannot be made to pass its checks, leave it out, note why in
   the backlog below, and move on. A regression found later is fixed forward in the next PR, at once.
 - Say what is not known. Where Oklahoma (or Texas) has no real source for a figure, the page says "not available", never zero or a

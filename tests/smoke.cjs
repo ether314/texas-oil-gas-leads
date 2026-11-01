@@ -9,6 +9,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const previewStub = require('./preview-stub.cjs');
 
 const ROOT = path.join(__dirname, '..', 'site', 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
@@ -887,6 +888,140 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     }
     check(!errs.length, 'the permit-data matrix loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
+  }
+
+  // 18. readable previews of the Texas filings (2026-11-01): the page's policy allows GitHub's image hosts for img-src and nothing else changed; a day whose release holds previews shows
+  //     a lazy thumbnail of each, a click opens the page larger in a dialog that the keyboard closes and gives focus back from, a picture that does not load says so and keeps its link,
+  //     a day with no previews shows none and asks GitHub for nothing. GitHub is answered by the test (a one-pixel PNG): nothing here touches the network.
+  {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const csp = (/http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(html) || [])[1] || '';
+    const dirs = Object.fromEntries(csp.split(';').map((x) => x.trim()).filter(Boolean).map((x) => [x.split(/\s+/)[0], x.split(/\s+/).slice(1).join(' ')]));
+    check(JSON.stringify(dirs) === JSON.stringify({ 'default-src': "'self'", 'img-src': "'self' data: https://github.com https://*.githubusercontent.com", 'base-uri': "'none'", 'form-action': "'none'" }),
+      'the Content-Security-Policy is default-src \'self\' with img-src also allowing github.com and *.githubusercontent.com, and no other directive changed: ' + csp);
+    for (const [label, size] of [['desktop', { width: 1280, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
+      const ctx = await browser.newContext({ viewport: size, reducedMotion: 'reduce' });
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+      // the one preview the test answers with 404 is expected to be reported by the browser; nothing else may be
+      page.on('console', (m) => { if (m.type() === 'error' && !(m.location().url || '').endsWith('/' + previewStub.BAD)) errs.push('console: ' + m.text().slice(0, 160)); });
+      page.on('requestfailed', (r) => { if (!r.url().endsWith('/' + previewStub.BAD)) errs.push('request failed: ' + r.url()); });
+      try {
+        const st = await previewStub.install(page, ROOT);
+        const rel = st.stub.release;
+        await page.goto(base + '#images?d=' + st.day, { waitUntil: 'load' });
+        await page.waitForSelector('#images-root .pv-tile', { timeout: 25000 });
+        const tiles = await page.locator('#images-root .pv-tile').count();
+        check(tiles === 4 + 12, label + ': the day panel has a tile for each of the 3 permits\' filings that has a preview (4 of 5: the release holds none of one plat) and for the first 12 of 14 surveys (' + tiles + ')');
+        for (let i = 0, n = await page.locator('#images-root .pv-thumb').count(); i < n; i++) await page.locator('#images-root .pv-thumb').nth(i).scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {}); // a thumbnail whose picture failed is replaced meanwhile
+        await page.waitForFunction(() => [...document.querySelectorAll('#images-root .pv-img')].every((i) => i.complete), null, { timeout: 15000 });
+        const shown = await page.evaluate(() => ({
+          thumbs: [...document.querySelectorAll('#images-root .pv-img')].map((i) => ({ ok: i.naturalWidth > 0, src: i.currentSrc, lazy: i.getAttribute('loading'), alt: i.getAttribute('alt') })),
+          misses: [...document.querySelectorAll('#images-root .pv-miss')].map((m) => ({ text: m.textContent.trim(), hasLink: !!m.closest('li').querySelector('a.pv-orig[href]') })),
+          inline: document.querySelectorAll('#images-root .pv-grid [style], #images-root .pv-grid[style], dialog.pv-dialog [style], dialog.pv-dialog[style]').length,
+          sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          small: [...document.querySelectorAll('#images-root .pv-thumb')].filter((b) => b.getBoundingClientRect().width < 24 || b.getBoundingClientRect().height < 24).length,
+        }));
+        check(shown.thumbs.length === tiles - 1 && shown.thumbs.every((t) => t.ok && t.lazy === 'lazy' && t.alt === '' && /^https:\/\/github\.com\/o\/r\/releases\/download\/daily-\d{4}-\d\d-\d\d\/[\w.-]+\.jpg$/.test(t.src)),
+          label + ': every thumbnail loaded (from the release address, lazily; its button carries the name) except the one the test answered 404 (' + shown.thumbs.filter((t) => t.ok).length + ' of ' + (tiles - 1) + ')');
+        check(shown.misses.length === 1 && shown.misses[0].text === 'Preview unavailable' && shown.misses[0].hasLink, label + ': a picture that does not load says "Preview unavailable" and its original stays linked: ' + JSON.stringify(shown.misses));
+        check(!st.asked.some((u) => u.includes(previewStub.NO_PREVIEW + '.jpg')) && st.asked.every((u) => /^https:\/\/github\.com\/o\/r\/releases\/download\/daily-[\d-]+\/[\w.-]+\.pdf\.jpg$/.test(u)) && st.asked.length >= tiles,
+          label + ': GitHub is asked only for previews the release holds, by their addresses (' + st.asked.length + ' requests)');
+        check(!shown.inline && !shown.sideways && !shown.small, label + ': no inline style, no sideways scroll, every thumbnail is at least 24 px (' + JSON.stringify({ inline: shown.inline, sideways: shown.sideways, small: shown.small }) + ')');
+        if (label === 'phone') {
+          const lefts = await page.evaluate(() => [...new Set([...document.querySelectorAll('#images-root .img-files li:first-child .pv-tile')].map((t) => Math.round(t.getBoundingClientRect().left)))]);
+          check(lefts.length === 2, 'phone: the thumbnails of a permit sit two to a row (' + lefts.length + ' columns)');
+        }
+        // the enlarged page: opened with the keyboard, closed with Escape, focus given back
+        const first = page.locator('#images-root .pv-thumb').first();
+        await first.focus();
+        await page.keyboard.press('Enter');
+        await page.waitForSelector('dialog.pv-dialog[open]', { timeout: 5000 });
+        await page.waitForFunction(() => { const i = document.querySelector('dialog.pv-dialog .pv-large'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 5000 });
+        const dlg = await page.evaluate(() => {
+          const d = document.querySelector('dialog.pv-dialog');
+          const a = d.querySelector('a.pv-open');
+          return { title: d.querySelector('.pv-title').textContent, inside: d.contains(document.activeElement), href: a.getAttribute('href'), link: a.textContent, label: d.getAttribute('aria-labelledby'), titleId: d.querySelector('.pv-title').id, alt: d.querySelector('.pv-large').alt, closeSize: d.querySelector('.pv-close').getBoundingClientRect().height };
+        });
+        check(dlg.title === 'Permit 0900001 · Approved W-1 permit' && dlg.inside && dlg.href === 'https://github.com/o/r/releases/download/' + rel.tag + '/0900001_W1.pdf' && dlg.link === 'Open the original PDF' && dlg.label === dlg.titleId && /^Page one of the approved w-1 permit/i.test(dlg.alt) && dlg.closeSize >= 24,
+          label + ': Enter on a thumbnail opens the page larger in a dialog named for its permit, focus inside, with a link to the original: ' + JSON.stringify({ title: dlg.title, href: dlg.href, link: dlg.link }));
+        const trapped = [];
+        for (let i = 0; i < 6; i++) { await page.keyboard.press('Tab'); trapped.push(await page.evaluate(() => document.querySelector('dialog.pv-dialog').contains(document.activeElement) || document.activeElement === document.body)); } // past its last control focus goes to the browser's own bar
+        check(trapped.every(Boolean), label + ': Tab never reaches the page behind the open dialog');
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.querySelector('dialog.pv-dialog[open]'), null, { timeout: 5000 });
+        check(await page.evaluate(() => !!document.activeElement && document.activeElement.classList.contains('pv-thumb') && /Permit 0900001, approved W-1 permit$/.test(document.activeElement.getAttribute('aria-label'))), label + ': Escape closes it and focus goes back to the thumbnail that opened it');
+        await first.click();
+        await page.waitForSelector('dialog.pv-dialog[open]', { timeout: 5000 });
+        await page.click('dialog.pv-dialog .pv-close');
+        await page.waitForFunction(() => !document.querySelector('dialog.pv-dialog[open]'), null, { timeout: 5000 });
+        check(await page.evaluate(() => !!document.activeElement && document.activeElement.classList.contains('pv-thumb')), label + ': the Close button closes it too, focus back on the thumbnail');
+        await first.click();
+        await page.waitForSelector('dialog.pv-dialog[open]', { timeout: 5000 });
+        await page.mouse.click(2, 2); // outside the dialog: on the backdrop
+        await page.waitForFunction(() => !document.querySelector('dialog.pv-dialog[open]'), null, { timeout: 5000 });
+        check(true, label + ': a click on the backdrop closes it');
+        // an enlarged page that does not load: the words, and the link stays
+        await first.click();
+        await page.waitForSelector('dialog.pv-dialog[open] .pv-large', { timeout: 5000 });
+        await page.evaluate(() => document.querySelector('dialog.pv-dialog .pv-large').dispatchEvent(new Event('error')));
+        const gone = await page.evaluate(() => ({ text: (document.querySelector('dialog.pv-dialog .pv-stage .pv-miss') || {}).textContent, link: !!document.querySelector('dialog.pv-dialog a.pv-open[href]') && document.querySelector('dialog.pv-dialog a.pv-open').offsetParent !== null }));
+        check(/^Preview unavailable/.test(gone.text || '') && gone.link, label + ': an enlarged page that does not load says "Preview unavailable" and keeps the link to the original: ' + JSON.stringify(gone));
+        // reduced motion: the dialog does not animate in
+        check(await page.evaluate(() => getComputedStyle(document.querySelector('dialog.pv-dialog')).animationName === 'none'), label + ': with reduced motion the dialog does not animate');
+        await page.keyboard.press('Escape');
+        // the drill page of a permit shows its previews too (desktop only: the map's own controls are not the point here)
+        if (label === 'desktop') {
+          await page.goto(base + '#daily?st=tx&d=' + st.day + '&drill=0900001', { waitUntil: 'load' });
+          await page.waitForSelector('.dr-drill .pv-tile', { timeout: 25000 });
+          const drill = await page.evaluate(() => ({ tiles: document.querySelectorAll('.dr-drill .pv-tile').length, buttons: document.querySelectorAll('.dr-drill .dr-doc').length, head: document.querySelector('.dr-drill h3').textContent }));
+          check(drill.head === 'Permit 0900001' && drill.tiles === 2 && drill.buttons === 2, 'the drill page of a permit shows a preview of each of its filings above the buttons that download them: ' + JSON.stringify(drill));
+          await page.goto(base + '#daily?st=tx&d=' + st.day + '&drill=0900002', { waitUntil: 'load' });
+          await page.waitForFunction(() => document.querySelector('.dr-drill h3') && /0900002/.test(document.querySelector('.dr-drill h3').textContent), null, { timeout: 25000 });
+          const drill2 = await page.evaluate(() => ({ tiles: document.querySelectorAll('.dr-drill .pv-tile').length, buttons: document.querySelectorAll('.dr-drill .dr-doc').length }));
+          check(drill2.tiles === 1 && drill2.buttons === 2, 'a document the release holds no preview of keeps its download button and gets no tile: ' + JSON.stringify(drill2));
+        }
+        await st.off();
+      } catch (e) {
+        check(false, label + ': the previews: ' + e.message.split('\n')[0].slice(0, 220));
+      }
+      check(!errs.length, label + ': the previews load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+      await ctx.close();
+    }
+    // a real day (no previews in its release yet): no tile, and nothing asked of GitHub
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+      const page = await ctx.newPage();
+      const asked = [];
+      page.on('request', (r) => { if (previewStub.isGithub(new URL(r.url()))) asked.push(r.url()); });
+      try {
+        const days = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily', 'index.json'), 'utf8')).days.map((r) => r.d).sort();
+        await page.goto(base + '#images?d=' + days[days.length - 1], { waitUntil: 'load' });
+        await page.waitForSelector('#images-root .img-pack', { timeout: 25000 });
+        await page.waitForTimeout(500);
+        check((await page.locator('#images-root .pv-tile').count()) === 0 && !asked.length && (await page.locator('dialog.pv-dialog').count()) === 0, 'a day whose release holds no previews shows none, makes no dialog and asks GitHub for nothing (' + asked.length + ' requests)');
+      } catch (e) {
+        check(false, 'a day with no previews: ' + e.message.split('\n')[0].slice(0, 200));
+      }
+      await ctx.close();
+    }
+    // with motion allowed the dialog fades in (the reduced-motion rule is a media query, not a removal)
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'no-preference' });
+      const page = await ctx.newPage();
+      try {
+        const st = await previewStub.install(page, ROOT);
+        await page.goto(base + '#images?d=' + st.day, { waitUntil: 'load' });
+        await page.waitForSelector('#images-root .pv-thumb', { timeout: 25000 });
+        await page.locator('#images-root .pv-thumb').first().click();
+        await page.waitForSelector('dialog.pv-dialog[open]', { timeout: 5000 });
+        check(await page.evaluate(() => getComputedStyle(document.querySelector('dialog.pv-dialog')).animationName === 'pv-in'), 'with motion allowed the dialog fades in');
+      } catch (e) {
+        check(false, 'the dialog with motion allowed: ' + e.message.split('\n')[0].slice(0, 200));
+      }
+      await ctx.close();
+    }
   }
 
   await browser.close();

@@ -19,7 +19,8 @@ Inputs are public RRC files, only parsed, never executed (run with `python3 -I`)
                live day's three packs are also opened (d7_packs.py): documents counted by kind, and a contact sheet of
                first pages shrunk and blurred so nothing reads (img/<day>-<pack>.jpg), because the filings carry names this site leaves out.
                With --publish-docs the W-1 letters, plats and directional surveys are also published READABLE as the files of one
-               GitHub release a day and linked from each drill's page (d7_packs.stage_pack, d7_release.py; NOTES_D7, README Privacy).
+               GitHub release a day and linked from each drill's page (d7_packs.stage_pack, d7_release.py; NOTES_D7, README Privacy),
+               each with a readable JPEG of its page one (<document>.jpg, since 2026-11-01) that the Texas images view shows inline.
   gps          every permit's surface point, from the RRC public map service by API number (d7_locate.py).
 
 One rule for every report, live, rebuilt or repaired: a day shows what landed on each share that day, judged by the
@@ -714,9 +715,10 @@ def images_job(ctx, ds):
 
 def pack_preview(sh, ctx, ds, name):
     """Download the pack that landed on the live day, count its documents and draw its contact sheet (d7_packs); with
-    ctx['stage'] set (--publish-docs) also copy the W-1 or survey documents out. Returns (preview, staged): the preview is
-    {'docs': ..., 'sheet': ...} and the staged part is {'permits': ...} or {'surveys': ...}; either is None when it cannot be
-    done. A pack that cannot be read never costs the dataset."""
+    ctx['stage'] set (--publish-docs) also copy the W-1 or survey documents out, each with its readable page-one preview unless
+    ctx['previews'] is False. Returns (preview, staged): the preview is {'docs': ..., 'sheet': ...} and the staged part is
+    {'permits': ...} or {'surveys': ...} plus 'previews': [names]; either is None when it cannot be done. A pack that cannot be
+    read never costs the dataset."""
     path, preview, staged = None, None, None
     limit = time.time() + PACK_SECONDS
     if rrc_share.DEADLINE is not None:
@@ -731,7 +733,7 @@ def pack_preview(sh, ctx, ds, name):
             log("%-12s pack preview SKIPPED (%s)" % (ds, e))
         if ctx.get("stage"):
             try:
-                staged = d7_packs.stage_pack(path, ds, ctx["stage"], log)
+                staged = d7_packs.stage_pack(path, ds, ctx["stage"], log, previews=ctx.get("previews", True), deadline=rrc_share.DEADLINE)
             except Exception as e:  # noqa: BLE001
                 log("%-12s staging the documents SKIPPED (%s)" % (ds, e))
         return preview, staged
@@ -757,7 +759,10 @@ def attach_documents(ctx, jobs, rep, repo, log=log):
     """Link the live report to the filings of its day. The W-1 letters and plats of the day's new-drill permits and every directional
     survey the day's pack held are published as files of one GitHub release first (d7_release); the report gets links only for
     files the release was confirmed to hold, so a failed upload leaves a report with no links and never dead ones.
-    Adds, in place: permits.rows[i][10] (the suffixes of that permit's files: <permit>_<suffix>), `surveys` and `release`.
+    Each document's readable page-one preview (<file>.jpg, drawn at staging) goes up with it as an optional file of the same release:
+    the report says `previews` (how many the same listing confirmed) and, when some documents have none, `noPreview` (their file
+    names), and the page shows a preview only for a document that has one. A preview that was not drawn or not uploaded costs
+    nothing else. Adds, in place: permits.rows[i][10] (the suffixes of that permit's files: <permit>_<suffix>), `surveys` and `release`.
     Returns the release tag, or None when nothing was published."""
     w1 = (jobs.get("w1images") or {}).get("staged") if isinstance(jobs.get("w1images"), dict) else None
     sv = (jobs.get("dirsurveys") or {}).get("staged") if isinstance(jobs.get("dirsurveys"), dict) else None
@@ -774,8 +779,10 @@ def attach_documents(ctx, jobs, rep, repo, log=log):
     if why:
         log("documents: %d files staged but NOT published (%s), so no links" % (len(names), why))
         return None
+    drawn = set((w1 or {}).get("previews") or []) | set((sv or {}).get("previews") or [])
+    seen = []  # the previews the release's listing confirmed
     try:
-        tag = d7_release.publish(repo, ctx["R"], ctx["stage"], names, log)
+        tag = d7_release.publish(repo, ctx["R"], ctx["stage"], names, log, optional=[n + ".jpg" for n in names if n + ".jpg" in drawn], confirmed=seen)
     except d7_release.ReleaseError as e:
         log("documents: publishing SKIPPED (%s), so no links" % e)
         return None
@@ -787,6 +794,12 @@ def attach_documents(ctx, jobs, rep, repo, log=log):
         rep["surveys"] = {"day": ((rep.get("images") or {}).get("dirsurveys") or {}).get("day"), "n": len(surveys),
                           "rows": [r[:9] + list(pts.get(r[0]) or (None, None)) for r in surveys]}
     rep["release"] = {"repo": repo, "tag": tag, "files": len(names), "bytes": sum(sizes.values()), "permits": len(by_permit), "surveys": len(surveys)}
+    if seen:
+        rep["release"]["previews"] = len(seen)
+        have = set(seen)
+        bare = [n for n in names if n + ".jpg" not in have]
+        if bare:
+            rep["release"]["noPreview"] = bare
     return tag
 
 
@@ -957,6 +970,11 @@ def validate(out_dir, keep=KEEP_DAYS):
         if rel:
             check(re.fullmatch(r"[\w.-]+/[\w.-]+", str(rel.get("repo"))) and rel.get("tag") == "daily-" + f[:-5], "%s: the release block does not name this day's release" % f)
             check(rel.get("files") == linked + len((sv or {}).get("rows", [])), "%s: the release file count does not match the links" % f)
+            if "previews" in rel or "noPreview" in rel:  # previews (2026-11-01): how many the release holds, and the documents that have none
+                bare = rel.get("noPreview", [])
+                check(type(rel.get("previews")) is int and rel["previews"] >= 1 and isinstance(bare, list) and len(set(bare)) == len(bare)
+                      and all(isinstance(n, str) and re.fullmatch(r"[\w.-]+", n) for n in bare) and rel["previews"] + len(bare) == rel.get("files"),
+                      "%s: the release's preview count and its list of documents without one do not add up to its files" % f)
         if sv:
             check(sv["n"] == len(sv["rows"]) and all(len(r) == 11 and re.fullmatch(r"\d+", str(r[8])) and (r[9] is None) == (r[10] is None) for r in sv["rows"]), "%s: survey rows are malformed" % f)
         if q:
@@ -1010,6 +1028,8 @@ def main():
     ap.add_argument("--publish-docs", action="store_true", help="also publish the live day's W-1 letters, plats and directional surveys, "
                     "READABLE and unmodified, as the files of one GitHub release, and link each drill's page to its own (implies --packs; "
                     "needs the gh CLI and GH_TOKEN; the README's privacy section explains why this is an explicit choice)")
+    ap.add_argument("--no-previews", action="store_true", help="with --publish-docs, do not also draw and publish a readable JPEG of page one of each document "
+                    "(the default needs Pillow and pdftoppm; without them the documents are published all the same)")
     ap.add_argument("--repo", help="owner/name of the repository whose release gets the files (default: GITHUB_REPOSITORY, else the origin remote)")
     ap.add_argument("--time-limit", type=float, default=TIME_LIMIT_MIN, help="minutes after which no request is started and the report is written with what was read "
                     "(default %(default)s; the workflow's step limit is 25)")
@@ -1077,7 +1097,7 @@ def main():
     stage = os.path.join(a.dl, "release", d7_release.tag_for(R)) if a.publish_docs else None
     if stage:
         shutil.rmtree(stage, ignore_errors=True)  # a leftover from an earlier run of this day must never be uploaded
-    ctx = {"R": R, "today": today, "dates": dates, "span": (today - dates[0]).days + 1, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img"), "stage": stage}
+    ctx = {"R": R, "today": today, "dates": dates, "span": (today - dates[0]).days + 1, "dl": a.dl, "lk": lk, "guid": guid, "packs": a.packs, "img_out": os.path.join(a.out, "img"), "stage": stage, "previews": not a.no_previews}
     work = {"permits": permits_job, "pending": pending_job, "completions": completions_job,
             "w1images": lambda c: images_job(c, "w1images"), "dirsurveys": lambda c: images_job(c, "dirsurveys"),
             "complimages": lambda c: images_job(c, "complimages")}

@@ -13,7 +13,8 @@ draw the sheet; without either the counts are still produced and the sheet is sk
 
 The one exception, decided on 2026-10-31 and recorded in the README: with --publish-docs the W-1 and survey packs are also
 staged readable (stage_pack, below) so d7_release.py can attach them to a GitHub release and each drill's page can link
-to its own filings. Completion images are never staged.
+to its own filings. Completion images are never staged. Widened on 2026-11-01 (README, Privacy): each staged document also gets
+a readable JPEG of its page one (render_preview, below), a file of the same release that the Texas images view shows inline.
 
 The pack is untrusted data. Members are read one at a time, capped in size, rendered under a timeout and never run.
 Python standard library, plus Pillow and pdftoppm when a sheet is wanted.
@@ -221,8 +222,21 @@ def inspect_pack(zip_path, ds, sheet_path, log=print):
 # readable, unmodified, as files of one GitHub release a day (d7_release.py), and each drill's page links to its own. They are the
 # RRC's public records but can carry the names, phone numbers and addresses of individuals, and nothing here redacts them.
 # Completion images are not published (the contact sheet above stays blurred). Only run when asked (--publish-docs).
+#
+# Decided 2026-11-01 (README, Privacy): page one of each of those documents is also published as a readable JPEG, <document>.jpg
+# (render_preview, Previewer below), so the Texas images view can show it inline. It is the same page the Commission publishes,
+# rendered to a picture and nothing else: no crop, no redaction, no blur. A preview is a bonus: one that cannot be drawn is
+# skipped with a log line and the document is published all the same.
 
 MAX_ASSET = 40_000_000  # bytes a document may be before it is left out (a release file may be 2 GB; the pack is untrusted)
+PREVIEW_W = 900  # px wide, a letter page at about 106 dots an inch: small print reads with a zoom
+PREVIEW_BYTES = 200_000  # a preview is recompressed (quality, then width) until it fits
+PREVIEW_QUALITIES = (60, 52, 44, 36)
+PREVIEW_WIDTHS = (PREVIEW_W, 750, 600)  # tried in this order, each at every quality, so lowering quality comes before shrinking the page
+PREVIEW_MAX_H = 3000  # a page taller than this (a malformed one) is cut off at the bottom rather than drawn whole
+PREVIEW_PIXELS = 120_000_000  # a TIFF that unpacks past this is refused, as for the contact sheet
+PREVIEW_BUDGET_SECONDS = 300  # for all the previews of one pack: a render is about a second, a pack holds 60-170 documents
+PREVIEW_GIVE_UP = 8  # consecutive failures after which the rest of the pack goes without previews (the tool is broken, not the files)
 MAGIC = {".pdf": (b"%PDF",), ".tif": (b"II*\x00", b"MM\x00*"), ".tiff": (b"II*\x00", b"MM\x00*")}
 W1_NAME = re.compile(r"(\d+)_([A-Za-z0-9-]+?)_")
 SURVEY_NAME = re.compile(r"dir_survey_(\d{1,12})\.pdf", re.I)
@@ -258,9 +272,115 @@ def copy_member(zf, info, dest):
     return written
 
 
-def stage_w1(zf, docs, out_dir, log=print):
+def preview_tools():
+    """None when Pillow and pdftoppm are both there, else the reason a preview cannot be drawn."""
+    try:
+        import PIL.Image  # noqa: F401
+    except ImportError:
+        return "Pillow is not installed"
+    if shutil.which("pdftoppm") is None:
+        return "pdftoppm (poppler-utils) is not installed"
+    return None
+
+
+def _is_gray(im):
+    """True for a color image with no color in it worth keeping: at most 0.1% of its pixels have channels more than 24 apart (scanner and
+    JPEG noise is far below that; a red stamp or a blue line on a plat is not)."""
+    from PIL import ImageChops
+    r, g, b = im.split()
+    chroma = ImageChops.lighter(ImageChops.difference(r, g), ImageChops.difference(g, b)).histogram()
+    return sum(chroma[25:]) <= 0.001 * im.width * im.height
+
+
+def render_preview(src, dest):
+    """Draw page one of the staged document at src (a PDF or a TIFF: copy_member has already capped its size and checked its first
+    bytes) as a JPEG about PREVIEW_W px wide at dest: grayscale when the page is, no metadata, at most PREVIEW_BYTES. The page is
+    drawn as it is: nothing is cropped, hidden or blurred. pdftoppm runs under a timeout with the repository tokens scrubbed from
+    its environment, Pillow refuses an image past PREVIEW_PIXELS, and only the first page is ever read. Returns the JPEG's size.
+    Raises ToolsMissing, or whatever went wrong (a damaged file, a timeout, a page that will not fit the size): the caller skips
+    that document's preview, and no half-written dest is left behind."""
+    why = preview_tools()
+    if why:
+        raise ToolsMissing(why)
+    from PIL import Image
+    Image.MAX_IMAGE_PIXELS = PREVIEW_PIXELS
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            page = src
+            if src.lower().endswith(".pdf"):
+                subprocess.run(["pdftoppm", "-f", "1", "-l", "1", "-scale-to-x", str(PREVIEW_W), "-scale-to-y", "-1", "-x", "0", "-y", "0",
+                                "-W", str(PREVIEW_W), "-H", str(PREVIEW_MAX_H), "-jpeg", "-jpegopt", "quality=90", src, os.path.join(tmp, "out")],
+                               check=True, timeout=PER_FILE_SECONDS, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=scrubbed_env())
+                made = sorted(f for f in os.listdir(tmp) if f.startswith("out"))
+                if not made:
+                    raise ValueError("pdftoppm drew no page")
+                page = os.path.join(tmp, made[0])
+            with Image.open(page) as im:
+                if im.size[0] * im.size[1] > PREVIEW_PIXELS:
+                    raise ValueError("the page is too large to draw")
+                im.seek(0)  # a TIFF may hold many pages: this one is page one
+                im = im.convert("L") if im.mode in ("1", "L") else im.convert("RGB")
+                if im.mode == "RGB" and _is_gray(im):
+                    im = im.convert("L")
+                im.thumbnail((PREVIEW_W, PREVIEW_MAX_H), Image.LANCZOS)  # shrinks only: a narrower scan stays as it is
+                for width in PREVIEW_WIDTHS:
+                    cur = im if im.width <= width else im.resize((width, max(1, round(im.height * width / im.width))), Image.LANCZOS)
+                    for quality in PREVIEW_QUALITIES:
+                        cur.save(dest, "JPEG", quality=quality, optimize=True, progressive=True)  # no EXIF: nothing is copied from the scan
+                        if os.path.getsize(dest) <= PREVIEW_BYTES:
+                            return os.path.getsize(dest)
+        raise ValueError("the page does not fit in %d bytes" % PREVIEW_BYTES)
+    except BaseException:
+        if os.path.exists(dest):
+            os.remove(dest)
+        raise
+
+
+class Previewer:
+    """Draws the previews of the documents staged into one folder (stage_w1, stage_surveys call add() after each copy). It never
+    raises: a document whose preview fails is counted and skipped, and the document is published all the same. It stops when its
+    budget (or the capture's deadline, a time.time() value) is spent, or after PREVIEW_GIVE_UP failures in a row, and says in one
+    log line what it made and what it left out. Names stay out of the log; only counts and the kind of error."""
+
+    def __init__(self, log=print, deadline=None, seconds=PREVIEW_BUDGET_SECONDS):
+        self.log, self.names, self.failed, self.streak, self.skipped = log, [], 0, 0, 0
+        self.until = time.time() + seconds if deadline is None else min(time.time() + seconds, deadline)
+        self.stopped = preview_tools()  # why drawing has stopped: tools missing now, later the budget or a run of failures
+        self.errors = collections.Counter()
+
+    def add(self, path):
+        """Draw path's preview next to it, as path + '.jpg'. Returns True when it was made."""
+        if not self.stopped and time.time() > self.until:
+            self.stopped = "the time budget ran out"
+        elif not self.stopped and self.streak >= PREVIEW_GIVE_UP:
+            self.stopped = "%d previews in a row failed" % PREVIEW_GIVE_UP
+        if self.stopped:
+            self.skipped += 1
+            return False
+        try:
+            render_preview(path, path + ".jpg")
+        except Exception as e:  # noqa: BLE001 - a bad scan, a timeout, a full disk: the document is published without its preview
+            self.failed, self.streak = self.failed + 1, self.streak + 1
+            self.errors[type(e).__name__] += 1
+            return False
+        self.streak = 0
+        self.names.append(os.path.basename(path) + ".jpg")
+        return True
+
+    def finish(self):
+        """Log what happened and return the preview names, sorted."""
+        total = len(self.names) + self.failed + self.skipped
+        if total:
+            self.log("previews: %d of %d documents drawn%s%s" % (
+                len(self.names), total, ", %d failed (%s)" % (self.failed, ", ".join("%s x%d" % kv for kv in sorted(self.errors.items()))) if self.failed else "",
+                ", %d left out (%s)" % (self.skipped, self.stopped) if self.skipped else ""))
+        return sorted(self.names)
+
+
+def stage_w1(zf, docs, out_dir, log=print, previewer=None):
     """Copy each permit's approved W-1 letter and plats to out_dir as <permit>_W1.pdf, <permit>_Plat_1.pdf, ... (permit padded to
-    7 digits like the report's rows; numbered when a permit has several of a kind). Returns {permit: [[suffix, bytes], ...]}."""
+    7 digits like the report's rows; numbered when a permit has several of a kind). Returns {permit: [[suffix, bytes], ...]}.
+    With a Previewer, each copied document also gets its preview beside it (<document>.jpg)."""
     groups = collections.defaultdict(list)
     for info, base in docs:
         m = W1_NAME.match(base)
@@ -273,11 +393,14 @@ def stage_w1(zf, docs, out_dir, log=print):
         items.sort(key=lambda t: t[0])  # numbering must not depend on the zip's order
         for n, (_, info, ext) in enumerate(items, 1):
             suffix = kind + ("" if len(items) == 1 else "_%d" % n) + ext
-            size = copy_member(zf, info, os.path.join(out_dir, "%s_%s" % (permit, suffix)))
+            dest = os.path.join(out_dir, "%s_%s" % (permit, suffix))
+            size = copy_member(zf, info, dest)
             if size is None:
                 log("w1images: one document of permit %s was left out (too large or not a document)" % permit)
             else:
                 out[permit].append([suffix, size])
+                if previewer:
+                    previewer.add(dest)
     return dict(out)
 
 
@@ -289,10 +412,11 @@ def _int(text):
         return None
 
 
-def stage_surveys(zf, docs, out_dir, log=print):
+def stage_surveys(zf, docs, out_dir, log=print, previewer=None):
     """Copy the directional survey PDFs to out_dir as dir_survey_<id>.pdf (the pack's own names, which are only digits) and read the
     pack's CSV for the well each belongs to. Returns [[api, county, 'M'|'O', from depth, to depth, start, end, lateral, id, bytes], ...]
-    ('M' is an MWD survey, 'O' any other kind; the county is the API number's first three digits)."""
+    ('M' is an MWD survey, 'O' any other kind; the county is the API number's first three digits). With a Previewer, each copied
+    survey also gets its preview beside it (dir_survey_<id>.pdf.jpg)."""
     meta = {}
     for info in zf.infolist():
         if info.filename.lower().endswith(".csv") and not info.is_dir() and info.file_size <= 5_000_000:
@@ -308,10 +432,13 @@ def stage_surveys(zf, docs, out_dir, log=print):
         r = meta.get(m.group(1), {})
         api = (r.get("API_NO") or "").strip()
         api = api if re.fullmatch(r"\d{8}", api) else None
-        size = copy_member(zf, info, os.path.join(out_dir, "dir_survey_%s.pdf" % m.group(1)))
+        dest = os.path.join(out_dir, "dir_survey_%s.pdf" % m.group(1))
+        size = copy_member(zf, info, dest)
         if size is None:
             log("dirsurveys: survey %s was left out (too large or not a PDF)" % m.group(1))
             continue
+        if previewer:
+            previewer.add(dest)
         day = lambda k: (r.get(k) or "").strip() if ISO_DAY.fullmatch((r.get(k) or "").strip()) else None  # noqa: E731
         label = (r.get("LATERAL_LABEL") or "").strip()
         out.append([api, api[:3] if api else None, "M" if "MWD" in (r.get("ATTACHMENT_TYPE_CODE") or "").upper() else "O",
@@ -321,16 +448,20 @@ def stage_surveys(zf, docs, out_dir, log=print):
     return out
 
 
-def stage_pack(zip_path, ds, out_dir, log=print):
+def stage_pack(zip_path, ds, out_dir, log=print, previews=False, deadline=None):
     """Copy the publishable documents of a pack into out_dir. {'permits': ...} for the W-1 pack, {'surveys': ...} for the survey
-    pack, None for any other (completion images are never published)."""
+    pack, None for any other (completion images are never published). With previews=True each document also gets a readable JPEG of
+    its page one beside it (<document>.jpg, see Previewer) and the result adds 'previews': the names drawn, sorted ([] when the tools
+    are missing or none could be drawn); `deadline` is a time.time() value after which no preview is started."""
     if ds not in ("w1images", "dirsurveys"):
         return None
+    pv = Previewer(log, deadline) if previews else None
     with zipfile.ZipFile(zip_path) as zf:
         docs = documents(zf)
-        if ds == "w1images":
-            return {"permits": stage_w1(zf, docs, out_dir, log)}
-        return {"surveys": stage_surveys(zf, docs, out_dir, log)}
+        out = {"permits": stage_w1(zf, docs, out_dir, log, pv)} if ds == "w1images" else {"surveys": stage_surveys(zf, docs, out_dir, log, pv)}
+    if pv:
+        out["previews"] = pv.finish()
+    return out
 
 
 if __name__ == "__main__":
