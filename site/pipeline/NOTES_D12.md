@@ -70,7 +70,15 @@ county and the index say, totals add up, only nameable operators, no e-mail, web
 - A scan the Commission got wrong is published as it is: a document is a public record, and nothing is redacted.
 - GitHub has no stated limit on the total size of releases (2 GiB a file); at 0.9 GB a day and 92 days the archive is about 80 GB. `KEEP_DAYS` in `d12_wells.py` is the one number to lower.
 
-## Checked (2026-11-01)
+## The first real run (2026-11-01, dispatched by hand: run 1 of `well-images.yml`)
+
+Proved against GitHub: the completion pack of 2026-10-30 (1,060 documents: 1,057 tied to 152 wells, 3 refused as not a PDF or TIFF) was uploaded in three releases of 800, 800 and 514 files in about 7 minutes, every file confirmed, the county files
+committed and the site published; on the live site an `<img>` of those release files draws (1000 px wide, the large view too) under the page's Content-Security-Policy, with no console error.
+Found: **every download after the first failed** (`HTTP 500`, `ViewExpiredException`): a share's page expires after a few minutes idle and the sessions had been opened before the 7-minute upload. `Shares` now opens a new session and
+reads the listing again before every download (`tests/test_d12_wells.py` replays the expiry, and a mutant that reuses the listing's session is caught). The run ended red, as designed: what was uploaded and recorded was committed, and the failed packs
+(that day's surveys and W-1 pack, and all of 10-29's) were left for the next run.
+
+## Checked before the first run (2026-11-01)
 
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its
 fine print). `tests/test_d12_wells.py` (ties, numbering, staging, chunks, whole runs with the network and `gh` faked, a failed upload, aged-out days, the check against 17 faults, mutants),

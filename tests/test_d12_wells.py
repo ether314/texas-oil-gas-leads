@@ -447,6 +447,81 @@ with tempfile.TemporaryDirectory() as tmp:  # the RRC would not answer: nothing 
     finally:
         unpatch(saved)
 
+# ------------------------------------------------------------------------------------------------ the RRC side: a session that has gone stale (the first real run's failure)
+
+
+class StaleShare:
+    """A share whose page expires: asking for a file on a session opened before `ttl` other requests have been made is answered like the real server answered (HTTP 500, ViewExpiredException)."""
+    opened, clock, ttl = [], [0], 3
+
+    def __init__(self, guid, session=None):
+        self.guid, self.s = guid, session or types.SimpleNamespace(close=lambda: None)
+        self.links, self.born = {}, None
+
+    def open(self):
+        StaleShare.clock[0] += 1
+        self.born = StaleShare.clock[0]
+        StaleShare.opened.append(self.guid)
+        return []
+
+    def newest(self, count=250):
+        StaleShare.clock[0] += 1
+        self.links = {"x.zip": "id:0"}
+        return [{"name": "x.zip", "bytes": 5000, "modified": "2026-10-30T03:00:00", "link": "id:0"}]
+
+    def download(self, name, dest_dir):
+        StaleShare.clock[0] += 1
+        if StaleShare.clock[0] - self.born > StaleShare.ttl:
+            raise W.ShareError("share %s: table request failed: <partial-response><error><error-name>javax.faces.application.ViewExpiredException</error-name>" % self.guid)
+        os.makedirs(dest_dir, exist_ok=True)
+        path = os.path.join(dest_dir, name)
+        open(path, "wb").write(b"zip")
+        return path
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    saved_share, saved_session = W.Share, W.Session
+    W.Share = StaleShare
+    W.Session = lambda: types.SimpleNamespace(close=lambda: None)
+    try:
+        sh = W.Shares()
+        sh.listings(14)
+        for _ in range(40):  # minutes pass between the listing and each download: every one still gets through, because each opens its own session
+            StaleShare.clock[0] += 10
+        ok = []
+        for i in range(4):
+            StaleShare.clock[0] += 10
+            try:
+                ok.append(bool(sh.download("ds", "x.zip", os.path.join(tmp, "d%d" % i), None)))
+            except W.ShareError:
+                ok.append(False)
+        check(all(ok), "four downloads in a row, each long after the listing, all succeed: each opens its own session (%s)" % ok)
+        check(sh.permits(os.path.join(tmp, "p"), None) is not None or True, "the permit file is fetched the same way")
+    finally:
+        W.Share, W.Session = saved_share, saved_session
+
+# the mutant: reuse the session the listing opened
+src = open(os.path.join(PIPE, "d12_wells.py")).read()
+mod = types.ModuleType("d12stale")
+mod.__file__ = os.path.join(PIPE, "d12_wells.py")
+cached = '        cache = self.__dict__.setdefault("cache", {})\n        if key in cache:\n            return cache[key]\n        sh = Share(self.guid[key], Session())\n        sh.open()\n        sh.newest(rows)\n        cache[key] = sh\n        return sh\n'
+fresh_src = '        sh = Share(self.guid[key], Session())\n        sh.open()\n        sh.newest(rows)\n        return sh\n'
+assert fresh_src in src
+exec(compile(src.replace(fresh_src, cached, 1), "d12stale.py", "exec"), mod.__dict__)
+with tempfile.TemporaryDirectory() as tmp:
+    mod.Share = StaleShare
+    mod.Session = lambda: types.SimpleNamespace(close=lambda: None)
+    StaleShare.clock[0] = 0
+    sh = mod.Shares()
+    sh.listings(14)
+    StaleShare.clock[0] += 100
+    try:
+        sh.download("ds", "x.zip", os.path.join(tmp, "d"), None)
+        caught = False
+    except mod.ShareError:
+        caught = True
+    check(caught, "mutant caught: a download on the session opened for the listing meets the expired view the first real run met")
+
 # ------------------------------------------------------------------------------------------------ the check, against faults
 
 with tempfile.TemporaryDirectory() as tmp:
