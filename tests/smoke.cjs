@@ -1201,7 +1201,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const text = await page.locator('#view-daily').innerText();
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(text), label + ': no NaN, undefined, null or Infinity anywhere on the Daily report');
       check((await page.locator('#daily-root .dr-tile').count()) === 4 && !(await page.locator('#statebar').isVisible()) && !(await page.locator('#ticker, #insights, #pulse-card, #seg-chart').count()), label + ': four figures, no states bar, none of the Texas-only cards');
-      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '')), label + ': no API number, well name or lease anywhere on the page');
+      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '').replace(/(matched by|without) API numbers?/g, '')), label + ': no API number, well name or lease anywhere on the page');
       const ink = await page.evaluate(() => { const c = document.querySelector('#daily-root .nw-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; });
       check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
       const first = await page.locator('#daily-root .dd-date').innerText();
@@ -1337,7 +1337,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const bigs = await page.locator('#daily-root .nat-panel .nat-big').allInnerTexts();
       check(wW > 5 && wP > 5 && bigs.length === 2 && new RegExp('^' + wW + '\\s+new fracked wells?$').test(bigs[0].replace(/\s+/g, ' ').trim()) && new RegExp('^' + wP + '\\s+oil permits? and spuds? with a location|^' + wP + '\\s+oil permit or spud with a location').test(bigs[1].replace(/\s+/g, ' ').trim()),
         label + ': a day shows both counts, ' + wW + ' fracked wells and ' + wP + ' oil permits and spuds, the same as the files hold: ' + bigs.join(' | ').replace(/\s+/g, ' '));
-      check(new RegExp('^' + wW + ' fracked wells? and ' + wP + ' oil permits? and spuds? on Jun 12, 2025$').test(await tableHead()) && (await page.locator('#daily-root .table-wrap thead th').first().innerText()) === 'Kind', label + ': the table names both kinds and has a Kind column: ' + (await tableHead()));
+      check(new RegExp('^' + wW + ' fracked wells? and ' + wP + ' oil permits? and spuds? on Jun 12, 2025$').test(await tableHead()) && (await page.locator('#daily-root .table-wrap.tall thead th').first().innerText()) === 'Kind', label + ': the table names both kinds and has a Kind column: ' + (await tableHead()));
       const marks = await page.locator('#daily-root .nw-marks li').allInnerTexts();
       const seg = await page.locator('#daily-root #ddk-both, #daily-root #ddk-wells, #daily-root #ddk-permits').evaluateAll((bs) => bs.map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')));
       check(marks.length === 2 && /Fracked well/.test(marks[0]) && /Oil permit or spud/.test(marks[1]) && seg.join(',') === 'Both:true,Fracked wells:false,Oil permits:false', label + ': the legend names the two marks (a dot and a ring) and the switch offers Both, Fracked wells and Oil permits: ' + seg.join(', '));
@@ -1374,6 +1374,30 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /in North Dakota$/.test((document.querySelector('#dd-table-h') || {}).textContent || ''), null, { timeout: 30000 });
       const nd = await page.locator('#daily-root .nat-panel').innerText();
       check(/North Dakota publishes no oil permit locations/.test(nd) && !/oil permits and spuds with a location/.test(nd) && !/oil permit/.test(await tableHead()), label + ': a state that publishes no location says so instead of showing none');
+      // fractured wells found and oil well permits approved, day by day, marked and never added (2026-11-02)
+      const readIdx = (d) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', d, 'index.json'), 'utf8')).days;
+      const idxTx = readIdx('daily'); const newestIdx = idxTx[idxTx.length - 1].d;
+      const oilOf = (d) => ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const e = readIdx(dir).find((x) => x.d === d && x.s === 'ok'); return e ? e.pn : 0; });
+      const arrCard = page.locator('section[aria-labelledby="dd-arr-h"]');
+      await page.goto(base + '?fresh=8#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
+      const baseText = await arrCard.innerText();
+      const committed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'arrivals.json'), 'utf8'));
+      check((await arrCard.locator('.mk-frac').count()) >= 2 && (await arrCard.locator('.mk-oil').count()) >= 2 && (await arrCard.locator('.mk-both').count()) >= 2 && /Fractured wells found \(FracFocus\)/.test(baseText) && /Oil well permits approved \(state agencies\)/.test(baseText),
+        label + ': the card marks which is which: a filled dot for fractured wells (FracFocus), a hollow ring for oil well permits (state agencies), a ring with a dot for the same well in both');
+      const firstRow = (await arrCard.locator('tbody tr').first().innerText()).replace(/\s+/g, ' ');
+      check(committed.since ? true : (/begins with the next download/.test(baseText) && (await arrCard.locator('tbody tr td:nth-child(2)').allInnerTexts()).every((x) => x.trim() === '—') && !/\b(NaN|undefined|null|Infinity)\b/.test(baseText)),
+        label + ': before the first comparison no day is counted: the fractured column is a dash (never a zero), and the card says the comparison begins with the next download');
+      check(/different things/.test(baseText) && /never added together/.test(baseText) && /cannot be checked against them/.test(baseText) && !/\d{10}/.test(baseText), label + ': it says the two are never added, that Oklahoma and New Mexico cannot be checked, and holds no API number');
+      const fixture = { v: 1, checked: newestIdx, since: newestIdx, against: { TX: { wells: 83, from: '2026-10-30' } }, days: [{ day: newestIdx, found: 41, removed: 1, states: [['TX', 25, 3], ['NM', 9, null], ['OK', 5, null], ['ND', 2, null]] }] };
+      await page.route('**/newwells/arrivals.json', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fixture) }));
+      await page.goto(base + '?fresh=9#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
+      const cells = await arrCard.locator('tbody tr').first().locator('th, td').allInnerTexts();
+      const oil = oilOf(newestIdx); const rows2 = await arrCard.locator('tbody tr').allInnerTexts();
+      check(/^41/.test(cells[1].trim()) && /Texas 25/.test(cells[1]) && /North Dakota 2/.test(cells[1]) && cells[2].trim().startsWith(String(oil[0] + oil[1] + oil[2])) && cells[3].trim() === '3', label + ': a day with a comparison shows the 41 fractured wells found, the ' + (oil[0] + oil[1] + oil[2]) + ' oil well permits the three state reports approved, and the 3 wells in both, side by side: ' + cells.join(' | ').replace(/\s+/g, ' ').slice(0, 140));
+      check(/^—/.test(rows2[1].split('\t')[1] || '—') && /Texas’s daily reports are matched by API number \(83 wells, from Oct 30, 2026\)/.test(await arrCard.innerText()), label + ': the day before the comparison has a dash, not a zero, and the card says what the Texas match covers (83 wells, from Oct 30)');
+      await page.unroute('**/newwells/arrivals.json');
     } catch (e) {
       check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
     }

@@ -725,6 +725,14 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .nw-chip:hover { border-color: var(--border-2); }
 .nw-chip[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
 .nw-other { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 4px; }
+/* the marks that say which is which: a filled dot is a fractured well (FracFocus), a hollow ring an oil well permit (a state agency), a ring with a dot the same well in both */
+.mk { display: inline-block; flex: none; box-sizing: border-box; width: 12px; height: 12px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
+.mk-frac { background: var(--ink); }
+.mk-oil { border: 2px solid var(--ink); background: transparent; }
+.mk-both { border: 2px solid var(--ink); background: radial-gradient(circle, var(--ink) 0 28%, transparent 32%); }
+.dd-key { display: inline-flex; align-items: center; margin-right: var(--sp-4); white-space: nowrap; }
+.dd-sub { color: var(--ink-2); font-size: var(--fs-xs); }
+@media (max-width: 560px) { .dd-arr th, .dd-arr td { white-space: normal; } .dd-arr .dd-sub { display: block; margin: 2px 0 0; } .dd-arr th:first-child { white-space: nowrap; } }
 .nw-status { margin: 0 0 var(--sp-3); color: var(--ink-2); }
 .nw-status:empty { display: none; }
 .nw-pick { min-height: 36px; max-width: 100%; padding: 0 var(--sp-3); border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-md); }

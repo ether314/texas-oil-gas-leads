@@ -1,14 +1,17 @@
-# The national new-wells map (site/public/data/newwells/summary.json, points.json and points-history.json): every well the FracFocus registry lists as hydraulically fractured, with its GPS
-# point, state, county, day and size. Once a week, site/pipeline/d13_newwells.py reads FracFocus's disclosure list (16 MB of a 443 MB zip, by HTTP range requests: the zip is
-# never downloaded whole), writes the two files after validating them, and this workflow commits what changed and publishes the site. FracFocus refreshes five days a week
-# and a disclosure is filed weeks after the job, so a weekly visit is plenty and kind to a free public service. A server that refuses the runner is an answer, not an error
-# (exit 2: the committed files stay); a failed or invalid run leaves them exactly as committed. It shares the nightly capture's concurrency group, so the two never push at once.
+# The national new-wells map (site/public/data/newwells/summary.json, points.json, points-history.json and arrivals.json): every well the FracFocus registry lists as hydraulically
+# fractured, with its GPS point, state, county, day and size. Every day, site/pipeline/d13_newwells.py reads FracFocus's disclosure list (16 MB of a 443 MB zip, by HTTP range requests:
+# the zip is never downloaded whole), writes the files after validating them, and this workflow commits what changed and publishes the site. The producer also compares the wells with
+# the list it kept from the last download (one API number a line in Actions' cache, never committed: the site's data files carry no API number) and logs the wells that are new since then,
+# counting apart those a state's daily report had already carried (arrivals.json: counts only; d13_arrivals.py). FracFocus refreshes five days a week and a disclosure is filed weeks after
+# the job; 16 MB a day is a small visit to a free public service. A server that refuses the runner is an answer, not an error (exit 2: the committed files stay and the kept list is not
+# moved); a failed or invalid run leaves them exactly as committed. It shares the nightly capture's concurrency group, so the two never push at once.
 name: New wells map (FracFocus)
 
 on:
   schedule:
-    # Tuesdays 07:35 UTC: a day after the Monday chain (monthly 05:40, national 06:20 and up to an hour of producers), three hours from the nightly capture
-    - cron: "35 7 * * 2"
+    # every day at 10:35 UTC: more than three hours after the Monday chain (monthly 05:40, national 06:20 and up to an hour of producers) and from the nightly capture (03:15, backup 04:20),
+    # and more than seven before the well-image archive (18:07)
+    - cron: "35 10 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -33,16 +36,27 @@ jobs:
         with:
           python-version: "3.12"
 
+      # the list of wells the last good download had: the newest cache whose key starts with ff-seen- (this key is never saved, so the restore always falls back to that prefix). A miss
+      # (the first day, or an expired cache) is no failure: the run keeps today's list as the baseline and reports no arrivals.
+      - name: Restore the last download's list of wells
+        uses: actions/cache/restore@v4
+        with:
+          path: .ff-cache/ff-seen.txt.gz
+          key: ff-seen-restore-only
+          restore-keys: ff-seen-
+
       # exit 0: written (or unchanged); 2: the server refused (an answer); anything else failed. The producer validates before it writes, so a bad read leaves the files alone.
+      # `wrote` says the list was moved on to this download (a refusal leaves it as it was).
       - name: Read the new wells from FracFocus
         id: read
         continue-on-error: true
         timeout-minutes: 15
         run: |
           set +e
-          python3 -I site/pipeline/d13_newwells.py
+          python3 -I site/pipeline/d13_newwells.py --seen .ff-cache/ff-seen.txt.gz
           code=$?
           if [ "$code" = "2" ]; then echo "::warning title=New wells::FracFocus refused the runner; the committed files stay."; exit 0; fi
+          if [ "$code" = "0" ]; then echo "wrote=true" >> "$GITHUB_OUTPUT"; fi
           exit $code
 
       - name: Check the new wells files
@@ -51,7 +65,7 @@ jobs:
         continue-on-error: true
         run: python3 -I site/pipeline/d13_newwells.py --check
 
-      # a failed check must not put data on main: put both files back as they were committed
+      # a failed check must not put data on main: put the files back as they were committed
       - name: Drop the new wells files if their check failed
         if: ${{ steps.check.outcome == 'failure' }}
         run: |
@@ -62,11 +76,19 @@ jobs:
         run: |
           git config user.name "refresh-newwells"
           git config user.email "actions@users.noreply.github.com"
-          git add site/public/data/newwells/summary.json site/public/data/newwells/points.json site/public/data/newwells/points-history.json
+          git add site/public/data/newwells/summary.json site/public/data/newwells/points.json site/public/data/newwells/points-history.json site/public/data/newwells/arrivals.json
           if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
           git commit -m "New wells map $(date -u +%F)"
           git pull --rebase origin "$GITHUB_REF_NAME"
           git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # keep this download's list for tomorrow, only when the producer moved it on and the files passed their check (a new key each day: the cache is never overwritten, and the oldest are evicted)
+      - name: Keep this download's list of wells for the next run
+        if: ${{ steps.read.outputs.wrote == 'true' && steps.check.outcome == 'success' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ff-cache/ff-seen.txt.gz
+          key: ff-seen-${{ github.run_id }}-${{ github.run_attempt }}
 
       # a commit made with the workflow's own token starts neither CI nor the publish after a merge, so this publishes itself
       - name: Publish the site to GitHub Pages
