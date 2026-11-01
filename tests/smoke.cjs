@@ -693,7 +693,11 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         if (why.length) bad.push(w + ' px: ' + why.join(', '));
       }
       check(!bad.length, 'the header at 13 widths from 360 to 1920 px keeps its toggle on the page, its tabs on one line and reachable, and never cuts its tagline' + (bad.length ? ': ' + bad.join(' | ') : ''));
-      check(modes[390] === 'stack' && modes[360] === 'stack' && (modes[1920] === 'full' || modes[1920] === 'row'), 'a phone gets the tabs on a row of their own and a wide screen one row (header layout by width: ' + JSON.stringify(modes) + ')');
+      // the width at which the header gets its one row depends on the font (the tabs need 788 px in one and more in another), so only what holds in every font is asserted: a phone
+      // stacks, every mode is a known one, and a wider page never has less room than a narrower one (stack, compact, row, full in that order)
+      const rank = { stack: 0, compact: 1, row: 2, full: 3 }; const order = Object.keys(modes).map(Number).sort((a, b) => a - b);
+      check(modes[360] === 'stack' && modes[390] === 'stack' && order.every((w) => w in modes && modes[w] in rank) && order.every((w, i) => !i || rank[modes[w]] >= rank[modes[order[i - 1]]]),
+        'a phone gets the tabs on a row of their own, and a wider page never gets a smaller layout than a narrower one (header layout by width: ' + JSON.stringify(modes) + ')');
     } catch (e) {
       check(false, 'the header: ' + e.message.split('\n')[0].slice(0, 200));
     }

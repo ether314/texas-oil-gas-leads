@@ -184,11 +184,12 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .theme button { display: grid; place-items: center; width: 30px; height: 28px; border: 0; border-radius: var(--r-pill); background: none; color: var(--ink-2); cursor: pointer; transition: background var(--dur-2), color var(--dur-2); }
 .theme button:hover { color: var(--ink); }
 .theme button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
-/* the header's layout is chosen by ui.js (headerLayout) from what fits: full (one row, with the tagline), row (one row), stack (the tabs on a row of their own, scrolling when they must).
-   While it measures, each part sits at its natural width */
+/* the header's layout is chosen by ui.js (headerLayout) from what fits: full (one row, with the tagline), row (one row), compact (one row, tighter tabs), stack (the tabs on a row of
+   their own, scrolling when they must). While it measures, each part sits at its natural width */
 .top-row[data-fit^="measure"] { grid-template-columns: max-content max-content max-content; }
 .top-row[data-fit^="measure"] .nav { grid-column: auto; grid-row: auto; justify-self: start; margin-inline: 0; overflow: visible; }
-.top-row[data-fit="measure-row"] .brand-sub, .top-row[data-fit="row"] .brand-sub, .top-row[data-fit="stack"] .brand-sub { display: none; }
+.top-row:not([data-fit="full"]):not([data-fit="measure-full"]) .brand-sub { display: none; }
+.top-row[data-fit="measure-compact"] .nav a, .top-row[data-fit="compact"] .nav a { padding: 7px 10px; font-size: 13.5px; }
 .top-row[data-fit="stack"] { grid-template-columns: 1fr auto; padding-top: 6px; gap: 2px var(--sp-3); }
 .top-row[data-fit="stack"] .nav { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; justify-content: flex-start; justify-content: safe center; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding-bottom: 6px; }
 .top-row[data-fit="stack"] .nav::-webkit-scrollbar { display: none; }
