@@ -17,3 +17,6 @@ db/*
 *.building
 # the one compressed snapshot of the local database that is committed (the owner's decision of 2026-11-01: README, Privacy); the uncompressed file and any other stay out
 !db/oil-tracker.sqlite.gz
+
+# the list of wells the daily new-wells run keeps between runs (API numbers: never committed; the workflow keeps it in the Actions cache)
+.ff-cache/

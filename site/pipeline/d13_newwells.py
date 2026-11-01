@@ -52,11 +52,13 @@ SITE = os.path.dirname(HERE)
 sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path
 import d11_nat_common as C  # noqa: E402  (dates, months, place names, the naming rule, Refused)
 import privacy_check  # noqa: E402
+import d13_arrivals as ARR  # noqa: E402  (what is new since the last download, and what a state's daily report already carried)
 
 URL = "https://www.fracfocusdata.org/digitaldownload/FracFocusCSV.zip"
 PAGE = "https://fracfocus.org/data-download"
 OUT = os.environ.get("D13_DIR") or os.path.join(SITE, "public", "data", "newwells")
 OUTLINES = os.path.join(SITE, "public", "data", "us-states.json")
+DAILY = os.path.join(SITE, "public", "data", "daily")  # Texas's day files: the wells its daily reports carried
 REGISTRY_START = date(2011, 1, 1)  # the registry began in 2011: an earlier job date is a typing error
 LAG_DAYS = 120  # a month is settled when it ended this long before the newest job in the file
 POINT_MONTHS = 24  # the points file holds the wells of this many months, the newest month included
@@ -571,16 +573,18 @@ def validate_pair(points, history):
     return []
 
 
-def write(summary, points, out_dir=OUT, history=None):
+def write(summary, points, out_dir=OUT, history=None, arrivals=None):
     """Validates, then writes the files (compact, deterministic). Nothing is written when any is bad."""
     bad = validate_summary(summary) + validate_points(points, summary)
     if history is not None:
         bad += validate_points(history, summary, history=True) or validate_pair(points, history)
+    if arrivals is not None:
+        bad += ARR.validate(arrivals, states={s["id"] for s in summary["states"]})
     if bad:
         raise ValueError("; ".join(bad[:6]))
     os.makedirs(out_dir, exist_ok=True)
     paths = []
-    for name, doc in (("summary.json", summary), ("points.json", points), ("points-history.json", history)):
+    for name, doc in (("summary.json", summary), ("points.json", points), ("points-history.json", history), (ARR.NAME, arrivals)):
         if doc is None:
             continue
         path = os.path.join(out_dir, name)
@@ -621,7 +625,13 @@ def check(out_dir=OUT):
     history = load_history(out_dir)
     if history is None:
         return validate_summary(summary) + validate_points(points, summary) + ["history: the file is missing or unreadable"]
-    return validate_summary(summary) + validate_points(points, summary) + (validate_points(history, summary, history=True) or validate_pair(points, history))
+    bad = validate_summary(summary) + validate_points(points, summary) + (validate_points(history, summary, history=True) or validate_pair(points, history))
+    arrivals = ARR.read(os.path.join(out_dir, ARR.NAME))  # the daily comparison's log: optional for a folder made before it existed, validated when there
+    if arrivals is not None:
+        bad += ARR.validate(arrivals, states={s["id"] for s in summary["states"]})
+    elif os.path.exists(os.path.join(out_dir, ARR.NAME)):
+        bad.append("arrivals: the file is unreadable")
+    return bad
 
 
 def guard(summary, committed, floor=0.9):
@@ -640,7 +650,8 @@ def guard(summary, committed, floor=0.9):
     return problems
 
 
-def run(rows, out_dir=OUT, today=None, floor=0.9, outlines=None):
+def run(rows, out_dir=OUT, today=None, floor=0.9, outlines=None, seen_path=None, daily_dir=DAILY, min_seen=ARR.SEEN_MIN):
+    """seen_path: the list of wells kept from the last download (see d13_arrivals.py). With it, the run also reports the wells new since then, writes arrivals.json and keeps today's list."""
     wells = Wells(outlines or load_outlines(), today)
     for row in rows:
         wells.add(row)
@@ -649,7 +660,18 @@ def run(rows, out_dir=OUT, today=None, floor=0.9, outlines=None):
     bad = guard(summary, load_committed(out_dir)[0], floor)
     if bad:
         raise ValueError("refusing to write: " + "; ".join(bad))
-    done = write(summary, points, out_dir, history)
+    arrivals = None
+    if seen_path:
+        day = wells.today.isoformat()
+        seen = ARR.load_seen(seen_path, min_seen)
+        carried, since = ARR.read_texas(daily_dir)
+        entry = ARR.find(wells.first, seen, carried, day)
+        arrivals = ARR.update(ARR.read(os.path.join(out_dir, ARR.NAME)), entry, day, {"TX": {"wells": len(carried), "from": since}})
+        log("arrivals: " + ("no list kept from the last download: this one is kept as the baseline" if entry is None else
+            "%d new wells since the last download (%s), %d gone from it" % (entry["found"], ", ".join("%s %d" % (r[0], r[1]) for r in entry["states"][:6]) or "none", entry["removed"])))
+    done = write(summary, points, out_dir, history, arrivals)
+    if seen_path:
+        ARR.write_seen(seen_path, wells.first.keys())  # only after the files were written: a run that failed leaves the last list as it was
     log("read %d rows: %d wells (%d without a usable date, %d without an API number, %d outside the states), %d points and %d earlier ones; newest job %s, settled to %s" % (
         wells.read, len(wells.first), wells.skipped["date"], wells.skipped["api"], wells.skipped["state"], points["n"], history["n"], summary["asOf"], summary["settled"]))
     return summary, points, done
@@ -664,9 +686,10 @@ def main(argv=None):
     floor = 0.9
     if "--guard-floor" in args:
         floor = float(args[args.index("--guard-floor") + 1])
+    seen_path = args[args.index("--seen") + 1] if "--seen" in args else None
     try:
         rows = rows_of_file(args[args.index("--file") + 1]) if "--file" in args else rows_from_network()
-        summary, points, done = run(rows, floor=floor)
+        summary, points, done = run(rows, floor=floor, seen_path=seen_path)
     except C.Refused as e:
         log("refused: %s (an answer, not an error; the committed files stay)" % e)
         return 2

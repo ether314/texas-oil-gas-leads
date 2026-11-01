@@ -325,6 +325,61 @@ csvpath = os.path.join(tmp, "list.csv")
 open(csvpath, "w", encoding="utf-8-sig", newline="").write(zip_of(rows) and "")  # an empty file has no header: refused
 check(raises(lambda: list(W.rows_of_file(csvpath))), "an empty csv is refused")
 
+# ------------------------------------------------------------------------------------------------ the daily comparison: wells new since the last download, and what Texas's daily reports carried
+import d13_arrivals as ARR  # noqa: E402
+arr_out = os.path.join(tmp, "arrivals")
+seen_file = os.path.join(tmp, "kept", "ff-seen.txt.gz")
+daily_dir = os.path.join(tmp, "daily-fixture")
+os.makedirs(daily_dir)
+open(os.path.join(daily_dir, "2026-10-28.json"), "w").write(json.dumps({"permits": {"rows": [["0919696", "317", "08", "1", "X", 9000, "H", "31799999", None, None, None]]}, "surveys": {"rows": []}}))
+base_rows = population()
+S0, P0, done0 = W.run(base_rows, out_dir=arr_out, today=TODAY, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir, min_seen=1)
+log0 = ARR.read(os.path.join(arr_out, ARR.NAME))
+check(os.path.exists(seen_file) and len(ARR.load_seen(seen_file, 1)) == len(base_rows) and log0 == {"v": 1, "checked": None, "since": None, "against": {"TX": {"wells": 1, "from": "2026-10-28"}}, "days": []},
+      "a first run with no list from the last download keeps this one as the baseline and reports no arrivals (it does not call every well new)")
+new_rows = base_rows + [row(date(2026, 10, 25), "Texas", api="42317999990000"), row(date(2026, 10, 26), "Texas", api="42317888880000"), row(date(2026, 10, 26), "Texas", api="42317777770000"),
+                        row(date(2026, 10, 27), "Oklahoma"), row(date(2026, 10, 27), "Oklahoma"), row(date(2026, 8, 3), "New Mexico")]  # one of them was in a Texas daily report; the last is a late disclosure of an August job
+S1, P1, done1 = W.run(new_rows, out_dir=arr_out, today=TODAY, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir, min_seen=1)
+log1 = ARR.read(os.path.join(arr_out, ARR.NAME))
+day1 = log1["days"][0]
+t1 = {r[0]: r for r in day1["states"]}
+check(log1["checked"] == "2026-10-31" and log1["since"] == "2026-10-31" and len(log1["days"]) == 1 and day1["day"] == "2026-10-31" and day1["found"] == 6 and day1["removed"] == 0, "the second download finds the six wells that were not in the first, on the day they arrived: %s" % day1)
+check(t1["TX"] == ["TX", 3, 1] and t1["OK"] == ["OK", 2, None] and t1["NM"] == ["NM", 1, None], "one of the three Texas wells was already in a Texas daily report and is counted so; Oklahoma's and New Mexico's cannot be checked and say null: %s" % day1["states"])
+check(log1["against"] == {"TX": {"wells": 1, "from": "2026-10-28"}}, "the log says what the Texas match covered: one well, from the first day that carried API numbers: %s" % log1["against"])
+check(ARR.load_seen(seen_file, 1) == {re.sub(r"\D", "", r["APINumber"])[:10] for r in new_rows} and W.check(arr_out) == [], "the list kept moves on to this download, and the committed folder passes its check with the log")
+text = json.dumps(log1)
+check(not re.search(r"\d{10,}", text) and "317999999" not in text and "LEASE" not in text, "the log holds counts only: no API number, well name or lease")
+before = {f: open(os.path.join(arr_out, f), "rb").read() for f in (*W.FILES, ARR.NAME)}
+W.run(new_rows, out_dir=arr_out, today=TODAY, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir, min_seen=1)
+check(before == {f: open(os.path.join(arr_out, f), "rb").read() for f in before}, "the same download again the same day finds nothing new and changes nothing (no file, no log)")
+nxt = date(2026, 11, 1)
+W.run(new_rows, out_dir=arr_out, today=nxt, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir, min_seen=1)
+log2 = ARR.read(os.path.join(arr_out, ARR.NAME))
+check(log2["checked"] == "2026-11-01" and log2["days"] == log1["days"], "the next day, with nothing new, only moves `checked`: the log has no empty day")
+gone = [r for r in new_rows if r is not new_rows[-1]]
+W.run(gone, out_dir=arr_out, today=nxt, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir, min_seen=1)
+log3 = ARR.read(os.path.join(arr_out, ARR.NAME))
+check(log3["days"][0]["day"] == "2026-11-01" and log3["days"][0]["found"] == 0 and log3["days"][0]["removed"] == 1 and log3["days"][1] == day1, "a well gone from the download (a correction or a deletion) is counted apart, never as a new well")
+before_fail = {f: open(os.path.join(arr_out, f), "rb").read() for f in (*W.FILES, ARR.NAME)}
+kept_before = open(seen_file, "rb").read()
+check(raises(lambda: W.run(shrunk, out_dir=arr_out, today=nxt, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir, min_seen=1), ValueError)
+      and before_fail == {f: open(os.path.join(arr_out, f), "rb").read() for f in before_fail} and open(seen_file, "rb").read() == kept_before, "a refused run (a truncated read) leaves the files, the log and the list kept exactly as they were")
+plain = os.path.join(tmp, "no-arrivals")
+W.run(base_rows, out_dir=plain, today=TODAY, outlines=OUTLINES)
+check(not os.path.exists(os.path.join(plain, ARR.NAME)) and W.check(plain) == [], "a run without a kept list (the producer's weekly use, or by hand) writes no log and still passes its check")
+os.makedirs(os.path.dirname(seen_file), exist_ok=True)
+ARR.write_seen(seen_file, {"4200000001"})
+W.run(base_rows, out_dir=os.path.join(tmp, "short"), today=TODAY, outlines=OUTLINES, seen_path=seen_file, daily_dir=daily_dir)
+check(ARR.read(os.path.join(tmp, "short", ARR.NAME))["days"] == [] and len(ARR.load_seen(seen_file, 1)) == len(base_rows), "a list from the last download that is far too short is no baseline: nothing is called new, and today's replaces it")
+real_rep = ARR.read_texas
+ARR.read_texas = lambda *a, **k: (set(), None)
+mut_out = os.path.join(tmp, "mut")
+W.run(base_rows, out_dir=mut_out, today=TODAY, outlines=OUTLINES, seen_path=os.path.join(tmp, "mutkept", "s.gz"), daily_dir=daily_dir, min_seen=1)
+S_m = os.path.join(tmp, "mutkept", "s.gz")
+W.run(new_rows, out_dir=mut_out, today=TODAY, outlines=OUTLINES, seen_path=S_m, daily_dir=daily_dir, min_seen=1)
+ARR.read_texas = real_rep
+check({r[0]: r for r in ARR.read(os.path.join(mut_out, ARR.NAME))["days"][0]["states"]}["TX"] == ["TX", 3, 0], "mutant (the Texas reports not read) reports none as already carried: the match is what keeps a well from being reported twice")
+
 # ------------------------------------------------------------------------------------------------ the validators against deliberate faults
 good_s, good_p = copy.deepcopy(summary), copy.deepcopy(points)
 
