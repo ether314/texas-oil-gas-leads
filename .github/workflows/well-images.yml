@@ -5,7 +5,8 @@
 #
 # It is separate from the nightly capture on purpose: the packs are 0.7 GB a day and the uploads take minutes, and no night's report may wait for them. It shares the
 # nightly's concurrency group so the two never push at the same time. A run that fails keeps what the earlier packs recorded, and the next run picks up what is not done
-# (the newest two filing days with a pack not done yet); by hand, "days" and "window" reach further back.
+# (the newest two filing days with a pack not done yet); by hand, "days" and "window" reach further back. A run stops starting packs after 3,400 uploaded files, because the repository token's quota is shared
+# with GitHub's own Pages deployment (see NOTES_D12.md): a catch-up does about one day per run.
 name: Well images (scanned filings tied to wells)
 
 on:

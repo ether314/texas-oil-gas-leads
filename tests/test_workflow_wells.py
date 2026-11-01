@@ -130,7 +130,7 @@ for label, env in (("days that is not a number", {**base, "DAYS": "two"}), ("an 
     check(code == 1 and called == "", "it refuses %s and runs nothing (exit %d)" % (label, code))
 # the arguments are accepted by the producer, and its own limits refuse the rest
 check(D12.main(["--check", "--out", os.path.join(REPO, WELLS)]) == 0, "the producer's --check passes on the committed folder")
-for argv in (["--days", "99"], ["--window", "0"], ["--budget", "1"], ["--day", "soon"], ["--no-upload"]):
+for argv in (["--days", "99"], ["--window", "0"], ["--budget", "1"], ["--max-files", "5"], ["--max-files", "99999"], ["--day", "soon"], ["--no-upload"]):
     try:
         D12.main(argv)
         refused = False

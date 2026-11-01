@@ -240,7 +240,7 @@ class FakeGH:
 
 
 def args(out, dl, **kw):
-    a = types.SimpleNamespace(out=out, dl=dl, days=2, window=14, day=None, repo="o/r", budget=40, no_upload=False)
+    a = types.SimpleNamespace(out=out, dl=dl, days=2, window=14, day=None, repo="o/r", budget=40, no_upload=False, max_files=W.MAX_FILES_PER_RUN)
     a.__dict__.update(kw)
     return a
 
@@ -450,6 +450,53 @@ with tempfile.TemporaryDirectory() as tmp:  # the RRC would not answer: nothing 
         check(code == 0 and not os.path.exists(os.path.join(out, "index.json")), "a share that refuses the runner is an answer: exit 0, nothing written")
     finally:
         unpatch(saved)
+
+# ------------------------------------------------------------------------------------------------ the run's upload cap (the quota is shared with the site's own deploy)
+
+with tempfile.TemporaryDirectory() as tmp:
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    io_ = world(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    saved_est = dict(W.EST_FILES)
+    W.EST_FILES.update({"w1": 100, "ds": 100, "ci": 100})
+    lines = []
+    try:
+        code = W.run(args(out, dl, max_files=120), io=io_, now=NOW, log=lines.append)
+        units = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
+        check(code == 0 and units == {"ci", "ds"} and any("left for the next run" in l and "w1" in l for l in lines), "a run that has uploaded 22 files and would pass 120 with the next pack leaves it for the next run, and says so (%s)" % sorted(units))
+        code = W.run(args(out, dl), io=io_, now=NOW, log=lambda m: None)
+        units = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
+        check(code == 0 and units == {"ci", "ds", "w1"} and W.check(out) == [], "the next run does what was left")
+        out2 = os.path.join(tmp, "wells2")
+        code = W.run(args(out2, dl, max_files=100), io=world(tmp), now=NOW, log=lambda m: None)
+        check(code == 0 and {u["p"] for u in json.load(open(os.path.join(out2, "index.json")))["units"]} == {"ci"}, "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit")
+        check(saved_est["ci"] >= 2000 and W.MAX_FILES_PER_RUN >= sum(saved_est.values()) and W.MAX_FILES_PER_RUN < 2 * saved_est["ci"] + saved_est["ds"] + saved_est["w1"],
+              "the default cap lets one ordinary day through and not a second (%d files expected for a day, the cap is %d)" % (sum(saved_est.values()), W.MAX_FILES_PER_RUN))
+    finally:
+        W.EST_FILES.clear()
+        W.EST_FILES.update(saved_est)
+        unpatch(saved)
+
+# the mutant: no cap, the third pack goes up although the run would pass the limit
+src_cap = open(os.path.join(PIPE, "d12_wells.py")).read()
+mod_cap = types.ModuleType("d12cap")
+mod_cap.__file__ = os.path.join(PIPE, "d12_wells.py")
+exec(compile(src_cap.replace('            if uploaded and uploaded + EST_FILES[u["pack"]] > a.max_files:', "            if False:", 1), "d12cap.py", "exec"), mod_cap.__dict__)
+with tempfile.TemporaryDirectory() as tmp:
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    gh = FakeGH()
+    saved = patched(gh)
+    mod_cap.d7_daily.read_daf = lambda path: PERMITS
+    mod_cap.EST_FILES.update({"w1": 100, "ds": 100, "ci": 100})
+    try:
+        mod_cap.run(args(out, dl, max_files=120), io=world(tmp), now=NOW, log=lambda m: None)
+        done = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
+    finally:
+        unpatch(saved)
+    check(done == {"ci", "ds", "w1"}, "mutant caught: without the cap the run uploads all three packs where the real code stops at two (%s)" % sorted(done))
 
 # ------------------------------------------------------------------------------------------------ GitHub's secondary rate limit (the second real run's failure)
 
