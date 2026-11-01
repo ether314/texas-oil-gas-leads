@@ -4,11 +4,8 @@
 // (permits approved, wells spudded) are never added together; the BLM's onshore permits cover wells on federal land that the states
 // also permit, so they are shown on their own line and never added into the states' totals.
 
-export const SPUD = 'spuds';
-export const PERMIT = 'permits';
 // What a state's file can count. Permits approved and wells spudded are each added within their own measure. Applications filed (Oregon: no approval date is published) and wells drilled by the day
-// drilling was completed (Virginia: no permit or spud date is published) are counted another way, so they are shown on their own lines and are in no total and no chart. `family` is only what a tile's
-// shade is compared with (the biggest state counting something like it).
+// drilling was completed (Virginia: no permit or spud date is published) are counted another way, so they are shown on their own lines and are in no total and no chart. `family` says which kind of count it is (a permit or a spud) where a panel names the kinds.
 export const MEASURES = [
   { id: 'permits', name: 'Permits approved', by: 'by approval or issue date', one: 'new-drill permits', sum: true, family: 'permits' },
   { id: 'spuds', name: 'Wells spudded', by: 'by spud date', one: 'wells spudded', sum: true, family: 'spuds' },
@@ -28,23 +25,11 @@ export const BANDS = [
   { id: 'other', label: 'Other filings', color: 'var(--b-other)' },
 ];
 
-// a tile grid of the states: [column, row]; the federal offshore (FO) and the BLM (BL) sit beside it
-export const TILES = {
-  AK: [0, 0], ME: [10, 0], VT: [9, 1], NH: [10, 1],
-  WA: [0, 2], ID: [1, 2], MT: [2, 2], ND: [3, 2], MN: [4, 2], IL: [5, 2], WI: [6, 2], MI: [7, 2], NY: [8, 2], RI: [9, 2], MA: [10, 2],
-  OR: [0, 3], NV: [1, 3], WY: [2, 3], SD: [3, 3], IA: [4, 3], IN: [5, 3], OH: [6, 3], PA: [7, 3], NJ: [8, 3], CT: [9, 3],
-  CA: [0, 4], UT: [1, 4], CO: [2, 4], NE: [3, 4], MO: [4, 4], KY: [5, 4], WV: [6, 4], VA: [7, 4], MD: [8, 4], DE: [9, 4],
-  AZ: [1, 5], NM: [2, 5], KS: [3, 5], AR: [4, 5], TN: [5, 5], NC: [6, 5], SC: [7, 5], DC: [8, 5],
-  TX: [2, 6], OK: [3, 6], LA: [4, 6], MS: [5, 6], AL: [6, 6], GA: [7, 6],
-  HI: [0, 7], FO: [4, 7], FL: [8, 7], BL: [0, 6],
-};
-// names of the tiles that are not oil-producing jurisdictions in the data (they stay quiet on the map)
+// names of the places that are not oil-producing jurisdictions in the data (a name for an address that names one)
 export const QUIET_NAMES = {
   ME: 'Maine', VT: 'Vermont', NH: 'New Hampshire', WA: 'Washington', MN: 'Minnesota', WI: 'Wisconsin', RI: 'Rhode Island', MA: 'Massachusetts', IA: 'Iowa',
   NJ: 'New Jersey', CT: 'Connecticut', DE: 'Delaware', MD: 'Maryland', NC: 'North Carolina', SC: 'South Carolina', GA: 'Georgia', HI: 'Hawaii', DC: 'District of Columbia',
 };
-export const COLS = 11;
-export const ROWS = 8;
 
 // the color of a state's own series wherever the national view draws one: the colors the rest of the site gives Texas, Oklahoma, New Mexico and the
 // offshore, then the next free slots of the palette for the other big producers. A state without a color is folded into "Other states".
@@ -79,30 +64,7 @@ export const shownChange = (s) => (s.prev12 >= MIN_BASE ? change(s) : null);
 // the states that count this measure and may be added: not the overlapping ones
 export const summable = (doc, measure) => (measureOf(measure).sum ? doc.states.filter((s) => s.measure === measure && !OVERLAP.has(s.id)) : []); // a count of another kind is in no sum
 export const total = (doc, measure) => summable(doc, measure).reduce((n, s) => n + s.p12, 0);
-export const rankBy = (doc, measure) => doc.states.filter((s) => s.measure === measure).sort((a, b) => (b.p12 - a.p12) || a.name.localeCompare(b.name));
 export const newest = (doc) => doc.states.reduce((m, s) => (s.asOf > m ? s.asOf : m), '');
-
-// five classes of a state's size against the biggest in its measure: tile color and the legend agree because both use this
-export const CLASS_EDGES = [0.5, 0.2, 0.08, 0.02]; // share of the maximum: >= 50%, >= 20%, >= 8%, >= 2%, the rest above zero
-export function sizeClass(p12, max) {
-  if (!(max > 0) || !(p12 > 0)) return 0;
-  const r = p12 / max;
-  return r >= CLASS_EDGES[0] ? 5 : r >= CLASS_EDGES[1] ? 4 : r >= CLASS_EDGES[2] ? 3 : r >= CLASS_EDGES[3] ? 2 : 1;
-}
-// the biggest state counting something like this one (permits with applications, wells spudded with wells drilled), for a tile's shade
-export const maxOf = (doc, measure) => {
-  const fam = measureOf(measure).family;
-  return Math.max(0, ...doc.states.filter((s) => !OVERLAP.has(s.id) && measureOf(s.measure).sum && measureOf(s.measure).family === fam).map((s) => s.p12));
-};
-
-// what a tile is: a state with data (its size class), a producing state not read yet (a gap), a federal line, or a place with no oil production in the tables
-export function tileKind(doc, id) {
-  const s = byId(doc, id);
-  if (s) return { kind: 'data', measure: s.measure, size: sizeClass(s.p12, maxOf(doc, s.measure)), s };
-  const g = gapOf(doc, id);
-  if (g) return { kind: 'gap', g };
-  return { kind: 'quiet' };
-}
 
 // the months a stacked chart shows (the last `n`) and the series that stack: each plotted state in its own color, the rest folded into "Other states".
 // The axis ends at the newest month every plotted state has, so a state that reports late does not read as a fall.
@@ -133,7 +95,6 @@ export function mix(s) {
   const sum = known.reduce((t, b) => t + s.mix12[b.id], 0);
   return sum > 0 ? known.map((b) => ({ ...b, n: s.mix12[b.id], share: s.mix12[b.id] / sum })) : null;
 }
-export const statesWithMix = (doc) => doc.states.filter((s) => mix(s));
 
 // the share of 12 months' new wells by fluid, or null where the state records none
 export function fluidMix(s) {

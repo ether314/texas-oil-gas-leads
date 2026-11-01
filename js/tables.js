@@ -2,7 +2,7 @@
 // deep links (ported from v1, then extended). The page around them (the switch, the notes, the address) is companies.js.
 import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, queryText, monthLabel } from './util.js';
 import { spark, delta } from './charts.js';
-import { getGeo, getPoints, getZips, countyAt } from './geo.js';
+import { getGeo, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
 import { STATES, stateOf, measureOf, listAnd, ucFirst } from './states.js';
 import { stateOperatorRows, operatorExtras } from './overview-data.js';
@@ -46,7 +46,6 @@ function roleList(r) {
 }
 const roleText = (r) => roleList(r).join(', ');
 const tag = (text) => el('span', { class: 'tag', text });
-const mapLink = (href, label) => el('a', { class: 'pill-link', href, 'aria-label': label, title: label, text: 'Map' });
 
 export function explorer(cfg, meta) {
   const root = $(cfg.root);
@@ -303,7 +302,7 @@ function operatorsConfig(ctx) {
       { key: 'band', label: 'Band', hint: 'Drilling activity band', render: (r) => chip(r.band, r), sort: (r) => BAND_ORDER[r.band] },
       {
         key: 'name', label: 'Operator', cls: 'name', sort: (r) => r.name.toLowerCase(),
-        render: (r) => el('span', { class: 'op-name' }, r.name, ctx.hasPts.has(r.num) ? mapLink('#map?op=' + r.num + '&st=' + r.st.toLowerCase(), 'Show ' + r.name + ' on the map') : null),
+        render: (r) => el('span', { class: 'op-name' }, r.name),
       },
       { key: 'type', label: 'Type', render: (r) => TYPE_SHORT[r.type] || r.type, sort: (r) => r.type, filled: (r) => r.type },
       { key: 'loc', label: 'Location', cls: 'loc', render: place, sort: (r) => (r.state + r.city).toLowerCase(), filled: (r) => r.city || r.state },
@@ -337,7 +336,7 @@ function operatorsConfig(ctx) {
       },
       {
         key: 'county', label: 'Top county', hint: 'County with the most of its permits in the last 24 months', cls: 'loc',
-        render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? el('a', { href: '#map?county=' + r.x.fips, text: cname(r.x.fips) }) : 'n/a'),
+        render: (r) => (!r.x ? null : r.x.fips && cname(r.x.fips) ? cname(r.x.fips) : 'n/a'),
         sort: (r) => (r.x ? (r.x.fips ? cname(r.x.fips).toLowerCase() : '￿') : null), filled: (r) => r.x,
       },
       { key: 'last', label: 'Last permit', cls: 'loc', desc: true, render: (r) => (r.last ? fmtDate(r.last) + (ctx.mixed && !isPermit(r.measure) ? ' · spud' : '') : null), sort: (r) => r.last || null, filled: (r) => r.last },
@@ -368,7 +367,7 @@ function operatorsConfig(ctx) {
       ['trend_pct_full_months', (r) => (!r.x || r.h.f == null ? '' : r.h.f === Infinity ? 'new' : Math.round(r.h.f * 1000) / 10)],
       ['spud_12m', (r) => (r.x && r.x.spud12 != null ? r.x.spud12 : '')], ['avg_depth_ft_24m', (r) => (r.x && r.x.depth ? r.x.depth : '')],
       ['top_county_24m', (r) => (r.x && r.x.fips ? cname(r.x.fips) : '')], ['top_county_fips', (r) => (r.x ? r.x.fips : '')],
-      ['counties_24m', (r) => (r.x ? r.x.counties : '')], ['on_map', (r) => (ctx.hasPts.has(r.num) ? 'Y' : '')],
+      ['counties_24m', (r) => (r.x ? r.x.counties : '')],
       ['oil_bbl_12m', (r) => (r.p ? r.p.o12 : '')], ['gas_mcf_12m', (r) => (r.p ? r.p.g12 : '')],
       ['oil_bbl_prior_12m', (r) => (r.p ? r.p.o12p : '')], ['gas_mcf_prior_12m', (r) => (r.p ? r.p.g12p : '')],
       ['oil_trend_pct', (r) => (!r.p || (!r.p.o12 && !r.p.o12p) ? '' : r.p.o12p > 0 ? Math.round((r.p.o12 / r.p.o12p - 1) * 1000) / 10 : 'new')],
@@ -390,13 +389,13 @@ function companiesConfig(m, ctx) {
   return {
     root: '#co-root', view: 'companies', params: { kind: 'directory' }, caption: 'Texas company directory', csvName: 'companies', placeholder: 'Name, city, ZIP, segment or NAICS code',
     text: (r) => [r.name, r.city, r.state, r.zip, r.seg, r.naics, r.word].join(' '),
-    note: (v) => (v.county !== 'all' ? '. County comes from the center of each ZIP code, so counts can differ from the map, which uses the Comptroller county code.' : ''),
+    note: (v) => (v.county !== 'all' ? '. County comes from the center of each ZIP code, so counts can differ from the Comptroller’s own county code.' : ''),
     cols: [
       { key: 'name', label: 'Company', cls: 'name', render: (r) => r.name, sort: (r) => r.name.toLowerCase() },
       { key: 'seg', label: 'Segment', cls: 'segcell', render: (r) => r.seg, sort: (r) => r.seg },
       {
         key: 'loc', label: 'Location', cls: 'loc', sort: (r) => (r.state + r.city).toLowerCase(),
-        render: (r) => el('span', { class: 'op-name' }, place(r), r.state === 'TX' && ctx.zipSet.has(r.zip) ? mapLink('#map?zip=' + r.zip, 'Show ZIP ' + r.zip + ' on the map') : null),
+        render: (r) => place(r),
       },
       {
         key: 'fit', label: 'Fit', hint: 'Likely: no warning signs. Check: verify first.', sort: (r) => (r.fit === 'likely' ? 0 : 1),
@@ -434,7 +433,7 @@ const zipCounties = () => once('zipcounty', async () => {
 });
 
 export function createTables(meta) {
-  const ctx = { G: null, hasPts: new Set(), zipSet: new Set(), mixed: false, sources: {}, hints: { new12: '' } }; // mixed: the list holds permits and wells spudded together, so a spud's date is marked; sources: each state's line under the table; hints: the headings' hints for the whole list
+  const ctx = { G: null, mixed: false, sources: {}, hints: { new12: '' } }; // mixed: the list holds permits and wells spudded together, so a spud's date is marked; sources: each state's line under the table; hints: the headings' hints for the whole list
   const opCfg = operatorsConfig(ctx);
   const operators = explorer(opCfg, meta);
   const directory = explorer(companiesConfig(meta, ctx), meta);
@@ -446,9 +445,9 @@ export function createTables(meta) {
       // each other state in the National report, each row tagged with its state. Resolves with what the page says about them (the notes of companies.js).
       async load() {
         const others = ids.filter((id) => id !== 'TX');
-        const [t, extras, G, pts, prod, nat, ...docs] = await Promise.all([load('operators'), loadOpt('operator-extras'), getGeo(ids).catch(() => null), getPoints(ids).catch(() => null),
+        const [t, extras, G, prod, nat, ...docs] = await Promise.all([load('operators'), loadOpt('operator-extras'), getGeo(ids).catch(() => null),
           loadOpt('operator-production'), loadOpt('national'), ...others.map((id) => loadOpt(stateOf(id).files.operators))]);
-        ctx.G = G; ctx.hasPts = new Set(pts ? pts.pm.opNums : []);
+        ctx.G = G;
         const by = new Map(extras ? toObjects(extras).map((r) => [r.num, r]) : []);
         // production by operator number, ranked by oil; an operator with no row here gets blank cells, never zeros
         const pb = new Map();
@@ -508,7 +507,6 @@ export function createTables(meta) {
       ex: directory,
       async load() {
         const [t, zc] = await Promise.all([load('companies'), zipCounties().catch(() => ({ map: new Map(), Z: null }))]);
-        ctx.zipSet = new Set(zc.Z ? zc.Z.list.map((z) => z.zip) : []);
         const rows = toObjects(t); const used = new Map();
         rows.forEach((r) => {
           const c = zc.map.get(r.zip);

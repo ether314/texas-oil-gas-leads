@@ -146,7 +146,7 @@ export function createFieldsView({ root }) {
       el('div', { class: 'nat-sub' }, el('h4', { text: 'What it publishes' }), srcs),
       s.unknowns.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Not determined' }), el('ul', { class: 'fx-unk' }, s.unknowns.map((u) => el('li', { text: u })))) : null,
       el('p', { class: 'nat-links' },
-        reg ? el('a', { class: 'more-link', href: '#overview' }, 'See its wells on the map', icon('arrow', 16)) : el('a', { class: 'more-link', href: '#national?s=' + sid }, 'See its permits in the national report', icon('arrow', 16)),
+        reg ? el('a', { class: 'more-link', href: '#overview' }, 'See its wells on the map', icon('arrow', 16)) : el('a', { class: 'more-link', href: '#overview?s=' + sid }, 'See its permits on the Overview', icon('arrow', 16)),
         reg && s.fields && s.fields.length ? el('button', { type: 'button', class: 'link', text: 'Every field in its download', onclick: toRegistry }) : null,
         s.agency.url ? ext(s.agency.url, reg ? 'The registry' : 'The agency') : null));
   }
