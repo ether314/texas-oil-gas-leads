@@ -29,9 +29,9 @@ export function createDailyView({ root }) {
 
   async function data() {
     if (dt) return dt;
-    const [doc, pts, out, nat, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
+    const [doc, pts, out, nat, arrivals, tx, ok, nm, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), loadOpt('newwells/arrivals'), loadOpt('daily/index'), loadOpt('daily-ok/index'), loadOpt('daily-nm/index'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
     // the oil permit files are optional: a page without one still draws the wells
-    raw = { doc, pts, nat, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
+    raw = { doc, pts, nat, arrivals, reports: { TX: tx, OK: ok, NM: nm }, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
     dt = makeDt(D.decode(pts), false);
     return dt;
   }
@@ -367,6 +367,34 @@ export function createDailyView({ root }) {
   }
 
   /* ---------- who reported lately ---------- */
+  /* ---------- fractured wells found and oil well permits approved, day by day: two different things, marked, never added ---------- */
+  const mark = (kind) => el('i', { class: 'mk mk-' + kind, 'aria-hidden': 'true' });
+  function arrivals() {
+    const a = raw.arrivals; if (!a) return null;
+    const rows = D.arrivalRows(a, raw.reports, 14); const nameOf = (id) => (D.byId(raw.doc, id) || {}).name || id;
+    const against = (a.against || {}).TX;
+    const states = (r) => r.byState.slice(0, 4).map((s) => nameOf(s.id) + ' ' + fmt.format(s.n)).join(', ') + (r.byState.length > 4 ? ' and ' + (r.byState.length - 4) + ' more' : '');
+    const head = ['Day', [mark('frac'), 'Fractured wells found (FracFocus)'], [mark('oil'), 'Oil well permits approved (state agencies)'], [mark('both'), 'The same well in both']];
+    const table = el('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Fractured wells found and oil well permits approved, by day' }, el('table', { class: 'grid dd-tbl dd-arr' },
+      el('thead', {}, el('tr', {}, head.map((h, k) => el('th', { scope: 'col', class: k > 1 ? 'num' : null }, ...[].concat(h).map((x) => (typeof x === 'string' ? document.createTextNode(x) : x)))))),
+      el('tbody', {}, rows.map((r) => el('tr', {},
+        el('th', { scope: 'row', text: fmtDate(r.day).replace(/, \d{4}$/, '') }),
+        el('td', { title: r.fractured == null ? 'Not compared yet: the comparison with the last download began on ' + (a.since ? fmtDate(a.since) : 'the next download') : null }, r.fractured == null ? '—' : [fmt.format(r.fractured), r.byState.length ? el('small', { class: 'dd-sub', text: ' ' + states(r) }) : null].filter(Boolean)),
+        el('td', { class: 'num', title: r.oil.length ? r.oil.map((o) => nameOf(o[0]) + ': ' + o[1] + (o[2] ? ' approved ' + fmtDate(o[2]) : '')).join('; ') : 'No report kept for this day' }, r.oilTotal == null ? '—' : [fmt.format(r.oilTotal), el('small', { class: 'dd-sub', text: ' ' + r.oil.map((o) => o[0] + ' ' + o[1]).join(' · ') })]),
+        el('td', { class: 'num', title: r.both == null ? 'Not compared yet' : 'Texas only: its daily report lists wells by API number' }, r.both == null ? '—' : fmt.format(r.both)))))));
+    const note = [
+      a.since ? 'Compared with the list of wells kept from the last download, from ' + fmtDate(a.since) + '. A well found here is a first disclosure that was not in that list, whatever its job date: a late disclosure counts on the day it arrives.'
+        : 'The comparison begins with the next download: the first one was kept as the baseline, so no day is counted yet.',
+      against ? 'Texas’s daily reports are matched by API number (' + fmt.format(against.wells) + ' wells' + (against.from ? ', from ' + fmtDate(against.from) : '') + '): days before the nightly captures were rebuilt without API numbers, and a well is usually fractured months after its permit, so few match at first.' : null,
+      'Oklahoma’s and New Mexico’s daily reports give counts, not wells, so their wells cannot be checked against them, and the column says nothing about them. Fractured wells and oil well permits are different things (a permit is the right to drill; a fracturing job comes after) and are never added together.',
+    ].filter(Boolean);
+    const card = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-arr-h' },
+      hdr('New in the registry', 'layers', 'Fractured wells found each day, beside the oil well permits', 'The wells FracFocus’s download added since the day before, and the oil well permits each state agency approved in the report it published that day.'), table,
+      el('p', { class: 'fine' }, el('span', { class: 'dd-key' }, mark('frac'), 'Fractured well (FracFocus)'), el('span', { class: 'dd-key' }, mark('oil'), 'Oil well permit (state agency)'), el('span', { class: 'dd-key' }, mark('both'), 'The same well, in both')),
+      ...note.map((t) => el('p', { class: 'fine', text: t })));
+    card.querySelector('h2').id = 'dd-arr-h';
+    return card;
+  }
   function lately() {
     const { doc, P } = dt;
     const rows = D.active(doc).map((s) => ({ s, n30: D.perState(P, P.span - 29, P.span).find((x) => x.id === s.id) })).sort((a, b) => b.s.latest.localeCompare(a.s.latest) || b.s.p12 - a.s.p12);
@@ -397,7 +425,7 @@ export function createDailyView({ root }) {
     const statsHead = hdr('The day in numbers', 'layers', 'What the day’s wells look like', null); statsHead.querySelector('h2').id = 'dd-stats-h'; statsHead.firstChild.append(S.statsSub);
     const statsCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-stats-h' }, statsHead, S.stats);
     const tableCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-table-h' }, el('p', { class: 'eyebrow' }, icon('layers', 15), 'The wells'), S.tableHead, S.table);
-    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, statsCard, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job. A few wells in a thousand have no usable GPS point: they are in the months and the typical day, but not on the map or in a day\'s count.' })));
+    root.replaceChildren(el('div', { class: 'stack' }, ...[figures(), dayCardEl, statsCard, chartCard, arrivals(), tableCard, lately()].filter(Boolean), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read daily; each well is dated by its first fracturing job. A few wells in a thousand have no usable GPS point: they are in the months and the typical day, but not on the map or in a day\'s count.' })));
     drawChart();
   }
   // want: the day the address asks for, if any (a day before the last two years loads the earlier wells before the first paint)
