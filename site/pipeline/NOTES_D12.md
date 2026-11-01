@@ -62,6 +62,7 @@ county and the index say, totals add up, only nameable operators, no e-mail, web
 
 ## Not done, and why
 
+- **Two preview drawers.** The drill pages' previews (`d7_packs.render_preview`, 900 px, gray unless the page has color, at most 200 KB, files of the `daily-YYYY-MM-DD` releases) and this archive's (`render_pdf` / `render_tif` here, 1000 px, at most 330 KB, files of the `wells-*` releases) were written the same day by two sessions. They should become one; the pictures differ only in size.
 - **No backfill yet.** The first run does the newest two filing days. The shares hold years of packs; `days`/`window` reach back, at about 0.9 GB a day (the RRC refused GitHub's runners for hours after repeated runs: do it a few days at a time).
 - **Page one only** is a picture; the download is every page. Multi-page documents (a log can run to dozens of pages) open whole in the reader's own viewer.
 - **A well's older filings** (a permit from before the archive's first day) are not there until the packs of their day are read; the page says "the packs read so far" and gives the Commission's look-ups.

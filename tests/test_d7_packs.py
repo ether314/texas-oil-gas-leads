@@ -13,6 +13,7 @@ import os
 import random
 import sys
 import tempfile
+import time
 import types
 import zipfile
 from datetime import date
@@ -272,6 +273,334 @@ P.inspect_pack(os.path.join(tmp, "w1b.zip"), "w1images", os.path.join(out, "img"
 open(os.path.join(out, "img", "stale.jpg"), "wb").write(b"x")
 d7.prune_images(out)
 check(os.listdir(os.path.join(out, "img")) == ["2026-10-30-w1images.jpg"], "prune_images: the sheet a day file refers to stays, the stale one goes")
+
+# ================================================================== readable previews (2026-11-01)
+# page one of each published document, as a JPEG about 900 px wide beside it (<document>.jpg): readable, never blurred
+
+
+def multi_page_pdf():
+    """page one: white with dark lines; page two: solid black (a preview must be of page one only)"""
+    b = io.BytesIO()
+    page().save(b, "PDF", resolution=100, save_all=True, append_images=[Image.new("RGB", (850, 1100), (0, 0, 0))])
+    return b.getvalue()
+
+
+def tall_tif():
+    """a 2550 x 3300 bilevel scan (300 dpi letter) with ruled lines: wider than a preview, so it is shrunk to 900"""
+    im = Image.new("1", (2550, 3300), 1)
+    for y in range(120, 3300, 120):
+        im.paste(0, (180, y, 2370, y + 8))
+    b = io.BytesIO()
+    im.save(b, "TIFF", compression="group4")
+    return b.getvalue()
+
+
+def color_pdf():
+    im = page()
+    for x in range(100, 300):
+        for y in range(100, 300):
+            im.putpixel((x, y), (220, 30, 30))  # a red stamp
+    b = io.BytesIO()
+    im.save(b, "PDF", resolution=100)
+    return b.getvalue()
+
+
+def jpeg_of(path):
+    with Image.open(path) as im:
+        return im.format, im.mode, im.size, bool(im.getexif()), im.convert("L").getextrema()
+
+
+pv = os.path.join(tmp, "pv")
+os.makedirs(pv)
+src = os.path.join(pv, "0917001_W1.pdf")
+open(src, "wb").write(pdf_bytes())
+n = P.render_preview(src, src + ".jpg")
+fmt, mode, size, exif, ext = jpeg_of(src + ".jpg")
+check(fmt == "JPEG" and 880 <= size[0] <= 920 and n == os.path.getsize(src + ".jpg") <= P.PREVIEW_BYTES, "preview: a JPEG about 900 px wide (%s), %d bytes, within %d" % (size, n, P.PREVIEW_BYTES))
+check(mode == "L" and not exif, "preview: a gray page is saved gray, with no metadata (nothing is copied from the scan)")
+check(ext[1] - ext[0] >= 200, "preview: readable, not blurred: the page keeps its full range of dark to white (%d..%d; the blurred contact sheet stays within 40)" % ext)
+multi = os.path.join(pv, "0917002_W1.pdf")
+open(multi, "wb").write(multi_page_pdf())
+P.render_preview(multi, multi + ".jpg")
+with Image.open(multi + ".jpg") as im:
+    check(im.convert("L").resize((1, 1), Image.BOX).getpixel((0, 0)) > 200, "preview: page one only (page two is solid black, the preview is mostly white)")
+col = os.path.join(pv, "0917003_Plat.pdf")
+open(col, "wb").write(color_pdf())
+P.render_preview(col, col + ".jpg")
+check(jpeg_of(col + ".jpg")[1] == "RGB", "preview: a page with color in it (a stamp) stays in color")
+tif = os.path.join(pv, "0917004_W1.tif")
+open(tif, "wb").write(tall_tif())
+n = P.render_preview(tif, tif + ".jpg")
+fmt, mode, size, exif, ext = jpeg_of(tif + ".jpg")
+check(fmt == "JPEG" and size[0] == 900 and mode == "L" and n <= P.PREVIEW_BYTES and ext[1] - ext[0] >= 200, "preview: a 300 dpi TIFF scan is shrunk to 900 px, gray and readable (%s, %d bytes)" % (size, n))
+narrow = os.path.join(pv, "0917005_W1.tif")
+open(narrow, "wb").write(tif_bytes())
+P.render_preview(narrow, narrow + ".jpg")
+check(jpeg_of(narrow + ".jpg")[2][0] == 850, "preview: a scan narrower than 900 px is not enlarged")
+
+# a page that will not fit the cap is recompressed, then shrunk, and if nothing fits it is refused with no half-written file
+rnd = random.Random(5)
+busy = Image.new("L", (850, 1100), 255)
+bp = busy.load()
+for y in range(1100):
+    for x in range(850):
+        if rnd.random() < 0.12:
+            bp[x, y] = rnd.randrange(0, 120)
+bb = io.BytesIO()
+busy.save(bb, "PDF", resolution=100)
+bsrc = os.path.join(pv, "busy.pdf")
+open(bsrc, "wb").write(bb.getvalue())
+n = P.render_preview(bsrc, bsrc + ".jpg")
+check(n <= P.PREVIEW_BYTES and jpeg_of(bsrc + ".jpg")[2][0] < 900, "preview: a busy page is recompressed (and narrowed if it must be) until it fits: %d bytes at %d px" % (n, jpeg_of(bsrc + ".jpg")[2][0]))
+os.remove(bsrc + ".jpg")
+real_cap = P.PREVIEW_BYTES
+P.PREVIEW_BYTES = 3000
+try:
+    P.render_preview(bsrc, bsrc + ".jpg")
+    check(False, "preview: a page that fits no size raises")
+except ValueError:
+    check(not os.path.exists(bsrc + ".jpg"), "preview: a page that fits no size is refused and leaves no file")
+P.PREVIEW_BYTES = real_cap
+
+# a damaged file raises and leaves nothing
+broken = os.path.join(pv, "0917006_W1.pdf")
+open(broken, "wb").write(b"%PDF-1.4 this is not a pdf")
+try:
+    P.render_preview(broken, broken + ".jpg")
+    check(False, "preview: a damaged PDF raises")
+except Exception:  # noqa: BLE001
+    check(not os.path.exists(broken + ".jpg"), "preview: a damaged PDF raises and leaves no file")
+hang = os.path.join(pv, "0917007_W1.pdf")
+open(hang, "wb").write(pdf_bytes())
+real_run = P.subprocess.run
+seen_env = {}
+
+
+def slow_run(cmd, **kw):
+    seen_env.update(kw)
+    raise P.subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+
+
+P.subprocess.run = slow_run
+os.environ["GH_TOKEN"] = "secret-token"
+try:
+    P.render_preview(hang, hang + ".jpg")
+    check(False, "preview: a render that hangs raises")
+except P.subprocess.TimeoutExpired:
+    check(seen_env.get("timeout") == P.PER_FILE_SECONDS and "GH_TOKEN" not in seen_env["env"] and not os.path.exists(hang + ".jpg"),
+          "preview: pdftoppm runs under a %d s timeout without the repository token, and a hang leaves no file" % P.PER_FILE_SECONDS)
+finally:
+    P.subprocess.run = real_run
+    del os.environ["GH_TOKEN"]
+
+# staging: each staged document gets its preview beside it, and one that cannot be drawn costs nothing but itself
+def make_w1_pv(path):
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("2026-10-29\\06\\0917001_W1_letter.pdf", pdf_bytes(w=1100, h=850))
+        z.writestr("2026-10-29\\06\\0917001_Plat_a.pdf", pdf_bytes())
+        z.writestr("2026-10-29\\06\\0917001_Plat_b.pdf", color_pdf())
+        z.writestr("2026-10-29\\06\\0917002_W1_letter.tif", tall_tif())
+        z.writestr("2026-10-29\\06\\0917003_W1_letter.pdf", b"%PDF-1.4 this is not a pdf")  # staged (it starts like a PDF) but no page can be drawn
+        z.writestr("2026-10-29\\06\\0917004_Other_cover.pdf", pdf_bytes())  # not a W-1 or a plat: never staged
+
+
+w1pv = os.path.join(tmp, "w1pv.zip")
+make_w1_pv(w1pv)
+st_plain = os.path.join(tmp, "stage-plain")
+res = P.stage_pack(w1pv, "w1images", st_plain, logs.append)
+check("previews" not in res and sorted(os.listdir(st_plain)) == ["0917001_Plat_1.pdf", "0917001_Plat_2.pdf", "0917001_W1.pdf", "0917002_W1.tif", "0917003_W1.pdf"],
+      "stage_pack without previews: the same files as before and no preview, no 'previews' key: %s" % sorted(os.listdir(st_plain)))
+logs2 = []
+st_pv = os.path.join(tmp, "stage-pv")
+res = P.stage_pack(w1pv, "w1images", st_pv, logs2.append, previews=True)
+want = ["0917001_Plat_1.pdf.jpg", "0917001_Plat_2.pdf.jpg", "0917001_W1.pdf.jpg", "0917002_W1.tif.jpg"]
+check(res["previews"] == want and sorted(f for f in os.listdir(st_pv) if f.endswith(".jpg")) == want and sorted(res["permits"]) == ["0917001", "0917002", "0917003"],
+      "stage_pack with previews: each readable document has <document>.jpg beside it, the damaged one has none and is still staged: %s" % res["previews"])
+check(all(os.path.exists(os.path.join(st_pv, n[:-4])) for n in res["previews"]), "stage_pack with previews: every preview sits beside its document")
+check(any("previews: 4 of 5 documents drawn, 1 failed" in m for m in logs2) and not any(".pdf" in m or "0917" in m for m in logs2 if m.startswith("previews")),
+      "stage_pack with previews: one log line says 4 of 5 drawn and 1 failed, and names no file: %s" % [m for m in logs2 if m.startswith("previews")])
+with Image.open(os.path.join(st_pv, "0917001_Plat_2.pdf.jpg")) as im:
+    check(im.mode == "RGB", "stage_pack with previews: a color plat keeps its color")
+sv_stage = os.path.join(tmp, "stage-sv")
+res = P.stage_pack(dirz, "dirsurveys", sv_stage, logs2.append, previews=True)
+check(res["previews"] == ["dir_survey_990000.pdf.jpg", "dir_survey_990001.pdf.jpg", "dir_survey_990002.pdf.jpg", "dir_survey_990003.pdf.jpg"] and len(res["surveys"]) == 4,
+      "stage_pack with previews: each directional survey has dir_survey_<id>.pdf.jpg: %s" % res["previews"])
+check(P.stage_pack(comp, "complimages", os.path.join(tmp, "stage-comp"), previews=True) is None and not os.path.exists(os.path.join(tmp, "stage-comp")),
+      "stage_pack: completion images are never staged, with or without previews")
+
+# the tools missing, a tool that always fails, a spent budget: the documents are staged all the same
+P.shutil.which = lambda name: None
+logs3 = []
+res = P.stage_pack(w1pv, "w1images", os.path.join(tmp, "stage-notool"), logs3.append, previews=True)
+P.shutil.which = real_which
+check(res["previews"] == [] and len(res["permits"]) == 3 and not [f for f in os.listdir(os.path.join(tmp, "stage-notool")) if f.endswith(".jpg")] and any("5 left out (pdftoppm" in m for m in logs3),
+      "stage_pack with pdftoppm missing: the documents are staged, no previews, and the log says why")
+calls = []
+real_render = P.render_preview
+
+
+def failing(src_, dest_):
+    calls.append(src_)
+    raise ValueError("no")
+
+
+P.render_preview = failing
+many = os.path.join(tmp, "many.zip")
+with zipfile.ZipFile(many, "w") as z:
+    for k in range(30):
+        z.writestr("dir_survey_%d.pdf" % (100 + k), pdf_bytes())
+logs4 = []
+res = P.stage_pack(many, "dirsurveys", os.path.join(tmp, "stage-many"), logs4.append, previews=True)
+P.render_preview = real_render
+check(res["previews"] == [] and len(res["surveys"]) == 30 and len(calls) == P.PREVIEW_GIVE_UP and any("left out (%d previews in a row failed)" % P.PREVIEW_GIVE_UP in m for m in logs4),
+      "stage_pack: after %d failures in a row the rest of the pack goes without previews (%d tried), the 30 surveys are staged" % (P.PREVIEW_GIVE_UP, len(calls)))
+calls.clear()
+P.render_preview = failing
+res = P.stage_pack(many, "dirsurveys", os.path.join(tmp, "stage-late"), logs4.append, previews=True, deadline=time.time() - 1)
+P.render_preview = real_render
+check(res["previews"] == [] and not calls and len(res["surveys"]) == 30, "stage_pack: past the capture's deadline no preview is started and the documents are still staged")
+
+# ------------------------------------------------------------------ the day report and the release
+class FakeRelease:
+    """d7_release.publish with GitHub's listing replaced: `have` is what the listing will hold besides the documents"""
+    ReleaseError = d7.d7_release.ReleaseError
+
+    def __init__(self, have_previews=None, fail=False):
+        self.have, self.fail, self.args = have_previews, fail, None
+
+    def publish(self, repo, day, folder, names, log=print, optional=(), confirmed=None):
+        self.args = (repo, day, folder, list(names), list(optional))
+        if self.fail:
+            raise self.ReleaseError("gh release upload failed")
+        if confirmed is not None:
+            confirmed.extend(n for n in optional if self.have is None or n in self.have)
+        return "daily-" + day.isoformat()
+
+
+def attach(fake, w1_previews, sv_previews, rows=None):
+    """attach_documents on a staged W-1 pack of two permits and a survey pack of two surveys"""
+    real = (d7.d7_release.publish, d7.d7_release.ready)
+    d7.d7_release.publish, d7.d7_release.ready = fake.publish, lambda: None
+    try:
+        stage = {"permits": {"0917001": [["W1.pdf", 10], ["Plat.pdf", 20]], "0917002": [["W1.tif", 30]]}}
+        surv = {"surveys": [[None, None, "M", None, None, None, None, None, "55", 3], [None, None, "O", None, None, None, None, None, "56", 4]]}
+        if w1_previews is not None:
+            stage["previews"] = w1_previews
+        if sv_previews is not None:
+            surv["previews"] = sv_previews
+        jobs = {"w1images": {"staged": stage}, "dirsurveys": {"staged": surv}}
+        report = {"permits": {"rows": rows or [["0917001", "003", "06", "1", None, 100, "V", None, None, None], ["0917002", "003", "06", "1", None, 100, "V", None, None, None]]}}
+        c = {"R": date(2026, 10, 30), "stage": os.path.join(tmp, "stage-x"), "lk": types.SimpleNamespace(locator=types.SimpleNamespace(locate=lambda apis: {}))}
+        tag = d7.attach_documents(c, jobs, report, "o/r", lambda m: None)
+        return tag, report
+    finally:
+        d7.d7_release.publish, d7.d7_release.ready = real
+
+
+ALL_PV = ["0917001_W1.pdf.jpg", "0917001_Plat.pdf.jpg", "0917002_W1.tif.jpg"]
+fk = FakeRelease()
+tag, report = attach(fk, ALL_PV, ["dir_survey_55.pdf.jpg", "dir_survey_56.pdf.jpg"])
+rel = report["release"]
+check(tag == "daily-2026-10-30" and len(fk.args[3]) == 5 and fk.args[4] == [n + ".jpg" for n in fk.args[3]],
+      "attach_documents: every document's preview goes up with it as an optional file of the same release (%d documents, %d previews)" % (len(fk.args[3]), len(fk.args[4])))
+check(rel["files"] == 5 and rel["previews"] == 5 and "noPreview" not in rel, "attach_documents: the release block says how many previews the listing confirmed, and none are missing: %s" % rel)
+fk = FakeRelease(have_previews={"0917001_W1.pdf.jpg", "dir_survey_55.pdf.jpg"})
+tag, report = attach(fk, ALL_PV, ["dir_survey_55.pdf.jpg", "dir_survey_56.pdf.jpg"])
+rel = report["release"]
+check(rel["previews"] == 2 and rel["noPreview"] == ["0917001_Plat.pdf", "0917002_W1.tif", "dir_survey_56.pdf"] and rel["previews"] + len(rel["noPreview"]) == rel["files"],
+      "attach_documents: only a preview the release listing confirmed counts; the documents without one are named: %s" % rel)
+fk = FakeRelease()
+tag, report = attach(fk, ["0917001_W1.pdf.jpg", "0917009_W1.pdf.jpg"], None)
+check(fk.args[4] == ["0917001_W1.pdf.jpg"] and report["release"]["previews"] == 1 and len(report["release"]["noPreview"]) == 4,
+      "attach_documents: a preview of a document that is not published (another permit's) is never uploaded: %s" % report["release"])
+tag, report = attach(FakeRelease(have_previews=set()), ALL_PV, None)
+check(tag and "previews" not in report["release"] and "noPreview" not in report["release"] and report["release"]["files"] == 5,
+      "attach_documents: no preview confirmed means no preview keys at all, and the document links stand: %s" % report["release"])
+tag, report = attach(FakeRelease(), None, None)
+check(tag and "previews" not in report["release"] and len(report["permits"]["rows"][0]) == 11, "attach_documents: a day captured without previews (older days, tools missing) still links its documents")
+tag, report = attach(FakeRelease(fail=True), ALL_PV, None)
+check(tag is None and "release" not in report and len(report["permits"]["rows"][0]) == 10, "attach_documents: a release that fails gives no links and no previews, as before")
+
+# the validator holds the release block's preview fields to the documents
+docs_rep = dict(rep)
+docs_rep.update({"permits": {"day": "2026-10-29", "total": 2, "newDrill": 2, "horizontal": 0, "rows": [
+    ["0917001", "003", "06", "1", None, 100, "V", None, None, None, ["W1.pdf", "Plat.pdf"]], ["0917002", "003", "06", "1", None, 100, "V", None, None, None, ["W1.tif"]]]}})
+docs_rep["release"] = {"repo": "o/r", "tag": "daily-2026-10-30", "files": 3, "bytes": 60, "permits": 2, "surveys": 0, "previews": 2, "noPreview": ["0917002_W1.tif"]}
+
+
+def problems_for(release):
+    r = dict(docs_rep, release=release)
+    json.dump(r, open(os.path.join(out, "2026-10-30.json"), "w"))
+    json.dump({"keep": 92, "days": [d7.headline(r)]}, open(os.path.join(out, "index.json"), "w"))
+    return [p for p in d7.validate(out) if "release" in p or "preview" in p]
+
+
+good = dict(docs_rep["release"])
+check(problems_for(good) == [], "validate: a release block whose previews and missing previews add up to its files passes %r" % problems_for(good))
+check(problems_for({k: v for k, v in good.items() if k not in ("previews", "noPreview")}) == [], "validate: a release block with no preview fields (an older day) passes")
+check(any("preview" in p for p in problems_for(dict(good, previews=3))), "validate: previews that do not add up with the documents without one are reported")
+check(any("preview" in p for p in problems_for(dict(good, noPreview=["../x"]))), "validate: a document name that is not a plain file name is reported")
+check(any("preview" in p for p in problems_for(dict(good, previews=True))), "validate: previews that is not a count is reported")
+
+# ------------------------------------------------------------------ d7_release.publish with optional files (gh replaced)
+import subprocess  # noqa: E402
+
+RELEASE = d7.d7_release
+
+
+def gh_fake(state, fail_jpg=False, hide_jpg=False):
+    def run(cmd, capture_output=True, text=True, timeout=None):
+        sub = " ".join(cmd[1:3])
+        if sub == "release view" and "tagName" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, "{}", "")
+        if sub == "release upload":
+            files = [os.path.basename(a) for a in cmd[7:]]  # gh release upload <tag> --repo <repo> --clobber <files...>
+            state["batches"].append(files)
+            if fail_jpg and any(f.endswith(".jpg") for f in files):
+                return subprocess.CompletedProcess(cmd, 1, "", "HTTP 502: Bad Gateway")
+            state["have"].update(files)
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        if sub == "release view":
+            return subprocess.CompletedProcess(cmd, 0, json.dumps({"assets": [{"name": n} for n in sorted(state["have"]) if not (hide_jpg and n.endswith(".jpg"))]}), "")
+        return subprocess.CompletedProcess(cmd, 0, "[]", "")
+    return run
+
+
+def publish_with(state, optional, **kw):
+    saved = (RELEASE.subprocess.run, RELEASE.time.sleep)
+    RELEASE.subprocess.run, RELEASE.time.sleep = gh_fake(state, **kw), lambda s: None
+    got = []
+    try:
+        tag = RELEASE.publish("o/r", date(2026, 10, 30), "/stage", ["a.pdf", "b.pdf"], lambda m: None, optional=optional, confirmed=got)
+    finally:
+        RELEASE.subprocess.run, RELEASE.time.sleep = saved
+    return tag, got
+
+
+state = {"batches": [], "have": set()}
+tag, got = publish_with(state, ["b.pdf.jpg", "a.pdf.jpg"])
+check(tag == "daily-2026-10-30" and got == ["a.pdf.jpg", "b.pdf.jpg"] and state["batches"] == [["a.pdf", "b.pdf"], ["a.pdf.jpg", "b.pdf.jpg"]],
+      "publish: the documents are uploaded first, the previews after, and the one listing confirms both: %s" % state["batches"])
+state = {"batches": [], "have": set()}
+tag, got = publish_with(state, ["a.pdf.jpg"], fail_jpg=True)
+check(tag == "daily-2026-10-30" and got == [] and {"a.pdf", "b.pdf"} <= state["have"], "publish: previews that cannot be uploaded cost nothing but themselves: the documents are confirmed (%s)" % got)
+state = {"batches": [], "have": set()}
+tag, got = publish_with(state, ["a.pdf.jpg"], hide_jpg=True)
+check(tag and got == [], "publish: a preview missing from the listing is not reported as there")
+state = {"batches": [], "have": set()}
+saved_limit = RELEASE.ASSET_LIMIT
+RELEASE.ASSET_LIMIT = 3
+tag, got = publish_with(state, ["a.pdf.jpg", "b.pdf.jpg"])
+RELEASE.ASSET_LIMIT = saved_limit
+check(got == ["a.pdf.jpg"], "publish: the previews are cut back to what the release's asset limit leaves room for after the documents: %s" % got)
+state = {"batches": [], "have": set()}
+saved = (RELEASE.subprocess.run, RELEASE.time.sleep)
+RELEASE.subprocess.run, RELEASE.time.sleep = gh_fake(state), lambda s: None
+try:
+    RELEASE.publish("o/r", date(2026, 10, 30), "/stage", ["a.pdf"], lambda m: None)
+    check(state["batches"] == [["a.pdf"]], "publish: called as before (no optional files) it behaves as before")
+finally:
+    RELEASE.subprocess.run, RELEASE.time.sleep = saved
 
 print()
 print("FAILED %d" % len(FAILS) if FAILS else "all passed")

@@ -188,7 +188,7 @@ export function createNationalView({ root }) {
       const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', s.color);
       return el('li', { class: 'nat-key' }, sw, el('span', { text: s.name + (s.count ? ' (' + s.count + ')' : '') }));
     }));
-    const note = el('p', { class: 'fine', text: 'The chart ends in ' + monthLabel(st.end) + ', the newest month every state shown has. ' + (measure === 'spuds' ? 'Wells spudded are reported late, so these counts run two months behind the permits. ' : '') + 'The BLM’s onshore permits are not added here: the states also permit most of those wells.' });
+    const note = el('p', { class: 'fine', text: 'The chart ends in ' + monthLabel(st.end) + ', the newest month every state shown has. ' + (measure === 'spuds' ? 'Wells spudded are reported late, so these counts run two months behind the permits. ' : '') + (st.lagging.length ? N.listAnd(st.lagging) + (st.lagging.length > 1 ? ' end' : ' ends') + ' earlier, so the last months of the bars leave ' + (st.lagging.length > 1 ? 'them' : 'it') + ' out (not counted as zero). ' : '') + 'The BLM’s onshore permits are not added here: the states also permit most of those wells.' });
     const table = el('details', { class: 'nat-details' }, el('summary', { text: 'Show the numbers as a table' }),
       el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': 'Monthly counts by state' },
         el('table', { class: 'grid' }, el('thead', {}, el('tr', {}, el('th', { scope: 'col', text: 'Month' }), st.series.map((s) => el('th', { scope: 'col', class: 'num', text: s.name })), el('th', { scope: 'col', class: 'num', text: 'All' }))),

@@ -10,6 +10,8 @@
 // 3. Reflow: at 360 px wide (the narrowest phone) no content is cut off by an overflow:hidden box (without an ellipsis) and no box sticks out
 //    past the right edge outside a scroller, on every view and every set of states. It found a note and a sparkline cut off in the Daily report's
 //    half-width cards (the card's one column had grown to the sparkline's fixed 160 px).
+// 5. Previews (2026-11-01): the Texas images view with readable previews of a day's filings (a stubbed day, tests/preview-stub.cjs, with GitHub answered by the test) and a page enlarged in
+//    its dialog, in both themes and at both widths, for contrast, at 360 px for reflow and target size, and the view's Tab stops for names and focus rings.
 // 4. Target size: at the same width every button, field, tab and chip is at least 24 x 24 px (WCAG 2.2, 2.5.8; a checkbox counts with its label; links
 //    inside text and in table cells are left out: spacing exempts them).
 //
@@ -20,6 +22,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const previewStub = require('./preview-stub.cjs');
 
 const ROOT = path.join(__dirname, '..', 'site', 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
@@ -71,7 +74,31 @@ const VIEWS = [
   ['permit data', '#fields', '#fields-root button.fx-c'],
   ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
 ];
+// the same view with previews, and with a page enlarged: a stubbed day, the third optional element says what to do (stub: answer the day and GitHub; open: enlarge the first page)
+const PV_HASH = '#images?d=' + previewStub.stubDay(ROOT).day;
+VIEWS.push(['texas images, previews', PV_HASH, '#images-root .pv-tile', { stub: true }], ['texas images, a preview enlarged', PV_HASH, '#images-root .pv-tile', { stub: true, open: true }]);
 const SIZES = [[1280, 800], [390, 844]];
+
+// runs around a view that has a stub: the stubbed routes first, then (once the view has drawn) the thumbnails loaded and, for an enlarged page, the dialog open
+async function prepare(page, opt) {
+  if (!opt || !opt.stub) return null;
+  await page.goto('about:blank'); // a new load of the page: the images view keeps the day files it has read, and the stubbed day must be read afresh
+  return previewStub.install(page, ROOT);
+}
+async function settle(page, opt) {
+  if (!opt || !opt.stub) return;
+  for (let i = 0, n = await page.locator('#images-root .pv-thumb').count(); i < n; i++) await page.locator('#images-root .pv-thumb').nth(i).scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+  await page.waitForFunction(() => [...document.querySelectorAll('#images-root .pv-img')].every((i) => i.complete), null, { timeout: 15000 });
+  await page.locator('#images-root .pv-thumb').first().scrollIntoViewIfNeeded();
+  if (opt.open) {
+    await page.locator('#images-root .pv-thumb').first().click();
+    await page.waitForFunction(() => { const i = document.querySelector('dialog.pv-dialog[open] .pv-large'); return !!i && i.complete; }, null, { timeout: 5000 });
+  }
+}
+async function release(page, st) {
+  if (await page.locator('dialog.pv-dialog[open]').count()) await page.keyboard.press('Escape');
+  if (st) await st.off();
+}
 
 // runs in the page: every visible text with a ratio under its threshold
 function audit() {
@@ -203,11 +230,14 @@ function targets() {
       const label = theme + ', ' + (w > 600 ? 'desktop' : 'phone');
       const bad = new Map();
       let read = 0;
-      for (const [name, hash, ready] of VIEWS) {
+      for (const [name, hash, ready, opt] of VIEWS) {
+        let st = null;
         try {
+          st = await prepare(page, opt);
           await page.goto(base + hash, { waitUntil: 'load' });
           await page.waitForSelector(ready, { timeout: 25000 });
           await page.waitForTimeout(600);
+          await settle(page, opt);
           for (const f of await page.evaluate(audit)) {
             const k = f.id + ' "' + f.text + '"';
             if (!bad.has(k)) bad.set(k, { ...f, where: [] });
@@ -217,6 +247,7 @@ function targets() {
         } catch (e) {
           check(false, label + ': ' + name + ' did not draw: ' + e.message.split('\n')[0].slice(0, 160));
         }
+        await release(page, st);
       }
       check(bad.size === 0, label + ': text on ' + read + ' views meets 4.5:1 (3:1 for large text)');
       for (const [k, f] of bad) console.log('       ' + f.ratio + ' (needs ' + f.need + ')  ' + k + '  in ' + [...new Set(f.where)].join(', '));
@@ -236,21 +267,26 @@ function targets() {
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
       ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
       ['permit data', '#fields', '#fields-root button.fx-c'], ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
+      ['texas images, previews', PV_HASH, '#images-root .pv-tile', { stub: true }], ['texas images, a preview enlarged', PV_HASH, '#images-root .pv-tile', { stub: true, open: true }],
     ];
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light' });
     const page = await ctx.newPage();
     const bad = [];
     const small = [];
-    for (const [name, hash, ready] of REFLOW) {
+    for (const [name, hash, ready, opt] of REFLOW) {
+      let st = null;
       try {
+        st = await prepare(page, opt);
         await page.goto(base + hash, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
         await page.waitForTimeout(600);
+        await settle(page, opt);
         for (const f of await page.evaluate(reflow)) bad.push(name + ': ' + f);
         for (const f of await page.evaluate(targets)) small.push(name + ': ' + f);
       } catch (e) {
         check(false, 'reflow, ' + name + ' did not draw: ' + e.message.split('\n')[0].slice(0, 160));
       }
+      await release(page, st);
     }
     check(!bad.length, 'at 360 px on ' + REFLOW.length + ' views nothing is cut off and nothing runs past the edge' + (bad.length ? '\n       ' + [...new Set(bad)].slice(0, 12).join('\n       ') : ''));
     check(!small.length, 'at 360 px every button, field, tab and chip is at least 24 x 24 px' + (small.length ? '\n       ' + [...new Set(small)].slice(0, 12).join('\n       ') : ''));
@@ -275,15 +311,18 @@ function targets() {
     const cls = typeof e.className === 'string' && e.className.trim() ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
     return { id: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + cls, name: name.slice(0, 40), shown, times, same };
   };
-  const KB_VIEWS = [VIEWS[0], VIEWS[2], VIEWS[3], VIEWS[5], VIEWS[6], VIEWS[10]];
+  const KB_VIEWS = [VIEWS[0], VIEWS[2], VIEWS[3], VIEWS[5], VIEWS[6], VIEWS[10], VIEWS.find((v) => v[0] === 'texas images, previews')];
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light', deviceScaleFactor: 1 });
     const page = await ctx.newPage();
-    for (const [name, hash, ready] of KB_VIEWS) {
+    for (const [name, hash, ready, opt] of KB_VIEWS) {
+      let st = null;
       try {
+        st = await prepare(page, opt);
         await page.goto(base + hash, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
         await page.waitForTimeout(600);
+        await settle(page, opt);
         await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); window.scrollTo(0, 0); window.__kbSeen = new WeakMap(); window.__kbPrev = null; });
         const stops = [];
         for (let i = 0; i < 120; i++) {
@@ -302,6 +341,7 @@ function targets() {
       } catch (e) {
         check(false, 'keyboard, ' + name + ' did not draw: ' + e.message.split('\n')[0].slice(0, 160));
       }
+      await release(page, st);
     }
     // the page itself
     await page.goto(base + '#overview', { waitUntil: 'load' });

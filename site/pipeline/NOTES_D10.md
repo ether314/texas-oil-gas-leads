@@ -104,7 +104,7 @@ page: an operator that sidetracks old wells (Cantium, ten times in a year) shows
 from the 12 before (5, where a land county needs 20): the busiest area has 14 spuds, so the map's "Top areas: change" list would be empty at 20. The rest of the wording follows what each state counts, through
 `measureAnd`, `everyOf`, `dotName`, `countWord` and `ucFirst` in `states.js` (a spud dot is a "well dot", a count of one is "1 spud", a state inside a sentence is "the federal offshore", and a sentence that starts with it
 capitalizes it); an area with no wells says none were spudded there, and never that the Bureau published no location. The Sources page's figures for the offshore (the date the data ends, the last 12 months' wells, the
-number of operators, the EIA's latest month) are filled from its files (`fillOffshore` in `main.js`), so the weekly refresh moves them with the data.
+number of operators, the EIA's latest month) are filled from its files (`fillFromFiles` in `main.js`), so the weekly refresh moves them with the data.
 
 ## Crude oil, and the weekly refresh
 

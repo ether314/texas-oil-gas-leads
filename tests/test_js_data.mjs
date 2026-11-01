@@ -202,6 +202,8 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(Nt.change({ p12: 12, prev12: 10 }) === 0.2 && Nt.change({ p12: 5, prev12: 0 }) === null, 'national: the change is null, never infinity, when the 12 before are zero');
   const st = Nt.stack(doc, 'permits');
   check(st.series.map((s) => s.id).join() === 'TX,ND,other' && st.series.at(-1).count === 1 && st.totals.every((t) => t === 15) && st.months.length === 30, 'national: plotted states keep their color, the rest fold into Other states; the BLM is not stacked');
+  const lag = Nt.stack({ ...doc, states: [...doc.states, mk('IL', 'permits', [...flat(26, 2), null, null, null, null])] }, 'permits');
+  check(same(lag.lagging, ['IL']) && lag.series.at(-1).id === 'other' && lag.series.at(-1).values.at(-1) === 1 && same(st.lagging, []), 'national: a state that ends before the axis is named, and its missing months are left out of the Other bar, not drawn as zero');
   const sp = Nt.stack(doc, 'spuds');
   check(sp.series.length === 1 && sp.series[0].id === 'NM' && sp.months.length === 28 && sp.end === months[27], 'national: the spuds chart ends at the newest month its plotted state has (nulls are not zeros)');
   check(Nt.mix(doc.states[0]) === null && Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } }).length === 3 && Math.abs(Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } })[0].share - 0.6) < 1e-9, 'national: the mix needs two known bands, and shares add to one');
@@ -236,6 +238,25 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(Im.packsOf(null).every((p) => !p.present) && Im.packsOf({}).length === 3, 'images: no day file means no packs, not an error');
   const f = Im.filedPermits(day);
   check(f.length === 1 && f[0].permit === '0919696' && Im.fileKind('W1.pdf') === 'W-1 letter' && Im.fileKind('Plat_1.pdf') === 'plat' && Im.fileKind('survey_5.pdf') === 'survey', 'images: only permits whose files are published are listed, and files are named by kind');
+  // the release a day file names, the files it holds and the readable previews of them (2026-11-01)
+  const rel = { repo: 'o/r', tag: 'daily-2026-10-30', files: 3, bytes: 9, permits: 1, surveys: 1 };
+  check(Im.releaseOk(rel) && !Im.releaseOk(null) && !Im.releaseOk({ repo: 'o/r', tag: 'v1' }) && !Im.releaseOk({ repo: 'o r', tag: 'daily-2026-10-30' }) && !Im.releaseOk({ repo: 'o/r/x', tag: 'daily-2026-10-30' }), 'images: only a release named as a repository and a daily tag is trusted');
+  check(Im.fileUrl(rel, '0919696_W1.pdf') === 'https://github.com/o/r/releases/download/daily-2026-10-30/0919696_W1.pdf' && Im.fileUrl(rel, '../x') === null && Im.fileUrl(rel, 'a b.pdf') === null && Im.fileUrl(rel, 'a/b') === null && Im.fileUrl(null, 'a.pdf') === null && Im.fileUrl(rel, 5) === null,
+    'images: a file address is made only from a plain file name on a trusted release');
+  check(Im.previewUrl(rel, '0919696_W1.pdf') === null && Im.previewUrl({ ...rel, previews: 0 }, '0919696_W1.pdf') === null && Im.previewUrl({ ...rel, previews: true }, '0919696_W1.pdf') === null,
+    'images: a release that does not say it holds previews (an older day, a night without the tools) has none to link');
+  const relP = { ...rel, previews: 2, noPreview: ['0919696_Plat_1.pdf'] };
+  check(Im.previewUrl(relP, '0919696_W1.pdf') === 'https://github.com/o/r/releases/download/daily-2026-10-30/0919696_W1.pdf.jpg' && Im.previewUrl(relP, '0919696_Plat_1.pdf') === null && Im.previewUrl(relP, '../x') === null && Im.previewUrl({ ...relP, tag: 'x' }, '0919696_W1.pdf') === null,
+    'images: a preview is linked only for a document the release holds one of, never from an odd name or an untrusted release');
+  check(JSON.stringify(Im.docLabel('W1.pdf')) === '{"label":"Approved W-1 permit","type":"PDF"}' && Im.docLabel('Plat_2.tif').label === 'Permit plat 2' && Im.docLabel('Plat_2.tif').type === 'TIF' && Im.docLabel('x.pdf').label === 'Document', 'images: a file suffix is named as a letter or a plat, numbered when there are several');
+  const dayP = { ...day, release: relP, permits: { rows: [['0919696', '301', '08', '1', 'X LLC', 100, 'H', null, null, null, ['W1.pdf', 'Plat_1.pdf']]] }, surveys: { day: '2026-10-29', n: 2, rows: [['42301', '301', 'M', null, null, null, null, null, '9936440', null, null], ['42302', '301', 'O', null, null, null, null, null, 'x/../9', null, null]] } };
+  const fp = Im.filedPermits(dayP)[0];
+  check(fp.docs.length === 2 && fp.docs[0].original.endsWith('/0919696_W1.pdf') && fp.docs[0].preview.endsWith('/0919696_W1.pdf.jpg') && fp.docs[1].original.endsWith('/0919696_Plat_1.pdf') && fp.docs[1].preview === null && fp.docs[1].label === 'Permit plat 1' && fp.files.length === 2,
+    'images: each published file has its label, its address and its preview, or null where it has none');
+  check(Im.filedPermits(day)[0].docs.every((x) => x.original === null && x.preview === null), 'images: a day file that names no release has no addresses, so the page links nothing');
+  const sv = Im.filedSurveys({ ...dayP, release: { ...relP, noPreview: [] } });
+  check(sv.length === 1 && sv[0].id === '9936440' && sv[0].doc.preview.endsWith('/dir_survey_9936440.pdf.jpg') && sv[0].doc.original.endsWith('/dir_survey_9936440.pdf') && sv[0].doc.label === 'Directional survey 9936440', 'images: a survey with an odd id is left out, the others get an address and a preview');
+  check(Im.filedSurveys(day).length === 0 && Im.filedSurveys(null).length === 0 && Im.filedSurveys({ surveys: dayP.surveys }).length === 0, 'images: surveys are listed only for a day whose release is named');
   const lc = Im.lifecycle(pk);
   check(lc.map((s) => s.id).join() === 'permit,drilling,completion' && lc[0].n === 168 && lc[1].present === false && lc[1].kinds === null, 'images: the lifecycle has three stages, in order, and a stage with no pack has no kinds');
   check(Im.liveCandidates(rows).join() === '2026-11-01,2026-10-31,2026-10-30', 'images: live days are tried newest first');

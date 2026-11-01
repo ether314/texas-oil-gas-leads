@@ -2,7 +2,7 @@
 
 An interactive dashboard and map of oil and gas drilling activity, producing operators and the companies that serve
 them, for Texas, Oklahoma, New Mexico and the federal offshore (the Gulf of America), built only from public records. It is a static site (HTML, CSS and JavaScript modules, no
-build step, no external requests) plus the Python scripts that build its data files. (The repository and the live
+build step, no external requests apart from the document previews described under Privacy) plus the Python scripts that build its data files. (The repository and the live
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
@@ -16,7 +16,7 @@ address keep their first name, `texas-oil-gas-leads`.)
 - **National**: every state agency's drilling permits side by side (`#national`): a tile map of the states you click into, the months stacked by state, a ranking, the kinds of permits
   (new wells, injection and disposal, re-entries, reworks, amendments) where an agency tells them apart, and a table of who is covered and who is not yet. Each agency counts what it
   publishes, permits by approval or issue date or, where no approval dates by well exist, wells by spud date; the two are never added together, a state not read yet is "not available" and never zero,
-  and the BLM's onshore permits (federal land, which the states also permit) are a line of their own and never added into the states. See `site/pipeline/NOTES_D11.md`.
+  and the BLM's onshore permits (federal land, which the states also permit) are a line of their own and never added into the states. Each state is read by its own small producer from the agency's public file or service (Utah, Wyoming, California, Pennsylvania, North Dakota, Louisiana, Alabama, Florida, Illinois, Michigan, New York and South Dakota so far, plus Texas, Oklahoma, New Mexico, the offshore and the BLM; more are added as their sources are checked), run every Monday; a state not read yet says so and why, with the researched grade of its source. See `site/pipeline/NOTES_D11.md`.
 - **Permit data**: what each agency's drilling permit captures (`#fields`): the same 48 questions asked of every producing state's permit (and the BLM's and the offshore's): who the operator is, where the well is, how deep and how, the casing,
   cement, H2S, water and pit plans, spacing and ownership, which dates and documents the agency keeps. Each answer says whether the metric is published as data (a field in a downloadable file or API), shown only in a one-well lookup, asked for only on
   the form, not captured, or **not verified** (said so, never guessed), with the evidence named (a real data file, the agency's documentation, the form, a web page). Click a cell, an agency (its form, its open data, a grade from A, bulk data with
@@ -81,6 +81,14 @@ The data files beside them stay at the business and place level: a well is its A
 read into any data file and no file name from a pack is used** (names are made up). Oklahoma's documents and any contact list are never published. To go back: remove `--publish-docs` and delete the `daily-*` releases, and disable `well-images.yml` and delete
 the `wells-*` releases; details are in `site/pipeline/NOTES_D7.md` and `NOTES_D12.md`. To take one document down, delete its release file and its entry in `site/public/data/wells/county/<fips>.json`.
 The Commission has no address that opens a single document (its look-up pages need a session and an internal document number), which is why the files are kept here; each well page links its look-up forms.
+
+**Widened on 2026-11-01 (the owner's decision): the same Texas documents are now shown, not only linked.** Page one of each W-1 permit letter, permit plat and directional survey is drawn to a readable JPEG
+(about 900 px wide, at most about 200 KB; `render_preview` in `site/pipeline/d7_packs.py`) and published beside the document as a file of the same release (`<document>.jpg`, for example `0919696_W1.pdf.jpg`). The Texas images view and each drill page
+show these previews inline, with a link to the original. A preview is page one of a document the Commission publishes, readable, and unmodified apart from being rendered to a JPEG: nothing is cropped, blurred or redacted, so it can carry the same names, phone numbers and street addresses
+as the document. Oklahoma's documents stay unpublished and there is no contact list (the completion images are published, under their wells: see 2. above). To go back, run the capture with `--no-previews` (the documents stay linked) or remove `--publish-docs`, and delete the release's `.jpg` files.
+
+**The Content-Security-Policy changed with it (2026-11-01).** `img-src` now also allows `https://github.com` and `https://*.githubusercontent.com` (a release download is a redirect to a githubusercontent host), so that those previews load inline. Only `img-src` changed: `default-src 'self'` stays, so
+scripts, styles, fonts and data still come from the site itself, and the policy still has no `unsafe-inline`. A visitor's browser asks GitHub for the previews on the page it is looking at (sent with no referrer), and for nothing else.
 
 **A gate before anything is published.** Each Daily producer's `--check` runs in the nightly before the commit: every day file is scanned for an e-mail address, a web address and a phone number (and, for Oklahoma and New Mexico, a run of ten digits, since they publish
 no API numbers), and every operator name it publishes must pass the state's rule. A night that fails is dropped, not published (`site/pipeline/privacy_check.py`, `tests/test_privacy_gate.py`, which also scans every published data file).

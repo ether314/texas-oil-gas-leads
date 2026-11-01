@@ -10,6 +10,8 @@ import { spark } from './charts.js';
 import { opsLink } from './overview.js';
 import { gpsMap, rankList, stack, fmtMd, fmtDow, mb } from './daily-viz.js';
 import { num, card, head, tiles, table, pctOf } from './daily-kit.js';
+import { releaseOk as relOk, fileUrl as releaseFile, previewUrl, docLabel } from './images-data.js';
+import { previewGrid } from './previews.js';
 
 export const TX_TITLES = { permits: 'Drilling permits', pending: 'Permits pending approval', completions: 'Completion data', w1images: 'W-1 permit images', dirsurveys: 'Directional surveys', complimages: 'Completion images' };
 export const TX_ICONS = { permits: 'pin', pending: 'clock', completions: 'drop', w1images: 'layers', dirsurveys: 'rig', complimages: 'building' };
@@ -92,17 +94,11 @@ export function texasParts(ctx) {
 
   /* ---------- the GPS map, and a page (a URL) for each well with its filings ---------- */
   const fmtApi = (a) => '42-' + a.slice(0, 3) + '-' + a.slice(3); // state 42, county, well
-  // the release a report links to is validated before it becomes a link: names come from a data file
-  const relOk = (r) => !!r && /^[\w.-]+\/[\w.-]+$/.test(r.repo) && /^daily-\d{4}-\d\d-\d\d$/.test(r.tag);
-  const fileUrl = (rep, name) => (relOk(rep.release) && /^[\w.-]+$/.test(name) ? 'https://github.com/' + rep.release.repo + '/releases/download/' + rep.release.tag + '/' + name : null);
+  // the release a report links to is validated before it becomes a link: names come from a data file (images-data.js)
+  const fileUrl = (rep, name) => releaseFile(rep.release, name);
   const releaseUrl = (rep) => (relOk(rep.release) ? 'https://github.com/' + rep.release.repo + '/releases/tag/' + rep.release.tag : null);
   const gpsText = (lat, lon) => lat.toFixed(5) + ', ' + lon.toFixed(5);
   const mapsUrl = (lat, lon) => 'https://www.google.com/maps/search/?api=1&query=' + lat.toFixed(5) + ',' + lon.toFixed(5);
-  function docLabel(suffix) {
-    const m = /^(W1|Plat)(?:_(\d+))?\.(\w+)$/.exec(suffix);
-    if (!m) return { label: 'Document', type: '' };
-    return { label: (m[1] === 'W1' ? 'Approved W-1 permit' : 'Permit plat') + (m[2] ? ' ' + m[2] : ''), type: m[3].toUpperCase() };
-  }
   const docList = (items) => el('ul', { class: 'dr-docs' }, items.map((d) => el('li', {}, d.href
     ? el('a', { class: 'btn dr-doc', href: d.href, rel: 'noopener noreferrer' }, icon('layers', 15), el('span', { text: d.label }), d.type ? el('small', { text: d.type }) : null)
     : el('span', { class: 'dr-doc off', text: d.label }))));
@@ -124,15 +120,16 @@ export function texasParts(ctx) {
     const more = releaseUrl(rep) ? el('a', { href: releaseUrl(rep), rel: 'noopener noreferrer', text: 'All of this day\'s filings on GitHub' }) : null;
     const privacy = el('p', { class: 'fine', text: 'These are the Railroad Commission\'s scans, unmodified. They are public records and can carry the names, phone numbers and addresses of individuals.' });
     if (row) {
-      const own = (row[10] || []).map((suffix) => Object.assign(docLabel(suffix), { href: fileUrl(rep, row[0] + '_' + suffix) }));
-      const surveys = row[7] && sv ? sv.rows.filter((r) => r[0] === row[7]).map((r) => ({ label: 'Directional survey ' + r[8], type: 'PDF', href: fileUrl(rep, 'dir_survey_' + r[8] + '.pdf') })) : [];
+      const own = (row[10] || []).map((suffix) => Object.assign(docLabel(suffix), { href: fileUrl(rep, row[0] + '_' + suffix), preview: previewUrl(rep.release, row[0] + '_' + suffix) }));
+      const surveys = row[7] && sv ? sv.rows.filter((r) => r[0] === row[7]).map((r) => ({ label: 'Directional survey ' + r[8], type: 'PDF', href: fileUrl(rep, 'dir_survey_' + r[8] + '.pdf'), preview: previewUrl(rep.release, 'dir_survey_' + r[8] + '.pdf') })) : [];
       const docs = own.concat(surveys).filter((d) => d.href);
+      const pages = docs.filter((d) => d.preview).map((d) => ({ title: 'Permit ' + row[0], label: d.label, type: d.type, preview: d.preview, original: d.href }));
       return el('div', { class: 'dr-drill' }, head2('Permit ' + row[0], (row[4] || 'Operator #' + row[3]) + ' · ' + cname(row[1]) + ' County · District ' + row[2]),
         tiles([{ label: 'Planned depth', value: row[5] ? num(row[5]) + ' ft' : '—', note: KIND[row[6]] + ' well' }, { label: 'Permit issued', value: fmtDow(pr.day), note: 'new-drill permit' },
           row[7] ? { label: 'API number', value: fmtApi(row[7]), note: 'state · county · well' } : null, gps]),
         where,
         el('h4', { class: 'dr-h4', text: 'Filings for this drill' }),
-        docs.length ? [docList(docs), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
+        docs.length ? [pages.length ? previewGrid(pages) : null, docList(docs), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
           : el('p', { class: 'fine', text: 'No filings are published for this drill. They are copied on the night a report is captured live, so a day rebuilt afterward, or captured before publishing was switched on, has none.' }));
     }
     const twin = pr && srow[0] ? pr.rows.find((r) => r[7] === srow[0]) : null;
@@ -142,7 +139,8 @@ export function texasParts(ctx) {
       where,
       twin ? el('p', { class: 'fine' }, 'The same well was permitted this day: ', el('a', { href: hashFor(S.day, S.mode, { t: 'p', id: twin[0] }), onclick: (e) => { e.preventDefault(); S.open({ t: 'p', id: twin[0] }); }, text: 'permit ' + twin[0] }), '.') : null,
       el('h4', { class: 'dr-h4', text: 'Filing' }),
-      fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') ? [docList([{ label: 'Directional survey', type: 'PDF', href: fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') }]), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
+      fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') ? [previewUrl(rep.release, 'dir_survey_' + srow[8] + '.pdf') ? previewGrid([{ title: 'Survey ' + srow[8], label: 'Directional survey', type: 'PDF', preview: previewUrl(rep.release, 'dir_survey_' + srow[8] + '.pdf'), original: fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') }]) : null,
+        docList([{ label: 'Directional survey', type: 'PDF', href: fileUrl(rep, 'dir_survey_' + srow[8] + '.pdf') }]), el('p', { class: 'fine' }, more, ' · PDF files download from GitHub.'), privacy]
         : el('p', { class: 'fine', text: 'This survey\'s file is not published.' }));
   }
 

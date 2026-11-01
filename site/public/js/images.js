@@ -6,6 +6,7 @@ import { icon } from './icons.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { niceMax } from './national-data.js';
 import * as I from './images-data.js';
+import { previewGrid } from './previews.js';
 import { createWellsPanel } from './wells.js';
 import { tieLine } from './wells-data.js';
 
@@ -119,11 +120,20 @@ export function createImagesView({ root }) {
         }))) : null,
         p.sheet ? el('figure', { class: 'img-sheet' }, el('img', { src: 'data/daily/img/' + p.sheet, alt: 'A contact sheet of the first pages of sixteen documents in the ' + p.label.toLowerCase() + ', shrunk and blurred so nothing can be read', loading: 'lazy' }), el('figcaption', { class: 'fine', text: 'First pages of sixteen documents, shrunk and blurred.' })) : null);
     }));
+    // page one of each published document, readable (a click opens it larger, with a link to the original); only the documents the release was confirmed to hold a preview of
+    const pages = (docs, title) => docs.filter((x) => x.preview).map((x) => ({ title, label: x.label, type: x.type, preview: x.preview, original: x.original }));
+    const surveys = I.filedSurveys(file).filter((x) => x.doc.preview);
+    const seen = filed.slice(0, 12).reduce((t, f) => t + pages(f.docs, '').length, 0) + Math.min(12, surveys.length);
     const files = filed.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Permits whose filings are published (' + filed.length + ')' }),
-      el('ul', { class: 'img-files' }, filed.slice(0, 12).map((f) => el('li', {}, el('a', { href: '#daily?st=tx&d=' + d + '&drill=' + f.permit, text: 'Permit ' + f.permit }), el('small', { text: ' county ' + f.county + ', district ' + f.district + ' · ' + f.files.map(I.fileKind).join(', ') })))),
+      el('ul', { class: 'img-files' + (seen ? ' pv' : '') }, filed.slice(0, 12).map((f) => el('li', {}, el('a', { href: '#daily?st=tx&d=' + d + '&drill=' + f.permit, text: 'Permit ' + f.permit }), el('small', { text: ' county ' + f.county + ', district ' + f.district + ' · ' + f.files.map(I.fileKind).join(', ') }),
+        pages(f.docs, 'Permit ' + f.permit).length ? previewGrid(pages(f.docs, 'Permit ' + f.permit)) : null))),
       filed.length > 12 ? el('p', { class: 'fine', text: 'and ' + (filed.length - 12) + ' more in the Daily report.' }) : null,
-      rel ? el('p', { class: 'fine', text: 'The files are the Commission’s scans, on one GitHub release for the day (' + rel.files + ' files).' }) : null) : null;
-    return el('div', {}, body, files, el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#daily?st=tx&d=' + d }, 'The Daily report for ' + fmtDate(d), icon('arrow', 16))));
+      rel ? el('p', { class: 'fine', text: 'The files are the Commission’s scans, on one GitHub release for the day (' + rel.files + ' files' + (rel.previews ? ', ' + rel.previews + ' with a readable preview' : '') + ').' }) : null) : null;
+    const surveyBlock = surveys.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Directional surveys with a preview (' + surveys.length + ')' }),
+      previewGrid(surveys.slice(0, 12).map((x) => ({ title: 'Survey ' + x.id, label: x.doc.label, type: x.doc.type, preview: x.doc.preview, original: x.doc.original }))),
+      surveys.length > 12 ? el('p', { class: 'fine', text: 'The first 12 of ' + surveys.length + '; each survey has a page of its own in the Daily report.' }) : null) : null;
+    const privacy = seen ? el('p', { class: 'fine', text: 'Each preview is page one of a document the Commission publishes, drawn as a picture: readable, nothing blurred, cropped or hidden. They are public records and can carry the names, phone numbers and addresses of individuals. Click a page to enlarge it.' }) : null;
+    return el('div', {}, body, files, surveyBlock, privacy, el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#daily?st=tx&d=' + d }, 'The Daily report for ' + fmtDate(d), icon('arrow', 16))));
   }
   async function choose(d, { fromHash = false } = {}) {
     const r = rows.find((x) => x.d === d && I.havePacks(x));
@@ -158,7 +168,7 @@ export function createImagesView({ root }) {
     slots.day = el('div', {}); slots.dayHead = el('h2', { text: '' });
     const dayBox = el('section', { class: 'card nat-card reveal is-in', 'aria-live': 'polite' }, el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'One day'), slots.dayHead, el('p', { class: 'sub', text: 'What the three packs of this report day hold.' }))), slots.day);
     slots.rest.replaceChildren(figures(), lifeCard(), dayCard(), dayBox,
-      el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; every document itself is published readable and unmodified under its well (Find a well, above), and can carry the names, phone numbers and addresses of individuals.' }));
+      el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; every document itself is published readable and unmodified under its well (Find a well, above), and can carry the names, phone numbers and addresses of individuals. A day’s permit letters, plats and surveys also show page one here and on their drill page in the Daily report.' }));
     return true;
   }
   return {

@@ -91,7 +91,9 @@ export function stack(doc, measure, n = 36, top = 8) {
     series.push({ id: 'other', name: rest.length === group.length ? 'States' : 'Other states', color: 'var(--n-other)', values: other, count: rest.length });
   }
   const totals = months.map((_, i) => series.reduce((t, s) => t + s.values[i], 0));
-  return { months, series, totals, end: months[months.length - 1] || null };
+  // states of this count whose own figures end before the axis does (Illinois's layer runs about two months behind): their later months are left out of the bars, not counted as zero
+  const lagging = group.filter((s) => lastIdx(s) < end).map((s) => s.name);
+  return { months, series, totals, end: months[months.length - 1] || null, lagging };
 }
 
 // a state's band mix over its last 12 months: only the bands the state can tell; null when it can tell only `new` (nothing to mix)

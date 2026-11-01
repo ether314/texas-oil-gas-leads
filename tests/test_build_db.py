@@ -86,6 +86,13 @@ check(one("SELECT COUNT(*) FROM permit_points") == npts, "every permit point is 
 check(one("SELECT COUNT(*) FROM permit_points WHERE lat NOT BETWEEN 24 AND 50 OR lon NOT BETWEEN -110 AND -80 OR day IS NULL") == 0, "points decode to places between New Mexico and the Gulf, and to real days")
 check(one("SELECT COUNT(*) FROM companies") == len(J("companies")["rows"]), "the company pool is loaded")
 
+if os.path.exists(os.path.join(DATA, "permit-fields.json")):
+    pf = J("permit-fields")
+    check(one("SELECT COUNT(*) FROM metrics") == len(pf["metrics"]) and one("SELECT COUNT(*) FROM field_states") == len(pf["states"]) and one("SELECT COUNT(*) FROM field_cells") == len(pf["metrics"]) * len(pf["states"]),
+          "the matrix is loaded: every agency answers every metric (%d cells)" % one("SELECT COUNT(*) FROM field_cells"))
+    check(one("SELECT COUNT(*) FROM field_cells WHERE status NOT IN ('data','query','form','none','unknown')") == 0 and one("SELECT COUNT(*) FROM field_cells WHERE status = 'data' AND evidence NOT IN ('file','doc')") == 0,
+          "every cell has one of the five statuses, and 'data' always has a file or the documentation behind it")
+    check(one("SELECT COUNT(*) FROM field_sources") == sum(len(s["sources"]) for s in pf["states"].values()), "every researched source is a row")
 days = sum(len(glob.glob(os.path.join(DATA, d, "????-??-??.json"))) for d in ("daily", "daily-ok", "daily-nm"))
 check(one("SELECT COUNT(*) FROM daily_reports") == days, "every Daily report is a row (%d)" % days)
 rows = 0
