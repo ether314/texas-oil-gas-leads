@@ -3,7 +3,7 @@
 
 Everything the site publishes (every JSON file under site/public/data, the Daily reports of the three states, the national report's files, the matrix of what each permit
 captures and the Texas image index) is loaded into one database you can open in any SQLite tool, so it can be queried, joined and kept on your own machine. It is built from the
-committed files in a few seconds, never fetched, so it holds exactly what the site holds; rebuild it after pulling. The file is kept out of git (`db/`, `*.sqlite`).
+committed files in a few seconds, never fetched, so it holds exactly what the site holds; rebuild it after pulling. The file is kept out of git (`db/*`, `*.sqlite`), except one compressed snapshot with the FracFocus registry, `db/oil-tracker.sqlite.gz` (the owner's decision of 2026-11-01).
 
   python3 -I site/pipeline/build_db.py [--out FILE] [--data DIR]       build (default: db/oil-tracker.sqlite)
   python3 -I site/pipeline/build_db.py --check [--out FILE]            open an existing file and verify it (integrity, row counts against its own documents)
@@ -31,8 +31,8 @@ Two layers, so nothing is lost and common questions are easy:
     metrics, field_states, field_cells, field_sources     the matrix of what each agency's permit captures (when permit-fields.json exists)
   views                     v_permits_by_month (permits and spuds kept apart), v_latest_12_months
 
-The FracFocus tables are optional and local: they hold what the registry publishes and the site does not (API numbers, well names, operators that are people), so they are only ever written to a
-file git ignores (`ff_db.ensure_local_only`). Without --fracfocus the database holds only what the site publishes.
+The FracFocus tables are optional: they hold what the registry publishes and the site does not (API numbers, well names, operators that are people), so the loader only writes them to a file git
+ignores or outside the repository (`ff_db.ensure_local_only`); the one committed snapshot is the compressed `db/oil-tracker.sqlite.gz`. Without --fracfocus the database holds only what the site publishes.
 
 Counts of different measures (permits approved, wells spudded) are different columns of meaning: `jurisdictions.measure` says which, and nothing here adds them.
 """

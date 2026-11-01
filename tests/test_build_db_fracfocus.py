@@ -184,7 +184,10 @@ bad_paths = [os.path.join(REPO, "site", "public", "data", "x.sqlite"), os.path.j
 check(all(not raises(lambda p=p: F.ensure_local_only(p)) for p in ok_paths), "the tables may go to db/, to any .sqlite or outside the repository")
 check(all(raises(lambda p=p: F.ensure_local_only(p), ValueError) for p in bad_paths), "and are refused under site/ and to a name git would track")
 gi = open(os.path.join(REPO, ".gitignore")).read().split()
-check("db/" in gi and "*.sqlite" in gi, ".gitignore keeps db/ and *.sqlite out of git")
+check("db/*" in gi and "*.sqlite" in gi and "!db/oil-tracker.sqlite.gz" in gi and gi.index("!db/oil-tracker.sqlite.gz") > gi.index("*.gz"), ".gitignore keeps db/ and *.sqlite out of git, with one exception for the compressed snapshot (listed after the rule for .gz that it overrides)")
+import subprocess
+ign = lambda p: subprocess.run(["git", "check-ignore", "-q", p], cwd=REPO).returncode == 0
+check(ign("db/oil-tracker.sqlite") and ign("db/other.gz") and ign("db/ff.sqlite") and ign("db/oil-tracker.sqlite.building") and not ign("db/oil-tracker.sqlite.gz"), "git ignores the uncompressed database and anything else in db/, and only the compressed snapshot is let through")
 check(raises(lambda: B.build(os.path.join(REPO, "site", "public", "data", "leak.sqlite"), B.DATA, fracfocus=True, ff_zip=zpath), ValueError) and not os.path.exists(os.path.join(REPO, "site", "public", "data", "leak.sqlite")),
       "build_db refuses to put them in the published data folder and writes nothing there")
 plain = os.path.join(tmp, "plain.sqlite")
@@ -199,7 +202,7 @@ full = os.path.join(tmp, "full.sqlite")
 counts_full = B.build(full, B.DATA, ff_zip=zpath, chemicals=True)
 check(counts_full["ff_disclosures"] == len(ROWS) and counts_full["ff_ingredients"] == len(INGREDIENTS) and counts_full["new_wells"] > 15000 and B.check(full) == [], "build_db --fracfocus-zip --chemicals adds the tables beside the site's own, and --check is clean")
 dbf = sqlite3.connect(full)
-check(dict(dbf.execute("SELECT key, value FROM meta WHERE key LIKE 'fracfocus_%'").fetchall())["fracfocus_note"].startswith("Local only"), "the database says in its own meta that it is local only")
+check("API numbers" in dict(dbf.execute("SELECT key, value FROM meta WHERE key LIKE 'fracfocus_%'").fetchall())["fracfocus_note"], "the database says in its own meta what it holds that the site never publishes")
 dbf.execute("DELETE FROM ff_disclosures WHERE disclosure_id = 'd02'")
 dbf.commit()
 check(any("ff_disclosures" in x for x in B.check(full)), "a tampered table is noticed by --check")
@@ -207,6 +210,31 @@ dbf.execute("UPDATE ff_disclosures SET is_first = 1 WHERE disclosure_id = 'd03'"
 dbf.commit()
 dbf.close()
 check(any("first" in x for x in B.check(full)), "and so is a well with two first disclosures")
+
+# ------------------------------------------------------------------------------------------------ the committed snapshot (the owner's decision of 2026-11-01)
+import gzip
+import shutil
+snap_path = os.path.join(REPO, "db", "oil-tracker.sqlite.gz")
+check(os.path.isfile(snap_path) and os.path.getsize(snap_path) < 50 * 1024 * 1024 and not os.path.realpath(snap_path).startswith(os.path.join(REPO, "site") + os.sep),
+      "the committed snapshot exists, is under GitHub's 50 MB warning (the hard limit is 100 MiB) and is not under site/, so the live site does not serve it: %s" % (round(os.path.getsize(snap_path) / 1048576, 1) if os.path.isfile(snap_path) else "missing"))
+if os.path.isfile(snap_path):
+    check(open(snap_path, "rb").read(2) == b"\x1f\x8b", "it is a gzip file")
+    plain_snap = os.path.join(tmp, "snapshot.sqlite")
+    with gzip.open(snap_path, "rb") as src, open(plain_snap, "wb") as dst:
+        shutil.copyfileobj(src, dst)
+    check(open(plain_snap, "rb").read(16) == b"SQLite format 3\x00" and B.check(plain_snap) == [], "it unpacks to a SQLite database that passes build_db --check, the FracFocus tables included")
+    sdb = sqlite3.connect(plain_snap)
+    names_snap = {x[0] for x in sdb.execute("SELECT name FROM sqlite_master")}
+    n_snap = sdb.execute("SELECT COUNT(*) FROM ff_disclosures").fetchone()[0]
+    check({"ff_disclosures", "ff_water_sources", "v_ff_new_wells", "new_wells", "jurisdictions"} <= names_snap and "ff_ingredients" not in names_snap and n_snap > 250000
+          and sdb.execute("SELECT COUNT(*) FROM ff_disclosures WHERE is_first = 1").fetchone()[0] > 230000, "it holds the whole registry's disclosures (%d) and water sources and the site's own tables, and no ingredients (2.45 GB)" % n_snap)
+    sdb.close()
+    pub = ""
+    for root, _, files in os.walk(os.path.join(REPO, "site", "public", "data")):
+        for f in files:
+            if f.endswith(".json") and ("newwells" in root or f in ("summary.json", "points.json")):
+                pub += open(os.path.join(root, f), encoding="utf-8").read()
+    check(pub and not re.search(r"\d{10}", pub), "and the site's own FracFocus files, which are what the live site serves, still hold no API number")
 
 # ------------------------------------------------------------------------------------------------ the download: a new folder, resumed once, a refusal is an answer
 blob = open(zpath, "rb").read()
