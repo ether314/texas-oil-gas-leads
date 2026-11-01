@@ -1,6 +1,7 @@
 // The Overview: the country's new wells, the same for every state. A hero with the map as its backdrop and four figures, the explorer (every well of the last two years as a
 // dot, or every well since 2011 once asked for: hover one for its well, click a state to zoom in, replay the years), the states ranked, every month since 2011 stacked by state,
-// the top counties and operators, and when each source was current. Everything here is drawn from data/newwells/ (FracFocus: one GPS point per fractured well), the one source that has the same facts for every
+// the top counties and operators, and when each source was current. The explorer also draws the oil permits and spuds the state agencies record with a location (Texas, Oklahoma, New Mexico,
+// the federal offshore) as hollow rings: a filled dot is a fracked well, a ring an oil permit or spud, and the two are never added. Everything here is drawn from data/newwells/ (FracFocus: one GPS point per fractured well), the one source that has the same facts for every
 // state that reports to it; nothing is shown that only some states can give. The permits themselves, by each agency's own count, are the National page.
 import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, countUp, reduced } from './util.js';
 import { icon } from './icons.js';
@@ -20,16 +21,20 @@ const OWN_MAP = { TX: 'tx', OK: 'ok', NM: 'nm' }; // the states the Map and Oper
 
 export function createOverview(meta) {
   let loaded = null; let started = false; let sel = null; let seq = 0; let wantAll = false;
-  const S = { map: null, hero: null, tl: null, rows: new Map(), chips: new Map(), panel: null, pick: null, all: false, years: null, status: null };
+  let kinds = 'both'; let wantKinds = 'both'; // what the explorer draws: 'both', 'wells' (fracked wells only) or 'permits' (oil permits and spuds only); without permit files it is always the wells
+  const flags = () => ({ wells: !S.Q || kinds !== 'permits', permits: !!S.Q && kinds !== 'wells' });
+  const S = { map: null, hero: null, tl: null, rows: new Map(), chips: new Map(), panel: null, pick: null, all: false, years: null, status: null, Q: null, kindsSeg: null };
 
   /* ---------- the data: one summary, one set of points, the outlines, and the national file for the list of producing states ---------- */
   async function data() {
     if (loaded) return loaded;
-    const [doc, pts, out, nat] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national')]);
+    const [doc, pts, out, nat, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
+    // the oil permit files are optional: a page without one still draws the wells
+    const permits = D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length);
     const P = D.decode(pts); const outlines = G.buildOutlines(out);
     const producing = nat ? [...nat.states, ...nat.gaps].filter((s) => !['FO', 'BL'].includes(s.id)).map((s) => ({ id: s.id, name: s.name })) : [];
     const win = D.windowOf(doc); const range = D.settledRange(P, doc);
-    loaded = { doc, P, pts, outlines, nat, producing, win, range, T: D.totals(doc), full: null };
+    loaded = { doc, P, pts, permits, outlines, nat, producing, win, range, T: D.totals(doc), full: null };
     return loaded;
   }
   // the earlier wells (every well with a point since 2011: about 2 MB), loaded when the explorer is asked for all the years and merged with the last two years' points
@@ -92,7 +97,7 @@ export function createOverview(meta) {
         el('p', { class: 'nat-agency', text: 'FracFocus registry · counted by the day of the first job' }),
         el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(T.p12) }), el('span', { text: ' new wells in the 12 months to ' + monthLabel(doc.settled.slice(0, 7)) }), T.change != null ? delta(T.change) : null),
         el('p', { class: 'nd', text: 'Click a state on the map, or its name in the key, to zoom in and see its counties, its operators and how it has moved. Hover or tap a dot for the well.' }),
-        el('p', { class: 'fine', text: fmt.format(land.n) + ' of the ' + fmt.format(land.of) + ' wells of that year (' + Math.round((land.n / Math.max(1, land.of)) * 100) + '%) are on federal or tribal land.' }));
+        el('p', { class: 'fine', text: fmt.format(land.n) + ' of the ' + fmt.format(land.of) + ' wells of that year (' + Math.round((land.n / Math.max(1, land.of)) * 100) + '%) are on federal or tribal land.' }), ringLine(null, range));
       return box;
     }
     const s = D.byId(doc, id); const c = D.shownChange(s);
@@ -110,11 +115,24 @@ export function createOverview(meta) {
     links.append(el('a', { class: 'more-link', href: '#national?s=' + id }, 'Its permits, by the agency’s own count', icon('arrow', 16)));
     if (OWN_MAP[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_MAP[id] }, 'Open ' + s.name + ' in the Map', icon('arrow', 16)));
     links.append(el('a', { class: 'more-link', href: SOURCE, target: '_blank', rel: 'noopener noreferrer' }, 'Source: FracFocus', icon('arrow', 16)));
-    put(box, links);
+    put(box, ringLine(id, range), links);
     return box;
   }
+  // beside the fracked wells' figures, the oil permits and spuds with a location in the same 12 months: a ring, said apart, never added; a state that publishes none says so (not a zero)
+  function ringLine(id, range) {
+    const Q = S.Q; if (!Q) return null;
+    const rows = D.permitsPerState(Q, range[0], range[1]);
+    const mark = el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' });
+    if (id) {
+      const n = (rows.find((r) => r.id === id) || {}).n;
+      return el('p', { class: 'fine nw-ringline' }, mark, Q.states.includes(id) ? fmt.format(n || 0) + (Q.spud[Q.states.indexOf(id)] ? ' oil wells spudded' : ' oil permits approved') + ' with a map location in the same 12 months: the rings, a state agency\u2019s own record, not added to the fracked wells.'
+        : ((D.byId(loaded.doc, id) || {}).name || id) + ' publishes no oil permit locations, so it has no ring here.');
+    }
+    const total = rows.reduce((t, r) => t + r.n, 0);
+    return el('p', { class: 'fine nw-ringline' }, mark, fmt.format(total) + ' oil permits and spuds with a map location in the same 12 months (' + rows.map((r) => D.permitStateName(r.id) + ' ' + fmt.format(r.n)).join(', ') + '): the rings, not added to the fracked wells.');
+  }
   // the address: #overview?s=TX&y=all (the state the map is zoomed to, and every year since 2011 instead of the last two)
-  const addr = () => '#overview' + [sel ? 's=' + sel : null, S.all ? 'y=all' : null].filter(Boolean).map((x, i) => (i ? '&' : '?') + x).join('');
+  const addr = () => '#overview' + [sel ? 's=' + sel : null, S.all ? 'y=all' : null, S.Q && kinds !== 'both' ? 'k=' + kinds : null].filter(Boolean).map((x, i) => (i ? '&' : '?') + x).join('');
   function select(id, { fromHash = false } = {}) {
     const dt = loaded; if (!dt) return;
     sel = id && D.byId(dt.doc, id) && D.byId(dt.doc, id).p12 > 0 ? id : null;
@@ -131,10 +149,14 @@ export function createOverview(meta) {
   function explorer(dt) {
     const { doc, outlines } = dt; const { P } = scope(dt); const all = S.all; const first = doc.months[0].slice(0, 4);
     const watchLabel = all ? 'Watch ' + D.yearsOf(P) + ' years' : 'Watch 24 months';
-    const canvas = el('canvas', { class: 'nw-canvas', role: 'img', 'aria-label': 'Map of the ' + fmt.format(P.n) + (all ? ' wells with a GPS point since ' + first : ' new wells of the last 24 months') + ', one dot each, in ' + D.active(doc).length + ' states. The ranking below lists the states in text; choose a state with the selector to zoom to it.' });
+    const canvas = el('canvas', { class: 'nw-canvas', role: 'img', 'aria-label': 'Map of the ' + fmt.format(P.n) + (all ? ' wells with a GPS point since ' + first : ' new wells of the last 24 months') + ', one dot each, in ' + D.active(doc).length + ' states' + (dt.permits.length ? ', and the oil permits and spuds the state agencies record with a location, one ring each' : '') + '. The ranking below lists the states in text; choose a state with the selector to zoom to it.' });
     const stage = el('div', { class: 'nw-stage' }, canvas);
-    S.map = createUSMap({ canvas, host: stage, outlines, P, doc, interactive: true, onSelect: (id) => select(id) });
-    S.tl = createTimelapse({ engine: S.map, t0: P.t0, label: all ? 'Watch every new well since ' + first : 'Watch the new wells', thing: { one: 'well', many: 'wells' }, seconds: all ? 28 : 12,
+    // the oil permits and spuds with a location, counted from the same first day as the wells so the rings share the replay's days
+    S.Q = dt.permits.length ? D.decodePermits(dt.permits, D.dayIso(P.t0)) : null;
+    S.map = createUSMap({ canvas, host: stage, outlines, P, doc, Q: S.Q, qOpen: true, interactive: true, onSelect: (id) => select(id) });
+    if (S.Q) S.map.setKinds(flags());
+    S.tl = createTimelapse({ engine: S.map, t0: P.t0, label: all ? 'Watch every new well since ' + first : 'Watch the new wells', seconds: all ? 28 : 12,
+      thing: () => (!S.Q ? { one: 'well', many: 'wells' } : kinds === 'permits' ? { one: 'oil permit or spud', many: 'oil permits and spuds' } : { one: 'fracked well', many: 'fracked wells' }),
       lead: all ? D.yearsOf(P) + ' years of new wells.' : 'Two years of new wells.',
       note: all ? ' Each dot appears on the day of its first job and glows for a month. Watch for the slowdowns of 2015 and 2016 and of 2020. The newest weeks are still being disclosed.' : ' Each dot appears on the day of its first job and glows for a month. The newest weeks are still being disclosed.' });
     const watch = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false' }, icon('play', 16), watchLabel);
@@ -153,13 +175,33 @@ export function createOverview(meta) {
       S.chips.set(x.id, b); return el('li', {}, b);
     }).concat([(() => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', D.OTHER_COLOR); return el('li', { class: 'nw-other' }, sw, el('span', { text: 'every other state' })); })()]));
     S.panel = el('div', { class: 'nat-panel-slot' });
+    const legend = S.Q ? layerLegend(dt) : null;
     const card = el('section', { class: 'card nw-explore reveal is-in', id: 'explore', 'aria-labelledby': 'explore-h' });
     const head = hdr('The map', 'pin', 'Every new well, where it sits',
       all ? 'Each dot is a well, every one in the registry with a GPS point: ' + fmt.format(P.n) + ' first fracturing jobs from ' + monthLabel(doc.months[0]) + ' to ' + fmtDate(doc.asOf) + ', in every state that reports to it.'
         : 'Each dot is a well whose first fracturing job was in the last 24 months, in every state that reports to the registry.', el('div', { class: 'card-tools' }, S.pick, S.years.el, watch));
+    if (S.Q) head.querySelector('.sub').textContent += ' Hollow rings are the oil permits and spuds the state agencies record with a location.';
     head.querySelector('h2').id = 'explore-h';
-    put(card, head, S.status, el('div', { class: 'nw-grid' }, el('div', { class: 'nw-mapcol' }, stage, S.tl.bar, keys), S.panel));
+    put(card, head, S.status, el('div', { class: 'nw-grid' }, el('div', { class: 'nw-mapcol' }, stage, S.tl.bar, legend, keys), S.panel));
     return card;
+  }
+  // which is which: a filled glowing dot is a fracked well (FracFocus), a hollow ring an oil permit or spud (a state agency's own record with a location); a switch shows both or either
+  function layerLegend(dt) {
+    S.kindsSeg = segmented({ label: 'What the map shows', tabs: false, prefix: 'nwk', value: kinds, options: [{ id: 'both', label: 'Both' }, { id: 'wells', label: 'Fracked wells' }, { id: 'permits', label: 'Oil permits' }], onChange: (id) => setKinds(id) });
+    const tx = dt.permits.find((x) => x.id === 'TX'); const share = tx && tx.pm.coverage ? Math.round(tx.pm.coverage.share12 * 100) : null;
+    const marks = el('ul', { class: 'nw-marks', 'aria-label': 'What the marks on the map are' },
+      el('li', {}, el('i', { class: 'dd-dotkey', 'aria-hidden': 'true' }), 'Fracked well: the first fracturing job, every state that reports'),
+      el('li', {}, el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }), 'Oil permit or spud: an agency\u2019s record with a location'));
+    const note = el('p', { class: 'fine', text: 'A ring is a state agency\u2019s own record with a map location: a permit approved (Texas, Oklahoma) or a well spudded (New Mexico, the federal offshore). ' + (share != null ? 'About ' + share + '% of Texas\u2019s permits of the last year have one. ' : '') + 'Other states publish none. Rings and dots are different things and are never added together.' });
+    return el('div', { class: 'nw-legend' }, S.kindsSeg.el, marks, note);
+  }
+  // 'both', 'wells' or 'permits': the map's layers follow; the replay's count says what it counts
+  function setKinds(id, { fromHash = false } = {}) {
+    const next = id === 'wells' || id === 'permits' ? id : 'both';
+    if (!S.Q || next === kinds) return;
+    kinds = next; S.map.setKinds(flags()); if (S.kindsSeg) S.kindsSeg.set(kinds, false);
+    if (S.tl) S.tl.refresh();
+    if (!fromHash) { const a = addr(); if (location.hash !== a) history.replaceState(null, '', a); }
   }
   // the explorer shows the last two years or every year since 2011: the earlier wells are fetched the first time they are asked for, then the map is built again over them
   let switching = false;
@@ -290,6 +332,7 @@ export function createOverview(meta) {
     S.hero = createUSMap({ canvas: $('#hero-canvas'), host, outlines: dt.outlines, P: dt.P, doc: dt.doc, interactive: false, box: heroBox(host) });
     host.classList.add('has-map');
     const slot = $('#nw-slot');
+    kinds = wantKinds;
     slot.replaceChildren(explorer(dt), ranking(dt), months(dt), leaders(dt));
     // the hero's button: scroll to the explorer and open the replay (a link to the page it is on would do nothing)
     $('#go-explore').addEventListener('click', (e) => {
@@ -300,15 +343,16 @@ export function createOverview(meta) {
     freshness(dt);
     started = true;
     select(sel, { fromHash: true });
-    if (/[?&]debug\b/.test(location.search)) window.__nw = { get map() { return S.map; }, hero: S.hero, get P() { return scope(dt).P; }, doc: dt.doc, D, years: switchYears };
+    if (/[?&]debug\b/.test(location.search)) window.__nw = { get map() { return S.map; }, hero: S.hero, get P() { return scope(dt).P; }, get Q() { return S.Q; }, doc: dt.doc, D, years: switchYears };
   }
 
   return {
     // the address names a state (#overview?s=TX) and the years (y=all: every year since 2011): the explorer zooms to it. Drawn on the first visit only; later visits just move the map.
     async show(params) {
       const want = ((params && params.get('s')) || '').toUpperCase() || null; const years = !!params && params.get('y') === 'all';
-      if (!started && !seq) { seq++; sel = want; wantAll = years; await draw(seq); return; }
-      if (started) { select(want, { fromHash: true }); if (years !== S.all) await switchYears(years); } else { sel = want; wantAll = years; }
+      const k = params && params.get('k'); const wk = k === 'wells' || k === 'permits' ? k : 'both';
+      if (!started && !seq) { seq++; sel = want; wantAll = years; wantKinds = wk; await draw(seq); return; }
+      if (started) { select(want, { fromHash: true }); if (years !== S.all) await switchYears(years); setKinds(wk, { fromHash: true }); } else { sel = want; wantAll = years; wantKinds = wk; }
     },
     get selected() { return sel; },
     pause() { if (S.tl && S.tl.open) S.tl.pause(); },
