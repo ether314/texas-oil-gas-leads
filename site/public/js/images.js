@@ -1,7 +1,7 @@
 // The Texas images view: the scanned filings the Railroad Commission publishes about each well, as three packs a business day. What a well leaves behind as images,
 // by stage of its life (permit, drilling, completion), how much arrives each day, and, for any day, what its packs hold and which permits' filings are published.
 // Data: the Daily archive's index and day files (d7_daily.py), and above them the well finder (wells.js: every document of the packs, tied to its well by d12_wells.py).
-import { el, svg, load, loadOpt, fmt, fmtDate } from './util.js';
+import { el, svg, load, loadOpt, fmt, fmtDate, chartWidth } from './util.js';
 import { icon } from './icons.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { niceMax } from './national-data.js';
@@ -59,7 +59,7 @@ export function createImagesView({ root }) {
 
   /* ---------- day by day ---------- */
   function chart() {
-    const W = 720; const H = 230; const L = 52; const R = 6; const T = 8; const B = 22;
+    const W = chartWidth(slots.chart, 1200); const H = W < 500 ? 200 : 230; const L = 52; const R = 6; const T = 8; const B = 22;
     const n = rows.length; const slot = (W - L - R) / Math.max(1, n); const bw = Math.max(2, slot * 0.78);
     const { top, ticks } = niceMax(Math.max(1, ...rows.map(I.dayTotal)));
     const y = (v) => T + (H - T - B) * (1 - v / top);

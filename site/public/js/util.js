@@ -177,3 +177,7 @@ export function replaceHash(view, params) {
   const next = '#' + view + (q ? '?' + q : '');
   if (location.hash !== next) history.replaceState(null, '', next);
 }
+
+// the width (in px) an SVG chart is drawn at: its container's, between min and max, so a phone's chart is drawn at its own size and its text is not shrunk to a third (a fixed 720 wide viewBox
+// scaled to 330 px made 11 px axis labels 4.5 px). A container that is hidden or not on the page yet has no width: the chart is drawn at max and drawn again when it is shown.
+export const chartWidth = (node, max = 720, min = 300) => Math.max(min, Math.min(max, Math.round((node && node.clientWidth) || max)));

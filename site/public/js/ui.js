@@ -4,7 +4,7 @@ import { icon } from './icons.js';
 import { activeStates, stateParam } from './states.js';
 
 /* segmented control. tabs=true: an ARIA tablist (arrow keys, roving tabindex); tabs=false: toggle buttons (aria-pressed) */
-export function segmented({ label, options, value, onChange, tabs = true, prefix = 'seg' }) {
+export function segmented({ label, options, value, onChange, tabs = true, prefix = 'seg', wrap = false }) {
   const thumb = el('span', { class: 'seg-thumb', 'aria-hidden': 'true' });
   const btns = options.map((o) => el('button', {
     type: 'button', 'data-id': o.id, id: prefix + '-' + o.id, role: tabs ? 'tab' : null,
@@ -13,7 +13,7 @@ export function segmented({ label, options, value, onChange, tabs = true, prefix
   }, o.icon ? icon(o.icon, 15) : null, o.dot ? el('i', { class: 'seg-dot ' + o.dot, 'aria-hidden': 'true' }) : null,
   // a label with a short form (a phone shows "OK" for Oklahoma, so every state fits the bar): the long one is hidden there, and the button's name stays the full one
   el('span', { class: o.abbr ? 'seg-l has-abbr' : null, text: o.label }), o.abbr ? el('span', { class: 'seg-a', 'aria-hidden': 'true', text: o.abbr }) : null));
-  const root = el('div', { class: 'seg', role: tabs ? 'tablist' : 'group', 'aria-label': label }, thumb, btns);
+  const root = el('div', { class: wrap ? 'seg wrap' : 'seg', role: tabs ? 'tablist' : 'group', 'aria-label': label }, thumb, btns);
   let cur = null;
   // a bar whose labels have short forms ("OK" for Oklahoma) shows the full labels while they fit and, when they do not, the short ones, then tighter buttons.
   // It measures instead of guessing from the page's width: the same words are wider in one system font than in another (the full names need 429 px in one, 466 in another)

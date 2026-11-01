@@ -16,6 +16,7 @@ export function createFieldsView({ root }) {
   let doc = null; let started = false;
   let sel = { s: null, m: null }; let group = 'all'; let sort = 'coverage';
   const slots = {};
+  let grid = []; // the matrix's cell buttons by row then column: one of them is a tab stop, the arrow keys move between them (1,680 buttons were 1,680 tab stops)
   const cellBtns = new Map(); const colHeads = new Map(); const rowHeads = new Map();
 
   function writeHash() {
@@ -45,7 +46,7 @@ export function createFieldsView({ root }) {
 
   /* ---------- the matrix ---------- */
   function matrix() {
-    cellBtns.clear(); colHeads.clear(); rowHeads.clear();
+    cellBtns.clear(); colHeads.clear(); rowHeads.clear(); grid = [];
     const cols = F.columns(doc, sort);
     const metrics = F.metricsIn(doc, group);
     const head = el('tr', {}, el('th', { scope: 'col', class: 'fx-corner', text: 'Metric' }), cols.map((id) => {
@@ -64,22 +65,46 @@ export function createFieldsView({ root }) {
       const ms = F.metricScore(doc, m.key);
       const rb = el('button', { type: 'button', class: 'link fx-m', 'aria-pressed': 'false', text: m.label, title: m.help });
       rb.addEventListener('click', () => choose({ s: null, m: m.key })); rowHeads.set(m.key, rb);
+      const rowBtns = []; const r = grid.length;
       body.push(el('tr', { 'data-m': m.key }, el('th', { scope: 'row', class: 'fx-rh' }, rb), cols.map((id) => {
         const c = F.cellOf(doc, id, m.key);
         const b = el('button', { type: 'button', class: 'fx-c', 'aria-pressed': 'false', 'aria-label': doc.states[id].name + ', ' + m.label + ': ' + code(c.s).label.toLowerCase() }, dot(c.s));
         b.addEventListener('click', () => choose({ s: id, m: m.key }));
+        const col = rowBtns.length; rowBtns.push(b); b.tabIndex = -1;
+        b.addEventListener('keydown', (e) => cellKey(e, r, col)); b.addEventListener('focus', () => stop(b));
         const tip = (e) => { const r = b.getBoundingClientRect(); showTip([el('div', { class: 'tip-head', text: doc.states[id].name }), tipRow(m.label, ''), tipRow(code(c.s).label, c.n ? '· ' + c.n : '')], e.clientX || r.left, e.clientY || r.top); };
         b.addEventListener('pointermove', tip); b.addEventListener('pointerleave', hideTip); b.addEventListener('focus', tip); b.addEventListener('blur', hideTip);
         cellBtns.set(id + '|' + m.key, b);
         return el('td', { class: 'fx-cell' }, b);
       }), el('td', { class: 'fx-n', text: ms.data + ' of ' + ms.total })));
+      grid.push(rowBtns);
     });
+    if (grid[0] && grid[0][0]) grid[0][0].tabIndex = 0;
     return el('div', { class: 'table-wrap tall fx-wrap', role: 'region', tabindex: '0', 'aria-label': 'Matrix of what each permit captures, agencies across and metrics down' },
       el('table', { class: 'fx' }, el('thead', {}, head, score), el('tbody', {}, body)));
+  }
+  // one tab stop in the grid, wherever the last focus or selection was, and the arrow keys for the rest
+  function stop(b) { grid.forEach((row) => row.forEach((x) => { x.tabIndex = x === b ? 0 : -1; })); }
+  function cellKey(e, r, c) {
+    const rows = grid.length; const cols = grid[0].length; let nr = r; let nc = c;
+    if (e.altKey || e.metaKey) return;
+    switch (e.key) {
+      case 'ArrowRight': nc = Math.min(cols - 1, c + 1); break;
+      case 'ArrowLeft': nc = Math.max(0, c - 1); break;
+      case 'ArrowDown': nr = Math.min(rows - 1, r + 1); break;
+      case 'ArrowUp': nr = Math.max(0, r - 1); break;
+      case 'Home': nc = 0; if (e.ctrlKey) nr = 0; break;
+      case 'End': nc = cols - 1; if (e.ctrlKey) nr = rows - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    const b = grid[nr][nc]; stop(b); b.focus(); b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   function redraw() { slots.matrix.replaceChildren(matrix()); mark(); }
   function mark() {
     cellBtns.forEach((b, k) => { const [s, m] = k.split('|'); b.setAttribute('aria-pressed', String(s === sel.s && m === sel.m)); b.classList.toggle('in-line', (s === sel.s && !sel.m) || (m === sel.m && !sel.s)); });
+    const cur = sel.s && sel.m ? cellBtns.get(sel.s + '|' + sel.m) : null;
+    if (cur) stop(cur); // the chosen cell is where Tab arrives
     colHeads.forEach((b, id) => b.setAttribute('aria-pressed', String(id === sel.s && !sel.m)));
     rowHeads.forEach((b, k) => b.setAttribute('aria-pressed', String(k === sel.m && !sel.s)));
   }
@@ -141,11 +166,11 @@ export function createFieldsView({ root }) {
     }
     slots.panel = el('div', { class: 'fx-panel-slot', 'aria-live': 'polite' });
     slots.matrix = el('div', {});
-    const gseg = segmented({ label: 'Group of metrics', tabs: false, prefix: 'fxg', value: group, options: [{ id: 'all', label: 'All' }, ...doc.groups.map((g) => ({ id: g.id, label: g.label }))], onChange: (id) => { group = id; redraw(); writeHash(); } });
+    const gseg = segmented({ label: 'Group of metrics', tabs: false, wrap: true, prefix: 'fxg', value: group, options: [{ id: 'all', label: 'All' }, ...doc.groups.map((g) => ({ id: g.id, label: g.label }))], onChange: (id) => { group = id; redraw(); writeHash(); } });
     const sseg = segmented({ label: 'Order of agencies', tabs: false, prefix: 'fxs', value: sort, options: [{ id: 'coverage', label: 'Most published first' }, { id: 'name', label: 'A to Z' }], onChange: (id) => { sort = id; redraw(); } });
     root._g = gseg;
     const card = el('section', { class: 'card nat-card reveal is-in' }, hdr('The matrix', 'layers', 'Agency by metric', 'Every cell says which permit form or data file it was checked against, or that it could not be verified. “Not verified” is an honest answer, not a gap in the page.', el('div', { class: 'card-tools' }, sseg.el)),
-      el('div', { class: 'fx-tools' }, gseg.el), legend(), slots.matrix);
+      el('div', { class: 'fx-tools' }, gseg.el), legend(), el('p', { class: 'fine fx-hint', text: 'With the keyboard: Tab reaches the matrix once, the arrow keys move between cells, Home and End go to the ends of a row, and Enter opens a cell.' }), slots.matrix);
     root.replaceChildren(el('div', { class: 'stack' }, figures(), card, el('section', { class: 'card nat-card reveal is-in' }, hdr('Detail', 'pin', 'Why a cell says what it says', null), slots.panel),
       el('p', { class: 'fine', text: 'Researched from each agency’s permit application and its published data, with the evidence named on every cell. An agency whose form or data could not be read says so; those cells read “not verified”.' })));
     redraw();
@@ -155,7 +180,8 @@ export function createFieldsView({ root }) {
     async activate(params) {
       if (!started) { started = true; if (!(await build())) { started = false; return; } }
       const g = params && params.get('g');
-      if (g && doc.groups.some((x) => x.id === g) && g !== group) { group = g; root._g.set(g, false); redraw(); }
+      const wantGroup = g && doc.groups.some((x) => x.id === g) ? g : 'all'; // the address decides: one without a group shows them all (it kept the last group)
+      if (wantGroup !== group) { group = wantGroup; root._g.set(wantGroup, false); redraw(); }
       choose({ s: params && (params.get('s') || '').toUpperCase(), m: params && params.get('m') }, { fromHash: true });
     },
     deactivate() { hideTip(); },

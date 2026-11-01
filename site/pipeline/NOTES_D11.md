@@ -102,6 +102,12 @@ The research files (`fields/<ST>.json`) are written in the researchers' own voic
 `permit-fields.json`), and `clip()` cuts a long string after a whole sentence, or a whole word with an ellipsis, never in the middle of one. The reasons a producing state is not read yet are written for visitors in `GAP_WHY` in `d11_nat_build.py` (a test fails for a gap without one, or with the researchers' words in it); the researched reason, with the account of what was tried, is in the matrix.
 The page hides the research's producer plan (it is notes for whoever builds the producer), and the Sources page lists the state agencies behind the report from `national.json` itself, with a link to the agency's page when the source is a raw download or a map-service root (`sourceHref` in `national-data.js`). In a sentence the offshore is "the federal offshore" and the BLM "federal onshore (BLM)" (`inName`).
 
+## Layout and keyboard (2026-11-01)
+
+A panel's two lists (top counties, top operators) are one column unless each can have 300 px, and a name wraps to a second line instead of ending in an ellipsis (it was cut at 100 px). A chart is drawn at the width its container has (`chartWidth` in `util.js`, up to 1,200), because a fixed 720-wide drawing scaled to a phone made 11 px axis text 4.5 px; the National chart is drawn again when the window changes size or the view is shown.
+`niceMax` picks the smallest whole step that needs at most five intervals, so the axis tops near the data (1,150 tops at 1,250, not 2,000). The matrix's 1,680 cell buttons are one tab stop (the selected cell, else the first): the arrow keys move between cells, Home and End go to a row's ends (with Ctrl, to the first and last row), and a visible line says so; its group strip wraps instead of scrolling out of sight (`segmented({ wrap: true })`).
+An address decides what the pages show: `#national` without a count shows the permits and `#fields` without a group shows them all (both kept the last choice, so a link to a state drew wells spudded after a visit to that count).
+
 ## Known limits
 
 - **`asOf` is the day a state's data is current to.** For most states that is the newest record's day. Nevada's page is edited by hand and Virginia's layers publish no update time, so for those two it is the day of the read (their `note` says so, and Nevada's `lag_days` keeps a month with no permit from reading as a real zero too early); the National page's top figure is therefore called "Latest update", not "newest record".
