@@ -12,6 +12,7 @@ REPO = _os.path.dirname(_HERE)
 PIPE = _os.path.join(REPO, "site", "pipeline")
 
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -202,9 +203,18 @@ REAL_RUN = subprocess.run  # subprocess.run is one function for the whole proces
 
 
 class FakeGH:
+    """GitHub's releases as the gh CLI shows them: each asset has a name, a size, a state and a SHA-256 digest. `gh release upload` without --clobber refuses a name that is already there; with it
+    the old asset is DELETED first and then the new one is sent, so a refusal in between loses the old file (which is how a good file was lost on 2026-11-01)."""
+
     def __init__(self):
         self.releases, self.calls, self.notes, self.fail, self.drop = {}, [], [], set(), False
         self.limit = 0  # the next N uploads are refused the way GitHub refuses a secondary rate limit
+        self.digests = True  # older gh versions give no digest
+
+    @staticmethod
+    def _asset(path):
+        data = open(path, "rb").read()
+        return {"name": os.path.basename(path), "size": len(data), "state": "uploaded", "digest": "sha256:" + hashlib.sha256(data).hexdigest()}
 
     def run(self, cmd, **kw):
         if os.path.basename(cmd[0]) != "gh":
@@ -217,20 +227,30 @@ class FakeGH:
         if sub == "release view" and "tagName" in a:
             return CP(cmd, 0 if tag in self.releases else 1, "{}", "")
         if sub == "release create":
-            self.releases.setdefault(tag, set())
+            self.releases.setdefault(tag, {})
             self.notes.append(a[a.index("--notes") + 1])
             return CP(cmd, 0, "", "")
         if sub == "release upload":
+            files = [x for x in a[3:] if not x.startswith("--") and os.path.exists(x)]
+            clobber = "--clobber" in a
+            if clobber:  # delete first, as gh does: whatever happens next, the old file is gone
+                for x in files:
+                    self.releases[tag].pop(os.path.basename(x), None)
             if self.limit > 0:
                 self.limit -= 1
                 return CP(cmd, 1, "", "HTTP 403: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. Requests may be retried after 02:44:07 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service")
             if tag in self.fail:
                 return CP(cmd, 1, "", "HTTP 502: Bad Gateway")
+            for x in files:
+                if os.path.basename(x) in self.releases[tag] and not clobber:
+                    return CP(cmd, 1, "", "a release asset with the name %s already exists; use --clobber to replace it" % os.path.basename(x))
             if not self.drop:
-                self.releases[tag].update(os.path.basename(x) for x in a[3:] if not x.startswith("--") and os.path.exists(x))
+                for x in files:
+                    self.releases[tag][os.path.basename(x)] = self._asset(x)
             return CP(cmd, 0, "", "")
         if sub == "release view":
-            return CP(cmd, 0, json.dumps({"assets": [{"name": n} for n in sorted(self.releases.get(tag, ()))]}), "")
+            rows = [dict(v) if self.digests else {k: x for k, x in v.items() if k != "digest"} for v in self.releases.get(tag, {}).values()]
+            return CP(cmd, 0, json.dumps({"assets": sorted(rows, key=lambda r: r["name"])}), "")
         if sub == "release list":
             return CP(cmd, 0, json.dumps([{"tagName": t} for t in sorted(self.releases)]), "")
         if sub == "release delete":
@@ -448,6 +468,113 @@ with tempfile.TemporaryDirectory() as tmp:  # the RRC would not answer: nothing 
         out = os.path.join(tmp, "w")
         code = W.run(args(out, tmp), io=Down(), now=NOW, log=lambda m: None)
         check(code == 0 and not os.path.exists(os.path.join(out, "index.json")), "a share that refuses the runner is an answer: exit 0, nothing written")
+    finally:
+        unpatch(saved)
+
+# ------------------------------------------------------------------------------------------------ a release that already holds files (a good file was lost on 2026-11-01)
+
+TAG1 = "wells-2026-10-29-ci-01"
+
+
+def release_files(tmp, spec=None):
+    folder = os.path.join(tmp, "f")
+    os.makedirs(folder, exist_ok=True)
+    spec = spec or {"11111111_c1.pdf": b"%PDF-a" * 50, "11111111_c1.jpg": b"jpg-a" * 50, "11111111_c2.pdf": b"%PDF-b" * 50, "11111111_c2.jpg": b"jpg-b" * 50}
+    for n, data in spec.items():
+        open(os.path.join(folder, n), "wb").write(data)
+    return folder, sorted(spec)
+
+
+def publish(gh, folder, names, digests=True):
+    gh.digests = digests
+    return W.publish_chunk("o/r", TAG1, date(2026, 10, 29), "ci", folder, names, lambda m: None)
+
+
+def uploads(gh):
+    return [c for c in gh.calls if c[:2] == ["release", "upload"]]
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    folder, names = release_files(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    try:
+        sent = publish(gh, folder, names)
+        check(sent == 4 and len(uploads(gh)) == 1 and "--clobber" not in uploads(gh)[0], "a first publish uploads the four files, none of them with --clobber (%d sent)" % sent)
+        gh.calls.clear()
+        sent = publish(gh, folder, names)
+        check(sent == 0 and not uploads(gh), "publishing the same files again sends nothing: the release already holds them whole")
+        gh.calls.clear()
+        gh.limit = 10 ** 6
+        sent = publish(gh, folder, names)
+        check(sent == 0 and not uploads(gh) and len(gh.releases[TAG1]) == 4, "so a refusing GitHub cannot stop it, and no file is touched")
+        gh.limit = 0
+        # one file missing, one file different
+        del gh.releases[TAG1]["11111111_c1.jpg"]
+        open(os.path.join(folder, "11111111_c2.pdf"), "wb").write(b"%PDF-changed" * 50)
+        keep = dict(gh.releases[TAG1])
+        gh.calls.clear()
+        sent = publish(gh, folder, names)
+        ups = uploads(gh)
+        check(sent == 2 and len(ups) == 2 and sorted("--clobber" in u for u in ups) == [False, True], "a missing file is uploaded plainly and a different one with --clobber, and nothing else (%d sent in %d calls)" % (sent, len(ups)))
+        check(all(gh.releases[TAG1][n] == keep[n] for n in ("11111111_c1.pdf", "11111111_c2.jpg")) and gh.releases[TAG1]["11111111_c2.pdf"]["digest"] != keep["11111111_c2.pdf"]["digest"],
+              "the files that were fine are the very same assets afterwards, and the changed one is the new content")
+    finally:
+        unpatch(saved)
+
+with tempfile.TemporaryDirectory() as tmp:  # a refusal during a repair costs at most the file that had to change
+    folder, names = release_files(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    try:
+        publish(gh, folder, names)
+        open(os.path.join(folder, "11111111_c2.pdf"), "wb").write(b"%PDF-changed" * 50)
+        gh.limit = 10 ** 6
+        try:
+            publish(gh, folder, names)
+            failed = False
+        except d7_release.ReleaseError:
+            failed = True
+        check(failed and set(gh.releases[TAG1]) == set(names) - {"11111111_c2.pdf"}, "a refused repair fails the pack and loses only the file that had to be replaced, not the three that were fine (%s)" % sorted(gh.releases[TAG1]))
+    finally:
+        unpatch(saved)
+
+with tempfile.TemporaryDirectory() as tmp:  # older gh versions give no digest: the size decides; an upload that never finished is replaced
+    folder, names = release_files(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    try:
+        publish(gh, folder, names, digests=False)
+        gh.calls.clear()
+        check(publish(gh, folder, names, digests=False) == 0 and not uploads(gh), "without a digest the size still tells a file that is there from one that is not")
+        gh.releases[TAG1]["11111111_c1.pdf"]["state"] = "starter"
+        gh.calls.clear()
+        sent = publish(gh, folder, names, digests=False)
+        check(sent == 1 and "--clobber" in uploads(gh)[0] and gh.releases[TAG1]["11111111_c1.pdf"]["state"] == "uploaded", "an asset whose upload never finished is replaced")
+        gh.releases[TAG1]["11111111_c2.jpg"]["size"] += 1
+        gh.calls.clear()
+        check(publish(gh, folder, names, digests=False) == 1, "a file of another size is replaced")
+    finally:
+        unpatch(saved)
+
+# the mutant: every file that is there is sent again, with --clobber
+src_rel = open(os.path.join(PIPE, "d12_wells.py")).read()
+mod_rel = types.ModuleType("d12rel")
+mod_rel.__file__ = os.path.join(PIPE, "d12_wells.py")
+exec(compile(src_rel.replace("    changed = [n for n in names if n in have and not same_file(have[n], os.path.join(folder, n))]", "    changed = [n for n in names if n in have]", 1), "d12rel.py", "exec"), mod_rel.__dict__)
+with tempfile.TemporaryDirectory() as tmp:
+    folder, names = release_files(tmp)
+    gh = FakeGH()
+    saved = patched(gh)
+    try:
+        mod_rel.publish_chunk("o/r", TAG1, date(2026, 10, 29), "ci", folder, names, lambda m: None)
+        gh.calls.clear()
+        gh.limit = 10 ** 6
+        try:
+            mod_rel.publish_chunk("o/r", TAG1, date(2026, 10, 29), "ci", folder, names, lambda m: None)
+        except d7_release.ReleaseError:
+            pass
+        check(len(gh.releases[TAG1]) == 0 and len(uploads(gh)) > 0, "mutant caught: sending files again with --clobber, a refusal empties a release that was complete (%d files left)" % len(gh.releases[TAG1]))
     finally:
         unpatch(saved)
 
