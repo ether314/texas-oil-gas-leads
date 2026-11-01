@@ -6,7 +6,7 @@ build step, no external requests apart from the document previews described unde
 address keep their first name, `texas-oil-gas-leads`.)
 
 ## What is in it
-- **States**: a bar above every view but Sources chooses what is shown: all the states (Texas, Oklahoma, New Mexico and the federal offshore), or one
+- **States**: a bar above the Map, Operators, Companies and Daily report chooses what is shown: all the states (Texas, Oklahoma, New Mexico and the federal offshore), or one
   (on a narrow phone the bar reads TX, OK, NM, Offshore). The choice is kept in the address (`st=ok`; nothing means all) and follows you between those
   views. A view says so when a state cannot give a figure (the others have no company pool, rig counts, jobs, taxes or production by county here).
   Texas and Oklahoma count permits by approval date; New Mexico and the federal offshore publish no approval dates by well, so their figures are wells spudded, named as
@@ -25,9 +25,11 @@ address keep their first name, `texas-oil-gas-leads`.)
   each tied to its well, shown as a readable picture of page one and downloadable whole, exactly as filed (`#images?well=28337830`, `#images?c=283`; built by `site/pipeline/d12_wells.py`, `NOTES_D12.md`). Below it, what a Texas well leaves behind as scanned filings, from the Commission's three packs a business day: a well's life in three stages (the permit letter and plat, the directional survey,
   the completion forms and logs) with each kind of document explained and counted, how much arrives each day over the 92-day archive (a day with no pack listed is a gap, never zero), and for any day what its packs hold
   (size, size by RRC district, documents by kind for days captured live, the blurred contact sheets, and the permits whose filings are published, each linking to its drill page). It reads only the Daily archive's own files.
-- **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
-  top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
-  operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green, the federal offshore rose).
+- **Overview**: the country's new wells, the same for every state (`#overview`). Every well fractured in the last 24 months, in every state that reports to the FracFocus registry, as a glowing dot where it sits (17 states today, among them Colorado, Montana and Alaska),
+  in the hero and in the explorer below it: hover a dot for its county, first job, operator (only a corporation, LLC or partnership), depth and water, click a state (or choose it in the key or the selector) to zoom in and read its panel (its last 12 months and the change on the 12 before,
+  its counties and operators, how much of it is on federal or tribal land, and a link to its permits on the National page), or replay the two years. Below: the states ranked, the months stacked by state (the newest months are drawn lighter: wells are disclosed weeks late, so a month settles only
+  120 days after the newest job and the 12-month figures use settled months only), the busiest counties and the top operators of the country, and when each source was current. Only what every state can give is drawn: no market prices, rig counts, jobs, taxes, producers, basins or
+  company pool (those are Texas's records and stay on the pages that say so), and a state with no well in the registry is named as not in it, never counted as zero. It does not follow the states bar; `#overview?s=TX` opens it zoomed to a state. Data: `site/public/data/newwells/`, `NOTES_D13.md`.
 - **Map**: county shading (permits, oil and gas production and change, well depth, oil and gas jobs and wages,
   establishments, mineral value, companies), permit dots, refineries, gas plants, LNG terminals, company ZIP bubbles,
   basin outlines and a time-lapse of permits. It follows the states bar: the shapes, dots (Texas orange, Oklahoma purple, New Mexico green, the offshore rose),

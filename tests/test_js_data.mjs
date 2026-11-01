@@ -14,6 +14,8 @@ const imp = (f) => import(pathToFileURL(path.join(JS, f)).href);
 const S = await imp('states.js');
 const O = await imp('overview-data.js');
 const D = await imp('daily-data.js');
+const GEO = await imp('usgeo.js');
+const NW = await imp('newwells-data.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
 
 let fails = 0;
@@ -365,6 +367,63 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
     const bad = sh.wells.flatMap((w) => Wd.docsOf(real.repo, sh, w)).filter((x) => !x.file || (x.v && !x.preview));
     check(!bad.length, 'wells: every document in county ' + fips + ' has an address');
   }
+}
+
+/* ---------- usgeo.js and newwells-data.js: the national wells map ---------- */
+{
+  const doc = read('newwells/summary'); const pts = read('newwells/points'); const outlines = GEO.buildOutlines(read('us-states'));
+  const P = NW.decode(pts);
+  // the projection: Texas is south and east of Denver's side of the map, the lower 48 fill the frame, Alaska is an inset below the Southwest
+  const at = (st, lon, lat) => GEO.project(lon, lat, st);
+  const [midx, midy] = at('TX', -102, 31.9); const [dx, dy] = at('CO', -104.9, 39.7); const [ndx, ndy] = at('ND', -103.5, 47.9); const [pax, pay] = at('PA', -80.1, 40.4);
+  check(midy > dy && dy > ndy && pax > midx && midx > dx - 100 && GEO.WIDTH === 1000 && GEO.H > 600 && GEO.H < 720, 'usgeo: Midland is south of Denver, Denver south of the Bakken, Pittsburgh east of both; the frame is 1000 wide');
+  let lo = [1e9, 1e9]; let hi = [-1e9, -1e9];
+  for (const s of Object.values(outlines)) { lo = [Math.min(lo[0], s.bb[0]), Math.min(lo[1], s.bb[1])]; hi = [Math.max(hi[0], s.bb[2]), Math.max(hi[1], s.bb[3])]; }
+  check(lo[0] >= -10 && lo[1] >= -5 && hi[0] <= 1005 && hi[1] <= GEO.H, 'usgeo: all 49 outlines, Alaska\'s inset included, fall inside the frame: ' + lo.map(Math.round) + ' to ' + hi.map(Math.round));
+  const ak = outlines.AK.bb; const tx = outlines.TX.bb;
+  check(Object.keys(outlines).length === 49 && ak[0] < tx[0] && ak[2] < tx[0] && ak[1] > outlines.CA.bb[3] - 5, 'usgeo: 49 states; Alaska\'s inset is below California and to the left of Texas, not on top of either');
+  check(GEO.stateAt(outlines, midx, midy) === 'TX' && GEO.stateAt(outlines, dx, dy) === 'CO' && GEO.stateAt(outlines, 500, 5) === null && GEO.stateAt(outlines, 600, 640) === null, 'usgeo: a point in Texas is Texas, in Colorado Colorado, and open water is no state');
+  check(GEO.frameOf(outlines, 'TX').x1 - GEO.frameOf(outlines, 'TX').x0 > tx[2] - tx[0] && GEO.frameOf(outlines, 'ZZ').x1 === GEO.WIDTH, 'usgeo: a state\'s frame has air around it; an unknown state frames the country');
+  // every committed well lands in the outline of the state it is filed under (nearly: the outlines are simplified to a kilometer, so a well on a border can fall just over it)
+  let off = 0; const o = [0, 0];
+  for (let i = 0; i < P.n; i++) { GEO.project(P.lon[i], P.lat[i], P.states[P.s[i]], o); if (GEO.stateAt(outlines, o[0], o[1]) !== P.states[P.s[i]]) off++; }
+  check(off / P.n < 0.01, 'usgeo: ' + (P.n - off) + ' of the ' + P.n + ' committed wells project into the outline of their own state (' + off + ' sit on a border)');
+
+  // newwells-data.js
+  const i12 = NW.settledIndex(doc);
+  check(i12 > 0 && doc.months[i12] === doc.settled.slice(0, 7) && NW.windowOf(doc).months.length === 12 && NW.windowOf(doc).months[11] === doc.months[i12] && NW.windowOf(doc).first === doc.months[i12 - 11] + '-01', 'newwells: the last 12 months end at the last settled month, not at the newest job');
+  const T = NW.totals(doc);
+  check(T.p12 === doc.states.reduce((t, x) => t + x.p12, 0) && T.change !== null && T.active === doc.states.filter((x) => x.p12 > 0).length && T.active < T.listed, 'newwells: the national total is the states\' sum, with a change, and counts the states that have wells (' + T.active + ' of ' + T.listed + ')');
+  check(NW.change({ p12: 10, prev12: 0 }) === null && NW.change({ p12: 15, prev12: 10 }) === 0.5 && NW.shownChange({ p12: 3, prev12: 7 }) === null && NW.shownChange({ p12: 30, prev12: 20 }) === 0.5, 'newwells: a change is null from nothing (never infinity), and not shown from a base under 20 wells');
+  const ranked = NW.active(doc);
+  check(ranked.every((x, i) => i === 0 || ranked[i - 1].p12 >= x.p12) && ranked[0].id === 'TX', 'newwells: the states are ranked, Texas first');
+  const st = NW.stack(doc);
+  check(st.months.length === 36 && st.series.length >= 2 && st.series[st.series.length - 1].id === 'other' && st.settledAt === st.months.indexOf(doc.settled.slice(0, 7)) && st.settledAt < st.months.length - 1
+    && st.totals.every((t, i) => t === st.series.reduce((a, s) => a + s.values[i], 0)) && st.series.filter((x) => x.id !== 'other').every((x) => NW.COLORS[x.id]), 'newwells: 36 months stacked, the colored states then "Other states", the settled month marked, the totals the sum of the stack');
+  const allNew = doc.states.reduce((t, x) => t + x.new.slice(-36).reduce((a, b) => a + b, 0), 0);
+  check(st.totals.reduce((a, b) => a + b, 0) === allNew, 'newwells: the stack loses no well (the colored states and the rest add up to every state\'s months)');
+  const nice = NW.niceTop(1060);
+  check(nice.top === 1250 && nice.ticks.length >= 4 && nice.ticks[0] === 0 && NW.niceTop(0).top === 1 && NW.niceTop(7).top >= 7 && NW.niceTop(23).ticks.every((t) => t <= NW.niceTop(23).top), 'newwells: a y axis tops at 1,250 for 1,060 (not 2,000) and handles zero');
+  check(P.n === pts.n && P.day[0] >= 0 && P.span === P.day[P.n - 1] && NW.dayIso(NW.dayMs(P, P.span)) === pts.asOf && NW.dayIso(P.t0) === pts.t0, 'newwells: decode keeps every row, the days are days since t0 and the last is the as-of day');
+  const [d0, d1] = NW.settledRange(P, doc);
+  const byState = NW.perState(P, d0, d1);
+  check(byState.length > 8 && byState[0].id === 'TX' && byState.every((x, i) => i === 0 || byState[i - 1].n >= x.n), 'newwells: wells per state over the settled year, ranked');
+  const perDayAll = NW.perDay(P, 0, P.span);
+  check(perDayAll.length === P.span + 1 && perDayAll.reduce((a, b) => a + b, 0) === P.n && NW.perDay(P, 5, 3).length === 0, 'newwells: wells per day add up to every point; an empty range is empty');
+  const txShare = byState.find((x) => x.id === 'TX').n; const txSummary = NW.byId(doc, 'TX').p12;
+  check(txShare <= txSummary && txShare >= 0.9 * txSummary, 'newwells: Texas\'s located wells in the settled year (' + txShare + ') are the summary\'s ' + txSummary + ' or just under (every well in the file has a point)');
+  const co = NW.leaders(P, d0, d1, { by: 'c', limit: 10 }); const op = NW.leaders(P, d0, d1, { by: 'o', limit: 10 }); const opTx = NW.leaders(P, d0, d1, { state: 'TX', by: 'o', limit: 5 });
+  check(co.rows.length === 10 && co.rows.every((r, i) => i === 0 || co.rows[i - 1].n >= r.n) && co.rows[0].state && op.rows.length === 10 && op.total === op.rows.reduce((a, r) => a + r.n, 0) + op.unnamed + (op.total - op.unnamed - op.rows.reduce((a, r) => a + r.n, 0)) && opTx.total <= op.total, 'newwells: the busiest counties carry their state, the operators are ranked, a state\'s list is within the nation\'s');
+  check(!/\d{10}/.test(JSON.stringify(op.rows) + JSON.stringify(co.rows)) && op.unnamed >= 0 && op.unnamed < op.total, 'newwells: operators only where they may be named: the unnamed are counted, never listed');
+  const land = NW.landShare(P, d0, d1);
+  check(land.of > 5000 && land.n > 0 && land.n < land.of && NW.landShare(P, d0, d1, 'TX').of < land.of, 'newwells: the share on federal or tribal land (' + land.n + ' of ' + land.of + ')');
+  const nw = NW.newest(P, 5); const nwTx = NW.newest(P, 5, 'ND');
+  check(nw.length === 5 && P.day[nw[0]] === P.span && nw.every((i, k) => k === 0 || P.day[nw[k - 1]] >= P.day[i]) && nwTx.every((i) => P.states[P.s[i]] === 'ND'), 'newwells: the newest wells, newest first, one state\'s on request');
+  check(NW.firstAtOrAfter(P, 0) === 0 && NW.firstAtOrAfter(P, P.span + 1) === P.n && P.day[NW.firstAtOrAfter(P, 100)] >= 100 && (NW.firstAtOrAfter(P, 100) === 0 || P.day[NW.firstAtOrAfter(P, 100) - 1] < 100), 'newwells: the first well at or after a day, by binary search');
+  const q = NW.quiet(doc, [{ id: 'TX', name: 'Texas' }, { id: 'AL', name: 'Alabama' }, { id: 'ZZ', name: 'Nowhere' }]);
+  check(q.length === 2 && q[0].id === 'AL' && q[0].latest === NW.byId(doc, 'AL').latest && q[1].latest === null, 'newwells: a producing state with no well in the last 12 months is "quiet" (with its last job, or none ever), a state with wells is not');
+  check(NW.listAnd(['a']) === 'a' && NW.listAnd(['a', 'b']) === 'a and b' && NW.listAnd(['a', 'b', 'c']) === 'a, b and c' && NW.feet(95) === '9,500 ft' && NW.feet(0) === null && NW.gallons(210) === '21.0 million gal' && NW.gallons(0) === null, 'newwells: the wording helpers (a list, feet in hundreds, gallons in hundreds of thousands, nothing for zero)');
+  check(NW.colorOf('TX') === 'var(--st-tx)' && NW.colorOf('NM') === 'var(--st-nm)' && NW.colorOf('OK') === 'var(--st-ok)' && NW.colorOf('WY') === NW.OTHER_COLOR, 'newwells: Texas, New Mexico and Oklahoma keep the colors the rest of the site gives them; every other state is slate');
 }
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));

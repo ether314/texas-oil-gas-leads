@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://github.com https://*.githubusercontent.com; base-uri 'none'; form-action 'none'">
-<meta name="description" content="Oil tracker: where oil is being drilled right now. New-drill permits and wells spudded, the operators behind them and the companies that serve them, for Texas, Oklahoma, New Mexico and the federal offshore of the Gulf of America, from public records.">
+<meta name="description" content="Oil tracker: where oil is being drilled right now. Every new well in America with a GPS point, the permits each state agency approves, the operators behind them and, for Texas, the companies that serve them, from public records.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
@@ -65,160 +65,24 @@
     <div class="hero" id="hero">
       <canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas>
       <div class="hero-in">
-        <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span id="hero-eyebrow">Railroad Commission permits through <span data-fill="latest_permit"></span></span></p>
+        <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span id="hero-eyebrow">FracFocus registry</span></p>
         <h1>Where oil is being drilled right now</h1>
-        <p class="hero-lede" id="hero-lede">New-drill permits from the Permian to the Eagle Ford, the operators filing them and the companies that serve them. Public records only, built <span data-fill="built"></span>.</p>
+        <p class="hero-lede" id="hero-lede">Every new well in America with a GPS point, from every state that reports it. Public records only, built <span data-fill="built"></span>.</p>
         <div class="cta">
-          <a class="btn primary lg" href="#map">Explore the map <span aria-hidden="true">&rarr;</span></a>
-          <a class="btn lg" href="#operators?band=ab">See the operators</a>
-          <a class="btn lg" href="#daily">Today's report</a>
+          <a class="btn primary lg" href="#overview" id="go-explore">Watch the wells <span aria-hidden="true">&rarr;</span></a>
+          <a class="btn lg" href="#national">Permits by state</a>
+          <a class="btn lg" href="#daily">Daily report</a>
         </div>
       </div>
       <div id="kpis" class="kpis"></div>
       <p class="hero-note" id="hero-note"></p>
     </div>
 
-    <section class="ticker-sec reveal" aria-labelledby="ticker-h">
-      <div class="sec-head">
-        <div>
-          <p class="eyebrow"><span data-icon="chart"></span>Markets and activity</p>
-          <h2 id="ticker-h">Where the market stands</h2>
-        </div>
-        <p class="sec-note">Each figure carries its own as-of date: prices, rigs, jobs and tax receipts are published on different schedules. Select one to see its history.</p>
-      </div>
-      <div id="ticker" class="ticker" aria-busy="true">
-        <div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>
-      </div>
-    </section>
+    <div class="stack" id="nw-slot">
+      <div class="skel nw-skel"></div>
+    </div>
 
     <div class="stack">
-      <section class="card insights reveal" data-card id="insights" aria-labelledby="ins-h">
-        <div class="card-head">
-          <div>
-            <p class="eyebrow"><span data-icon="bulb"></span>Insights</p>
-            <h2 id="ins-h">What the data says</h2>
-            <p class="sub">Plain-English reads computed from the files behind this site. Every number links to where it lives.</p>
-          </div>
-        </div>
-        <ul id="ins-list"><li class="skel ins-skel"></li></ul>
-      </section>
-
-      <section class="card pulse-card reveal" data-card id="pulse-card" aria-labelledby="pulse-h">
-        <div class="card-head">
-          <div>
-            <p class="eyebrow"><span data-icon="chart"></span>Market pulse</p>
-            <h2 id="pulse-h">Prices, activity, production, jobs and taxes</h2>
-            <p class="sub">Since 2019, grouped by topic on one shared time axis per group. Hover, or use the arrow keys, to compare a date. Each series runs to its own latest date.</p>
-          </div>
-          <div class="card-tools" id="pulse-tools">
-            <button id="pulse-toggle" class="btn" type="button" aria-pressed="false">View as table</button>
-          </div>
-        </div>
-        <div id="pulse-root" class="pulse-root"><div class="skel pulse-skel"></div></div>
-        <div id="pulse-table-wrap" class="table-wrap tall" hidden tabindex="0" role="region" aria-label="Market pulse values by date"></div>
-        <p class="fine" id="pulse-src"></p>
-      </section>
-
-      <div class="split reveal">
-        <section class="card" data-card aria-labelledby="hot-h">
-          <p class="eyebrow"><span data-icon="pin"></span>Where</p>
-          <h2 id="hot-h">Hot counties</h2>
-          <p class="sub" id="hot-sub">Top 10 counties by new-drill permits in the last 12 months. Click a bar to open it on the map.</p>
-          <ul id="hot-bars" class="bars" aria-labelledby="hot-h"></ul>
-          <a class="more-link" href="#map">Open the map <span data-icon="arrow"></span></a>
-        </section>
-        <section class="card" data-card aria-labelledby="top-h">
-          <p class="eyebrow"><span data-icon="rig"></span>Who is drilling</p>
-          <h2 id="top-h">Top operators</h2>
-          <p class="sub" id="top-sub">Top 10 by new-well permits in the last 12 months. Click a bar to open the record.</p>
-          <ul id="top-ops" class="bars" aria-labelledby="top-h"></ul>
-          <a class="more-link" href="#operators?band=abc">All ranked operators <span data-icon="arrow"></span></a>
-        </section>
-      </div>
-
-      <section class="card prod reveal" data-card id="prod-card" aria-labelledby="prod-h" hidden>
-        <div class="card-head">
-          <div>
-            <p class="eyebrow"><span data-icon="drop"></span>Who is producing</p>
-            <h2 id="prod-h">Top producers</h2>
-            <p class="sub" id="prod-sub"></p>
-          </div>
-        </div>
-        <div class="prod-head" aria-hidden="true"><span>#</span><span>Operator</span><span>Oil and condensate, last 12 months</span><span>24 months</span><span>vs prior 12</span></div>
-        <ol class="prod-list" id="prod-list"></ol>
-        <a class="more-link" href="#operators?top=1&amp;sort=oil12&amp;band=all">All top producers <span data-icon="arrow"></span></a>
-      </section>
-
-      <section class="reveal" id="basins" aria-labelledby="basins-h" hidden>
-        <div class="sec-head">
-          <div>
-            <p class="eyebrow"><span data-icon="layers"></span>Basins</p>
-            <h2 id="basins-h">The main producing regions</h2>
-          </div>
-          <p class="sec-note">Permits and production add up each basin's counties; rigs are Baker Hughes weekly counts. Hover a card or the map to see the counties, select one to open it on the map.</p>
-        </div>
-        <div class="basins-grid">
-          <div class="card basin-map" id="basin-map"><p class="basin-map-cap" id="basin-cap"></p></div>
-          <div class="basin-cards" id="basin-cards"></div>
-        </div>
-      </section>
-
-      <figure class="card chart reveal" id="seg-chart" data-card>
-        <div class="card-head">
-          <div>
-            <p class="eyebrow"><span data-icon="building"></span>Companies</p>
-            <h2 id="seg-title">Companies by segment</h2>
-            <p class="sub">Rows in the pool, not counting deprioritized names. Click a bar to list its companies.</p>
-          </div>
-          <button id="seg-toggle" class="btn" type="button" aria-pressed="false">Table view</button>
-        </div>
-        <ul id="seg-bars" class="bars" aria-labelledby="seg-title"></ul>
-        <div id="seg-table-wrap" class="table-wrap" hidden>
-          <table class="grid" id="seg-table">
-            <caption class="sr-only">Companies by segment</caption>
-            <thead><tr><th scope="col">Segment</th><th scope="col" class="num">Companies</th><th scope="col" class="num">Share</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </figure>
-
-      <details class="card help reveal">
-        <summary>How to use this site, and what the columns mean</summary>
-        <h2>How to use it</h2>
-        <ul class="plain">
-          <li><strong>Map</strong> follows the states bar: its shapes, dots (each state in its own color), legend and panels are those of the states shown. It shades counties (offshore, protraction areas) by permits (New Mexico and the federal offshore: wells spudded) and, for Texas, by production, jobs, establishments, mineral value or companies, and shows permit locations, and for Texas refineries, gas plants, LNG terminals and where the pooled companies sit. Pick a basin to frame it, press Watch to replay two years of permits, or click a county or an offshore area for its numbers; one outside Texas says which Texas figures it has none of.</li>
-          <li><strong>Operators</strong> lists every active Railroad Commission registrant that is a corporation, LLC or limited partnership. Start with bands A and B: they are drilling now. Tick Top producers to see who produces the most oil.</li>
-          <li><strong>Companies</strong> lists the Comptroller pool: entities filed under an oil and gas industry code, plus entities with no code whose names say oil and gas. Where a company matched an RRC operator, its permit counts are filled in.</li>
-          <li><strong>On this page</strong>, click a bar, a number or a market figure to open the matching records or chart.</li>
-          <li><strong>Share this view</strong> on the Map and on both tables copies a link that reopens exactly what you see. <strong>Download CSV</strong> exports the rows you filtered, public fields only.</li>
-        </ul>
-
-        <h2>Reading the columns</h2>
-        <dl class="defs">
-          <dt>Band A, B, C</dt>
-          <dd>Drilling activity from RRC permits. A: 10 or more new-well permits in the last 12 months. B: 1 to 9. C: an RRC operator with none. Companies with no RRC match show a dash.</dd>
-          <dt>Trend</dt>
-          <dd>New-drill permits in the last 12 full calendar months against the 12 before. "new" means none in the prior 12. Blank means the operator has no permit in the last 24 months.</dd>
-          <dt>Oil, gas, production trend</dt>
-          <dd>Crude oil plus condensate (barrels) and gas (mcf) reported to the RRC over the latest 12 months, and the change against the 12 months before. Blank means no production figure for that operator, not zero.</dd>
-          <dt>Spud, depth</dt>
-          <dd>Spud counts new-drill permits whose reported spud date falls in the last 12 months. Depth is the mean reported total depth of the operator's permits over 24 months.</dd>
-          <dt>Fit</dt>
-          <dd><em>Likely</em> is an active entity with no warning signs. <em>Check</em> means verify first: a mineral or royalty name, six or more entities at one address, a weak name match (drilling, pipeline, well service), or a fuel wholesaler.</dd>
-          <dt>New entity</dt>
-          <dd>Chartered with the Texas Secretary of State in the last 24 months.</dd>
-          <dt>New to drilling, New P-5</dt>
-          <dd>First drilling permit ever filed, or first RRC registration, in the last 24 months.</dd>
-          <dt>RRC match</dt>
-          <dd>How a company was tied to an RRC operator: exact name, name prefix (RRC names are cut at 32 characters), or a similar name in the same ZIP, which is the least reliable.</dd>
-          <dt>New wells, permits</dt>
-          <dd>Permits are counted once per permit number. New wells counts new-drill applications only; recompletions and re-entries count under permits.</dd>
-        </dl>
-
-        <h2>What is not on this site</h2>
-        <p>Officer names, phone numbers and street addresses stay in the CSV files, not here. Sole proprietors and other non-entity registrants, trust and family names, and deprioritized names are left out.</p>
-      </details>
-
       <section class="fresh reveal" data-card aria-labelledby="fresh-h">
         <p class="eyebrow"><span data-icon="calendar"></span><span id="fresh-h">Data freshness</span><span class="fresh-note">Newest period in each file, and how often its source publishes. This site is rebuilt by hand (last built <span data-fill="built"></span>), so none of these dates is "today".</span></p>
         <ul class="fresh-grid" id="fresh-list"></ul>
@@ -283,7 +147,7 @@
     <div class="view-head"><h1>Sources &amp; method</h1></div>
     <div class="prose">
       <h2>Data used</h2>
-      <p class="fine">Every series ends on its own date; the freshness list on the Overview shows each one. The tag on a source says how often that source publishes. This site is rebuilt by hand (last built <span data-fill="built"></span>), so it can lag. Sources without a tag have no documented schedule here.</p>
+      <p class="fine">Every series ends on its own date; the freshness list at the foot of the Overview shows the new-wells source and the permit files. The tag on a source says how often that source publishes. This site is rebuilt by hand (last built <span data-fill="built"></span>), so it can lag. Sources without a tag have no documented schedule here.</p>
       <h3>Drilling and operators</h3>
       <ul class="plain">
         <li><small class="fresh-cad src-cad">Publishes monthly</small> <a href="https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/" rel="noopener noreferrer">Railroad Commission of Texas, P-5 Organization file</a>. Every registered operator and its activity roles. File refreshed <span data-fill="p5"></span>.</li>
@@ -331,7 +195,7 @@
         <li><small class="fresh-cad src-cad">Publishes daily</small> <a href="https://oklahoma.gov/occ/divisions/oil-gas/oil-gas-data.html" rel="noopener noreferrer">Oklahoma Corporation Commission, Oil &amp; Gas Data</a>: <code>ITD-wells-formations-daily.xlsx</code> (intents to drill approved in the last 7 complete days), <code>completions-wells-formations-daily.xlsx</code> (completion filings, Form 1002A) and <code>well-transfers-daily.xlsx</code> (wells that changed operator, about a month of them). The <a href="#daily?st=ok">Daily report</a> shows what each held, one day at a time, beside Texas (or on its own with Show set to Oklahoma): counts by county, kind, planned depth and operator. The Commission makes these files at about 7:40 PM Central and they end the day before, so a report shows only whole days (Monday's shows Friday's) and fills any gap from the Commission's master files.</li>
         <li><small class="fresh-cad src-cad">Publishes nightly</small> The same page's well file <code>rbdms-wells.csv</code> (about 457,000 well records, 121 MB): counted by status, kind, county and operator and never listed, on the days a report was captured live.</li>
         <li>The master files <code>ITD-wells-formations-base.xlsx</code> (since 1999) and <code>completions-wells-formations-base.xlsx</code> (since 2010) rebuilt the days before the first capture, which are marked as reconstructed; the report keeps 92 days. The permit file does not say which permits are horizontal, so planned depth of 12,000 feet or more stands in. Operators are named only when they are corporations, LLCs or limited partnerships. Lease and well names, well and API numbers, and the operator, purchaser and plugger contact lists the Commission also publishes are never used.</li>
-        <li><small class="fresh-cad src-cad">Publishes daily</small> The same master permit workbook, read once for the <a href="#overview?st=ok">Overview</a>: new-drill permits by approval month since 2019, by county for the last 12 months and the 12 before, the operators with a permit in the last 24 months (named by the same corporate rule), and one point for each new-drill permit of the last 24 months at the surface location the Commission records, rounded to about 100 meters. A permit is one well and one approval day (the master repeats a permit once per formation until mid-2025), so a month's total matches the Daily report's. Nearly all of the last 24 months' permits have a location (the Map says the exact share). The operators are those with a permit, not every registered operator: the Commission's operator list holds names, phone numbers and addresses and is not used.</li>
+        <li><small class="fresh-cad src-cad">Publishes daily</small> The same master permit workbook, read once for the <a href="#map?st=ok">Map</a>: new-drill permits by approval month since 2019, by county for the last 12 months and the 12 before, the operators with a permit in the last 24 months (named by the same corporate rule), and one point for each new-drill permit of the last 24 months at the surface location the Commission records, rounded to about 100 meters. A permit is one well and one approval day (the master repeats a permit once per formation until mid-2025), so a month's total matches the Daily report's. Nearly all of the last 24 months' permits have a location (the Map says the exact share). The operators are those with a permit, not every registered operator: the Commission's operator list holds names, phone numbers and addresses and is not used.</li>
         <li><small class="fresh-cad src-cad">Publishes monthly</small> <a href="https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&amp;s=MCRFPOK1&amp;f=M" rel="noopener noreferrer">U.S. Energy Information Administration, Oklahoma field production of crude oil</a> (thousand barrels a month, series MCRFPOK1, through <span data-fill="okEiaThrough"></span>), beside the WTI and Henry Hub prices listed above, in the Daily report's monthly figures. The newest months are EIA estimates that get revised. That card is not for the report's day.</li>
         <li><a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" rel="noopener noreferrer">U.S. Census Bureau, cartographic boundary files</a>. The 77 Oklahoma county outlines (2025, 1:5,000,000), for the Oklahoma map.</li>
       </ul>
@@ -356,6 +220,13 @@
         <li>The Data Center's protraction diagrams (<code>protclip.zip</code>, the official diagrams of the Gulf clipped to federal waters). The 63 protraction areas, such as Green Canyon, Mississippi Canyon and Eugene Island, are the offshore's "counties" on the maps, simplified to about a kilometer. Many have no wells: the Eastern Gulf is closed to leasing.</li>
       </ul>
 
+      <h3>New wells with a GPS point (the Overview)</h3>
+      <ul class="plain">
+        <li><small class="fresh-cad src-cad">Publishes daily; read here weekly</small> <a href="https://fracfocus.org/data-download" rel="noopener noreferrer">FracFocus Chemical Disclosure Registry</a>, the national hydraulic-fracturing disclosure list (public, run by the Ground Water Protection Council and the Interstate Oil and Gas Compact Commission). Only its disclosure list is read (about 252,000 rows, one per fractured well and job, 16 MB of a 443 MB download, fetched with range requests): the well's latitude and longitude, state, county, the day the job started, true vertical depth, water used, whether it is on federal or tribal land, and the operator. The API number, the well's name and the lease are never kept; an operator is named only when it is a corporation, LLC or partnership (or one of a short reviewed list of companies whose registered names carry no &ldquo;Inc&rdquo;).</li>
+        <li>A well counts once, on the day of its first job. Operators disclose weeks to months after a job, so a month counts as settled only 120 days after the newest job, the 12-month figures use settled months only, and the newest months are drawn lighter. The registry lists wells that were fractured, which is nearly every new oil well but not every permit: a state with few fractured wells has few or none here, and says so. These counts are never added to the permit counts of the National page, which are by the agencies&rsquo; own approval dates.</li>
+        <li><a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" rel="noopener noreferrer">U.S. Census Bureau cartographic boundary files</a> (1:10,000,000, public domain, as packaged in the <code>us-atlas</code> package): the outlines of the 49 states that can hold oil, simplified to about a kilometer, drawn on the Overview. A well on the border can sit a pixel over it.</li>
+      </ul>
+
       <h2>Method</h2>
       <ul class="plain">
         <li>Operators: all <span data-fill="registered"></span> active P-5 registrants, narrowed to the <span data-fill="opsShown"></span> that are corporations, LLCs or limited partnerships.</li>
@@ -368,11 +239,12 @@
         <li>Companies by county use the Comptroller's county code, which numbers counties alphabetically (not in FIPS order); 107 Texas rows with code 0 are left out of the county counts. The County filter on the Companies tab uses the county that holds each ZIP code's center, so its counts can differ from the map's (within about 2% for most counties, more for a few such as Midland).</li>
         <li>Companies by ZIP: 1,560 ZIP codes cover every pooled Texas company. 239 ZIPs have no Census center (PO boxes and the like) and are placed at their city's center, so several ZIPs of one city can share a point.</li>
         <li>County permit counts, trends and rankings, the market charts and the headline numbers use every permit. Only the dots, and the Watch replay, use the located subset (Oklahoma, New Mexico and the federal offshore publish a location for nearly all of theirs). The replay shows each located permit on its issue date, over the last 24 months.</li>
-        <li>The Insights on the Overview are computed in your browser from the same files. Growth compares the last 12 full months with the 12 before, and counties or operators with a small base are left out.</li>
+        <li>The Overview ranks states, counties and operators from the new-wells files in your browser. A change on the 12 months before is shown only from a base of 20 wells or more; a smaller one reads n/a.</li>
       </ul>
 
       <h2>Limits</h2>
       <ul class="plain">
+        <li><strong>The Overview counts fractured wells, not permits.</strong> FracFocus lists a well when its operator discloses the fracturing job, weeks to months after it (a month is about 94% complete after four months), so the Overview&rsquo;s figures end in <span data-fill="nwSettled">the last settled month</span> and its newest months fill in later. A well that is not fractured (a vertical, injection or service well) is not in it, and states whose wells are mostly not fractured (Alabama, Mississippi, Illinois, Michigan, California, New York and others) show few or none; the permits of every state with a source are on the National page.</li>
         <li><strong>Series end on different dates.</strong> Permits run to October 7, 2026, rig counts to August 28, EIA Texas crude to July, tax receipts to August, jobs and prices to September, and the EIA outlook is a forecast to December 2027. Read each chip and chart against its own date.</li>
         <li>About 80% of Comptroller entities have no NAICS code. Service companies with generic names, no code and no RRC registration are not in the pool.</li>
         <li>Permits measure activity, not budget or need.</li>
@@ -389,6 +261,44 @@
         <li>Fit flags are rules applied to names and addresses, not research. Verify before you reach out.</li>
         <li>Matching has been spot-checked, not audited.</li>
       </ul>
+
+      <h2>How to use the site</h2>
+      <details class="card help">
+        <summary>How to use this site, and what the columns mean</summary>
+        <h3>How to use it</h3>
+        <ul class="plain">
+          <li><strong>Map</strong> follows the states bar: its shapes, dots (each state in its own color), legend and panels are those of the states shown. It shades counties (offshore, protraction areas) by permits (New Mexico and the federal offshore: wells spudded) and, for Texas, by production, jobs, establishments, mineral value or companies, and shows permit locations, and for Texas refineries, gas plants, LNG terminals and where the pooled companies sit. Pick a basin to frame it, press Watch to replay two years of permits, or click a county or an offshore area for its numbers; one outside Texas says which Texas figures it has none of.</li>
+          <li><strong>Operators</strong> lists every active Railroad Commission registrant that is a corporation, LLC or limited partnership. Start with bands A and B: they are drilling now. Tick Top producers to see who produces the most oil.</li>
+          <li><strong>Companies</strong> lists the Comptroller pool: entities filed under an oil and gas industry code, plus entities with no code whose names say oil and gas. Where a company matched an RRC operator, its permit counts are filled in.</li>
+          <li><strong>Overview</strong>: hover a dot for the well, click a state to zoom in, press Watch to replay two years of new wells. <strong>National</strong>: each state agency's permits side by side.</li>
+          <li><strong>Share this view</strong> on the Map and on both tables copies a link that reopens exactly what you see. <strong>Download CSV</strong> exports the rows you filtered, public fields only.</li>
+        </ul>
+
+        <h3>Reading the columns</h3>
+        <dl class="defs">
+          <dt>Band A, B, C</dt>
+          <dd>Drilling activity from RRC permits. A: 10 or more new-well permits in the last 12 months. B: 1 to 9. C: an RRC operator with none. Companies with no RRC match show a dash.</dd>
+          <dt>Trend</dt>
+          <dd>New-drill permits in the last 12 full calendar months against the 12 before. "new" means none in the prior 12. Blank means the operator has no permit in the last 24 months.</dd>
+          <dt>Oil, gas, production trend</dt>
+          <dd>Crude oil plus condensate (barrels) and gas (mcf) reported to the RRC over the latest 12 months, and the change against the 12 months before. Blank means no production figure for that operator, not zero.</dd>
+          <dt>Spud, depth</dt>
+          <dd>Spud counts new-drill permits whose reported spud date falls in the last 12 months. Depth is the mean reported total depth of the operator's permits over 24 months.</dd>
+          <dt>Fit</dt>
+          <dd><em>Likely</em> is an active entity with no warning signs. <em>Check</em> means verify first: a mineral or royalty name, six or more entities at one address, a weak name match (drilling, pipeline, well service), or a fuel wholesaler.</dd>
+          <dt>New entity</dt>
+          <dd>Chartered with the Texas Secretary of State in the last 24 months.</dd>
+          <dt>New to drilling, New P-5</dt>
+          <dd>First drilling permit ever filed, or first RRC registration, in the last 24 months.</dd>
+          <dt>RRC match</dt>
+          <dd>How a company was tied to an RRC operator: exact name, name prefix (RRC names are cut at 32 characters), or a similar name in the same ZIP, which is the least reliable.</dd>
+          <dt>New wells, permits</dt>
+          <dd>Permits are counted once per permit number. New wells counts new-drill applications only; recompletions and re-entries count under permits.</dd>
+        </dl>
+
+        <h3>What is not on this site</h3>
+        <p>Officer names, phone numbers and street addresses stay in the CSV files, not here. Sole proprietors and other non-entity registrants, trust and family names, and deprioritized names are left out.</p>
+      </details>
 
       <h2>Other public sources, not used yet</h2>
       <ul class="plain">

@@ -51,8 +51,8 @@ function serve() {
 
 // [name, hash, a selector that appears once the view has drawn]
 const VIEWS = [
-  ['overview', '#overview', '#hot-bars .bar-row'],
-  ['overview Oklahoma', '#overview?st=ok', '#hot-bars .bar-row'],
+  ['overview', '#overview', '#nw-slot .bar-row'],
+  ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
   ['map', '#map', '#map-root canvas'],
   ['operators', '#operators', '#ops-root table.grid tbody tr'],
   ['operators, three states', '#operators?st=tx,ok,nm', '#ops-root table.grid tbody tr'],
@@ -62,7 +62,7 @@ const VIEWS = [
   ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'],
   ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
   // the federal offshore last: the bar keeps its choice from one view to the next, and the views above are meant for the states they name
-  ['overview, federal offshore', '#overview?st=fo', '#hot-bars .bar-row'],
+  ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'],
   ['map, federal offshore', '#map?st=fo', '#map-root canvas'],
   ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
   ['sources', '#about', '#view-about h1'],
@@ -258,12 +258,12 @@ function targets() {
   // ---- reflow
   {
     const REFLOW = [
-      ['overview', '#overview', '#hot-bars .bar-row'], ['overview, Oklahoma', '#overview?st=ok', '#hot-bars .bar-row'],
+      ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
       ['map', '#map', '#map-root canvas'], ['operators', '#operators', '#ops-root table.grid tbody tr'], ['operators, New Mexico', '#operators?st=nm', '#ops-root table.grid tbody tr'],
       ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
       ['daily', '#daily', '#daily-root .dr-hero'], ['daily, Texas', '#daily?st=tx', '#daily-root .dr-hero'], ['daily, Oklahoma', '#daily?st=ok', '#daily-root .dr-hero'], ['daily, New Mexico', '#daily?st=nm', '#daily-root .dr-hero'],
       ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'], ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'], ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
-      ['overview, federal offshore', '#overview?st=fo', '#hot-bars .bar-row'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
+      ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
       ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
       ['permit data', '#fields', '#fields-root button.fx-c'], ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
@@ -345,7 +345,7 @@ function targets() {
     }
     // the page itself
     await page.goto(base + '#overview', { waitUntil: 'load' });
-    await page.waitForSelector('#hot-bars .bar-row', { timeout: 25000 });
+    await page.waitForSelector('#nw-slot .bar-row', { timeout: 25000 });
     const doc = await page.evaluate(() => ({ lang: document.documentElement.lang, mains: document.querySelectorAll('main').length, h1s: [...document.querySelectorAll('h1')].filter((h) => h.offsetParent !== null).length, title: document.title }));
     check(doc.lang === 'en' && doc.mains === 1 && doc.h1s === 1, 'the page has a language, one main landmark and one visible h1: ' + JSON.stringify(doc));
     const titles = [];
