@@ -345,7 +345,7 @@ function targets() {
     }
     // the page itself
     await page.goto(base + '#overview', { waitUntil: 'load' });
-    await page.waitForSelector('#hot-bars .bar-row', { timeout: 25000 });
+    await page.waitForSelector('#nw-slot .bar-row', { timeout: 25000 });
     const doc = await page.evaluate(() => ({ lang: document.documentElement.lang, mains: document.querySelectorAll('main').length, h1s: [...document.querySelectorAll('h1')].filter((h) => h.offsetParent !== null).length, title: document.title }));
     check(doc.lang === 'en' && doc.mains === 1 && doc.h1s === 1, 'the page has a language, one main landmark and one visible h1: ' + JSON.stringify(doc));
     const titles = [];

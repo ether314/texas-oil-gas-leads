@@ -123,6 +123,7 @@ export function createOverview(meta) {
     S.map = createUSMap({ canvas, host: stage, outlines, P, doc, interactive: true, onSelect: (id) => select(id) });
     S.tl = createTimelapse({ engine: S.map, t0: P.t0, label: 'Watch the new wells', thing: { one: 'well', many: 'wells' }, lead: 'Two years of new wells.', note: ' Each dot appears on the day of its first job and glows for a month. The newest weeks are still being disclosed.' });
     const watch = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false' }, icon('play', 16), 'Watch 24 months');
+    S.watch = watch;
     watch.addEventListener('click', () => {
       const on = !S.tl.open; if (on) S.tl.show(); else S.tl.hide();
       watch.setAttribute('aria-pressed', String(on)); watch.replaceChildren(icon(on ? 'close' : 'play', 16), on ? 'Close the replay' : 'Watch 24 months');
@@ -243,6 +244,12 @@ export function createOverview(meta) {
     host.classList.add('has-map');
     const slot = $('#nw-slot');
     slot.replaceChildren(explorer(dt), ranking(dt), months(dt), leaders(dt));
+    // the hero's button: scroll to the explorer and open the replay (a link to the page it is on would do nothing)
+    $('#go-explore').addEventListener('click', (e) => {
+      e.preventDefault();
+      $('#explore').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+      if (!S.tl.open) S.watch.click();
+    });
     freshness(dt);
     started = true;
     select(sel, { fromHash: true });

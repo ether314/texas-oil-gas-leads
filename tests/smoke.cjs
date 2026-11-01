@@ -1185,6 +1185,8 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/not counted as zero/.test(await page.locator('#nw-slot .nat-rank + .fine').innerText()) && /Alabama/.test(await page.locator('#nw-slot .nat-rank + .fine').innerText()), label + ': the producing states with no well in the registry are named, and are not counted as zero');
       // hover a dot: its tooltip names the county, the day and the operator, and never an API number or a lease
       const pt = await page.evaluate(() => { const { map, P } = window.__nw; for (let i = 0; i < P.n; i++) if (P.states[P.s[i]] === 'TX' && P.o[i] >= 0) { const [x, y] = map.screenOf(i); return { x, y, i }; } return null; });
+      await page.locator('.nw-stage').scrollIntoViewIfNeeded(); // the pointer can only reach a dot that is on screen
+      await page.waitForTimeout(300);
       const box = await page.locator('.nw-canvas').boundingBox();
       await page.mouse.move(box.x + pt.x - 20, box.y + pt.y - 20); await page.mouse.move(box.x + pt.x, box.y + pt.y);
       await page.waitForSelector('.tip', { state: 'visible', timeout: 5000 });
@@ -1194,7 +1196,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.locator('.nw-chip', { hasText: 'North Dakota' }).click();
       await page.waitForFunction(() => /^North Dakota$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
       const nd = await page.locator('.nw-grid .nat-panel').innerText();
-      check(/s=ND/.test(await page.evaluate(() => location.hash)) && /Top counties/.test(nd) && /Top operators/.test(nd) && /Williams|McKenzie/.test(nd) && (await page.locator('.nw-pick').inputValue()) === 'ND' && (await page.locator('.nat-row[aria-current="true"]').innerText()).includes('North Dakota'), label + ': choosing North Dakota zooms the map, fills its panel, writes s=ND in the address and marks its row');
+      check(/s=ND/.test(await page.evaluate(() => location.hash)) && /top counties/i.test(nd) && /top operators/i.test(nd) && /Williams|McKenzie/.test(nd) && (await page.locator('.nw-pick').inputValue()) === 'ND' && (await page.locator('.nat-row[aria-current="true"]').innerText()).includes('North Dakota'), label + ': choosing North Dakota zooms the map, fills its panel, writes s=ND in the address and marks its row');
       check(/Its permits, by the agency/.test(nd) && (await page.locator('.nw-grid .nat-panel a[href="#national?s=ND"]').count()) === 1, label + ': the state\'s panel links to its permits on the National page, which count something else');
       await page.selectOption('.nw-pick', 'TX');
       await page.waitForFunction(() => /^Texas$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
@@ -1203,8 +1205,9 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /All states/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
       check(!/s=/.test(await page.evaluate(() => location.hash)), label + ': back to all states takes s out of the address');
       // the replay: with reduced motion only the scrubber, which moves the clock; the count only grows
-      await page.click('.nw-explore button:has-text("Watch 24 months")');
+      await page.click('#go-explore'); // the hero's button opens the replay under the map
       await page.waitForSelector('.tl-range', { state: 'visible', timeout: 5000 });
+      check((await page.locator('.nw-explore button[aria-pressed="true"]').innerText()).includes('Close the replay') && (await page.locator('#explore').boundingBox()).y < 400, label + ': "Watch the wells" in the hero scrolls to the explorer and opens the replay');
       const total = await page.evaluate(() => window.__nw.map.tlCount(window.__nw.map.tlRange[1]));
       await page.locator('.tl-range').fill(String(Math.round(await page.evaluate(() => window.__nw.map.tlRange[1] / 2))));
       const half = await page.evaluate(() => window.__nw.map.tlCount(window.__nw.map.tlRange[1] / 2));
