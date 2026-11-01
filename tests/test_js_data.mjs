@@ -448,6 +448,26 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(NW.monthPos(doc, '2011-01-01') === 0 && NW.monthPos(doc, '2011-02-01') === 1 && Math.abs(NW.monthPos(doc, '2011-01-16') - 15 / 31) < 1e-9 && Math.abs(NW.monthPos(doc, '2012-03-01') - 14) < 1e-9 && NW.monthPos(doc, '2010-12-01') === -1
     && NW.monthPos(doc, doc.months[lastM] + '-01') === lastM && Math.abs(NW.monthPos(doc, '2012-02-15') - (13 + 14 / 29)) < 1e-9 && NW.monthPos(doc, doc.asOf) > lastM - 1 && NW.monthPos(doc, doc.asOf) < lastM + 1,
     'newwells: monthPos puts a day on the strip\'s month axis (Jan 1, 2011 at 0, a month a step, leap February by its 29 days, the newest well inside the last month)');
+  // decodePermits: the agencies' oil permits and spuds that have a point, on the wells' days (the Daily report draws them as rings beside the fracked wells)
+  const pdocs = NW.PERMIT_SOURCES.map((x) => ({ id: x.id, pm: read(x.file) }));
+  const dayOff = (pm, t0) => Math.round((Date.parse(pm.t0 + 'T00:00:00Z') - Date.parse(t0 + 'T00:00:00Z')) / 864e5);
+  const Qp = NW.decodePermits(pdocs, pts.t0);
+  const wantN = pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, pts.t0) >= 0).length, 0);
+  check(Qp.n === wantN && wantN > 10000 && Qp.states.join() === 'TX,OK,NM,FO' && Qp.spud.join() === '0,0,1,1' && Qp.day.every((d, i) => i === 0 || d >= Qp.day[i - 1]) && Qp.day[0] >= 0,
+    'permits: ' + Qp.n + ' points from the four agencies, sorted by day, none before the wells\' first day; Texas and Oklahoma count permits, New Mexico and the offshore spuds');
+  const aDay = Qp.day[Math.floor(Qp.n / 2)]; const iso = NW.dayIso(NW.dayMs({ t0: Date.parse(pts.t0 + 'T00:00:00Z') }, aDay));
+  const wantDay = pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, pts.t0) === aDay).length, 0);
+  const perSt = NW.permitsPerState(Qp, aDay, aDay);
+  check(wantDay > 0 && NW.permitsOfDay(Qp, aDay).length === wantDay && perSt.reduce((t, x) => t + x.n, 0) === wantDay && perSt.every((x, i) => i === 0 || perSt[i - 1].n >= x.n)
+    && NW.permitsOfDay(Qp, aDay, perSt[0].id).length === perSt[0].n && NW.permitsOfDay(Qp, aDay, 'ND').length === 0 && NW.permitsOfDay(Qp, -5).length === 0,
+    'permits: ' + iso + ' has ' + wantDay + ' in the files and in the decoder, ranked by state, and a state with no source has none');
+  const named = Array.from({ length: Qp.n }, (_, i) => NW.permitOperator(Qp, i)).filter(Boolean);
+  const pfo = pdocs.find((d) => d.id === 'FO').pm;
+  check(named.length > 5000 && named.every((x) => typeof x === 'string') && Qp.op.some((o) => o < 0) && NW.permitWord(Qp, Qp.s.indexOf(2)) === 'Well spudded' && NW.permitWord(Qp, Qp.s.indexOf(0)) === 'Permit approved'
+    && NW.permitStateName('FO') === 'Federal offshore' && Qp.last[3] === Math.max(...pfo.pts.map((r) => r[3])) + dayOff(pfo, pts.t0) && Qp.last.every((d) => d > 0),
+    'permits: only named operators carry a name (the rest are -1), spuds and permits are told apart, and each state\'s newest day is its file\'s');
+  const Qlate = NW.decodePermits(pdocs, '2025-06-01');
+  check(Qlate.n < Qp.n && Qlate.day.every((d) => d >= 0) && Qlate.n === pdocs.reduce((t, d) => t + d.pm.pts.filter((r) => r[3] + dayOff(d.pm, '2025-06-01') >= 0).length, 0), 'permits: a later first day leaves out the permits before it and renumbers the rest from it');
   // the history: every well with a point since 2011, joined to the last two years' points
   const hist = read('newwells/points-history');
   const mp = NW.mergePoints(pts, hist); const PH = NW.decode(mp);

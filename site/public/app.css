@@ -769,6 +769,16 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .dd-years .nat-hit { cursor: pointer; }
 .dd-ywin { fill: color-mix(in srgb, var(--ring) 16%, transparent); stroke: var(--ring); stroke-width: 1; pointer-events: none; }
 .dd-yday { stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.nw-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-4); margin: var(--sp-3) 0 var(--sp-2); padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--ink-2); }
+.nw-marks li { display: inline-flex; align-items: center; gap: var(--sp-2); }
+/* a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud: the same two marks as on the map */
+.dd-dotkey, .dd-ringkey { display: inline-block; flex: none; box-sizing: border-box; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
+.dd-dotkey { background: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent); }
+.dd-ringkey { border: 2px solid var(--ink); background: transparent; width: 13px; height: 13px; }
+.dd-by { margin-top: var(--sp-4); }
+.dd-by h4 { display: flex; align-items: center; gap: var(--sp-2); }
+.nat-big.dd-bigq { margin-top: var(--sp-2); align-items: center; }
+.nat-big.dd-bigq strong { font-size: var(--fs-xl); }
 .dd-by .link, .dd-tbl .link { display: inline-flex; align-items: center; min-height: 24px; } /* a name that is a button is as tall as any other control: 24 px */
 @media (max-width: 640px) { .dd-mid { flex-basis: 100%; order: 3; } }
 
