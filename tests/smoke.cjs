@@ -1106,6 +1106,25 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 21b. the Texas images chart is drawn again when the window changes size (it was drawn once at the width it had)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(base + '#images', { waitUntil: 'load' });
+      await page.waitForSelector('#images-root svg.nat-chart', { timeout: 25000 });
+      const width = () => page.evaluate(() => { const g = document.querySelector('#images-root svg.nat-chart'); return { vb: g.viewBox.baseVal.width, px: g.getBoundingClientRect().width }; });
+      const wide = await width();
+      await page.setViewportSize({ width: 380, height: 800 });
+      await page.waitForFunction((w) => document.querySelector('#images-root svg.nat-chart').viewBox.baseVal.width < w - 100, wide.vb, { timeout: 5000 });
+      const narrow = await width();
+      check(narrow.vb < wide.vb && narrow.px / narrow.vb > 0.9 && narrow.px / narrow.vb < 1.1, 'the images chart is drawn again at the new width (' + wide.vb + ' wide, then ' + narrow.vb + ' at scale ' + (narrow.px / narrow.vb).toFixed(2) + ')');
+    } catch (e) {
+      check(false, 'the images chart on a resize: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    await ctx.close();
+  }
+
   // 22. the national Daily report (2026-11-01): one day of new wells, nationwide, the same for every state; the day can be chosen four ways, the newest days say they are filling in,
   //     a state can be chosen, a day with no well says none, and nothing is a figure only some states have
   for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {

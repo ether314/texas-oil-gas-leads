@@ -15,6 +15,7 @@ const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'O
 const short = (iso) => MONTH[+iso.slice(5, 7) - 1] + ' ' + +iso.slice(8);
 
 export function createImagesView({ root }) {
+  let drawnAt = 0; let resizeTimer = null; // the width the day chart was drawn at: a window that changes size draws it again
   let rows = []; let building = null; let day = null; let latest = {}; // latest: the newest day each pack was counted by kind, {pack: {day, p}}
   const slots = {};
   const wells = createWellsPanel();
@@ -59,7 +60,7 @@ export function createImagesView({ root }) {
 
   /* ---------- day by day ---------- */
   function chart() {
-    const W = chartWidth(slots.chart, 1200); const H = W < 500 ? 200 : 230; const L = 52; const R = 6; const T = 8; const B = 22;
+    const W = chartWidth(slots.chart, 1200); drawnAt = W; const H = W < 500 ? 200 : 230; const L = 52; const R = 6; const T = 8; const B = 22;
     const n = rows.length; const slot = (W - L - R) / Math.max(1, n); const bw = Math.max(2, slot * 0.78);
     const { top, ticks } = niceMax(Math.max(1, ...rows.map(I.dayTotal)));
     const y = (v) => T + (H - T - B) * (1 - v / top);
@@ -174,6 +175,10 @@ export function createImagesView({ root }) {
       el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; every document itself is published readable and unmodified under its well (Find a well, above), and can carry the names, phone numbers and addresses of individuals. A day’s permit letters, plats and surveys also show page one here and on their drill page in the Daily report.' }));
     return true;
   }
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (slots.chart && slots.chart.isConnected && slots.chart.clientWidth && Math.abs(chartWidth(slots.chart, 1200) - drawnAt) > 24) slots.chart.replaceChildren(...chart()); }, 150);
+  });
   return {
     async activate(params) {
       const well = wells.show({ well: params && params.get('well'), c: params && params.get('c'), q: params && params.get('q') });
