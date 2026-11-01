@@ -664,6 +664,49 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 16b. the header, at any width and in any font: its three parts are all on the page (the theme toggle is not pushed off it), nothing makes the page scroll sideways, the tagline shows
+  // only when it fits whole, and every tab is reachable (the row holds them on one line, or scrolls them). The header measures itself and is one row, one row without the tagline, or two rows
+  // (found by looking at 761 to 1000 px after two tabs were added: the tabs and the toggle ran off the page)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    try {
+      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.waitForSelector('.top-row[data-fit]', { timeout: 25000 });
+      const bad = []; const modes = {};
+      for (const w of [360, 390, 640, 761, 820, 900, 1000, 1100, 1180, 1200, 1280, 1440, 1920]) {
+        await page.setViewportSize({ width: w, height: 800 });
+        await page.waitForTimeout(250);
+        const r = await page.evaluate(() => {
+          const row = document.querySelector('.top-row'); const nav = document.querySelector('.nav'); const theme = document.querySelector('.theme').getBoundingClientRect();
+          const sub = document.querySelector('.brand-sub'); const links = [...nav.querySelectorAll('a')];
+          const oneLine = new Set(links.map((a) => a.offsetTop)).size === 1;
+          const clipped = nav.scrollWidth > nav.clientWidth + 1;
+          return {
+            fit: row.dataset.fit, doc: document.documentElement.scrollWidth > document.documentElement.clientWidth, toggle: theme.left >= 0 && theme.right <= window.innerWidth,
+            subCut: sub.offsetParent !== null && sub.scrollWidth > sub.clientWidth + 1, oneLine, unreachable: clipped && !['auto', 'scroll'].includes(getComputedStyle(nav).overflowX), tabs: links.length,
+          };
+        });
+        modes[w] = r.fit;
+        const why = [r.doc ? 'the page scrolls sideways' : '', r.toggle ? '' : 'the theme toggle is off the page', r.subCut ? 'the tagline is cut' : '', r.oneLine ? '' : 'the tabs wrap', r.unreachable ? 'a tab is cut off and cannot be scrolled to' : ''].filter(Boolean);
+        if (why.length) bad.push(w + ' px: ' + why.join(', '));
+      }
+      check(!bad.length, 'the header at 13 widths from 360 to 1920 px keeps its toggle on the page, its tabs on one line and reachable, and never cuts its tagline' + (bad.length ? ': ' + bad.join(' | ') : ''));
+      // the width at which the header gets its one row depends on the font (the tabs need 788 px in one and more in another), so only what holds in every font is asserted: a phone
+      // stacks, every mode is a known one, and a wider page never has less room than a narrower one (stack, compact, row, full in that order)
+      const rank = { stack: 0, compact: 1, row: 2, full: 3 }; const order = Object.keys(modes).map(Number).sort((a, b) => a - b);
+      check(modes[360] === 'stack' && modes[390] === 'stack' && order.every((w) => w in modes && modes[w] in rank) && order.every((w, i) => !i || rank[modes[w]] >= rank[modes[order[i - 1]]]),
+        'a phone gets the tabs on a row of their own, and a wider page never gets a smaller layout than a narrower one (header layout by width: ' + JSON.stringify(modes) + ')');
+    } catch (e) {
+      check(false, 'the header: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the header sweep loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
   // 17. the federal offshore: the bar's five choices fit a 360 px phone (TX, OK, NM, Offshore) and keep their full names for a screen reader; the pages that
   // follow the bar say areas where it has areas and give its reason for having no Daily report; its operators are named by the same rule
   {
