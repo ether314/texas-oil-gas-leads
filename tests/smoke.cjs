@@ -1272,12 +1272,47 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /Jan 1, 2011/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
       check(await page.locator('button[aria-label="The day before"]').isDisabled() && /in North Dakota$/.test(await tableHead()) && /Saturday, Jan 1, 2011/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': an address with a day in 2011 opens on it with the arrow back switched off at the first day');
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-daily').innerText()), label + ': no NaN, undefined, null or Infinity on a day in 2011');
+      // the strip of every month since 2011 (2026-11-02): a bar a month from the summary (no download), the chart's 150 days as a band, the chosen day as a line; a click on a month opens it,
+      // a failed fetch of the earlier wells says so right there, and a state chosen redraws it
+      await page.goto(base + '?fresh=3#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dd-ychart', { timeout: 25000 });
+      await page.waitForTimeout(300);
+      const sumDoc = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'summary.json'), 'utf8'));
+      const strip = () => page.evaluate(() => {
+        const g = document.querySelector('#daily-root .dd-ychart'); const w = g.querySelector('.dd-ywin'); const d = g.querySelector('.dd-yday'); const box = document.querySelector('#daily-root .dd-years'); const t = [...g.querySelectorAll('text.ax')].map((n) => n.textContent);
+        return { hits: g.querySelectorAll('.nat-hit').length, W: +g.getAttribute('width'), x: +w.getAttribute('x'), w: +w.getAttribute('width'), dx: +d.getAttribute('x1'), fits: box.scrollWidth <= box.clientWidth + 1, top: t[0], years: t.filter((x) => /^20\d\d$/.test(x)) };
+      });
+      const s0 = await strip();
+      check(s0.hits === sumDoc.months.length && s0.hits > 180 && s0.years[0] === '2011' && s0.fits && s0.x + s0.w > s0.W * 0.9 && s0.dx >= s0.x - 1 && s0.dx <= s0.x + s0.w + 1 && /^Every month since Jan 2011, all states/.test(await page.locator('#daily-root .dd-ycap').innerText()),
+        label + ': the chart card opens with a bar for every month since 2011 (' + s0.hits + '), labeled from 2011, fitting the card, with the chart\'s days as a band at the newest end and the day inside it');
+      const errsStrip = errs.length;
+      await page.route('**/newwells/points-history.json', (r) => r.abort());
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(26).click();
+      await page.waitForFunction(() => /Could not load the earlier wells/.test((document.querySelector('#daily-root .dd-yearsbox .nw-status') || {}).textContent || ''), null, { timeout: 15000 });
+      check((await page.locator('#daily-root .dd-date').innerText()) === newestDay, label + ': a click on a month that cannot be loaded says so above the strip, where the click was, and the day stays');
+      await page.unroute('**/newwells/points-history.json');
+      errs.splice(errsStrip);
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(26).click();
+      await page.waitForFunction(() => /Mar 1, 2013/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 30000 });
+      await page.waitForTimeout(300);
+      const s1 = await strip();
+      check(/d=2013-03-01/.test(await hash()) && /^The 150 days from /.test(await title()) && s1.hits === s0.hits && s1.x < s0.x - 100 && s1.dx >= s1.x && s1.dx <= s1.x + s1.w && s1.fits,
+        label + ': a click on March 2013 loads the earlier wells and opens Mar 1, 2013; the band moved back to it and holds the day line (' + Math.round(s0.x) + ' to ' + Math.round(s1.x) + ')');
+      await page.selectOption('#daily-root select.nw-pick', 'ND');
+      await page.waitForFunction(() => /in North Dakota/.test((document.querySelector('#daily-root .dd-ycap') || {}).textContent || ''), null, { timeout: 5000 });
+      const s2 = await strip();
+      check(s2.hits === s0.hits && s2.top !== s1.top && s2.x === s1.x && s2.fits, label + ': choosing a state draws the strip again for that state alone, on its own scale (' + s1.top + ' to ' + s2.top + ') and with the band where it was');
+      await page.locator('#daily-root .dd-ychart .nat-hit').nth(0).click();
+      await page.waitForFunction(() => /Jan 1, 2011/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 5000 });
+      const s3 = await strip();
+      check(await page.locator('button[aria-label="The day before"]').isDisabled() && s3.x <= 41 && /s=ND/.test(await hash()) && /in North Dakota$/.test(await tableHead()), label + ': the first bar opens Jan 1, 2011 with the band at the start of the strip, and the state stays');
+      check(/no usable GPS point/.test(await page.locator('#view-daily').innerText()) && !/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-daily').innerText()), label + ': the page says that a few wells have no point, and shows no NaN, undefined, null or Infinity');
       // fractured wells found and oil well permits approved, day by day, marked and never added (2026-11-02)
       const readIdx = (d) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', d, 'index.json'), 'utf8')).days;
       const idxTx = readIdx('daily'); const newestIdx = idxTx[idxTx.length - 1].d;
       const oilOf = (d) => ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const e = readIdx(dir).find((x) => x.d === d && x.s === 'ok'); return e ? e.pn : 0; });
       const arrCard = page.locator('section[aria-labelledby="dd-arr-h"]');
-      await page.goto(base + '?fresh=3#daily', { waitUntil: 'load' });
+      await page.goto(base + '?fresh=5#daily', { waitUntil: 'load' });
       await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
       const baseText = await arrCard.innerText();
       const committed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'arrivals.json'), 'utf8'));
@@ -1289,7 +1324,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/different things/.test(baseText) && /never added together/.test(baseText) && /cannot be checked against them/.test(baseText) && !/\d{10}/.test(baseText), label + ': it says the two are never added, that Oklahoma and New Mexico cannot be checked, and holds no API number');
       const fixture = { v: 1, checked: newestIdx, since: newestIdx, against: { TX: { wells: 83, from: '2026-10-30' } }, days: [{ day: newestIdx, found: 41, removed: 1, states: [['TX', 25, 3], ['NM', 9, null], ['OK', 5, null], ['ND', 2, null]] }] };
       await page.route('**/newwells/arrivals.json', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fixture) }));
-      await page.goto(base + '?fresh=4#daily', { waitUntil: 'load' });
+      await page.goto(base + '?fresh=6#daily', { waitUntil: 'load' });
       await page.waitForSelector('#dd-arr-h', { timeout: 25000 });
       const cells = await arrCard.locator('tbody tr').first().locator('th, td').allInnerTexts();
       const oil = oilOf(newestIdx); const rows2 = await arrCard.locator('tbody tr').allInnerTexts();

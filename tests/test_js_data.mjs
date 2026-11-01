@@ -429,6 +429,11 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(!td14.latest && td14.from === '2013-10' && td14.to === '2014-09' && td14.perDay > 50 && td14.perDay < 120 && !td11.latest && td11.from === '2011-01' && td11.to === '2011-12' && tdTx.perDay > 0 && tdTx.perDay < td14.perDay,
     'newwells: a day in 2014 is set against Oct 2013 to Sep 2014 (' + td14.perDay.toFixed(1) + ' a day, not last year\'s ' + tdNew.perDay.toFixed(1) + '), the first days against the first twelve months, one state against its own');
   check(NW.typicalDay(doc, '2030-01-01').latest && NW.typicalDay(doc, '2001-01-01').from === '2011-01' && NW.drilled(NW.byId(doc, 'AL')) && !NW.drilled({ new: [0, 0] }), 'newwells: a day outside the series gets the nearest twelve months, and a state with a well only years ago counts as drilled');
+  // monthPos: where a day sits on the month axis of the Daily report's overview strip (Jan 1, 2011 is 0, each month is one step, a day is its share of its month)
+  const lastM = doc.months.length - 1;
+  check(NW.monthPos(doc, '2011-01-01') === 0 && NW.monthPos(doc, '2011-02-01') === 1 && Math.abs(NW.monthPos(doc, '2011-01-16') - 15 / 31) < 1e-9 && Math.abs(NW.monthPos(doc, '2012-03-01') - 14) < 1e-9 && NW.monthPos(doc, '2010-12-01') === -1
+    && NW.monthPos(doc, doc.months[lastM] + '-01') === lastM && Math.abs(NW.monthPos(doc, '2012-02-15') - (13 + 14 / 29)) < 1e-9 && NW.monthPos(doc, doc.asOf) > lastM - 1 && NW.monthPos(doc, doc.asOf) < lastM + 1,
+    'newwells: monthPos puts a day on the strip\'s month axis (Jan 1, 2011 at 0, a month a step, leap February by its 29 days, the newest well inside the last month)');
   // the history: every well with a point since 2011, joined to the last two years' points
   const hist = read('newwells/points-history');
   const mp = NW.mergePoints(pts, hist); const PH = NW.decode(mp);
