@@ -1,0 +1,446 @@
+{
+ "state": "MI",
+ "name": "Michigan",
+ "agency": {
+  "name": "Michigan Department of Environment, Great Lakes, and Energy (EGLE), Oil, Gas, and Minerals Division",
+  "short": "EGLE OGMD",
+  "url": "https://www.michigan.gov/egle/about/organization/oil-gas-and-minerals/oil-and-gas"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Deepen, and Operate a Well (cover page); with Survey Record of Well Location and Supplemental Plat",
+  "number": "EQP 7200-1 (survey EQP 7200-2; blowout control EQP 7200-4; injection EQP 7200-14)",
+  "url": "https://www.michigan.gov/egle/about/organization/geologic-resources-management/oil-and-gas/forms",
+  "read": false,
+  "notes": "NOT READ: michigan.gov answered 403 to the caller's HEAD and to WebFetch GET (no retry, no workaround). Form number and title come from WebSearch result summaries of EGLE pages, not from the form. Filing is through the MiSTAR e-filing system per those summaries. Form cells are therefore taken from Mich. Admin. Code R 324.201 (read at law.cornell.edu/regulations/michigan/Mich-Admin-Code-R-324-201), marked evidence 'doc', and many are 'unknown'."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "api_num (14 digits) in layers 9 and 10"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PermitNumber in layers 9 and 10"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WellName, WellNumber, WellNameFull"
+  },
+  "lease_name": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No lease field in the layers; form not readable (michigan.gov 403)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "CompanyName (operator; may be an individual: not filtered)"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "CompanyNo"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in layers; R 324.201(2)(h) only asks for an organization report"
+  },
+  "bond": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(i): bond or financial responsibility statement; form not read"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "CountyName, County_fips"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No district field in layers"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "FieldName, FieldType, PRUName; often empty on new permits"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer 10 point geometry; X and Y fields"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "TownshipName, TRS, QQQS, QQS, QS; plat footages per R 324.201(2)(b)"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer 9 point geometry (bottom hole)"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(3) directional data; layer 11 'Directional Lines' exists, fields unread"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ReferenceElevation; empty on 8 of 8 newest permits (set after drilling)"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(e): first page mailed to the surface owner of record"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "well_type code and WellType label (Location, Lost Hole, Oil...)"
+  },
+  "work_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No work-type field; Sidetrack and Completion are sequence numbers only"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Slant (V or D), WellboreType"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(3), directional wells only; layer DTD is empty on new permits"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(3), directional wells only; layer TVD is empty on new permits"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "ProducingFormation, ProdFormationCode; filled on 1 of 8 newest permits"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "data",
+   "e": "file",
+   "n": "Concentration_H2S; empty on 8 of 8 newest permits"
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(c): chemical list and CAS numbers if high-volume frac planned"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(b): plat shows footages to drilling unit lines; layer PRUName unread"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(j): statutory fee with the application"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(e): first page mailed to county clerk and surface owner in 7 days"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in layers; weekly lists said to include 'applied for' (not read)"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PermitDate (newest 2026-10-07); read as the issue date, not confirmed"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No spud field in layers 9 and 10"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "WellStatus (Permitted Well, Producing, Plugging Completed...)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "doc",
+   "n": "R 324.201(2)(b): signed, sealed survey and plat; online copy not verified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "LogsAvailable flag (YES/NO) only; logs themselves not checked"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  }
+ },
+ "sources": [
+  {
+   "id": "egle-grmd-wells-bh",
+   "name": "EGLE GrmdOpenData MapServer layer 9: Oil, Gas, and Mineral Well Bottom Hole Locations",
+   "url": "https://gisagoegle.state.mi.us/arcgis/rest/services/EGLE/GrmdOpenData/MapServer/9",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "1927",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "EGLE maps and data terms of use (gis-egle.hub.arcgis.com/pages/terms, not read)",
+   "columns": [
+    "OBJECTID",
+    "PKey",
+    "Constructkey",
+    "WellID",
+    "api_num",
+    "PermitNumber",
+    "CountyName",
+    "County_fips",
+    "Sidetrack",
+    "Completion",
+    "WellName",
+    "WellNumber",
+    "WellNameFull",
+    "CompanyNo",
+    "CompanyName",
+    "StateLand",
+    "FederalLand",
+    "TownshipName",
+    "TRS",
+    "QQQS",
+    "QQS",
+    "QS",
+    "well_type",
+    "WellType",
+    "WellStatus",
+    "Slant",
+    "WellboreType",
+    "DTD",
+    "TVD",
+    "KOTVD",
+    "ReferenceTops",
+    "ReferenceElevation",
+    "FieldName",
+    "FieldType",
+    "PRUNumber",
+    "PRUName",
+    "ProdFormationCode",
+    "ProducingFormation",
+    "PermitDate",
+    "PluggingDate",
+    "Concentration_H2S",
+    "LogsAvailable",
+    "Y",
+    "X",
+    "mgr_x",
+    "mgr_y",
+    "Shape"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "Location (permitted, not yet drilled)",
+    "oil",
+    "gas",
+    "injection (GIW, WIW)",
+    "lost hole",
+    "other codes unread"
+   ],
+   "reachable": "ok",
+   "tested": "layer ?f=json 200 (40 KB, 47 fields, maxRecordCount 2000, Query and pagination supported, JSON/geoJSON/PBF); statistics query: 88,279 records, PermitDate 1927-09-27 to 2026-10-07; 69 records with PermitDate on or after 2025-01-01; newest 8 sampled (no names kept). 6 requests to gisagoegle.state.mi.us in all, spaced 4-6 s."
+  },
+  {
+   "id": "egle-grmd-wells-sh",
+   "name": "EGLE GrmdOpenData MapServer layer 10: Oil, Gas, and Mineral Well Surface Hole Locations",
+   "url": "https://gisagoegle.state.mi.us/arcgis/rest/services/EGLE/GrmdOpenData/MapServer/10",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "EGLE maps and data terms of use (not read)",
+   "columns": [
+    "same 47 fields as layer 9, plus TopWellType, TopWellStatus"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "same as layer 9"
+   ],
+   "reachable": "ok",
+   "tested": "layer ?f=json 200 (40 KB); fields compared with layer 9; record count not queried. Service also lists layer 11 'Directional Lines' and 12 'Oil and Gas Fields By Formation' (names only)."
+  },
+  {
+   "id": "egle-database-downloads",
+   "name": "EGLE Oil and Gas Database Downloads (well location shapefiles, layer files)",
+   "url": "https://www.michigan.gov/egle/about/organization/geologic-resources-management/oil-and-gas/database-downloads",
+   "kind": "bulk",
+   "format": "shp",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "not read (page blocked)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "blocked-403",
+   "tested": "caller's HEAD: 403; WebFetch GET: 403 (not retried). Content known only from a WebSearch summary: shapefiles of bottom hole, surface, directional lines and abandoned wells, updated nightly. has_approval_date left false because unread; probably the same fields as the layers."
+  },
+  {
+   "id": "egle-weekly-permit-lists",
+   "name": "EGLE Weekly Updates: permit lists (drilling permits applied for, issued, updated in a calendar week)",
+   "url": "https://www.michigan.gov/egle/about/organization/geologic-resources-management/oil-and-gas/weekly-updates",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2018",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "permit number",
+    "issue date",
+    "permittee name and address",
+    "township",
+    "county",
+    "section/location (from search summaries, not read)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "blocked-403",
+   "tested": "michigan.gov: 403 (caller HEAD; WebFetch of sibling pages 403). PDF columns come only from WebSearch summaries of archived 2019 to 2021 PDFs (2018-2019 file names seen). A search summary said the page may lag; not verified."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "ArcGIS layers 9 and 10 are free, no login, answered 200 from here, hold one record per well with PermitNumber, api_num and PermitDate (newest 2026-10-07, so maintained). Michigan is a small market (69 records dated since 2025-01-01), so monthly counts are noisy. No work type, spud date or proposed depth in the data.",
+ "producer_plan": "Query layer 10 (surface hole, has the point) page by page (maxRecordCount 2000, resultOffset supported) or ask for statistics, with fields api_num, PermitNumber, PermitDate, well_type, WellType, WellStatus, Slant, Sidetrack, Completion, CountyName, CompanyNo, CompanyName, FieldName, X, Y. Count wells by PermitDate month; split by well_type (LOC = permitted, not drilled; OIL/GAS = producers; GIW/WIW/BDW/COI/DH = injection, disposal and other service codes, codes not decoded). Work type is not a field: Sidetrack greater than 0 marks another wellbore on an existing hole and Completion greater than 0 a later completion, but this is inferred from the field names and sample rows, not documented. Caveats: PermitDate meaning (issue vs latest action) not confirmed; one record per well so a reissued or amended permit may not show as a second row; cancelled or expired permits may or may not stay in the layer (not checked); cadence of the layer unknown (shapefile page says nightly). The weekly PDFs (blocked here) could confirm dates.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "CompanyName is the permittee and the weekly PDFs carry permittee addresses (search summary); an operator can be an individual, so a build needs a corporate-name filter like the Oklahoma nameable() rule. No names or addresses copied here.",
+ "unknowns": [
+  "current form text (michigan.gov 403)",
+  "PermitDate meaning",
+  "work type and recompletion handling",
+  "cancelled and expired permits in the layer",
+  "layer refresh cadence",
+  "decoded well_type code list",
+  "layer 11 fields",
+  "terms of use",
+  "spud and completion dates anywhere in the open data",
+  "MiSTAR public lookup"
+ ],
+ "researched": "2026-10-31"
+}

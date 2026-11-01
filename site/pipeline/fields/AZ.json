@@ -1,0 +1,422 @@
+{
+ "state": "AZ",
+ "name": "Arizona",
+ "agency": {
+  "name": "Arizona Oil and Gas Conservation Commission (AZOGCC), administered by the Arizona Department of Environmental Quality (ADEQ)",
+  "short": "AZOGCC",
+  "url": "https://azogcc.az.gov/"
+ },
+ "form": {
+  "name": "Form 3, Application to Drill (APD)",
+  "number": "Form 3 (checklist: form03_checklist.pdf); related Form 4 completion report, Form 9 P&A application, Form 10 plugging record",
+  "url": "https://static.azdeq.gov/ogcc/forms/Form03_0.pdf",
+  "read": false,
+  "notes": "NOT READ. The form and the checklist (http://static.azdeq.gov/ogcc/checklists/form03_checklist.pdf) are on static.azdeq.gov, and one GET of the form came back HTTP 403 with a Cloudflare 'Just a moment, enable JavaScript and cookies' page; a filed APD on ogviewer.azdeq.gov answered the same way. Not retried and no other route tried, per the brief. Cells marked form therefore rest on the rule A.A.C. R12-7-104 (read at https://www.law.cornell.edu/regulations/arizona/Ariz-Admin-Code-SS-R12-7-104): an application on the Commission's form with operator name, address and phone and a description of the proposed well and location; a well and well-site construction plan (R12-7-108 to -118, not read); a surveyor-certified plat with acreage, exact location and ground elevation; an organization report; a performance bond; and a $25.00 per well fee; 30 days for completeness and 30 for review; permit void after 180 days without operations. The data layer's columns show what the agency records per permit."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API column (1,266 of 1,288 rows), e.g. 02-001-20570"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT ('AZOGCC:1321') and PERMIT_ID ('1321'), filled on every row"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_NAME (every row)"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "LEASE_NAME (1,231 rows)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "OPERATOR (1,225 rows; companies and some people) and PRIOR_OPERATOR"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "operator_type": {
+   "s": "form",
+   "e": "doc",
+   "n": "Organization report required with the application (R12-7-104(A)(4)); form not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "doc",
+   "n": "Performance bond required in the package (R12-7-103, R12-7-104(A)(5)); form not read"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "COUNTY (1,286 rows)"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_FIELD (964 rows; 'Wildcat' for 617)"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "LATITUDE and LONGITUDE (1,276 rows)"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "TRS (1,281 rows) and LOCATION footages such as '1595 FEL 2475 FSL' (855 rows)"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "BH_LATITUDE and BH_LONGITUDE, filled for only 4 wells"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ELEV_GL (1,232), ELEV_KB (508), ELEV_DF (313); rule also asks plat to show ground elevation"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_TYPE (Oil and Gas Exploration, Helium, Geothermal...), WELL_FUNCTION and COMMODITY"
+  },
+  "work_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule says 'drill or re-enter' in one application; Form 3 not read"
+  },
+  "well_direction": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "DEPTH_DRILL (1,268 rows): proposed for new permits, drilled for old wells; one depth only"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "FORMATION (1,203 rows); the layer does not say target or reached"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat shows the acreage allotted to the well (R12-7-104(A)(3), R12-7-107); form not read"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "MINERAL_OWNER (958 rows, 97 values such as State, Fee, Federal, Navajo, railroad land)"
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "$25.00 per well in the rule (R12-7-104(A)(6)); a 2026 bill on fees was not checked"
+  },
+  "notice_hearing": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "date_received": {
+   "s": "query",
+   "e": "web",
+   "n": "Only in the APD file name on the per-well page (1321_APD_03_12_26.pdf); PDF not opened"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "Only in the approval-letter file name on the per-well page (1321_APDltr_05_12_26.pdf); PDF not opened"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule: void after 180 days unless operations start; statuses Permit Expired and Permit Extension; no date column"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SPUD_DATE (824 rows)"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "DRILL_END_DATE (1,075 rows) is the end of drilling; not stated to be completion"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "STATUS_WELL (Planned, Permitted, Permit Extension, Permit Expired, Drilling, Producing, Plugged...) and STATUS_DATE"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "'Signed APD' PDF linked from the per-well page; the PDF host answers curl with 403"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 not read (403); rule text and layer only"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "FAQ: logs go to the Arizona Geological Survey, not the AZOGCC; not checked there"
+  },
+  "production_link": {
+   "s": "none",
+   "e": "web",
+   "n": "FAQ: production reports no longer published; monthly data since 2017 only by records request"
+  }
+ },
+ "sources": [
+  {
+   "id": "az-og-wells-layer",
+   "name": "OIL AND GAS WELLS AGOL (Arizona oil, gas, helium, CO2 and geothermal wells and permits; ArcGIS feature layer behind the AZOGCC map)",
+   "url": "https://utility.arcgis.com/usrsvcs/servers/6c01eae404a44e95a9aad050effe93cd/rest/services/OIL_AND_GAS_WELLS_AGOL/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "1930",
+   "size_mb": 2.0,
+   "free": true,
+   "login": false,
+   "license": "unknown (no license text in the layer; description is empty)",
+   "columns": [
+    "OBJECTID",
+    "PERMIT",
+    "PERMIT_ID",
+    "API",
+    "WELL_NAME",
+    "LEASE_NAME",
+    "OTHER_NAME",
+    "WELL_TYPE",
+    "STATUS_WELL",
+    "STATUS_ABANDONED",
+    "STATUS_DATE",
+    "COMMODITY",
+    "OPERATOR",
+    "MINERAL_OWNER",
+    "BOREHOLE_NAME",
+    "DRILLER",
+    "SPUD_DATE",
+    "DRILL_END_DATE",
+    "WELL_FIELD",
+    "WELL_FUNCTION",
+    "PRODUCTION_TYPE",
+    "COUNTY",
+    "STATE",
+    "TRS",
+    "VERIFICATION",
+    "DEPTH_DRILL",
+    "DEPTH_REF_POINT",
+    "DEPTH_UNIT",
+    "ELEV_KB",
+    "ELEV_DF",
+    "ELEV_GL",
+    "FORMATION",
+    "BIT_DIAM_UNIT",
+    "SOURCE",
+    "NOTES",
+    "DRILL_METHOD",
+    "WEBSITE",
+    "LOCATION",
+    "EDITOR",
+    "EDIT_DATE",
+    "WEBSITE_AVAIL",
+    "GLOBALID",
+    "CREATED_USER",
+    "CREATED_DATE",
+    "LAST_EDITED_USER",
+    "LAST_EDITED_DATE",
+    "LATITUDE",
+    "LONGITUDE",
+    "BIT_DIAM_TD",
+    "BIT_DIAM_COL",
+    "BH_LATITUDE",
+    "BH_LONGITUDE",
+    "ORPHANED_WELL",
+    "PRIOR_OPERATOR"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil and gas exploration",
+    "helium",
+    "geothermal gradient",
+    "carbon dioxide",
+    "gas storage"
+   ],
+   "reachable": "ok",
+   "tested": "Found by following the azogcc.az.gov 'View Map' link to an ArcGIS Experience whose config names this layer. Layer ?f=json: HTTP 200, 20 KB, point layer, max 2,000 records, Query only. One query of all rows without geometry: HTTP 200, 1,995,806 bytes, 1,288 rows (not truncated). Counts: Unknown status 856, Abandoned 190, Plugged 95, Shut In 34, Permit Expired 23, Active 20, Permit Extension 19, Producing 14, Planned 12, Permitted 9. Well type: Oil and Gas Exploration 1,070, Helium 73, Geothermal 66, Gas 18, Gas Storage 16, CO2 14. Spud years since 2020: 13, 1, 7, 7, 0, 1 (2020 to 2025). STATUS_DATE runs to 2026-09-12, LAST_EDITED_DATE to 2026-09-24. Permit numbers run to 1324 (2026-07). The layer has no approval or filing date column; CREATED_DATE is filled for 9 rows only (from 2025-09)."
+  },
+  {
+   "id": "az-well-pages",
+   "name": "AZOGCC per-permit pages (https://azogcc.az.gov/<permit number>)",
+   "url": "https://azogcc.az.gov/1321",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 0.03,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "Permit#",
+    "API#",
+    "Well Name",
+    "Operator",
+    "Well Documents: Signed APD, Additional Supporting Documentation, Approval Letter, Drilling Certificate",
+    "Revised On"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permit to drill documents"
+   ],
+   "reachable": "ok",
+   "tested": "GET of /1321 (a 2026 helium permit): HTTP 200, 28 KB. The page links four PDFs under https://ogviewer.azdeq.gov/downloads/1321/ whose names carry dates (APD 03_12_26, approval letter 05_12_26, drilling certificate 05_12_26). The layer's WEBSITE column points to one such page per well (1,254 rows)."
+  },
+  {
+   "id": "az-apd-pdfs",
+   "name": "Form 3 PDF, checklist and filed APD / approval PDFs (static.azdeq.gov, ogviewer.azdeq.gov)",
+   "url": "https://ogviewer.azdeq.gov/downloads/1321/1321_APD_03_12_26.pdf",
+   "kind": "query",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "not read"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permit to drill documents"
+   ],
+   "reachable": "blocked-403",
+   "tested": "One GET of http://static.azdeq.gov/ogcc/forms/Form03_0.pdf: HTTP 403, 5,465 bytes, HTML 'Just a moment... Enable JavaScript and cookies' (Cloudflare challenge). One GET of the filed APD above: HTTP 403, 5,527 bytes, same page. Not retried."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "A free, reachable ArcGIS layer with one row per permitted or drilled well (permit number, API, operator, county, TRS, lat/long, depth, formation, spud date, status and status date), updated in 2026. It has no approval or filing date: the only dates are spud, end of drilling and the date of the current status, so monthly permit counts are approximate. Volume is small (about 80 permits since 2020, mostly helium in Apache County, plus geothermal in Greenlee).",
+ "producer_plan": "Query the layer (where=1=1, outFields=*, returnGeometry=false; 1,288 rows, 2 MB, under the 2,000-row limit) once a night or week and keep each snapshot, because the layer is a current-state table. A permit counts as new in the first snapshot where its PERMIT_ID appears (numbers are sequential: 1317 in Sep 2025, 1324 in Jul 2026), and the approval can be dated by the first snapshot with STATUS_WELL = Permitted and the STATUS_DATE then shown. For history before the first snapshot, STATUS_DATE of rows still at Permitted, Permit Extension or Permit Expired is a rough date; SPUD_DATE gives wells spudded by month (New Mexico style). Activity types come from WELL_TYPE and COMMODITY (oil and gas, helium, CO2, geothermal, storage); new drill versus re-entry is not in the layer (NOTES text such as 'reapply for permit AZOGCC:1271' marks a reissue). The exact approval date is in each approval-letter PDF's file name on the per-well page (azogcc.az.gov/<permit>), but those PDFs sit behind a Cloudflare challenge that refused this machine, so they may refuse a GitHub runner too. Expect 0 to 15 permits a year.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "other"
+ ],
+ "privacy_notes": "The layer has OPERATOR, PRIOR_OPERATOR, DRILLER and MINERAL_OWNER, which can hold individuals or private landowners and the AGOL EDITOR and LAST_EDITED_USER columns hold staff user names; do not publish them without a corporate-name filter. Filed APDs carry contact names, phones and e-mails (not seen). Nothing was copied.",
+ "unknowns": [
+  "Form 3 contents (blocked 403): work type, well direction, depth fields, casing, cement, BOP, H2S, water, fracturing, spacing exception, notice",
+  "whether approval dates appear anywhere in structured form (only in PDF file names seen)",
+  "whether the layer is refreshed on a schedule",
+  "layer license or terms of use",
+  "whether the 2026 fee bill (HB 2748) changed the $25 fee",
+  "contents of the signed APD and drilling certificate PDFs",
+  "AZGS (Arizona Geological Survey) holdings for logs and its own well maps"
+ ],
+ "researched": "2026-10-31"
+}

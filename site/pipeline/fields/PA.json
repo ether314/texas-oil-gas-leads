@@ -1,0 +1,532 @@
+{
+ "state": "PA",
+ "name": "Pennsylvania",
+ "agency": {
+  "name": "Pennsylvania Department of Environmental Protection, Office of Oil and Gas Management",
+  "short": "PA DEP OOGM",
+  "url": "https://www.pa.gov/agencies/dep/data-and-tools/reports/oil-and-gas-reports"
+ },
+ "form": {
+  "name": "Permit Application to Drill and Operate a Conventional Well (0001a) and an Unconventional Well (0001bU); coal module 0001c; checklist 0001",
+  "number": "8000-PM-OOGM0001a (Rev. 5/2012), 8000-PM-OOGM0001bU (Rev. 5/2017)",
+  "url": "https://www.pa.gov/agencies/dep/programs-and-services/oil-and-gas/forms",
+  "read_urls": [
+   "https://crawler.dep.state.pa.us/PublicParticipation/Public%20Participation%20Center/PubPartCenterPortalFiles/Environmental%20Quality%20Board/2018/May%2016/7-542_Unconventional%20Well%20Fees_Proposed/04A_7-542_Unconventional%20Well%20Fees_Form_Permit%20to%20Drill%20and%20Operate.pdf",
+   "https://greenport.pa.gov/elibrary/GetFolder?FolderID=3889"
+  ],
+  "read": true,
+  "notes": "Read two forms: the unconventional form (Rev. 5/2017) as blank text in a 2018 rulemaking proposal, so the fee and some wording may have changed, and the conventional form (Rev. 5/2012) from a filed sample stamped OBSOLETE (applicant details ignored). The official forms page links blank copies in DEP's eLibrary folder, which loads by script and was not opened further. NOT read: the checklist and instructions (0001), the well plat, the casing and cementing plan, the coal module and the Ownership and Control form (0118), so design and safety attachments are unknown. Filing is now through DEP ePermitting (not opened)."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_NUMBER = county-sequence part of the API (37 prefix implied; seen as 059-28713)"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Same PERMIT_NUMBER: in PA the permit number is the API number"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_NAME; form asks farm name and well # separately"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Well Farm Name box on both forms; not split out in the map layer"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "OPERATOR (some operators are individuals; apply the corporation-only rule)"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "OPERATOR_NUMBER; form box is DEP ID#"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No entity-type box on the application; Ownership and Control form 0118 not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Bond Agreement Id box on the application; Bond # in the DEP-use box"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "COUNTY and COUNTY_ID, plus MUNICIPALITY"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Dictionary defines a Region field (DEP office) but which report carries it was not verified"
+  },
+  "field_pool": {
+   "s": "none",
+   "e": "form",
+   "n": "Forms ask target formation, not a field or pool name"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "LATITUDE, LONGITUDE and point geometry (NAD83 per dictionary)"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "form",
+   "n": "USGS 7.5-min quadrangle and map section, not PLSS; footages are on the plat (not read)"
+  },
+  "bottom_hole_loc": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Plat and sketch pages not read; form gives laterals count only"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Plat sketch of wellbores not read"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "SURFACE_ELEVATION (0 when missing); form box Surface Elev."
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Unconventional form lists surface landowners and water purveyors in the notice record"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_TYPE and WELL_TYPE_CODE (oil, gas, comb. oil and gas, storage, dry hole...)"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "New, re-permit, deepen, redrill, alter, change of use on form; layer has no column (see sources)"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_CONFIG_CODE: vertical, horizontal, deviated, undetermined"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Total feet of wellbore to be drilled (close to measured length)"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Anticipated TVD and deepest formation to be penetrated"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Asks number of laterals and total wellbore feet, not a lateral length"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "Target formation(s) proposed for production"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "Only target top/bottom TVD and deepest formation, not a list of tops"
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the application pages read; checklist and plat package not read"
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the application pages read; checklist and plat package not read"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the application pages read"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "form",
+   "n": "Yes/No: well in an H2S area under section 78.77a / 78a.77a"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Conventional: cuttings disposed on site Y/N; unconventional cites PPC and containment plans"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Conventional form names an impoundment; no water source or volume on pages read"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Conventional form asks Y/N about enhanced completion technology; no plan on forms read"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Yes/No: inside a spacing order; CONSERVATION_IND in the layer is a different flag"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "330-ft lease line question, variance (0058) and waiver requests"
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the application pages read; plat and Ownership and Control form not read"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Application fee box (conventional $100, home use $200; unconventional fee set in rule)"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Notice by certified mail to landowners, purveyors, municipalities; objection date in DEP box"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Dictionary lists Date Received for authorizations; report not verified, not in the layer"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_DATE (UTC midnight; placeholder 1901 and 1970 dates exist)"
+  },
+  "date_expires": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_DATE_EXPIRES (blank on old or abandoned wells)"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SPUD_DATE as reported by the operator"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No completion date in the layer; completion filings not examined"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_STATUS and WELL_STATUS_CODE (Active, Abandoned, Plugged...)"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Plat is part of the application; whether the public map app shows it was not opened"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "doc",
+   "n": "Dictionary: map app and Electronic Submissions app show permitting documents; not opened"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "doc",
+   "n": "Production report CSV by well on DEP Greenport; page and dictionary seen, not downloaded"
+  }
+ },
+ "sources": [
+  {
+   "id": "pa-arcgis-wells-all",
+   "name": "DEP Oil and Gas Mapping Application: layer 'Oil and Gas Wells All' (ArcGIS MapServer layer 3)",
+   "url": "https://gis.dep.pa.gov/depgisprd/rest/services/OilGas/OilGasAllStrayGas/MapServer/3",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public; no license text on the service (copyright field empty). DEP disclaims accuracy in its data dictionary.",
+   "columns": [
+    "OBJECTID",
+    "PERMIT_NUMBER",
+    "WELL_NAME",
+    "OPERATOR",
+    "OPERATOR_NUMBER",
+    "WELL_TYPE",
+    "WELL_TYPE_CODE",
+    "WELL_STATUS",
+    "WELL_STATUS_CODE",
+    "PERMIT_DATE",
+    "PERMIT_DATE_EXPIRES",
+    "SPUD_DATE",
+    "CONSERVATION_IND",
+    "COUNTY",
+    "COUNTY_ID",
+    "MUNICIPALITY",
+    "MUNICIPALITY_TYPE",
+    "MUNICIPALITY_CODE",
+    "LATITUDE",
+    "LONGITUDE",
+    "PRMRY_FID",
+    "UNCONVENTIONAL_IND",
+    "SURFACE_ELEVATION",
+    "WELL_CONFIG_CODE",
+    "COAL_IND",
+    "WELL_PAD_NAME",
+    "SHAPE",
+    "DATE_PLUGGED",
+    "WELL_PAD_ID",
+    "UIC_ID",
+    "UIC_TYPE_DESCRIPTION",
+    "STORAGE_FIELD_NAME",
+    "SITE_ID",
+    "SITE_NAME"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new drill"
+   ],
+   "reachable": "ok",
+   "tested": "2026-10-31/11-01: layer ?f=json 200 (34 fields, maxRecordCount 1000, pagination and statistics supported, query/data only). Statistics query by well type for permits since 2025-11-01 returned 647 wells (410 unconventional gas; conventional: 87 oil, 66 gas, 54 comb. oil and gas, 24 undetermined, 3 dry hole, 2 storage, 1 coalbed methane), newest PERMIT_DATE 2026-10-30. Five-row sample 200: PERMIT_NUMBER like 059-28713. An earlier pass saw about 224,741 rows, newest permit 2026-10-30, newest spud 2026-10-27, and a placeholder oldest PERMIT_DATE of 1901-01-01."
+  },
+  {
+   "id": "pa-arcgis-unconventional",
+   "name": "Same service: layer 'Unconventional Oil and Gas Wells' (layer 1; also 2 conventional, 4 ORND and PBNM wells, 5 historical)",
+   "url": "https://gis.dep.pa.gov/depgisprd/rest/services/OilGas/OilGasAllStrayGas/MapServer/1",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public; no license text on the service",
+   "columns": [
+    "OBJECTID",
+    "PERMIT_NUMBER",
+    "WELL_NAME",
+    "OPERATOR",
+    "OPERATOR_NUMBER",
+    "WELL_TYPE",
+    "WELL_TYPE_CODE",
+    "WELL_STATUS",
+    "WELL_STATUS_CODE",
+    "PERMIT_DATE",
+    "PERMIT_DATE_EXPIRES",
+    "SPUD_DATE",
+    "CONSERVATION_IND",
+    "COUNTY",
+    "COUNTY_ID",
+    "MUNICIPALITY",
+    "MUNICIPALITY_TYPE",
+    "MUNICIPALITY_CODE",
+    "LATITUDE",
+    "LONGITUDE",
+    "PRMRY_FID",
+    "UNCONVENTIONAL_IND",
+    "SURFACE_ELEVATION",
+    "WELL_CONFIG_CODE",
+    "COAL_IND",
+    "WELL_PAD_NAME",
+    "SHAPE",
+    "DATE_PLUGGED",
+    "WELL_PAD_ID",
+    "UIC_ID",
+    "UIC_TYPE_DESCRIPTION",
+    "STORAGE_FIELD_NAME",
+    "SITE_ID",
+    "SITE_NAME"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new drill"
+   ],
+   "reachable": "ok",
+   "tested": "Layer ?f=json 200, same 34 fields as layer 3. Statistics query: 15,571 wells, all UNCONVENTIONAL_IND = Y (15,440 gas, 119 comb., 11 multiple well bore, 1 observation). Layers 2, 4 and 5 not opened; layer 4 (ORND and PBNM) probably holds permits issued but never drilled, which layer 3 may omit."
+  },
+  {
+   "id": "pa-greenport-well-inventory",
+   "name": "Oil and Gas Operator Well Inventory Report (statewide CSV export)",
+   "url": "https://greenport.pa.gov/ReportExtracts/OG/OilGasWellInventoryReport",
+   "kind": "bulk",
+   "format": "csv",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public; DEP states data are as reported by operators, no accuracy guarantee",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Report page GET 200 (about 600 KB, mostly the operator list). Page says 'The statewide well inventory data can be accessed by utilizing this report', results in CSV, parameters Operator (All or one) and Well Configuration (All, Conventional, Unconventional); the export is a form POST with an anti-forgery token. Not exported (size likely large), so the CSV header was not seen and the date columns are unverified. The dictionary says reports are current as of close of business yesterday."
+  },
+  {
+   "id": "pa-ssrs-permits-issued-detail",
+   "name": "Permits Issued Detail Report (SSRS, DEP reporting server): every Drill and Operate permit issued in a date range, with authorization type",
+   "url": "https://cedatareporting.pa.gov/Reportserver/Pages/ReportViewer.aspx?/Public/DEP/OG/SSRS/Permits_Issued_Detail",
+   "kind": "report",
+   "format": "csv",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public; no license text seen",
+   "columns": [],
+   "has_approval_date": true,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [
+    "drill and operate",
+    "re-drill",
+    "drill deeper",
+    "alteration",
+    "change in use",
+    "disposal/enhanced recovery"
+   ],
+   "reachable": "blocked-proxy",
+   "tested": "One GET returned 'connection reset by peer' (the proxy tunnel closed). Not retried. From the data dictionary (document, not the report): parameters are Permits Issued Start and End Date, County, Operator, Unconventional Only; Auth Type codes are CDOW, CDOWR, DOW, DOWA (alteration), DOWCU (change in use), DOWDD (drill deeper), DOWDR (disposal/enhanced recovery), DOWR (re-drill), UDOW and UDOWR (unconventional). The report's own columns were not seen. A third party says it was the source of a permits file back to 2011."
+  },
+  {
+   "id": "pa-ssrs-permits-monthly-by-county",
+   "name": "Monthly and Year-to-Date Permits Issued by County and Well Type (SSRS aggregate reports)",
+   "url": "https://cedatareporting.pa.gov/Reportserver/Pages/ReportViewer.aspx?/Public/DEP/OG/SSRS/Permits_Issued_Count_by_Well_Type_Monthly",
+   "kind": "report",
+   "format": "other",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public; no license text seen",
+   "columns": [
+    "County",
+    "Drill & Operate Well Permit (count)",
+    "Drill & Operate Well Permit Drill Deeper (count)",
+    "other authorization types (names not seen)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "drill and operate",
+    "drill deeper",
+    "other authorization types"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested: same reporting server as the Detail report, which reset the connection, so it was not tried again. Described in the data dictionary as monthly authorization-type totals per county; two count columns are named there."
+  },
+  {
+   "id": "pa-dep-workload-weekly",
+   "name": "Well Permit Workload Report (weekly PDF) and annual Permits Issued and Wells Drilled maps (PDF, 2009 to 2019)",
+   "url": "https://files.dep.state.pa.us/OilGas/BOGM/BOGMPortalFiles/OilGasReports/WEBSITE_Weekly_Report_for_Last_Week.pdf",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "weekly",
+   "history_from": "2009",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Linked from the DEP reports page (seen); not downloaded. Dictionary: workload report is a weekly summary with year-to-date, month-to-date and historical totals of permit applications; the yearly maps were discontinued after 2019."
+  },
+  {
+   "id": "pa-open-data-portal",
+   "name": "PA Open Data portal (Socrata): only a stale DEP dataset, 'New Well Inspections FY 2015-2018'",
+   "url": "https://data.pa.gov/resource/f8fx-8zip.json",
+   "kind": "api",
+   "format": "json",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "2015",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Socrata catalog searches for 'oil gas well' and 'unconventional' on the PA domain returned only this inspections dataset, last data update 2018-08-29, and a link to DEP's GIS portal. No permits dataset on the portal. The dataset itself was not opened."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "A for new-well permits: DEP's public ArcGIS layer is free, needs no login, answered from here, holds one row per well with PERMIT_DATE, SPUD_DATE, well type, unconventional flag and configuration, and supports server-side statistics and date filters. Caveat that argues for B: no work-type column, so re-drills, deepenings, alterations and changes of use are not separable (the SSRS report has authorization types but was unreachable).",
+ "producer_plan": "Source: the ArcGIS layer 'Oil and Gas Wells All' (MapServer layer 3), with layer 4 (ORND and PBNM wells) added after it is inspected. Query without geometry: where PERMIT_DATE >= DATE 'start' and < 'end', outFields PERMIT_NUMBER, WELL_TYPE, WELL_TYPE_CODE, UNCONVENTIONAL_IND, WELL_CONFIG_CODE, COUNTY, PERMIT_DATE, SPUD_DATE, WELL_STATUS (and LATITUDE, LONGITUDE for the map), page with resultOffset in steps of 1,000 (about 650 wells a year, so one or two requests per year of history), or ask for outStatistics count grouped by WELL_TYPE and UNCONVENTIONAL_IND per month. Dates are UTC-midnight epoch milliseconds, so read them in UTC. Drop the placeholder dates (1901-01-01, 1970-01-01). A month's count of new-drill permits is the number of rows whose PERMIT_DATE falls in the month; for an oil tracker keep WELL_TYPE OIL and COMB. OIL&GAS (about 140 a year) and show unconventional gas separately (about 410 a year). Injection and disposal wells are a WELL_TYPE value but none appeared in the last 12 months. Re-entry, recompletion and amendment bands cannot be built from this layer: for them the SSRS Permits Issued Detail or Monthly-by-County report (Auth Type: re-drill, drill deeper, alteration, change in use) would be needed, and it did not answer from here, so test it from the CI runner once. Caveats: one row per well, so a later authorization on the same well is probably not a new row; whether PERMIT_DATE is the first or the latest authorization was not verified; permits that expired unused are likely moved out of this layer (status PBNM or ORND), which would undercount older months, so compare against the monthly report; the layer is refreshed about daily with a lag of a day or two; be polite (no more than a few requests per run).",
+ "activity_bands_possible": [
+  "new"
+ ],
+ "privacy_notes": "The layer holds OPERATOR names, and some operators and home-use well holders are individuals; WELL_NAME and SITE_NAME may carry a landowner's farm name. The operator dropdown on the inventory page lists many individuals. Filed applications carry the applicant's phone, e-mail and street address, and the notice record lists landowners' names and addresses. Publish only corporations, LLCs and limited partnerships by name, counts for the rest, and link to no filed forms.",
+ "unknowns": [
+  "Columns of the Well Inventory CSV and of the SSRS Permits Issued Detail report (header never seen).",
+  "Whether PERMIT_DATE in the layer is the first or the most recent authorization, and whether layer 3 excludes permits that expired unused (layer 4).",
+  "Whether the SSRS reporting server answers from a CI runner (it reset the connection from here).",
+  "Total download size of the layer and the inventory CSV (about 225,000 wells).",
+  "Casing, cementing, BOP, water source and plat contents: the checklist, instructions and plat were not read.",
+  "Operator entity type, DEP region, date received, completion date, logs and completion reports in public data.",
+  "Whether the public map app lets a visitor open the filed application and plat."
+ ],
+ "researched": "2026-10-31"
+}

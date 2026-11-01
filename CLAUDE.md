@@ -97,14 +97,14 @@ The **Oil tracker**: a static dashboard of oil and gas drilling activity, produc
 for Texas, Oklahoma, New Mexico and the federal offshore (the Gulf of America), built only from public records (README has the full description and the known limits).
 
 - `site/public/`: the site (`index.html`, `app.css`, `js/*.js` modules, `data/*.json`). `main.js` is the hash router
-  (`#overview`, `#national`, `#images`, `#map`, `#operators`, `#companies`, `#daily`, `#about`) and owns the states bar; `states.js` lists the states (a new state is
+  (`#overview`, `#national`, `#fields`, `#images`, `#map`, `#operators`, `#companies`, `#daily`, `#about`) and owns the states bar; `states.js` lists the states (a new state is
   one entry there plus its data files, a color token `--st-xx` in `app.css`, a dot skin in `hero.js` and `map.js`, and wording fields where it differs: `short`, `in`, `place`, `drill`,
   `noDaily`, `cadence`, `caveat`, `chgMin`) and keeps the choice (`st=ok` or a list in the address, none is all); `overview-view.js` draws the Overview
   for the states shown from `overview-data.js` (pure merging, tested under Node); `daily*.js` are the Daily report; `geo.js` holds the
   projection (module state, Texas-fitted; each set of shapes carries its own `G.toWorld`, `buildGeoIsolated` builds the others) and the
   shapes and permit points for any set of states; `util.js` has `el()`/`svg()`/`load()`. County keys: Texas plain (`001`), others `OK:001` (the federal offshore's areas `FO:024`).
 - `site/pipeline/d11_*`: the national report (`NOTES_D11.md`): `d11_nat_common.py` (the shape of a state's file, the shared tally, validator and `run_producer`), `d11_nat_<st>.py` one producer per state, `d11_nat_build.py` (merges them and the four earlier jurisdictions into
-  `data/national.json`). The view is `national.js` + `national-data.js` (`#national`). `images.js` + `images-data.js` are the Texas images view (`#images`, read from the Daily archive).
+  `data/national.json`). The view is `national.js` + `national-data.js` (`#national`). `fields.js` + `fields-data.js` are the permit-data matrix (`#fields`, from `permit-fields.json`, built by `d11_fields_build.py` from the researched `site/pipeline/fields/<ST>.json`). `images.js` + `images-data.js` are the Texas images view (`#images`, read from the Daily archive).
 - `site/pipeline/build_db.py`: the local SQLite database of everything the site publishes (`db/oil-tracker.sqlite`, not in git; `README.md`, "A local database"). Rebuild it with the script; add a table there when a new data file arrives, with a check in `tests/test_build_db.py`.
 - `site/pipeline/`: Python producers, standard library only, run with `python3 -I`. `d1`-`d6` build the monthly Texas data,
   `d7_*` the Texas Daily report (RRC), `d8_*` Oklahoma (OCC: `d8_ok_daily.py` the Daily report, `d8_ok_monthly.py` the permit history, `d8_ok_context.py`

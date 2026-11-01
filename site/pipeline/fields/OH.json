@@ -1,0 +1,553 @@
+{
+ "state": "OH",
+ "name": "Ohio",
+ "agency": {
+  "name": "Ohio Department of Natural Resources, Division of Oil and Gas Resources Management (DOGRM)",
+  "short": "ODNR DOGRM",
+  "url": "https://ohiodnr.gov/"
+ },
+ "form": {
+  "name": "Application for a Permit (Form 1), with Restoration Plan (Form 4), a surveyor's plat and the Authority and Organization form (Form 9)",
+  "number": "Form 1 (Rev. 09/21); Form 4 (Rev. 08/22)",
+  "url": "https://dam.assets.ohio.gov/image/upload/ohiodnr.gov/documents/oil-gas/form/Form1-ApplicationforPermit.pdf",
+  "read": true,
+  "notes": "Read all 18 items and the instructions of Form 1 (4 pages, pdftotext) and the 2-page Form 4 (restoration plan) and a 9-page 2015 checklist of required documents; Form 9, the plat and the Division's own permit page were not read (the agency's main site answers 404 from here). Types of permit: drill new well, convert, deepen, plug back, reopen, revise location, reissue; expedite option. Notarized. Fees $500 to $1,000 by township population, +$250 expedite, +$5,000 mandatory pooling. Since the RICS online system, permits are filed and paid online (per the Permit and Plug List's 'RICS Permit to ...' types), so the paper form may be the same fields entered online; not confirmed. Valid 24 months (12 in urbanized areas)."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_WELLNO in the grid and the map layer; county code plus well number also in the grid"
+  },
+  "permit_number": {
+   "s": "query",
+   "e": "web",
+   "n": "APPNO in the Permit and Plug List grid (PR + year + sequence)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELLNM in the grid; WELL_NM and WELL_NO in the map layer; Form 1 item 10"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Restoration Plan (Form 4) item 5 only; Form 1 and the grid have no lease column"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "CONAME in the grid, CO_NAME in the layer; some rows are individuals, not companies"
+  },
+  "operator_id": {
+   "s": "query",
+   "e": "web",
+   "n": "OPNO in the grid; Form 1 item 2 'Owner #'"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 1 does not ask; the Authority and Organization form (Form 9) was not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "doc",
+   "n": "Bond must be on file (Surety Section) before filing; not a Form 1 field; 2015 checklist"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "NAME (county) and CNTY_APINO in the grid; WL_CNTY in the layer; township also given"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district on Form 1 or in the grid or layer"
+  },
+  "field_pool": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1 names a formation to be tested (item 11), not a field or pool"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "WH_LAT83 and WH_LONG83 in the grid (21 of 22 rows filled); WH_LAT and WH_LONG in the layer"
+  },
+  "surface_plss": {
+   "s": "query",
+   "e": "web",
+   "n": "WH_SEC, WH_LOT, township, WH_FTCALLS footage calls in the grid; Form 1 item 10"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer BH_LAT and BH_LONG; grid BH_SEC and township (14 of 22); grid BH_X and BH_Y empty"
+  },
+  "lateral_path": {
+   "s": "data",
+   "e": "file",
+   "n": "Map service has Horizontal Line and Directional Lines layers; whether surveyed or straight not checked"
+  },
+  "elevation": {
+   "s": "query",
+   "e": "web",
+   "n": "ELEV_GR in the grid (ELEV_TGT empty in the sample); well card shows GL, DF and KB"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 4 item 6 property owner and item 31 landowner copy; Form 1 item 12 State surface rights"
+  },
+  "well_type": {
+   "s": "query",
+   "e": "web",
+   "n": "PROP_WLTYPE in the grid (OG_R, GS_R seen); Form 1 item 6 oil and gas or gas storage"
+  },
+  "work_type": {
+   "s": "query",
+   "e": "web",
+   "n": "APP_TYP code plus APP_TYP_Description, 79 types in the page's drop-down"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "SLANT in the map layer; Form 1 item 5 orientation; not a grid column"
+  },
+  "proposed_depth_md": {
+   "s": "query",
+   "e": "web",
+   "n": "PROP_TD in the grid (Form 1 item 11 'Proposed Total Depth'; MD or TVD not stated)"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 1 asks depth of base of target formation, not labeled TVD"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1 asks only whether the whole wellbore is inside the unit"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "PROPOSEDFORMATIONS in the grid; ProposedFormation in the layer; Form 1 item 11"
+  },
+  "formation_tops": {
+   "s": "query",
+   "e": "web",
+   "n": "Well card lists as-drilled formation tops after completion; Form 1 asks no expected tops"
+  },
+  "casing_program": {
+   "s": "query",
+   "e": "web",
+   "n": "Well card casing record is as built; Form 1 item 17 asks the proposed program; not in grid"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 item 17: cement top (ft) and volume (sacks) by string; not in grid or card"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP or pressure-control item on Form 1 (item 7 is pressure maintenance for recovery)"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No hydrogen sulfide item on Form 1"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 4 item 20: haul fluids and fill pits, or steel tanks; not in grid"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 item 13: water source, withdrawal rate, total volume, watershed; not in grid"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 item 17 yes/no 'hydraulic fracturing?' per casing string; item 13 volumes"
+  },
+  "spacing_unit": {
+   "s": "query",
+   "e": "web",
+   "n": "DU_ACRES in the grid (22 of 22); Form 1 items 8 and 11 (pooling, unit, acres)"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 item 11 wellbore outside unit needs affidavit; grid has a VARIANCE column, empty, undocumented"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 item 12 royalty owner list attached; owner names are individuals, not published"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 instructions give the fee scale; grid FEE_AMT and RUSH_AMT were 0 on all 22 sample rows"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 item 18 swears notices were given; item 8 mandatory pooling order; hearing not read"
+  },
+  "date_received": {
+   "s": "query",
+   "e": "web",
+   "n": "DT_APP_RECVD in the grid"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "DT_APP_ISSUED in the grid (the Application Issued Date search filter); well card 'Permit Issued'"
+  },
+  "date_expires": {
+   "s": "none",
+   "e": "form",
+   "n": "No date field; Form 1 instructions fix validity at 24 months (12 in urbanized areas)"
+  },
+  "spud_date": {
+   "s": "query",
+   "e": "web",
+   "n": "Well card 'Date Commenced'; not in the grid or map layer"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Well card shows 'Date Total Depth Reached', not a completion date; Completions report not opened"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "WL_STATUS_DESC in the map layer; well card 'Status'; not a grid column"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Ohio-registered surveyor's plat required with Form 1; online availability not verified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Well card links a scanned PERMIT pdf; not opened, so unknown if it is the filed Form 1"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 8 is the completion record; the card links a scanned well card; not opened"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "Well card lists log types and links scanned log images (older wells shown)"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Well card has annual oil, gas and water production by year"
+  }
+ },
+ "sources": [
+  {
+   "id": "oh-rbdms-permit-plug-list",
+   "name": "Ohio Oil & Gas Well Database: Permit and Plug List (Downloads menu; search form with results grid and an Export To Excel button)",
+   "url": "https://apps.ohiodnr.gov/oilgas/rbdmsreports/Downloads_PermitAndPlug.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0.15,
+   "free": true,
+   "login": false,
+   "license": "none stated on the page",
+   "columns": [
+    "NAME",
+    "WH_LOT",
+    "WH_SEC",
+    "WH_LAT83",
+    "WH_LONG83",
+    "WH_LAT",
+    "WH_LONG",
+    "QUAD_NAME",
+    "CONAME",
+    "ADDR1",
+    "ADDR2",
+    "CITY",
+    "STATE",
+    "ZIP1",
+    "PHONE",
+    "CNTY_APINO",
+    "WH_CV_TWPNO",
+    "CV_TWPNM",
+    "DT_APP_ISSUED",
+    "APP_TYP",
+    "APPNO",
+    "DT_APP_RECVD",
+    "YN_RUSH_APP",
+    "RUSH_CHKNO",
+    "RUSH_AMT",
+    "APP_CHKNO",
+    "FEE_AMT",
+    "REVISED_AMT",
+    "REVISED_CHKNO",
+    "VARIANCE",
+    "POOL_AMT",
+    "OPNO",
+    "CO_REP",
+    "PM_ADDROK",
+    "PM_CONTACT",
+    "PM_ADDR1",
+    "PM_ADDR2",
+    "PM_CITY",
+    "PM_STATE",
+    "PM_ZIP1",
+    "PM_ZIP2",
+    "PM_COUNTRY",
+    "PM_PHONENO",
+    "EXIST_WELL",
+    "LOCATION_ID",
+    "WELLNM",
+    "WELLNO",
+    "DU_ACRES",
+    "RIG_TYP",
+    "FIRE_PHNO",
+    "MEDL_PHNO",
+    "PROP_WLTYPE",
+    "PROP_TD",
+    "PROP_WELL_CLASS",
+    "PROPOSEDFORMATIONS",
+    "ELEV_GR",
+    "ELEV_TGT",
+    "API_WELLNO",
+    "WH_FTCALLS",
+    "BH_LOT",
+    "BH_SEC",
+    "BH_FTCALLS",
+    "BH_ALLOTMENT",
+    "BH_X",
+    "BH_Y",
+    "BH_OGS_QUADCODE",
+    "BH_CV_TWPNO",
+    "QUAD_NAME_T",
+    "APP_TYP_Description",
+    "BH_CV_TWPNM"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "drill new well (vertical, directional, horizontal)",
+    "deepen / drill deeper",
+    "plug back",
+    "reopen",
+    "convert (incl. salt water injection and enhanced recovery)",
+    "revise location / unit / acreage",
+    "reissue",
+    "plug and abandon",
+    "change of owner and other record types"
+   ],
+   "reachable": "ok",
+   "tested": "GET answered 200 (66 KB ASP.NET page). One POST for Application Issued Date 10/19/2026 to 10/25/2026 answered 200 (150 KB): 22 rows on one page (page size 25), 70 columns, issue dates 10/19 to 10/23, types: 7 RICS Permit to Drill New Well, 8 RICS Permit to Plug Well, 3 Deepen, 4 Revise Location. One scripted POST of the Export To Excel button returned the form page, not a file (not retried), so the export is unverified. Application Type drop-down has 79 values; a Permit or Plug drop-down has Permit and Plug."
+  },
+  {
+   "id": "oh-well-locator-arcgis",
+   "name": "Oil and Gas Wells of Ohio (Well Locator map service, ArcGIS MapServer; 11 layers: wells by type, by status active and inactive, horizontal and directional well heads, bottom holes and lines)",
+   "url": "https://gis2.ohiodnr.gov/arcgis/rest/services/DOG_Services/Oilgas_Wells_10_JS_TEST/MapServer",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "ODNR disclaimer: no warranty, cite the source",
+   "columns": [
+    "MapSymbol_DESC",
+    "WL_STATUS_DESC",
+    "WL_CNTY",
+    "WL_TWP",
+    "CO_NAME",
+    "ADDR1",
+    "PHONE",
+    "WH_LAT",
+    "WH_LONG",
+    "BH_LAT",
+    "BH_LONG",
+    "SLANT",
+    "ProposedFormation",
+    "WELL_NM",
+    "WELL_NO",
+    "ProducingFormation1",
+    "ProducingFormation2",
+    "OBJECTID",
+    "Shape",
+    "API_WELLNO",
+    "Utica_Shale",
+    "Marcellus_Shale",
+    "STORAGE",
+    "API_WELLNO_LINK"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells by status and type (no permit activity)"
+   ],
+   "reachable": "ok",
+   "tested": "Service JSON answered 200 (8 KB, version 11.5, layers 0 to 10, Map/Query/Data, max 1000 records). Layer 1 (Wells by Status Active) schema read: 24 fields, no date field. Layer 4 (Horizontal Well Head) has the same fields minus a few. Folder listing also shows services for drilling units, well pads, notification areas and a 3D wellbore test. No record query was run. Service name ends in TEST and the page says updated as new wells are permitted (search summary, not verified)."
+  },
+  {
+   "id": "oh-well-summary-card",
+   "name": "Well Summary Card (one page per API number; also the Well Locator's well report)",
+   "url": "https://gis.ohiodnr.gov/MapViewer/WellSummaryCard.asp?api=34075238180000",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0.02,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "API Well Number",
+    "Permit Issued",
+    "Well Name",
+    "Acres",
+    "Well No.",
+    "Date Commenced",
+    "Owner",
+    "Date Total Depth Reached",
+    "Logging Co.",
+    "County",
+    "Township",
+    "Quadrangle",
+    "Zone",
+    "Section",
+    "Lot",
+    "Surface Location lat/lon",
+    "Heel/Entry Last Take lat/lon",
+    "Toe First Take lat/lon",
+    "Target Location (TD) lat/lon",
+    "Measured footages",
+    "Prop TD",
+    "Class",
+    "Tool",
+    "GL",
+    "DF",
+    "KB",
+    "LTD",
+    "DTD",
+    "PB Depth",
+    "TD Form.",
+    "Prod. Form.",
+    "Status",
+    "Orphan Well Status",
+    "IP Natural",
+    "IP AT",
+    "Perforations",
+    "Stimulations",
+    "Casing Record",
+    "Log Types",
+    "Formations (top, bottom, source)",
+    "Annual Production (oil, gas, water)",
+    "Links to scanned well documents"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "one well's record"
+   ],
+   "reachable": "ok",
+   "tested": "One GET for a 1982 Holmes County well answered 200 (22 KB HTML): permit issued, date commenced, status, casing, formations, annual production 1991 to 2025 and links to scanned permit, well card, microfilm and log images."
+  },
+  {
+   "id": "oh-reports-completions",
+   "name": "Ohio Oil & Gas Well Database: Reports menu (Completions, Corrections, County Engineers, Permit and Plug) and Downloads menu (Active Well Owners, County Engineers List)",
+   "url": "https://apps.ohiodnr.gov/oilgas/rbdmsreports/Downloads_ActiveWellOwners.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "unknown",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Only seen as menu entries on the Permit and Plug List page (one page of the same site answered 200); these pages were not opened. A Completions report likely holds completion dates; unverified."
+  },
+  {
+   "id": "oh-horizontal-wells-weekly",
+   "name": "Division's Horizontal Wells page and weekly shale (Utica/Point Pleasant, Marcellus) activity report, plus the Well Locator 'Data' tab (oil and gas data by county)",
+   "url": "https://ohiodnr.gov/business-and-industry/energy-resources/oil-and-gas-wells/horizontal-wells",
+   "kind": "report",
+   "format": "other",
+   "grain": "aggregate",
+   "cadence": "weekly",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "horizontal permits issued, wells drilled, wells producing (per press coverage and the 2021 annual report)"
+   ],
+   "reachable": "blocked-proxy",
+   "tested": "Every page of the agency's main site answered HTTP 404 with the same generic 4.9 KB error page from this machine, including its home page, the Horizontal Wells page and the documents page; the same pages are indexed by search with an update stamp of 2026-10-10. Not retried. Weekly report, file format and Data-tab download are therefore UNVERIFIED (named only in search summaries and a 2021 annual report snippet)."
+  }
+ ],
+ "grade": "C",
+ "grade_reason": "The Permit and Plug List is a well-and-permit level listing with the issue date (DT_APP_ISSUED), the receipt date, a 79-value application type, county, operator, proposed depth, formation, acres and coordinates, free and with no login, reachable from here (one POST returned 22 rows for a week). But it is an ASP.NET search form with a results grid (25 rows a page), not a bulk file or API, and the Excel export did not work in one scripted try. The map service is a clean API but has no permit date. So it is the strongest kind of C: all the needed fields, but a fragile form post. It becomes an A if the Excel export (or the Well Locator's county data download, unverified) can be fetched by a script.",
+ "producer_plan": "Source: the Permit and Plug List. For each calendar month, POST the search form (read the hidden ASP.NET fields from a GET first, set the Telerik start and end Application Issued Date fields, leave the Permit or Plug drop-down on Permit) in windows of one to three days so no window passes the 25-row page, or follow the grid pager; stop on a row count that does not parse. Parse the HTML table, keep DT_APP_ISSUED (approval date), APP_TYP and APP_TYP_Description (work type), APPNO, API_WELLNO, NAME (county), OPNO, CONAME, PROP_WLTYPE, PROP_TD, DU_ACRES, WH_LAT83, WH_LONG83; drop every address, phone, PM_*, CO_REP, FIRE_PHNO and MEDL_PHNO column. Bands: Drill New Well and RICS Permit to Drill New Well (vertical, directional, horizontal) = new; Reopen types = reentry; Plug Back, Deepen and Drill Deeper = recomplete (rework); Convert, Salt Water Injection Well, Enhanced Recovery and Annular Disposal = injection; Revised Location, Revise Unit, Change in acreage, Reissue = amend; Plug and Abandon, Solution Mining, Coal bed methane and the rest = other. Exclude Permit-or-Plug = Plug from permit counts (a sample week was 8 of 22 rows plug permits). Caveats: a Reissue counts the same well again; received-to-issued lag was weeks in the sample; fee columns are 0 in the RICS era; the horizontal wells' heel and toe come only from the map layer. Pull the whole history once month by month, then the last 60 days weekly; one polite request per second at most, never in parallel.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "recomplete",
+  "injection",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The grid carries operator mailing addresses, phone numbers, a company representative, contact (PM_*) and emergency-contact phone columns; some operator names on small and plug records are individuals trading in their own name (with street addresses). The Form 4 and Form 1 name property and royalty owners, who are individuals. Publish only entity operators, county and township, and counts; drop all contact columns.",
+ "unknowns": [
+  "Whether the Export To Excel button can be scripted (one scripted post returned the form page)",
+  "How far back the Permit and Plug List goes and how fast a new permit appears (newest sample: issued 2026-10-23, queried 2026-10-31)",
+  "The weekly shale activity report and the Well Locator 'Data' tab county downloads: the agency's main site answers 404 here, so no file, format or column list was seen",
+  "Form 9 (Authority and Organization) contents: operator business type",
+  "Whether the scanned PERMIT pdf on the well card is the filed application with plat, and what the Completions report holds",
+  "Whether the map service's status values include permitted-not-yet-drilled wells",
+  "The meaning of the grid's VARIANCE, POOL_AMT and PROP_WELL_CLASS columns (all empty or zero in the sample)",
+  "Production, if any, in a bulk file (the well card shows annual production per well)"
+ ],
+ "researched": "2026-10-31"
+}

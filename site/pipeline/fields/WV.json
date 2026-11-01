@@ -1,0 +1,429 @@
+{
+ "state": "WV",
+ "name": "West Virginia",
+ "agency": {
+  "name": "West Virginia Department of Environmental Protection, Office of Oil and Gas (OOG)",
+  "short": "WVDEP OOG",
+  "url": "https://dep.wv.gov/oil-and-gas/Pages/default.aspx"
+ },
+ "form": {
+  "name": "Well Work Permit Application: WW-6B for horizontal (section 22-6A) wells, WW-2B for all other wells",
+  "number": "WW-6B (04/15); WW-2B (Rev. 8/10)",
+  "url": "https://apps.dep.wv.gov/Documents/OOG/HorizontalPermits/IndividualForms/WW-6B%20Form.%2004-15-2015.pdf",
+  "read": true,
+  "notes": "Read WW-6B (3 pages, 25 items) and WW-2B (13 items, in the 2016 non-6A packet), plus in the 43-page horizontal 6A packet: the checklist, WW-9 fluids and cuttings plan, WW-6A1 lease information, WW-6A notice and the site safety plan outline (BOP, H2S, directional survey). Not read: plat WW-6, GPS form WW-7, water management plan, fee schedule page, WR-35 completion report, operator registration OP-1. Horizontal 6A applications need a long packet (notices, plat, safety plan, water plan, bond, fee); the forms index says the packet was last revised 2016 and WW-6B 04-15-2015, so newer versions may exist online only. Filing is on paper or document upload (Application Enhancer), not confirmed."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API Number 10 and 14 digit in the weekly report; api in the layer"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer permitid (county code, dash, 5-digit sequence); same as the API tail; weekly report gives API only"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Weekly 'Well Number' and layer wellnumber (operator's well number); WW-6B item 2"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer farmname (WW-6B item 3 'Farm Name/Surface Owner'); weekly report has none"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Operator in the weekly report; respparty in the layer; some may be individuals"
+  },
+  "operator_id": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B and WW-2B item 1 'Operator ID'; WW-9 'OP Code'; not in the weekly report or layer"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on WW-6B or WW-2B; Operator Registration (OP-1) not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "H6A checklist: $250,000 bond; bond forms OP-7, OP-8; not on WW-6B; not in the data"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "County Name in the weekly report; 3-digit county code in the layer"
+  },
+  "district": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B/2B 'District' is the county magisterial district, not an agency region; code list exists"
+  },
+  "field_pool": {
+   "s": "none",
+   "e": "form",
+   "n": "WW-6B and WW-2B ask target formations, not a field or pool name"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer WellX and WellY (datum not checked); plat WW-6 and GPS form WW-7 not read"
+  },
+  "surface_plss": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not PLSS; forms give quadrangle and district; plat WW-6 (footages?) not read"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "End of the 'Horizontal laterals (simplified)' line layer; no BH field; WW-6B has leg length only"
+  },
+  "lateral_path": {
+   "s": "data",
+   "e": "file",
+   "n": "'Horizontal laterals (simplified)' polyline layer; accuracy not checked; site safety plan has survey items"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 4: current ground and proposed post-construction; WW-2B item 3; not in the data"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 3 and WW-6A notice list surface owners; layer farmname may be the same item (unchecked)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Weekly 'Well Type'; layer welltype and welluse (e.g. Gas Production); WW-6B item 5"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Weekly 'Permit Type' (New Drill, Plugging...) and 'Permit_Action'; layer permittype"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Weekly Well Type: Vertical, Horizontal, Horizontal 6A; layer welltype"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 10 total measured depth; layer welldepth is only a class ('Shallow greater than 3,000 feet')"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 8 proposed total vertical depth; WW-2B item 6 'Proposed Total Depth'"
+  },
+  "lateral_length": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 11 proposed horizontal leg length"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 7; layer 'formation' read NA on a new permit, so not relied on"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 7 depths and thickness; items 12-16 fresh water, salt water, coal, void depths"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 18 casing and tubing program, packers; WW-2B item 13"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 18 fill-up, cement type and yield; item 24 additives"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "Site Safety Plan outline item 5 BOP and well control; required for H6A and deep wells only"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "form",
+   "n": "Site Safety Plan outline item 6 hydrogen sulfide; H6A and deep wells only"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-9: pit use and waste, liner, disposal method, closed loop, cuttings disposal, reclamation"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-9 asks if over 5,000 bbl of water; Water Management Plan form (H6A) not read"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6B item 20 methods, max pressure and rate; frac additive list with CAS numbers (H6A checklist)"
+  },
+  "spacing_unit": {
+   "s": "none",
+   "e": "form",
+   "n": "No unit or acreage item on WW-6B or WW-2B (acres disturbed only)"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6A7 well restriction checklist: setbacks with surface-owner waiver or DEP variance (H6A)"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6A1 lease information: lessor, lessee, royalty, book and page; WW-6A notice to coal owner"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "H6A checklist (rev 2013): $10,150 first well, $5,150 next; Fee Schedule page not read"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "WW-6A notice to owners and water purveyors, WW-PN publication notice, WW-6AC certification"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer recdate (yyyy/mm/dd text), e.g. a month before the issue date"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer issuedate (exact day); weekly report gives only the week (file name)"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No expiry on WW-6B or in the data; validity rule not read"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has no spud field; a 2010 third-party note says WV publishes none; WR-35 not read"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer compdate (empty on a new permit); weekly report lists WR-35_approved actions"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer wellstatus (e.g. Permit Issued); weekly Permit_Action: Issued, Modification, Cancelled"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Signed, sealed plat (WW-6) required; documents sit in a login-gated system, not opened"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Permits and documents are in Application Enhancer, which asks for a login; not opened"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "WR-35 is the completion record; weekly page says completion reports are posted; not opened"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen on any page or file opened"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Annual production Excel files by year, quarterly H6A files and a well search; files not opened"
+  }
+ },
+ "sources": [
+  {
+   "id": "wv-weekly-permit-reports",
+   "name": "Weekly Permit Report (one zip per week with an Excel and a PDF list of the week's permit activity; 2019 to 2026 in the archive)",
+   "url": "https://dep.wv.gov/OIL-AND-GAS/GI/Pages/WeeklyReports.aspx",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2019-01",
+   "size_mb": 0.19,
+   "free": true,
+   "login": false,
+   "license": "none stated; agency disclaimer on accuracy",
+   "columns": [
+    "API Number - 10 Digit",
+    "API Number - 14 Digit",
+    "Permit_Action",
+    "Permit Type",
+    "Well Type",
+    "Well Number",
+    "Operator",
+    "County Name"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "New Drill",
+    "Plugging",
+    "Drilling Deeper",
+    "Re-Work",
+    "Horizontal 6A Well",
+    "actions: Issued, Modification, Cancelled, WR-35_approved"
+   ],
+   "reachable": "ok",
+   "tested": "Page answered 200 (76 KB): 42 weekly links for 2026, newest week 2026-10-19 to 2026-10-23, posted 2026-10-27. Newest zip answered 200 (186 KB): an xlsx (22 rows, 8 columns, one sheet) and a PDF of the same list. Archive directory index answered 200 with folders 2019 to 2026 and a Transfer Circular folder; one 2019 zip (week of 2019-01-07) has the same 8 columns and 27 rows. No date column: the week is only in the file name. Rows seen: Issued 21 and Cancelled 1 in 2026; Issued, Modification, Cancelled and WR-35_approved in 2019. Reports before 2019 are older PDFs elsewhere (not tested)."
+  },
+  {
+   "id": "wv-tagis-all-wells",
+   "name": "WVDEP oil and gas MapServer, layer 7 'All DEP Wells' (one row per well with the latest permit's type and dates; also layers for horizontal wells, active, other status, coal bed methane, plugged, brine disposal, horizontal laterals and well pads)",
+   "url": "https://tagis.dep.wv.gov/arcgis/rest/services/WVDEP_enterprise/oil_gas/MapServer/7",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "1900",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated; agency disclaimer on accuracy",
+   "columns": [
+    "objectid",
+    "shape",
+    "pkey",
+    "permitid",
+    "county",
+    "permit",
+    "api",
+    "welltype",
+    "welluse",
+    "welldepth",
+    "wellrig",
+    "permittype",
+    "issuedate",
+    "compdate",
+    "respparty",
+    "wellstatus",
+    "farmname",
+    "wellnumber",
+    "recdate",
+    "marcellus",
+    "formation",
+    "link",
+    "webmap",
+    "wellx",
+    "welly"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "New Drill",
+    "Plugging",
+    "Drilling Deeper",
+    "Re-Work",
+    "UIC Permit",
+    "Convert",
+    "Partial Plug",
+    "Fracture",
+    "General Permit",
+    "Emergency Permit",
+    "plus about 25 older permit-type labels"
+   ],
+   "reachable": "ok",
+   "tested": "Service JSON answered 200 (5 KB; Map, Query, Data; 3,000 records a page; description says data come from RBDMS, adopted August 2016). Layer 7 schema read (25 fields, dates are yyyy/mm/dd text). Four small queries answered 200: one well by API; a count by permit type over the whole layer (154,247 rows, 40 permit types: 29,730 Plugging, 3,611 New Drill, 1,595 Re-Work, 1,804 UIC Permit); and counts for two weeks that match the weekly reports (week of 2026-10-19: 1 New Drill, 20 Plugging = the 21 Issued rows; week of 2019-01-07: 9 New Drill, 3 Plugging, 1 Drilling Deeper against 10, 3 and 1 Issued in the weekly file, with Modification and Cancelled rows absent). Dates run to 2026-10-29 for Plugging, so it is fresher than the weekly zip."
+  },
+  {
+   "id": "wv-database-info-downloads",
+   "name": "Database Information page: annual production Excel files 1985 to 2025, quarterly horizontal (H6A) production files, Well Location Data zip (dated 2016), quad and district codes, orphaned well and known formation data",
+   "url": "https://dep.wv.gov/oil-and-gas/databaseinfo/pages/default.aspx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "annual",
+   "history_from": "1985",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated; agency disclaimer on accuracy",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Page answered 200 (74 KB) and was read: production is reported once a year (due March 31); links point to xls, xlsx and zip files by year; the production files themselves were NOT opened, so their columns are unknown. The Well Location Data zip is named for 2016-08-22 and was not opened."
+  },
+  {
+   "id": "wv-well-search-and-document-system",
+   "name": "Search for Oil and Gas Wells (web search with an issue-date filter, permit type and operator) and Application Enhancer (documents including newly issued permits, plats and forms)",
+   "url": "https://apps.dep.wv.gov/oog/wellsearch/wellsearch.cfm",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": true,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested (the layer above holds the same permit fields). Named in the agency's pages and in search results; the weekly page says Application Enhancer needs a user name and password that the page itself prints (shared, public); not used because it is a login system and bulk files exist."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "Two free bulk sources reachable from here without login: the weekly permit reports (a real list of each week's permit actions since 2019: API, action Issued or Modification or Cancelled or WR-35_approved, permit type, well type, operator, county) and the TAGIS map service (one row per well with exact issue date and received date, permit type, well type, status, coordinates, 154,247 rows). Counts of one week matched in both. Two weaknesses: the weekly list has no date column (only the week in the file name), and the layer keeps only each well's latest permit, so older new-drill permits can drop out (2019 week: 9 of 10) and modifications are missing.",
+ "producer_plan": "Use both. (1) Recent and exact: query the MapServer layer 7 with where issuedate between the first and last day of the month and group by permittype (and welltype); paginate with resultOffset (3,000 per page); dates are yyyy/mm/dd text so string comparison works; no geometry needed. New Drill = new; Re-Drill and Partial Plug Re-drill = reentry; Re-Work, Drilling Deeper, Fracture = recomplete; UIC Permit, Convert, Brine Disposal, Secondary Recovery Well = injection; Plugging, Partial Plug, Storage, General Permit, Emergency Permit and older labels = other. (2) Complete action counts since 2019: download each Weekly Permit Report zip from the archive folders (one zip per week, name 'Weekly Permit Report MM-DD-YYYY'), read the xlsx (stdlib zip and XML), keep rows by Permit_Action: Issued = permits issued, Modification = amend, Cancelled = withdrawn, WR-35_approved = completion approvals; map Permit Type as above. Put a week in the month of its Monday, or split it by the layer's issue dates. Caveats: the layer shows only the latest permit per well, so use it for the last year or two and the weekly files for history; the weekly zip appears a few days after the week ends (week of 10-19 posted 10-27); a Modification repeats a well already counted; horizontal 6A wells are only a few a week while plugging permits dominate (20 of 22 in the sample week), so filter Permit Type. One request every few seconds, one host at a time.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "recomplete",
+  "injection",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The weekly list and the layer name operators (a few may be individuals) and the layer's farm name is the form's 'Farm Name/Surface Owner' item, which can be a landowner's surname; the forms collect owner and neighbor names and addresses, which are not published in the data. Publish only entity operators, county and counts; do not publish farm names. The Application Enhancer login is not to be used.",
+ "unknowns": [
+  "Columns and content of the annual and quarterly production Excel files (not opened)",
+  "Whether the layer's 'formation' field is the target or the producing formation (read NA on a new permit)",
+  "Spud date: no field in the layer or weekly list; WR-35 and the notice of intent to drill (WW-6A4) not read",
+  "Permit expiry rule and fee amounts today (checklist is from 2013; Fee Schedule page not read)",
+  "Coordinate datum and units of WellX and WellY; accuracy of the simplified laterals layer",
+  "Weekly reports before 2019 (older PDFs on another path, not tested) and the layer's refresh schedule",
+  "Contents of the Well Search page and of Application Enhancer (login-gated, not opened); online availability of plats, filed forms, completion reports and logs",
+  "Operator business type (Operator Registration form OP-1 not read)"
+ ],
+ "researched": "2026-10-31"
+}

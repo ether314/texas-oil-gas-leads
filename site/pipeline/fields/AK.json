@@ -1,0 +1,372 @@
+{
+ "state": "AK",
+ "name": "Alaska",
+ "agency": {
+  "name": "Alaska Oil and Gas Conservation Commission, Department of Commerce, Community, and Economic Development",
+  "short": "AOGCC",
+  "url": "https://www.commerce.alaska.gov/web/aogcc/"
+ },
+ "form": {
+  "name": "Permit to Drill (application, Form 10-401)",
+  "number": "Form 10-401; the Forms page was said (search summary, not read) to carry an updated version required from 2026-04-01",
+  "url": "https://www.commerce.alaska.gov/web/aogcc/Forms.aspx",
+  "read": false,
+  "notes": "The blank form could not be read: commerce.alaska.gov answered 403 to this machine's HEAD and to the fetch tool, and I did not retry or look for a mirror of the PDF. Cells follow the text of 20 AAC 25.005 (permit to drill), 25.010, 25.025, 25.050, 25.055 and 25.065, read in the Alaska Administrative Code, Title 20 chapter 25 PDF at https://dec.alaska.gov/media/18482/03-08-20aac25.pdf (a copy last modified 2019-09-25; section 25.005 history ends 12/28/2006, so later amendments are not covered), plus the AOGCC flyer. Every form cell is therefore evidence 'doc' (what the rule requires), not 'form' (what the form asks); the form may ask for more (county, elevation, field and so on, left unknown)."
+ },
+ "cells": {
+  "api_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Commission assigns it (25.005(f)); whether Data Miner shows it was not seen"
+  },
+  "permit_number": {
+   "s": "query",
+   "e": "doc",
+   "n": "Permit to Drill (PTD) number keys the scanned well files (AOGCC flyer); data columns not seen"
+  },
+  "well_name": {
+   "s": "form",
+   "e": "doc",
+   "n": "Unique name designated by the operator (20 AAC 25.005(f)); form itself not read"
+  },
+  "lease_name": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Plat must identify the property and owners (25.005(c)(2)); no lease name item verified"
+  },
+  "operator_name": {
+   "s": "form",
+   "e": "doc",
+   "n": "Applicant is the operator (implied by 20 AAC 25.005 and 25.025); form not read"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified"
+  },
+  "bond": {
+   "s": "form",
+   "e": "doc",
+   "n": "Evidence of 25.025 bond with the application (25.005(c)(12)); Form 10-402A surety or 10-402B personal"
+  },
+  "county": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule locates wells by section lines and coordinates; borough/area item not verified"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified"
+  },
+  "field_pool": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified on the application; pool rules exist (20 AAC 25.520)"
+  },
+  "surface_latlon": {
+   "s": "query",
+   "e": "doc",
+   "n": "Data Miner Wells lists wellhead coordinates (AOGCC flyer); application needs surface coordinates (25.005(c)(2))"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat coordinates referenced to governmental section lines (20 AAC 25.005(c)(2)(A))"
+  },
+  "bottom_hole_loc": {
+   "s": "query",
+   "e": "doc",
+   "n": "Data Miner Wells lists bottom hole coordinates (AOGCC flyer); plat gives top of objective and TD (c)(2)(A)"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "doc",
+   "n": "Deviated wells: plat of proposed path and nearby wells (25.050(b)); surveys sent by request only (flyer)"
+  },
+  "elevation": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the rule text; form not read"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Plat shows property owners (25.005(c)(2)); surface vs mineral split not verified"
+  },
+  "well_type": {
+   "s": "form",
+   "e": "doc",
+   "n": "Commission classes the well: exploratory, development oil/gas, service, strat test (25.005(b))"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "doc",
+   "n": "Drill, redrill or re-enter an abandoned well (25.005(a)); completion re-entry goes on sundry 10-403 (25.010)"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "doc",
+   "n": "Intentionally deviated wells carry the extra path plat (20 AAC 25.005(d), 25.050(b))"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "doc",
+   "n": "Proposed depth at top of each objective and at TD (25.005(c)(2)(C)); MD/TVD split not stated"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "doc",
+   "n": "Same item as the depth above; rule uses true vertical depth only for pressure gradient (c)(4)(A)"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the rule text; form not read"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat gives location and depth at the top of each objective formation (25.005(c)(2))"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "doc",
+   "n": "Objective tops (c)(2); exploratory wells add predicted geo-pressured strata depths (c)(9)"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Complete proposed casing and cementing program (20 AAC 25.005(c)(6))"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Part of the casing and cementing program (20 AAC 25.005(c)(6))"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "doc",
+   "n": "BOPE diagram and description (c)(3); diverter system diagram (c)(7)"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "doc",
+   "n": "Commission writes H2S conditions on the PTD where history is thin (25.065(c)); not an applicant item"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plan for mud and cuttings disposal and any annular disposal request (25.005(c)(14)); fluid program (c)(8)"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No water source or volume item in 20 AAC 25.005(c); form not read"
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No fracturing item in 20 AAC 25.005(c); form not read"
+  },
+  "spacing_unit": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Units set by pool rules (25.055); no application item verified"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "doc",
+   "n": "Separate exception application with notice, plat, affidavit (25.055(d)); not on 10-401 itself"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat must identify the property and its owners (20 AAC 25.005(c)(2)); 25.005(h) right to drill"
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "$100 payable to State/AOGCC in the 2019-posted rule text (c)(1); current amount not checked"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "Deviated wells: list operators within 200 ft, certified-mail copy or state sole owner (25.050(b)(2))"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen"
+  },
+  "date_approved": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Approval date drives 24-month expiry (25.005(g)); no data column or lookup seen"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Expires 24 months after approval if not spudded (25.005(g)); no expiry column seen"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen; Data Miner Wells reportedly lists status and completion dates"
+  },
+  "completion_date": {
+   "s": "query",
+   "e": "doc",
+   "n": "Data Miner Wells lists completion dates (AOGCC flyer); export format not seen"
+  },
+  "status": {
+   "s": "query",
+   "e": "doc",
+   "n": "Data Miner Wells lists well status (AOGCC flyer)"
+  },
+  "plat_image": {
+   "s": "query",
+   "e": "doc",
+   "n": "Scanned well history files (permits to drill) by PTD number at the document browser (flyer)"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "doc",
+   "n": "Scanned permits to drill by PTD number (AOGCC flyer)"
+  },
+  "completion_report": {
+   "s": "query",
+   "e": "doc",
+   "n": "Scanned well completion reports by PTD number (AOGCC flyer)"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Held by AOGCC; digital logs and surveys sent on request (flyer); online lookup not confirmed"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "doc",
+   "n": "Data Miner Production page: production, injection, storage, NGL volumes (AOGCC flyer)"
+  }
+ },
+ "sources": [
+  {
+   "id": "ak-dataminer",
+   "name": "AOGCC Data Miner (Wells, Well History, Production pages)",
+   "url": "https://aogweb.state.ak.us/DataMiner4/Forms/Wells.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "(not seen) AOGCC flyer says Wells lists wellhead and bottom hole coordinates, status, completion dates; Production lists production, injection, storage and NGL volumes"
+   ],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "blocked-proxy",
+   "tested": "One HEAD to https://aogweb.state.ak.us/DataMiner4/Forms/Home.aspx from this machine: TLS connection reset by peer right after the proxy CONNECT (curl error 35), no HTTP status. The agency writes its addresses as http://, which I did not try; not retried. Pages and columns known only from the AOGCC one-page flyer https://dog.dnr.alaska.gov/Documents/Programs/2024-02-07_AOGCC_Information.pdf (the fetch tool saved the PDF, I read its text with pdftotext; internal file name 2023-11-30_Flyer_AOGCC.pdf). Web-search summaries of the AOGCC help page (not read by me) say the Well History page filters by permit number, well name, operator and date range and has an Export As button for spreadsheet or comma-delimited files, and that the Data Miner updates daily."
+  },
+  {
+   "id": "ak-data-extract",
+   "name": "AOGCC Data Extract (public database extract, Microsoft Access)",
+   "url": "https://www.commerce.alaska.gov/web/aogcc/Data",
+   "kind": "bulk",
+   "format": "other",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "commerce.alaska.gov answered 403 to a HEAD request from this machine (recorded by the coordinator; not repeated by me). The fetch tool also got HTTP 403 on /web/aogcc/Data and /web/aogcc/Forms (one try each, not repeated). Existence of the extract (Access format, updated daily, plugbacks and pilot holes added 2024-06-10) is from web-search summaries of the Data page, not from a page I read; its tables are unknown."
+  },
+  {
+   "id": "ak-maps-wells",
+   "name": "AOGCC well locations, ArcGIS MapServer 'AOGCC_SQL_Test'",
+   "url": "https://maps.commerce.alaska.gov/server/rest/services/AOGCC/AOGCC_SQL_Test/MapServer",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested: same domain family (commerce.alaska.gov) that answered 403. Known only from search-result titles and snippets: a MapServer of AOGCC well surface and bottom-hole locations with a classification layer; the name says 'SQL_Test', so it may not be a supported service. Fields unknown."
+  },
+  {
+   "id": "ak-ogc-docs",
+   "name": "AOGCC scanned well history files (permits to drill, sundries, completion reports) by PTD number",
+   "url": "https://ogc-docs.commerce.alaska.gov/WebLink/Browse.aspx",
+   "kind": "query",
+   "format": "pdf",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested (commerce.alaska.gov family answered 403). Described in the AOGCC flyer as the complete well history file scans filed by Permit to Drill number. Scanned PTDs may hold personal data; none seen."
+  }
+ ],
+ "grade": "D",
+ "grade_reason": "Provisional. The agency does publish bulk and query data (a daily Access Data Extract and the Data Miner, per its own flyer and search summaries), but every host I tried is blocked from this machine: commerce.alaska.gov answered 403 (HEAD, and the fetch tool) and aogweb.state.ak.us reset the TLS connection. No file, column or approval date was seen, so the brief's 'blocked from here' rule gives D. It would become A or B if one request from the GitHub runner reaches the Data Miner and the Well History export has an approval date.",
+ "producer_plan": "Nothing could be built or tested from here, so this is a plan to test, not a verified one. Best candidate: the AOGCC Data Extract (a daily Microsoft Access .mdb in a zip, per search summaries of the Data page) or, failing that, the Data Miner Well History page exported as CSV in date-range slices (per the help page summary: large sets must be exported in smaller pieces). Step 1 is one polite request, from the GitHub runner that the nightly already uses, to the Data page and to http://aogweb.state.ak.us/DataMiner4/Forms/Home.aspx (the agency writes http://; this machine's https attempt was reset). If both answer: find the table or column that holds the permit approval date, the well class and the work type; count approved Permits to Drill by month of approval, with new wells (drill) apart from redrills and re-entries (20 AAC 25.005(a): drilling, redrilling and re-entering an abandoned well all need a Permit to Drill, and each well branch has its own PTD, so sidetracks count separately). Completion-only work (re-entry of a suspended well to complete it) is a sundry (Form 10-403, 20 AAC 25.010) and would not be in a permit count. A .mdb needs mdbtools or a reader; the tracker's Python producers use only the standard library, so the CSV export is the simpler route. If both are refused from the runner too, Alaska stays grade D (use the annual permit chart PDFs only as a total). Caveat: the approval date, spud date and permit status columns are all unverified.",
+ "activity_bands_possible": [
+  "new",
+  "reentry"
+ ],
+ "privacy_notes": "No data file was seen. Operators are companies in the rule text; the scanned permits to drill (document browser) are applications with attachments and may hold personal details, so link nothing from them. Plats must identify the property's owners (20 AAC 25.005(c)(2)), so scanned plats can name landowners.",
+ "unknowns": [
+  "Any column name of the Data Extract, Data Miner Wells or Well History (blocked)",
+  "Whether a permit approval date, spud date, work type and well class are published as data (the critical question for grade A)",
+  "Current Form 10-401 contents (the form was updated; required from 2026-04-01 per a search summary)",
+  "Whether the rules changed after the 2019-posted copy (fee, items in 25.005(c))",
+  "Whether aogweb.state.ak.us answers over plain http from this machine (agency links use http://; not tried)",
+  "Whether the AOGCC_SQL_Test ArcGIS service is a supported public layer",
+  "Number of permits per year (a 2020 statewide permits chart PDF exists per search results; not read)"
+ ],
+ "researched": "2026-10-31"
+}
