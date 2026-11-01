@@ -43,7 +43,7 @@ const VIEWS = [
   ['#map?st=tx', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) ? null : 'Texas alone should keep its own legend')],
   ['#map?st=ok', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) && (await page.locator('.lg-states').count()) === 0 ? null : 'the Oklahoma map should say permits and need no state legend')],
   ['#map?st=nm', '#map-root canvas', async (page) => (/^Wells spudded, [A-Z][a-z]{2} 1, \d{4} to [A-Z][a-z]{2} \d+, \d{4}$/.test(await page.locator('.lg-title').innerText()) ? null : 'the New Mexico map should say wells spudded, over 12 calendar months from the first of a month')],
-  ['#overview?st=fo', '#kpis > *', async (page) => (/^BSEE spud reports through/.test(await page.locator('#hero-eyebrow').textContent()) ? null : 'the offshore\'s Overview should name BSEE')],
+  ['#overview?s=TX', '.nw-grid .nat-panel h3', async (page) => (/^Texas$/.test(await page.locator('.nw-grid .nat-panel h3').first().innerText()) && /s=TX/.test(await page.evaluate(() => location.hash)) ? null : 'an address naming Texas should zoom the explorer to it')],
   ['#map?st=fo', '#map-root canvas', async (page) => (/^Wells spudded, [A-Z][a-z]{2} 1, \d{4} to [A-Z][a-z]{2} \d+, \d{4}$/.test(await page.locator('.lg-title').innerText()) ? null : 'the offshore map should say wells spudded, over 12 calendar months from the first of a month')],
   ['#operators?st=fo', '#ops-root table'],
   ['#daily?st=fo', '#daily-root .dr-hero'],
@@ -129,41 +129,19 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await page.route('**/data/daily-nm/index.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"generated":"x","keep":92,"days":[]}' }));
     const pressed = () => page.locator('#statebar button[aria-pressed="true"]').innerText();
     const hash = () => page.evaluate(() => location.hash);
-    const eyebrow = () => page.locator('#hero-eyebrow').textContent(); // innerText would be the capitals the page's CSS makes of it
     const dailyEyebrow = (re) => page.waitForFunction((src) => { const e = document.querySelector('#daily-root .dr-hero .eyebrow'); return !!e && new RegExp(src, 'i').test(e.textContent); }, re.source, { timeout: 25000 });
-    const waitEyebrow = (re) => page.waitForFunction((src) => new RegExp(src).test(document.querySelector('#hero-eyebrow').textContent), re.source, { timeout: 20000 });
     try {
+      // the Overview is national and does not follow the bar; the Daily report still does (until it is national too)
       await page.goto(base + '#overview', { waitUntil: 'load' });
-      await page.waitForSelector('#hot-bars li', { timeout: 25000 });
-      await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
-      check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Overview and starts on All');
-      check((await page.locator('#statebar .seg-dot').count()) === 5 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1 && (await page.locator('#statebar .seg-dot.st-fo').count()) === 1, 'each state wears its color in the bar (All the four together)');
-      check(/^Permits and spuds through Oct \d+ \(Texas\), Oct \d+ \(Oklahoma\), Aug \d+ \(New Mexico\) and Aug \d+ \(Offshore\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'the hero names each state\'s last day once, with the year once, and says permits and spuds where the states count both');
-      check(/\(Texas\).*\(Oklahoma\).*\(New Mexico\).*\(Offshore\)/.test(await eyebrow()) && (await page.locator('#hot-bars .bars-h').count()) === 4 && (await page.locator('#hot-h').textContent()) === 'Hot counties and areas', 'all states: the hero names each state\'s last day, the lists have a heading per state and the card says counties and areas');
-      check(/New Mexico and the federal offshore count wells spudded, not permits \(their regulators publish no approval dates by well\)/.test(await page.locator('#hero-note').textContent()), 'and the note under the map says which states count wells spudded, once');
-      check(/In the federal offshore a well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted\./.test(await page.locator('#hero-note').textContent()), 'and that a sidetrack offshore is not counted as a new well');
-      await page.click('#statebar button[data-id="OK"]');
-      await waitEyebrow(/Corporation Commission approvals through/);
-      check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma', 'choosing Oklahoma puts st=ok in the address');
-      check((await page.locator('#kpis').innerText()).includes('Active wells') && !(await page.locator('#seg-chart').isVisible()), 'Oklahoma alone: its own figures, and the cards only Texas can fill step aside');
-      await page.click('#statebar button[data-id="NM"]');
-      await waitEyebrow(/Oil Conservation Division spud reports through/);
-      check(/st=nm/.test(await hash()) && (await page.locator('#kpis').innerText()).includes('Wells spudded, last 12 months'), 'New Mexico alone: its wells spudded, its own date, st=nm in the address');
-      await page.click('#statebar button[data-id="FO"]');
-      await waitEyebrow(/^BSEE spud reports through/);
-      check(/st=fo/.test(await hash()) && (await page.locator('#kpis').innerText()).includes('Wells spudded, last 12 months') && !(await page.locator('#seg-chart').isVisible()) && (await page.locator('#hot-h').textContent()) === 'Hot areas', 'the federal offshore alone: its wells spudded, its own date, st=fo in the address, "Hot areas", and the cards only Texas can fill step aside');
-      await page.click('#statebar button[data-id="TX"]');
-      await waitEyebrow(/^Railroad Commission permits through/);
-      check(/st=tx/.test(await hash()) && (await page.locator('#seg-chart').isVisible()) && (await page.locator('#hot-bars .bars-h').count()) === 0, 'Texas alone: the original Overview, st=tx in the address');
-      await page.click('#statebar button[data-id="all"]');
-      await waitEyebrow(/\(Oklahoma\)/);
-      check(!/st=/.test(await hash()), 'choosing All takes st out of the address');
-      await page.click('#statebar button[data-id="OK"]');
-      await waitEyebrow(/Corporation Commission/);
-      await page.click('.nav a[href="#daily"]');
+      await page.waitForSelector('.nw-canvas', { timeout: 25000 });
+      check(!(await page.locator('#statebar').isVisible()), 'the Overview is the same for every state: it has no states bar');
+      await page.goto(base + '#daily', { waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dr-hero', { timeout: 25000 });
-      await page.waitForTimeout(800);
-      check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma' && (await page.locator('#daily-root path.dr-county').count()) === 77, 'going to the Daily report keeps the choice: Oklahoma\'s 77 counties, st=ok in the address');
+      check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on the Daily report and starts on All');
+      check((await page.locator('#statebar .seg-dot').count()) === 5 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1 && (await page.locator('#statebar .seg-dot.st-fo').count()) === 1, 'each state wears its color in the bar (All the four together)');
+      await page.click('#statebar button[data-id="OK"]');
+      await page.waitForFunction(() => document.querySelectorAll('#daily-root path.dr-county').length === 77, null, { timeout: 25000 });
+      check(/st=ok/.test(await hash()) && (await pressed()) === 'Oklahoma', 'choosing Oklahoma on the Daily report: its 77 counties, st=ok in the address');
       await page.click('#statebar button[data-id="NM"]');
       await page.waitForFunction(() => /no Daily report yet/.test(document.querySelector('#statebar-note').textContent), null, { timeout: 20000 });
       check((await page.locator('#statebar-note').textContent()).includes('New Mexico has no Daily report yet'), 'a state with no Daily report: the bar says so on the Daily report');
@@ -192,10 +170,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(!(await page.locator('#co-root').isVisible()) && /Texas Comptroller/.test(await page.locator('#co-note').innerText()), 'Companies with no Texas in the choice: no table, and a note on why');
       await page.click('.nav a[href="#about"]');
       await page.waitForSelector('#view-about h1', { timeout: 25000 });
-      check(!(await page.locator('#statebar').isVisible()) && /st=nm/.test(await hash()), 'a view that does not follow the choice (Sources) hides the bar and keeps it in the address');
-      await page.click('.nav a[href="#overview"]');
-      await page.waitForSelector('#hot-bars li', { timeout: 25000 });
-      await page.click('#statebar button[data-id="OK"]');
+      check(!(await page.locator('#statebar').isVisible()) && !/st=/.test(await hash()), 'a view that does not follow the choice (Sources) hides the bar and has no state in its address');
+      await page.click('.nav a[href="#operators"]');
+      await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
+      check((await pressed()) === 'New Mexico' && /st=nm/.test(await hash()), 'and the choice is still there when you come back to a view that follows it');
       await page.goto(base + '#daily?st=tx', { waitUntil: 'load' });
       await dailyEyebrow(/Railroad Commission report/);
       check((await pressed()) === 'Texas', 'an address with st=tx opens the Daily report on Texas alone, and the bar says so');
@@ -603,17 +581,11 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const amended = await page.evaluate(() => { const t = [...document.querySelectorAll('#daily-root .dr-tile')].find((x) => /^Amended/.test(x.innerText.trim())); return t ? t.innerText.replace(/\s+/g, ' ') : null; });
       check(!amended || /only/.test(amended), 'the amended-permits figure (Texas and Oklahoma count them, New Mexico does not) names the states it adds: ' + amended);
       // an address that names two of the three states: nothing is highlighted in the bar, and a note says which are shown
-      await page.goto(base + '#overview?st=tx,ok', { waitUntil: 'load' });
+      await page.goto(base + '#map?st=tx,ok', { waitUntil: 'load' });
       await page.waitForSelector('#statebar-seg button', { timeout: 25000 });
       await page.waitForTimeout(400);
       const pair = await page.evaluate(() => ({ on: [...document.querySelectorAll('#statebar-seg button')].filter((b) => b.getAttribute('aria-pressed') === 'true').length, note: document.querySelector('#statebar-note').textContent }));
       check(pair.on === 0 && /Showing Texas and Oklahoma/.test(pair.note), 'two states named in the address: no segment of the bar is lit and the note says "' + pair.note.slice(0, 60) + '"');
-      // wording that names New Mexico's different measure, and the Active wells chip naming each inventory
-      await page.goto(base + '#overview?st=ok,nm', { waitUntil: 'load' });
-      await page.waitForSelector('#kpis .kpi-chip', { timeout: 25000 });
-      await page.waitForTimeout(900);
-      const chips = await page.evaluate(() => [...document.querySelectorAll('#kpis .kpi-chip-note')].map((n) => n.textContent).join(' || '));
-      check(/wells spudded in New Mexico/.test(chips) && /first spud in New Mexico/.test(chips) && /well inventories of Oklahoma and New Mexico/.test(chips), 'the Overview\'s chips for Oklahoma and New Mexico name its different measure and both inventories: ' + chips.slice(0, 160));
       // a Map operator panel never shows more dots than the operator has
       await page.goto(base + '#map?op=NM:7377&st=nm', { waitUntil: 'load' });
       await page.waitForSelector('.psec-op', { timeout: 25000 });
@@ -744,7 +716,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
     const bar = () => page.evaluate(() => { const seg = document.querySelector('#statebar .seg'); const bs = [...seg.querySelectorAll('button')]; return { room: seg.scrollWidth - seg.clientWidth, shown: bs.map((b) => b.innerText.trim()), names: bs.map((b) => b.getAttribute('aria-label') || b.innerText.trim()) }; });
     try {
-      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.goto(base + '#map', { waitUntil: 'load' });
       await page.waitForSelector('#statebar .seg button', { timeout: 25000 });
       const phone = await bar();
       check(phone.room <= 1 && phone.shown.join() === 'All,TX,OK,NM,Offshore', 'on a 360 px phone all five choices of the states bar are in view with no sideways scrolling (' + phone.shown.join(' ') + ', ' + phone.room + ' px to spare)');
@@ -801,28 +773,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const mixedHeads = (await page.locator('#ops-root thead th:visible').allInnerTexts()).map((t) => t.trim());
       const mixedTitles = new Set(await page.locator('#ops-root tbody .chip').evaluateAll((els) => els.map((e) => e.title)));
       check(mixedHeads.includes('Last permit or spud') && mixedTitles.has('10 or more new-well permits in the last 12 months') && mixedTitles.has('10 or more wells spudded in the last 12 months'), 'a list of Texas and the offshore describes each row\'s band in its own measure and calls the date "Last permit or spud": ' + mixedHeads.filter((h) => /^Last/.test(h)).join());
-      // the Production note keeps a space between two states' sentences (they ran together when Texas was not shown) and names the offshore as a sentence does
-      await page.goto(base + '#overview?st=nm,fo', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#pg-production', { timeout: 25000 });
-      await page.click('#pg-production');
-      const foot = (await page.locator('#pulse-root .pulse-foot').allInnerTexts()).join(' ');
-      check(/here\. The federal offshore’s line is the EIA’s monthly estimate/.test(foot) && !/here\.[A-Z]/.test(foot) && /The federal offshore has no area or operator production file here/.test(foot), 'the Production note keeps a space between two states\' sentences and names the offshore as a sentence does: ' + foot.slice(-260));
-      check(/^Wells spudded through Aug \d+ \(New Mexico\) and Aug \d+ \(Offshore\), \d{4}$/.test(await page.locator('#hero-eyebrow').textContent()), 'two states that both count spuds say "Wells spudded through ...", not "Permits": ' + (await page.locator('#hero-eyebrow').textContent()));
-      // a state named inside a sentence is "the federal offshore"; a state with no well inventory at all is "not counted", not "none yet"
-      await page.goto(base + '#overview?st=ok,fo', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#kpis .kpi-chip', { timeout: 25000 });
-      await page.waitForTimeout(900);
-      const foChips = await page.evaluate(() => [...document.querySelectorAll('#kpis .kpi-chip-note')].map((n) => n.textContent).join(' || '));
-      check(/not counted for the federal offshore/.test(foChips) && !/none yet for/.test(foChips) && /first spud in the federal offshore/.test(foChips) && !/[a-z,] Federal offshore/.test(foChips), 'the chips name the offshore as a sentence does, and say its inventory is not counted: ' + foChips.slice(0, 260));
-      await page.goto(base + '#overview?st=fo', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#ins-list li.insight', { timeout: 25000 });
-      const foIns = await page.evaluate(() => [...document.querySelectorAll('#ins-list li.insight')].map((n) => n.textContent).join(' || '));
-      check(/The federal offshore produced [\d,]+ thousand barrels of crude oil in/.test(foIns) && !/[a-z,] Federal offshore/.test(foIns), 'an insight that starts with the offshore capitalizes it, and none names it "Federal offshore" mid-sentence: ' + foIns.slice(0, 200));
-      check(/^A well counts once|The federal offshore counts wells spudded, not permits \(its regulator publishes no approval dates by well\), and ends two months back because spud dates arrive late\. A well counts once, on its first borehole;/.test(await page.locator('#hero-note').textContent()), 'with the offshore alone the note under the map says what a sidetrack is without repeating its name');
-      await page.goto(base + '#overview?st=tx,fo', { waitUntil: 'load' });
+      await page.goto(base + '#map?st=tx,fo', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
       await page.waitForSelector('#statebar-note', { timeout: 25000 });
       await page.waitForTimeout(300);
@@ -1200,6 +1151,69 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       }
       await ctx.close();
     }
+  }
+
+
+  // 19. the national Overview (2026-11-01): every figure from the one source that has the same facts for every state; the explorer draws, answers hover and click, replays, and says what it does not know
+  for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const pixels = (sel) => page.evaluate((q) => { const c = document.querySelector(q); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; }, sel);
+    try {
+      await page.goto(base + '?debug#overview', { waitUntil: 'load' });
+      await page.waitForSelector('.nw-canvas', { timeout: 25000 });
+      await page.waitForFunction(() => window.__nw && window.__nw.map.ready, null, { timeout: 25000 });
+      await page.waitForTimeout(700);
+      const kpis = await page.locator('#kpis .kpi-chip').allInnerTexts();
+      check(kpis.length === 4 && /New wells, last 12 months/.test(kpis[0]) && /States with new wells/.test(kpis[1]) && /federal or tribal land/.test(kpis[2]) && /Newest well/.test(kpis[3]), label + ': four figures, the first the last 12 months\' new wells');
+      const text = await page.locator('#view-overview').innerText();
+      check(!/\b(NaN|undefined|null|Infinity)\b/.test(text), label + ': no NaN, undefined, null or Infinity anywhere on the Overview');
+      check(!(await page.locator('#statebar').isVisible()) && !(await page.locator('#ticker, #insights, #pulse-card, #prod-card, #basins, #seg-chart').count()), label + ': no states bar and none of the cards only Texas could fill (markets, insights, producers, basins, companies)');
+      const [heroPx, mapPx] = [await pixels('#hero-canvas'), await pixels('.nw-canvas')];
+      check(heroPx > 300 && mapPx > 300, label + ': the hero\'s backdrop and the explorer\'s map are drawn (' + heroPx + ' and ' + mapPx + ' samples of ink)');
+      const n = await page.evaluate(() => window.__nw.P.n);
+      check(n > 15000 && /every state that reports to the registry/.test(await page.locator('.nw-explore .sub').innerText()), label + ': the explorer holds the wells of the last 24 months (' + n + ')');
+      check(/All states/.test(await page.locator('.nw-grid .nat-panel h3').first().innerText()) && !/\/#/.test(await page.evaluate(() => location.hash)), label + ': it starts on all states');
+      // the ranking is the table twin of the map: one row for each state with wells, none for a state with no well, and a state with a handful of wells shows no percentage
+      const rows = await page.locator('.nat-rows .nat-row').count();
+      const rank = await page.locator('.nat-rows .nat-row').first().innerText();
+      check(rows >= 12 && /Texas/.test(rank) && (await page.locator('.nat-rows .nat-row', { hasText: 'Kentucky' }).innerText()).includes('n/a'), label + ': the ranking lists ' + rows + ' states, Texas first, and a state with a handful of wells says n/a, not "-57%"');
+      check(/not counted as zero/.test(await page.locator('#nw-slot .nat-rank + .fine').innerText()) && /Alabama/.test(await page.locator('#nw-slot .nat-rank + .fine').innerText()), label + ': the producing states with no well in the registry are named, and are not counted as zero');
+      // hover a dot: its tooltip names the county, the day and the operator, and never an API number or a lease
+      const pt = await page.evaluate(() => { const { map, P } = window.__nw; for (let i = 0; i < P.n; i++) if (P.states[P.s[i]] === 'TX' && P.o[i] >= 0) { const [x, y] = map.screenOf(i); return { x, y, i }; } return null; });
+      const box = await page.locator('.nw-canvas').boundingBox();
+      await page.mouse.move(box.x + pt.x - 20, box.y + pt.y - 20); await page.mouse.move(box.x + pt.x, box.y + pt.y);
+      await page.waitForSelector('.tip', { state: 'visible', timeout: 5000 });
+      const tip = await page.locator('.tip').innerText();
+      check(/County, Texas|Texas/.test(tip) && /first fracturing job/.test(tip) && /operator/.test(tip) && !/\d{10}/.test(tip), label + ': hovering a dot names its county, its first job and its operator, no API number: ' + tip.replace(/\s+/g, ' ').slice(0, 120));
+      // choose a state in the key: the panel, the address, the rows and the chips agree; the selector reads the same
+      await page.locator('.nw-chip', { hasText: 'North Dakota' }).click();
+      await page.waitForFunction(() => /^North Dakota$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
+      const nd = await page.locator('.nw-grid .nat-panel').innerText();
+      check(/s=ND/.test(await page.evaluate(() => location.hash)) && /Top counties/.test(nd) && /Top operators/.test(nd) && /Williams|McKenzie/.test(nd) && (await page.locator('.nw-pick').inputValue()) === 'ND' && (await page.locator('.nat-row[aria-current="true"]').innerText()).includes('North Dakota'), label + ': choosing North Dakota zooms the map, fills its panel, writes s=ND in the address and marks its row');
+      check(/Its permits, by the agency/.test(nd) && (await page.locator('.nw-grid .nat-panel a[href="#national?s=ND"]').count()) === 1, label + ': the state\'s panel links to its permits on the National page, which count something else');
+      await page.selectOption('.nw-pick', 'TX');
+      await page.waitForFunction(() => /^Texas$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
+      check(await page.locator('.nw-grid .nat-panel a[href="#map?st=tx"]').count() === 1, label + ': Texas, Oklahoma and New Mexico link to the Map that goes deeper');
+      await page.selectOption('.nw-pick', '');
+      await page.waitForFunction(() => /All states/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
+      check(!/s=/.test(await page.evaluate(() => location.hash)), label + ': back to all states takes s out of the address');
+      // the replay: with reduced motion only the scrubber, which moves the clock; the count only grows
+      await page.click('.nw-explore button:has-text("Watch 24 months")');
+      await page.waitForSelector('.tl-range', { state: 'visible', timeout: 5000 });
+      const total = await page.evaluate(() => window.__nw.map.tlCount(window.__nw.map.tlRange[1]));
+      await page.locator('.tl-range').fill(String(Math.round(await page.evaluate(() => window.__nw.map.tlRange[1] / 2))));
+      const half = await page.evaluate(() => window.__nw.map.tlCount(window.__nw.map.tlRange[1] / 2));
+      check(half > 0 && half < total && /wells so far/.test(await page.locator('.tl-count').innerText()) && !(await page.locator('.tl-play').count()), label + ': the replay (scrubber only with reduced motion) shows ' + half + ' of ' + total + ' wells at the halfway day');
+    } catch (e) {
+      check(false, label + ': the national Overview: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, label + ': the national Overview loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
   }
 
   await browser.close();

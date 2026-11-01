@@ -11,7 +11,7 @@ const MEASURE_NAME = { permits: 'Permits approved', spuds: 'Wells spudded' };
 const MEASURE_ONE = { permits: 'new-drill permits', spuds: 'wells spudded' };
 // what one count is and what a state's places are called: the BLM counts APDs approved by state office; the others new-drill permits or wells spudded by county or area
 const unitOf = (s) => s.unit || MEASURE_ONE[s.measure];
-const OWN_VIEW = { TX: 'tx', OK: 'ok', NM: 'nm', FO: 'fo' }; // the jurisdictions that also have the full Overview, Map and Operators pages
+const OWN_VIEW = { TX: 'tx', OK: 'ok', NM: 'nm', FO: 'fo' }; // the jurisdictions that also have the Map and Operators pages
 // Element.append writes the word "null" for a null child, so nothing is appended without dropping the empty ones first
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
@@ -144,7 +144,7 @@ export function createNationalView({ root }) {
       el('div', { class: 'nat-lists' }, list('Top ' + (s.place || (s.measure === 'spuds' ? 'areas' : 'counties')), s.counties, unitOf(s)), list('Top operators', s.operators, unitOf(s))),
       s.operators.length && s.namedShare != null ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round(s.namedShare * 100) + '% of the year’s new wells.' }) : null,
       s.note ? el('p', { class: 'fine', text: s.note }) : null);
-    if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#overview?st=' + OWN_VIEW[id] }, 'Open ' + s.name + ' in the Overview', icon('arrow', 16)));
+    if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_VIEW[id] }, 'Open ' + s.name + ' in the Map', icon('arrow', 16)));
     if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
     if (s.source && s.source.url) links.append(el('a', { class: 'more-link', href: s.source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Source: ' + s.source.name, icon('arrow', 16)));
     put(box, links);

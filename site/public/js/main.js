@@ -2,7 +2,7 @@
 import { $, $$, el, load, loadOpt, parseHash, replaceHash, fmt, fmtDate, monthLabel, reduced } from './util.js';
 import { initTheme } from './theme.js';
 import { hideTip } from './tip.js';
-import { fillMeta, renderSegments } from './overview.js';
+import { fillMeta } from './overview.js';
 import { createOverview } from './overview-view.js';
 import { createMapView } from './map.js';
 import { createTables } from './tables.js';
@@ -16,7 +16,7 @@ import { STATES, activeStates, setStates, onStates, parseStates, stateParam, sta
 
 const VIEWS = { overview: 'Overview', national: 'National report', fields: 'Permit data', images: 'Texas images', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the states bar; the others (Sources) hide it
-const STATE_VIEWS = new Set(['overview', 'map', 'daily', 'operators', 'companies']);
+const STATE_VIEWS = new Set(['map', 'daily', 'operators', 'companies']);
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -36,9 +36,10 @@ async function fillProdNote() {
 /* the Sources page's figures for the files a weekly refresh moves (the federal offshore's, New Mexico's end date) are read from those files, so the text moves with the refresh
    instead of going stale (a week that BSEE adds a month changes the date, the year's count and the operators; a missing file leaves a plain word, never an empty gap) */
 async function fillFromFiles(meta) {
-  const [ser, ops, eia, nm, eiaOk, eiaNm] = await Promise.all([loadOpt('series-permits-fo'), loadOpt('operators-fo'), loadOpt('series-fo'), loadOpt('series-permits-nm'), loadOpt('series-ok'), loadOpt('series-nm')]);
-  const extra = { foSince: 'the start of the record', foThrough: 'the last complete month', foYear: 'Fewer than a hundred', foOps: 'a few', foEiaThrough: 'the newest month', foEiaNow: 'the monthly total', nmThrough: 'the last complete month', okEiaThrough: 'the newest month', nmEiaThrough: 'the newest month' };
+  const [ser, ops, eia, nm, eiaOk, eiaNm, nw] = await Promise.all([loadOpt('series-permits-fo'), loadOpt('operators-fo'), loadOpt('series-fo'), loadOpt('series-permits-nm'), loadOpt('series-ok'), loadOpt('series-nm'), loadOpt('newwells/summary')]);
+  const extra = { foSince: 'the start of the record', foThrough: 'the last complete month', foYear: 'Fewer than a hundred', foOps: 'a few', foEiaThrough: 'the newest month', foEiaNow: 'the monthly total', nmThrough: 'the last complete month', okEiaThrough: 'the newest month', nmEiaThrough: 'the newest month', nwSettled: 'the last settled month' };
   if (nm && nm.through) extra.nmThrough = fmtDate(nm.through);
+  if (nw && nw.settled) extra.nwSettled = monthLabel(nw.settled.slice(0, 7));
   if (eiaOk && eiaOk.latest) extra.okEiaThrough = monthLabel(eiaOk.latest);  // the EIA's monthly crude series (refreshed by hand each month): the month each one's file says it runs to
   if (eiaNm && eiaNm.latest) extra.nmEiaThrough = monthLabel(eiaNm.latest);
   if (ser && ser.months && ser.months.length) {
@@ -86,7 +87,6 @@ async function boot() {
   }
   fillMeta(meta);
   fillFromFiles(meta).catch(() => {});
-  renderSegments(meta);
   const overview = createOverview(meta);
 
   const tables = createTables(meta);
@@ -175,7 +175,7 @@ async function boot() {
     const id = Object.prototype.hasOwnProperty.call(VIEWS, view) ? view : 'overview';
     // an address that names the states sets the choice (quietly: this view is about to be drawn for it); one that does not keeps
     // the choice, and says so in the address
-    if (params.has('st')) { if (setStates(parseStates(params.get('st')), true)) overview.stale(); } else if (stateParam(activeStates())) syncAddress();
+    if (params.has('st')) setStates(parseStates(params.get('st')), true); else if (STATE_VIEWS.has(id) && stateParam(activeStates())) syncAddress();
     bar.set(choice(), false);
     const rest = new URLSearchParams(params); rest.delete('st');
     hasQuery = rest.toString() !== '';
@@ -193,7 +193,7 @@ async function boot() {
     if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
     pageTexts();
     ensure(id);
-    if (id === 'overview') overview.show(activeStates());
+    if (id === 'overview') overview.show(params); else if (shown === 'overview') overview.pause();
     if (id === 'daily') daily.activate(params).then(() => { bar.set(choice(), false); setNote(); });
     if (id === 'national') national.activate(params); else if (shown === 'national') national.deactivate();
     if (id === 'images') images.activate(params); else if (shown === 'images') images.deactivate();
@@ -212,10 +212,8 @@ async function boot() {
   onStates((ids) => {
     bar.set(choice(), false);
     syncAddress();
-    overview.stale();
     pageTexts();
-    if (shown === 'overview') overview.show(ids);
-    else if (shown === 'daily') daily.setStates(ids);
+    if (shown === 'daily') daily.setStates(ids);
     else if (shown === 'map') map.setStates();
     else if (shown === 'operators' || shown === 'companies') ensure(shown);
     setNote();
@@ -223,7 +221,7 @@ async function boot() {
   window.addEventListener('hashchange', () => show(true));
   show(false);
   document.documentElement.classList.add('ready');
-  if (new URLSearchParams(location.search).has('debug')) window.__app = { fmt, ov: overview.ov };
+  if (new URLSearchParams(location.search).has('debug')) window.__app = { fmt, overview };
 }
 
 boot();
