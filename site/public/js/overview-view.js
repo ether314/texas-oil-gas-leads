@@ -1,14 +1,14 @@
 // The Overview page, drawn for the states shown and drawn again when they change. Every state's files are loaded once; each draw merges what
 // the states shown have (overview-data.js) into the shapes the cards already take, and the cards that only Texas's records can fill
 // (producers, basins, companies) show for Texas and for several states together and step aside when Texas is not shown.
-import { $, loadOpt, dayLabel, fmtDate, monthLabel, lastIdx } from './util.js';
+import { $, loadOpt, dayLabel, fmtDate, monthLabel, lastIdx, sharePct } from './util.js';
 import { getGeo, getPoints, getBasins } from './geo.js';
 import { createHero } from './hero.js';
 import { renderKpis, renderHot, renderTopOps, renderProducers, renderFreshness } from './overview.js';
 import { loadMarketData, initMarkets } from './pulse.js';
 import { renderBasins, basinRigs } from './basins.js';
 import { renderInsights } from './insights.js';
-import { STATES, otherStates, stateOf, statesKey, spudStates, spudsNote, spudCaveat, measureOf, sameMeasure, listAnd, inName, shortName, yearStart } from './states.js';
+import { STATES, otherStates, stateOf, statesKey, statesIn, spudStates, spudsNote, spudCaveat, measureOf, sameMeasure, listAnd, inName, shortName, yearStart } from './states.js';
 import { permitSeries, countyPermits, operatorRows, activeWells } from './overview-data.js';
 
 const LEDE = {
@@ -16,17 +16,20 @@ const LEDE = {
   OK: 'New-drill permits across Oklahoma, from the Anadarko Basin to the rest of the state, and the operators filing them.',
   NM: 'Wells spudded across New Mexico, from the Delaware Basin to the San Juan Basin, and the operators drilling them.',
   FO: 'Wells spudded in the federal waters of the Gulf of America, from the shelf to the deepwater, and the operators drilling them.',
-  MANY: 'New-drill permits from the Permian to the Anadarko Basin, the operators filing them and, for Texas, the companies that serve them.',
 };
-// several states: the federal offshore, when it is one of them, adds the Gulf and says that some of the counts are wells spudded
-const ledeFor = (ids) => (ids.length === 1 ? LEDE[ids[0]] : ids.includes('FO')
-  ? 'Drilling on land and in the Gulf of America’s federal waters: permits and wells spudded, the operators behind them' + (ids.includes('TX') ? ' and, for Texas, the companies that serve them.' : '.')
-  : LEDE.MANY);
+// several states: what they count (permits, wells spudded, or both), where, and who is behind it; Texas's companies only when Texas is one of them
+const ledeFor = (ids) => {
+  if (ids.length === 1) return LEDE[ids[0]];
+  const permits = sameMeasure(ids) ? measureOf(ids[0]).id === 'permits' : null; // null: both kinds
+  const what = permits === null ? 'Permits and wells spudded' : permits ? 'New-drill permits' : 'Wells spudded';
+  const who = permits === null ? 'behind them' : permits ? 'filing them' : 'drilling them';
+  return what + ' across ' + statesIn(ids).replace('the federal offshore', 'the federal waters of the Gulf of America') + ', the operators ' + who + (ids.includes('TX') ? ' and, for Texas, the companies that serve them.' : '.');
+};
 
 // what each state's permit window is called in the hero's eyebrow
-const SOURCE = { TX: 'Railroad Commission permits', OK: 'Corporation Commission approvals', NM: 'Oil Conservation Division spud reports', FO: 'BSEE spud reports' };
+const SOURCE = { TX: 'Railroad Commission permits', OK: 'Corporation Commission approvals', NM: 'Oil Conservation Division spud reports', FO: 'Federal offshore (BSEE) spud reports' };
 
-const pct = (x) => (x >= 1 ? '100%' : Math.min(99, Math.round(x * 100)) + '%'); // 99.6% is not 100%
+const pct = sharePct; // 99.6% is not 100%
 
 export function createOverview(meta) {
   // docs[kind][id] is one state's file of that kind, loaded once; wells[id] is a state's active wells from its Daily report index
@@ -50,7 +53,8 @@ export function createOverview(meta) {
     $('#hero-eyebrow').textContent = many
       ? (sameMeasure(states) ? (measureOf(states[0]).id === 'spuds' ? 'Wells spudded' : 'Permits') : 'Permits and spuds') + ' through ' + datesPhrase(states)
       : SOURCE[states[0]] + ' through ' + fmtDate(through(states[0]));
-    $('#hero-lede').textContent = ledeFor(states) + ' Public records only, built ' + fmtDate(meta.built) + '.';
+    // the date is when Texas's monthly files were built by hand: the other states' files are refreshed daily or weekly, so it is said only with Texas
+    $('#hero-lede').textContent = ledeFor(states) + (has('TX') ? ' Public records only; Texas’s monthly files were built ' + fmtDate(meta.built) + '.' : ' Public records only.');
     $('#view-overview').dataset.states = statesKey(states);
     // the cards only Texas's records can fill
     $('#seg-chart').hidden = !has('TX');
@@ -72,7 +76,7 @@ export function createOverview(meta) {
       const sp = spudStates(states);
       const nm = sp.length ? ' ' + spudsNote(states) + ', and ' + (sp.length > 1 ? 'end' : 'ends') + ' two months back because spud dates arrive late.' + (spudCaveat(states) ? ' ' + spudCaveat(states) : '') : '';
       note.textContent = states.length > 1
-        ? 'Dots show the ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded location (share of the last 12 months: ' + states.map((id) => stateOf(id).name + ' ' + pct(cov(id).share12)).join(', ')
+        ? 'Dots show the ' + (sameMeasure(states) ? measureOf(states[0]).noun : 'permits and spuds') + ' with a recorded location (share of the last 12 months: ' + states.map((id) => inName(id) + ' ' + pct(cov(id).share12)).join(', ')
           + '). Brighter dots are the last 12 months; counts and trends use every one.' + nm
         : 'Dots are ' + measureOf(states[0]).noun + ' with a recorded surface location: ' + share(states[0]) + '. Brighter dots are the last 12 months. Counts and trends use every one.' + nm;
       host.classList.add('has-map');

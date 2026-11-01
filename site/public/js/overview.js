@@ -1,5 +1,5 @@
 // Overview: hero KPI strip, hot counties, top operators, top producers, segments, data freshness.
-import { $, el, fmt, compactFmt, stat, pct, share, fmtDate, monthLabel, countUp, toObjects } from './util.js';
+import { $, el, fmt, compactFmt, stat, pct, share, fmtDate, monthLabel, countUp, toObjects, unitOf } from './util.js';
 import { barList, delta, spark } from './charts.js';
 import { hideTip, showTip, tipRow } from './tip.js';
 import { icon } from './icons.js';
@@ -26,7 +26,7 @@ export function renderKpis({ states, meta: m, sp, rows = [], wells = {} }) {
   const chips = [];
   if (sp) {
     const t = permitTotals(sp);
-    const spud = sp.summed.length === 1 && measureOf(sp.summed[0]).id === 'spuds';
+    const spud = sp.summed.length > 0 && sp.summed.every((id) => measureOf(id).id === 'spuds'); // the states added together count the same thing: all spuds (New Mexico and the offshore) or all permits
     // a state that counts something else (New Mexico's spuds) is not in the total: its own 12 months are said beside it
     const apart = sp.ids.filter((id) => !sp.summed.includes(id)).map((id) => { const o = ownTotals(sp, id); return fmt.format(o.last) + ' ' + measureOf(id).noun + ' in ' + inName(id) + ' (to ' + monthLabel(o.to) + ')'; });
     chips.push({
@@ -53,7 +53,7 @@ export function renderKpis({ states, meta: m, sp, rows = [], wells = {} }) {
       const later = missing.filter((id) => stateOf(id).dir); const never = missing.filter((id) => !stateOf(id).dir);
       chips.push({
         label: 'Active wells', value: counted.reduce((t, id) => t + wells[id].n, 0), href: '#daily',
-        note: (counted.length > 1 ? 'in the well inventories of ' + listAnd(counted.map(inName)) : 'in the Commission’s well inventory') + ', ' + (days.length === 1 ? fmtDate(days[0]) : counted.map((id) => stateOf(id).name + ' ' + fmtDate(wells[id].day)).join(', '))
+        note: (counted.length > 1 ? 'in the well inventories of ' + listAnd(counted.map(inName)) : 'in the ' + stateOf(counted[0]).agency + '’s well inventory') + ', ' + (days.length === 1 ? fmtDate(days[0]) : counted.map((id) => stateOf(id).name + ' ' + fmtDate(wells[id].day)).join(', '))
           // a state with a Daily report will have its count once the report loads; one that publishes no inventory (the federal offshore) never will, and says so
           + (later.length ? ' · none yet for ' + listAnd(later.map(inName)) : '') + (never.length ? ' · not counted for ' + listAnd(never.map(inName)) : ''),
       });
@@ -101,7 +101,7 @@ export function renderTopOps(rows, states = ['TX']) {
   if (!rows || !rows.length) { hide(ul); return; }
   const multi = states.length > 1;
   const items = grouped(rows, states, 'new12', (r) => ({
-    label: r.name, value: r.new12, href: opsLink(r.name), aria: r.name + (multi ? ' (' + r.st + ')' : '') + ': ' + fmt.format(r.new12) + (measureOf(r.st).id === 'spuds' ? ' wells spudded' : ' new-well permits') + '. Open in Operators.', r, st: r.st,
+    label: r.name, value: r.new12, href: opsLink(r.name), aria: r.name + (multi ? ' (' + r.st + ')' : '') + ': ' + fmt.format(r.new12) + unitOf(r.new12, measureOf(r.st).id === 'spuds' ? ' wells spudded' : ' new-well permits') + '. Open in Operators.', r, st: r.st,
   }));
   barList(ul, items, {
     max: Math.max(1, ...rows.map((r) => r.new12)),

@@ -30,6 +30,8 @@ export const compactFmt = new Intl.NumberFormat('en-US', { notation: 'compact', 
 export const stat = (n) => (Math.abs(n) >= 10000 ? compactFmt.format(n) : fmt.format(n));
 export const pct = (n, d) => (d ? Math.round((n / d) * 100) + '%' : '0%');
 export const share = (n, d) => (d ? ((n / d) * 100).toFixed(1) + '%' : '0%');
+// pure text helpers, in format.js so the tests can import them under Node: a unit phrase turned singular for a count of one, and a share that never rounds up to 100%
+export { unitOf, sharePct } from './format.js';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const fmtDate = (iso) => (iso
   ? new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

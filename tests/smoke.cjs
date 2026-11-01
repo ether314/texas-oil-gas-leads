@@ -43,7 +43,7 @@ const VIEWS = [
   ['#map?st=tx', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) ? null : 'Texas alone should keep its own legend')],
   ['#map?st=ok', '#map-root canvas', async (page) => (/^New-drill permits, /.test(await page.locator('.lg-title').innerText()) && (await page.locator('.lg-states').count()) === 0 ? null : 'the Oklahoma map should say permits and need no state legend')],
   ['#map?st=nm', '#map-root canvas', async (page) => (/^Wells spudded, [A-Z][a-z]{2} 1, \d{4} to [A-Z][a-z]{2} \d+, \d{4}$/.test(await page.locator('.lg-title').innerText()) ? null : 'the New Mexico map should say wells spudded, over 12 calendar months from the first of a month')],
-  ['#overview?st=fo', '#kpis > *', async (page) => (/^BSEE spud reports through/.test(await page.locator('#hero-eyebrow').textContent()) ? null : 'the offshore\'s Overview should name BSEE')],
+  ['#overview?st=fo', '#kpis > *', async (page) => (/^Federal offshore \(BSEE\) spud reports through/.test(await page.locator('#hero-eyebrow').textContent()) ? null : 'the offshore\'s Overview should name the federal offshore and say what BSEE is')],
   ['#map?st=fo', '#map-root canvas', async (page) => (/^Wells spudded, [A-Z][a-z]{2} 1, \d{4} to [A-Z][a-z]{2} \d+, \d{4}$/.test(await page.locator('.lg-title').innerText()) ? null : 'the offshore map should say wells spudded, over 12 calendar months from the first of a month')],
   ['#operators?st=fo', '#ops-root table'],
   ['#daily?st=fo', '#daily-root .dr-hero'],
@@ -150,7 +150,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await waitEyebrow(/Oil Conservation Division spud reports through/);
       check(/st=nm/.test(await hash()) && (await page.locator('#kpis').innerText()).includes('Wells spudded, last 12 months'), 'New Mexico alone: its wells spudded, its own date, st=nm in the address');
       await page.click('#statebar button[data-id="FO"]');
-      await waitEyebrow(/^BSEE spud reports through/);
+      await waitEyebrow(/^Federal offshore \(BSEE\) spud reports through/);
       check(/st=fo/.test(await hash()) && (await page.locator('#kpis').innerText()).includes('Wells spudded, last 12 months') && !(await page.locator('#seg-chart').isVisible()) && (await page.locator('#hot-h').textContent()) === 'Hot areas', 'the federal offshore alone: its wells spudded, its own date, st=fo in the address, "Hot areas", and the cards only Texas can fill step aside');
       await page.click('#statebar button[data-id="TX"]');
       await waitEyebrow(/^Railroad Commission permits through/);
@@ -730,6 +730,86 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the header: ' + e.message.split('\n')[0].slice(0, 200));
     }
     check(!errs.length, 'the header sweep loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 16c. found by an independent review of the pages: the cards of a stack are separated by the stack's gap (a card's own margin of 0 beat it, so every card touched the next, on the Overview, the National
+  // report, the permit-data matrix and the Texas images), and a tooltip opened by hover or by focus is dismissed by Escape (WCAG 1.4.13)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    try {
+      const touching = [];
+      for (const w of [1280, 390]) {
+        await page.setViewportSize({ width: w, height: 900 });
+        for (const v of ['#overview', '#national', '#fields', '#images']) {
+          await page.goto(base + v, { waitUntil: 'load' });
+          await page.waitForSelector('#view-' + v.slice(1) + ' .stack > *', { timeout: 25000 });
+          await page.waitForTimeout(900);
+          const gaps = await page.evaluate((id) => { const kids = [...document.querySelector('#view-' + id + ' .stack').children].filter((c) => c.offsetParent !== null); const out = []; for (let i = 1; i < kids.length; i++) out.push(Math.round(kids[i].getBoundingClientRect().top - kids[i - 1].getBoundingClientRect().bottom)); return out; }, v.slice(1));
+          if (!gaps.length || gaps.some((g) => g < 16)) touching.push(v + ' at ' + w + ' px: ' + JSON.stringify(gaps));
+        }
+      }
+      check(!touching.length, 'the cards of a stack are at least 16 px apart on the Overview, National, Permit data and Texas images views at 1280 and 390 px' + (touching.length ? ': ' + touching.join(' | ') : ''));
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(base + '#overview', { waitUntil: 'load' });
+      await page.waitForSelector('#hot-bars .bar-row', { timeout: 25000 });
+      await page.waitForTimeout(600);
+      const shown = () => page.evaluate(() => !document.querySelector('#tip').hidden);
+      await page.hover('#hot-bars .bar-row >> nth=0'); await page.waitForTimeout(250);
+      const byHover = [await shown()]; await page.keyboard.press('Escape'); await page.waitForTimeout(120); byHover.push(await shown());
+      await page.focus('#hot-bars .bar-row >> nth=1'); await page.waitForTimeout(250);
+      const byFocus = [await shown()]; await page.keyboard.press('Escape'); await page.waitForTimeout(120); byFocus.push(await shown());
+      check(byHover[0] && !byHover[1] && byFocus[0] && !byFocus[1], 'a tooltip opened by hover (' + byHover.join(' then ') + ') or by focus (' + byFocus.join(' then ') + ') is shown, then dismissed by Escape');
+    } catch (e) {
+      check(false, 'spacing and tooltips: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the spacing and tooltip checks load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 16d. found by the same review: wording that depends on the states shown (the first chip says wells spudded where every state added counts spuds; a lede names only the states shown and says Texas's
+  // companies only with Texas; the hero's "built" date is Texas's; a state's well inventory is its agency's, not "the Commission's"; the Overview and the Map print the same share of located
+  // permits, never rounded up to 100%), and a day the Daily report does not hold is said, not kept in the address
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
+    const text = (sel) => page.locator(sel).innerText().then((t) => t.replace(/\s+/g, ' '));
+    const open = async (hash, wait) => { await page.goto(base + hash, { waitUntil: 'load' }); await page.reload({ waitUntil: 'load' }); await page.waitForSelector(wait, { timeout: 25000 }); await page.waitForTimeout(700); };
+    try {
+      await open('#overview?st=nm,fo', '#kpis .kpi-chip');
+      const nmfo = [await text('#kpis'), await text('#hero-lede')];
+      check(/Wells spudded, last 12 months/.test(nmfo[0]) && !/New-drill permits, last 12 months/.test(nmfo[0]) && /^Wells spudded across New Mexico and the federal waters of the Gulf of America, the operators drilling them\./.test(nmfo[1]) && !/for Texas/.test(nmfo[1]),
+        'New Mexico and the offshore both count spuds, so the first chip and the lede say wells spudded and name neither permits nor Texas: ' + nmfo[1].slice(0, 120));
+      await open('#overview?st=ok,nm', '#kpis .kpi-chip');
+      const oknm = await text('#hero-lede');
+      check(/^Permits and wells spudded across Oklahoma and New Mexico, the operators behind them\. Public records only\.$/.test(oknm), 'Oklahoma and New Mexico: a lede that names the two and no Texas companies, and no "built" date that is Texas\'s: ' + oknm);
+      await open('#overview?st=tx,ok,nm,fo', '#kpis .kpi-chip'); // all four named: the bar keeps the last choice when the address says none
+      const all = await text('#hero-lede');
+      check(/^Permits and wells spudded across Texas, Oklahoma, New Mexico and the federal waters of the Gulf of America, the operators behind them and, for Texas, the companies that serve them\. Public records only; Texas’s monthly files were built [A-Z][a-z]{2} \d+, \d{4}\.$/.test(all), 'all four: the Gulf is named, Texas gets its companies and its own build date: ' + all.slice(0, 200));
+      await open('#overview?st=nm', '#kpis .kpi-chip');
+      const nmChips = await text('#kpis');
+      check(/in the Oil Conservation Division’s well inventory/.test(nmChips) && !/Commission’s well inventory/.test(nmChips), 'New Mexico\'s active wells are in the Oil Conservation Division\'s inventory, not "the Commission\'s": ' + nmChips.slice(0, 200));
+      await open('#overview?st=ok', '#hero-note');
+      const ovShare = (await text('#hero-note')).match(/(\d+)% of the last 24 months/);
+      await open('#map?st=ok', '.map-note');
+      const mapShare = (await page.locator('.map-note').allInnerTexts()).join(' ').match(/(\d+)% of the last 24 months/);
+      check(ovShare && mapShare && ovShare[1] === mapShare[1] && +ovShare[1] <= 99, 'the Overview and the Map give the same share of Oklahoma\'s permits that have a location (' + (ovShare && ovShare[1]) + '% and ' + (mapShare && mapShare[1]) + '%), and neither rounds 99.5% up to 100%');
+      await page.goto(base + '#daily?d=2020-01-01', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForSelector('.toast.on', { timeout: 25000 });
+      const gone = [await page.evaluate(() => location.hash), await text('.toast')];
+      check(!/d=/.test(gone[0]) && /There is no report for Wednesday, January 1, 2020 \(the archive holds \d+ days\): showing the newest\./.test(gone[1]), 'a day the archive does not hold is said and leaves the address: ' + gone.join(' | '));
+    } catch (e) {
+      check(false, 'wording by state set: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the wording checks load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

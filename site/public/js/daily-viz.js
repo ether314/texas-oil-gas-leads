@@ -1,6 +1,6 @@
 // Daily report visuals: inline-SVG charts built from the design tokens. Text nodes only; styles go through the CSSOM
 // (the page's Content-Security-Policy has no 'unsafe-inline'), so every dynamic value is a custom property.
-import { el, svg, fmt, reduced, clamp } from './util.js';
+import { el, svg, fmt, reduced, clamp, unitOf } from './util.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { toWorld } from './geo.js';
 
@@ -121,7 +121,7 @@ export function countyMap(G, layers, first, opts = {}) {
     // a state that has no such layer (New Mexico publishes no completions, Oklahoma no queue, Texas's report no inventory) has no figure: never a 0
     if (L.states && !L.states.includes(c.s)) { showTip([tipRow(nm(c) + ' County', ''), tipRow('Not available', (opts.stateName ? opts.stateName(c.s) : c.s) + ' publishes none')], e.clientX, e.clientY); return; }
     const v = L.map.get(f) || 0;
-    showTip([tipRow(nm(c) + ' County', ''), tipRow(fmt.format(v), unit[cur])], e.clientX, e.clientY);
+    showTip([tipRow(nm(c) + ' County', ''), tipRow(fmt.format(v), unitOf(v, unit[cur]))], e.clientX, e.clientY);
   });
   root.addEventListener('pointerleave', hideTip);
   set(first);

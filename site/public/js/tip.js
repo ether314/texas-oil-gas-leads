@@ -18,3 +18,5 @@ export function showTip(kids, x, y) {
   t.style.top = (below ? y + 20 : Math.max(8, y - r.height - 14)) + 'px';
 }
 export const hideTip = () => { get().hidden = true; };
+// what appears on hover or focus can be dismissed without moving the pointer or the focus (WCAG 1.4.13): Escape hides the tooltip
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && node && !node.hidden) hideTip(); });

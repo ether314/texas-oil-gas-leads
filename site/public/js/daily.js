@@ -4,10 +4,10 @@
 // one state has no report for is said so, never counted as zero. The merging itself is in daily-data.js; the parts only one state has
 // are in daily-tx.js (pending queue, image packs, GPS map), daily-ok.js (transfers, well inventory) and daily-nm.js (its one dataset).
 // A report holds only what its state publishes: a figure a state does not have is a key it does not carry, and is left out here.
-import { el, loadOpt, reduced, monthLabel } from './util.js';
+import { el, loadOpt, reduced, monthLabel, unitOf, parseHash, replaceHash } from './util.js';
 import { getGeo, buildGeoIsolated } from './geo.js';
 import { icon } from './icons.js';
-import { segmented, shareButton, absoluteLink } from './ui.js';
+import { segmented, shareButton, absoluteLink, toast } from './ui.js';
 import { delta } from './charts.js';
 import { tipRow } from './tip.js';
 import { opsLink } from './overview.js';
@@ -599,10 +599,10 @@ export function createDailyView({ root }) {
   // one cell per calendar day. Permits sit on the day they were issued and open the next report, which shows them; every other
   // figure sits on the report day that shows it.
   const METRICS = {
-    permits: { label: 'New-drill permits issued', fmt: (v) => num(v) + ' new-drill permits issued', none: 'No permits issued (weekend or holiday)' },
-    pending: { label: 'Waiting for approval · Texas', need: 'TX', get: (e) => (e.r.TX ? e.r.TX.q : null), fmt: (v) => num(v) + ' applications waiting', none: 'No pending set recorded' },
-    completions: { label: 'Completions', get: completionsOf, fmt: (v) => num(v) + ' completions', none: 'No completion data' },
-    transfers: { label: 'Wells changing operator · Oklahoma', need: 'OK', get: (e) => (e.r.OK ? e.r.OK.t : null), fmt: (v) => num(v) + ' wells changed operator', none: 'No transfers on file for this day' },
+    permits: { label: 'New-drill permits issued', fmt: (v) => num(v) + ' ' + unitOf(v, 'new-drill permits issued'), none: 'No permits issued (weekend or holiday)' },
+    pending: { label: 'Waiting for approval · Texas', need: 'TX', get: (e) => (e.r.TX ? e.r.TX.q : null), fmt: (v) => num(v) + ' ' + unitOf(v, 'applications waiting'), none: 'No pending set recorded' },
+    completions: { label: 'Completions', get: completionsOf, fmt: (v) => num(v) + ' ' + unitOf(v, 'completions'), none: 'No completion data' },
+    transfers: { label: 'Wells changing operator · Oklahoma', need: 'OK', get: (e) => (e.r.OK ? e.r.OK.t : null), fmt: (v) => num(v) + ' ' + unitOf(v, 'wells changed operator'), none: 'No transfers on file for this day' },
     volume: { label: 'Image pack volume · Texas', need: 'TX', get: (e) => (e.r.TX ? e.r.TX.vol : null), fmt: (v) => Math.round(v) + ' MB of image packs', none: 'No pack sizes read' },
   };
   const metrics = () => Object.entries(METRICS).filter(([, m]) => !m.need || S.states.includes(m.need));
@@ -750,7 +750,13 @@ export function createDailyView({ root }) {
       S.states = want; setDays(); useShapes();
       const d = params.get('d');
       S.mode = params.get('v') === 'full' ? 'full' : 'simple';
-      await show(S.days.some((e) => e.d === d) ? d : latest());
+      const day = S.days.some((e) => e.d === d) ? d : latest();
+      await show(day);
+      // a day the archive does not hold (a day too old, or not a date) shows the newest, and the address and a line say so instead of keeping the old day in the address
+      if (d && d !== day) {
+        const p = parseHash().params; p.delete('d'); replaceHash('daily', p);
+        toast((/^\d{4}-\d\d-\d\d$/.test(d) ? 'There is no report for ' + fmtLong(d) : 'That is not a report day') + ' (the archive holds ' + S.days.length + ' days): showing the newest.', { ms: 6000 });
+      }
     },
   };
 }

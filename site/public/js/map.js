@@ -1,5 +1,5 @@
 // The Map tab: toolbar, choropleth metrics, layer toggles, legend, side panel / bottom sheet, table twin, deep links.
-import { el, svg, fmt, compactFmt, monthLabel, dayLabel, fmtDate, signed, clamp, halves, sum, load, loadOpt, toObjects, parseHash, replaceHash, queryText, reduced } from './util.js';
+import { el, svg, fmt, compactFmt, monthLabel, dayLabel, fmtDate, signed, clamp, halves, sum, load, loadOpt, toObjects, parseHash, replaceHash, queryText, reduced, sharePct } from './util.js';
 import { getGeo, getPoints, getZips, getInfra, getBasins } from './geo.js';
 import { createEngine } from './engine.js';
 import { onTheme, isDark } from './theme.js';
@@ -552,7 +552,7 @@ export function createMapView({ root, meta }) {
     // the share of each state's permits that have a location (each state's own file says; Texas's is the thin one)
     const per = ids.map((id) => {
       const cv = S.pm.coverageBy ? S.pm.coverageBy[id] : S.pm.coverage;
-      return (S.multi ? stateOf(id).name + ': ' : '') + Math.round(cv.share24 * 100) + '% of the last 24 months and ' + Math.round(cv.share12 * 100) + '% of the last 12' + (id === 'TX' ? ', thinnest for 2026 and in the busiest counties' : '');
+      return (S.multi ? stateOf(id).name + ': ' : '') + sharePct(cv.share24) + ' of the last 24 months and ' + sharePct(cv.share12) + ' of the last 12' + (id === 'TX' ? ', thinnest for 2026 and in the busiest counties' : '');
     });
     const items = [
       el('p', { class: 'map-note' }, el('strong', { text: 'Reading the map. ' }),
@@ -734,14 +734,14 @@ export function createMapView({ root, meta }) {
   function replayNote() {
     const per = S.states.map((id) => {
       const cv = S.pm.coverageBy ? S.pm.coverageBy[id] : S.pm.coverage;
-      return { id, a: Math.round(cv.share24 * 100), b: Math.round(cv.share12 * 100) };
+      return { id, a: sharePct(cv.share24), b: sharePct(cv.share12) };
     });
     if (S.states.length === 1) {
       const q = per[0];
-      return 'Dots are the ' + q.a + '% of the last 24 months of ' + S.word + ' (' + q.b + '% of the last 12) with a recorded ' + (q.id === 'TX' ? 'surface ' : '')
+      return 'Dots are the ' + q.a + ' of the last 24 months of ' + S.word + ' (' + q.b + ' of the last 12) with a recorded ' + (q.id === 'TX' ? 'surface ' : '')
         + 'location' + (q.id === 'TX' ? ', so the busiest counties look quiet' : '') + '. Read the shading for the full counts.';
     }
-    return 'Dots are the ' + S.word + ' with a recorded location: ' + per.map((q) => stateOf(q.id).name + ' ' + q.a + '% of the last 24 months (' + q.b + '% of the last 12)').join(', ')
+    return 'Dots are the ' + S.word + ' with a recorded location: ' + per.map((q) => stateOf(q.id).name + ' ' + q.a + ' of the last 24 months (' + q.b + ' of the last 12)').join(', ')
       + (S.tx ? '; the busiest Texas counties look quiet' : '') + '. Read the shading for the full counts.';
   }
   // the replay needs the permit layer; closing it hands the map back to the normal dots

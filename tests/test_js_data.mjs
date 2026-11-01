@@ -14,6 +14,7 @@ const imp = (f) => import(pathToFileURL(path.join(JS, f)).href);
 const S = await imp('states.js');
 const O = await imp('overview-data.js');
 const D = await imp('daily-data.js');
+const F = await imp('format.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
 
 let fails = 0;
@@ -72,6 +73,11 @@ check(S.chgMinOf('TX') === 20 && S.chgMinOf('OK') === 20 && S.chgMinOf('NM') ===
   const ranked = Object.values(cp.counties).filter((c) => c.p12 >= S.chgMinOf('FO') && c.p12 + c.p12prev >= 10).length;
   check(busiest < S.CHG_MIN && ranked >= 3, 'on the committed files: the offshore\'s busiest area (' + busiest + ' spuds) is under the 20 that ranks a land county, and ' + ranked + ' areas pass its own minimum, so the map\'s list is not empty');
 }
+// the text helpers the views share: a unit phrase is singular for a count of one ("1 new-drill permit issued"), and a share never rounds up to 100%
+check(F.unitOf(1, 'new-drill permits issued') === 'new-drill permit issued' && F.unitOf(2, 'new-drill permits issued') === 'new-drill permits issued' && F.unitOf(0, 'wells spudded') === 'wells spudded' && F.unitOf(1, 'wells spudded') === 'well spudded'
+  && F.unitOf(1, ' new-well permits') === ' new-well permit' && F.unitOf(1, 'applications waiting') === 'application waiting' && F.unitOf(1, 'completion filings') === 'completion filing' && F.unitOf(1, 'wells changed operator') === 'well changed operator',
+  '"1 permits" is "1 permit": a unit phrase turns singular for a count of one and only then');
+check(F.sharePct(0.995) === '99%' && F.sharePct(0.996) === '99%' && F.sharePct(1) === '100%' && F.sharePct(0.404) === '40%' && F.sharePct(0) === '0%' && F.sharePct(0.7) === '70%', 'a share of 99.5% reads 99%, never 100%, and only a whole 1 reads 100%');
 check(S.stateOf('TX').fips === '48' && S.stateOf('OK').fips === '40' && S.stateOf('NM').fips === '35', 'each state knows its FIPS code (a county\'s FIPS is the state\'s and its three digits)');
 check(S.dailyStates.map((q) => q.id).join() === 'TX,OK,NM' && S.STATES.find((q) => q.id === 'NM').dir === 'daily-nm' && S.STATES.every((q) => !q.dir || /^daily/.test(q.dir)), 'a state with a Daily report has a folder for it, and only those are asked for one');
 {

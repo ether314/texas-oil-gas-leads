@@ -140,9 +140,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .view-head.compact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; padding-block: var(--sp-5) 0; }
 .view-head.compact .lede { margin: 0; font-size: var(--fs-md); flex: 1 1 360px; }
 .stack { margin-top: var(--gap); padding-bottom: var(--sp-2); }
-.stack > * + * { margin-top: var(--gap); }
 .split { display: grid; grid-template-columns: 1fr; gap: var(--gap); }
-.split > * + * { margin-top: 0; }
 .sec-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-2) var(--sp-5); margin-bottom: var(--sp-4); }
 .sec-head h2 { font-size: var(--fs-xl); }
 .sec-head .eyebrow { margin-bottom: var(--sp-2); }
@@ -155,6 +153,10 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
   background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--bd) border-box;
   box-shadow: var(--elev-1);
 }
+/* the gap between a stack's children, and none between a grid's (it has its own gap): these two come AFTER .card because a card's own margin is 0 (a figure would
+   otherwise carry its browser margin), and at equal weight the later rule wins: written before .card they left every card of a stack touching the next */
+.stack > * + * { margin-top: var(--gap); }
+.split > * + * { margin-top: 0; }
 .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
 .card-head h2 { font-size: var(--fs-xl); }
 .card-head > div:first-child { flex: 1 1 360px; min-width: 0; }

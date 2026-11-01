@@ -1,5 +1,5 @@
 // Operators and Companies: filterable, sortable tables with CSV export and deep links (ported from v1, then extended).
-import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, queryText, replaceHash, monthLabel } from './util.js';
+import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, queryText, replaceHash, monthLabel, unitOf } from './util.js';
 import { spark, delta } from './charts.js';
 import { getGeo, getPoints, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
@@ -217,7 +217,7 @@ export function explorer(cfg, meta) {
 function trendCell(r) {
   if (!r.x) return null;
   const h = r.h;
-  const title = fmt.format(h.a) + ' ' + (r.st && measureOf(r.st).id === 'spuds' ? 'wells spudded' : 'permits') + ' in the last 12 full months against ' + fmt.format(h.b) + ' in the 12 before';
+  const title = fmt.format(h.a) + ' ' + unitOf(h.a, r.st && measureOf(r.st).id === 'spuds' ? 'wells spudded' : 'permits') + ' in the last 12 full months against ' + fmt.format(h.b) + ' in the 12 before';
   if (h.f === Infinity) return el('span', { class: 'delta up', title }, el('span', { class: 'arrow', 'aria-hidden': 'true', text: '▲' }), el('span', { text: 'new' }));
   const d = delta(h.f); d.setAttribute('title', title);
   return d;
