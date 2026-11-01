@@ -48,10 +48,13 @@ def page(w=850, h=1100, shade=255):
     return im
 
 
+PDF_DATE = time.gmtime(0)  # Pillow stamps /CreationDate and /ModDate with the clock, to the second: two packs built a second apart were different files and two built within the same second were the same file
+
+
 def pdf_bytes(pages=1, **kw):
     b = io.BytesIO()
     first = page(**kw)
-    first.save(b, "PDF", resolution=100, save_all=pages > 1, append_images=[page(**kw) for _ in range(pages - 1)])
+    first.save(b, "PDF", resolution=100, save_all=pages > 1, append_images=[page(**kw) for _ in range(pages - 1)], creationDate=PDF_DATE, modDate=PDF_DATE)
     return b.getvalue()
 
 
@@ -60,6 +63,28 @@ def tif_bytes():
     page(shade=250).convert("L").convert("1").save(b, "TIFF", compression="group4")
     return b.getvalue()
 
+
+def _fixtures_ignore_the_clock():
+    """Build a PDF while Pillow's clock moves on a whole second at every reading: the same bytes come out only if the fixture sets its own dates."""
+    import PIL.PdfImagePlugin as pdfp
+    real, ticks = pdfp.time, [0]
+
+    class Ticking:
+        def gmtime(self, *a):
+            ticks[0] += 1
+            return time.gmtime(1_700_000_000 + ticks[0])
+
+        def __getattr__(self, name):
+            return getattr(time, name)
+
+    pdfp.time = Ticking()
+    try:
+        return pdf_bytes(2) == pdf_bytes(2) and pdf_bytes() == pdf_bytes()
+    finally:
+        pdfp.time = real
+
+
+check(_fixtures_ignore_the_clock(), "the synthetic PDFs do not depend on the clock: built a second apart they are the same bytes (a pack rebuilt over an upload must not look changed or unchanged by chance)")
 
 SECRETS = ["ODOM", "ERNEST SMITH", "LITTLE WILLIE", "MC KINNEY", "Concho", "GRATTON", "Winston", "PO BOX", "(713)", "ian.call@"]  # names that must never reach a published file
 NAMEABLE = next(iter(W.Lookups().operator))  # an operator the site may name
@@ -682,9 +707,26 @@ with tempfile.TemporaryDirectory() as tmp:
         code = W.run(args(out, dl), io=io_, now=NOW, log=lambda m: None)
         units = {u["p"] for u in json.load(open(os.path.join(out, "index.json")))["units"]}
         check(code == 0 and units == {"ci", "ds", "w1"} and W.check(out) == [], "the next run does what was left")
+        # The cap counts files really SENT (NOTES_D12: a file a release already holds whole costs nothing). This block's `gh` holds every file of the runs above, so a run against it sends nothing, never
+        # spends the cap and goes on to every pack. That is the right behavior, and it is what this check used to meet by accident: it ran against the same `gh` with a rebuilt world whose PDFs differed
+        # only by the second they were stamped in, so it passed when the clock had moved on and failed when it had not (about 1 run in 6, more on a fast machine).
+        def done_in(folder):  # the packs a run recorded: none when it wrote no index at all (a run that did nothing must fail the check, not crash it)
+            path = os.path.join(folder, "index.json")
+            return {u["p"] for u in json.load(open(path))["units"]} if os.path.exists(path) else set()
+
         out2 = os.path.join(tmp, "wells2")
-        code = W.run(args(out2, dl, max_files=5), io=world(tmp), now=NOW, log=lambda m: None)
-        check(code == 0 and {u["p"] for u in json.load(open(os.path.join(out2, "index.json")))["units"]} == {"w1"}, "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit")
+        d7_release.subprocess.run = FakeGH().run  # a GitHub of its own: its releases are empty, so the first pack really sends files
+        lines2 = []
+        code = W.run(args(out2, dl, max_files=5), io=world(tmp), now=NOW, log=lines2.append)
+        units2 = done_in(out2)
+        check(code == 0 and units2 == {"w1"} and any("left for the next run" in l and "ds" in l for l in lines2),
+              "the first pack of a run is always done, however small the cap: a run can never do nothing for being over a limit (done %s, exit %d)" % (sorted(units2), code))
+        d7_release.subprocess.run = gh.run  # the GitHub that already holds the files
+        out3, lines3 = os.path.join(tmp, "wells3"), []
+        code = W.run(args(out3, dl, max_files=5), io=world(tmp), now=NOW, log=lines3.append)
+        units3 = done_in(out3)
+        check(code == 0 and units3 == {"w1", "ds", "ci"} and not any("left for the next run" in l for l in lines3),
+              "a first pack that finds every file already on its release sends nothing, so it does not spend the cap and the run goes on to the other packs (done %s)" % sorted(units3))
         check(saved_est["ci"] >= 2000 and W.MAX_FILES_PER_RUN >= sum(saved_est.values()) and W.MAX_FILES_PER_RUN < 2 * saved_est["ci"] + saved_est["ds"] + saved_est["w1"],
               "the default cap lets one ordinary day through and not a second (%d files expected for a day, the cap is %d)" % (sum(saved_est.values()), W.MAX_FILES_PER_RUN))
     finally:
