@@ -215,10 +215,7 @@ def build(get=C.polite_get, today=None, pause=PAUSE):
     try:
         time.sleep(pause)
         table = starts_table(get(STARTS, max_bytes=5_000_000))
-    except C.Refused as e:
-        C.log("CO: the Commission's well-starts table was not read (%s): the yearly check is skipped" % e)
-        table = {}
-    except (RuntimeError, ValueError, OSError) as e:
+    except (RuntimeError, ValueError, OSError) as e:  # a refusal is a RuntimeError too: the table only checks the layer, it is not the source
         C.log("CO: the Commission's well-starts table was not read (%s): the yearly check is skipped" % C.privacy_check.clean_error(e, 80))
         table = {}
     if table:

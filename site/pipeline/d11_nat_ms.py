@@ -18,9 +18,9 @@ What is counted, by the day the Board approved the permit (`measure` "permits", 
   amend    COP and COI, a change of operator (one permit per well: one sale of many wells is a spike, 574 in April 2019)
   other    anything else (H2S and PIT, which the Board's code list does not define, and any code it adds)
   redrill  null: the Board's codes do not separate a re-entry from a new drill
-The Board's own yearly sheet counts new and injection permits to drill (88, 67, 50 and 37 for 2022 to 2025). This file's `new` plus `inj`, less the monitor wells, gives 90, 66, 50 and 37 (the sheet
-leaves out two cancelled replacements in April 2022 and the five Denbury monitor wells of May 2025, and counted one monitor well in 2023). `new` alone is the Board's figure without its injection
-permits, which is why it reads lower. County and operator are those of the `new` permits (only a corporation, LLC or partnership is named: `nameable`); fluid is the well's type in the well list
+The Board's own yearly sheet counts new and injection permits to drill (88, 67, 50 and 37 for 2022 to 2025). This file's `new` plus `inj`, less the monitor wells, gives 90, 66, 50 and 37 (the
+sheet is two lower in April 2022, where two wells have a cancelled original permit and a replacement under the same name, one higher in 2023, and does not count the five Denbury monitor wells
+of May 2025). `new` alone is the Board's figure without its injection permits, which is why it reads lower. County and operator are those of the `new` permits (only a corporation, LLC or partnership is named: `nameable`); fluid is the well's type in the well list
 (OIL, GAS, and the test types as other; a well that came up dry is DH there and counts as unknown). The well list (about 35,000 wells, 13 MB) is joined to the permits in memory by the Board's
 well number, which is used for nothing else and kept nowhere: no well, lease, permit number or API number reaches the output.
 

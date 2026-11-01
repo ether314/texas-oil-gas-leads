@@ -240,13 +240,15 @@ def guard(events, stats, today):
         raise RuntimeError("the export has %d events (expected %d or more): the search may have been cut short" % (stats["rows"], MIN_ROWS))
     if stats["undated"] > MAX_UNDATED:
         raise RuntimeError("%d permit events have no usable date: the export's layout may have changed" % stats["undated"])
-    if len(events) < MIN_PERMITS:
-        raise RuntimeError("only %d permit events in all (expected %d or more): the history may be cut short" % (len(events), MIN_PERMITS))
+    if not events:
+        raise RuntimeError("no permit in the export: the type of work may have been renamed")
     newest, oldest = max(e["day"] for e in events), min(e["day"] for e in events)
     if newest < today - timedelta(days=MAX_AGE_DAYS):
         raise RuntimeError("the newest permit is dated %s: the history looks stale" % newest.isoformat())
     if oldest > date(2019, 6, 30):
-        raise RuntimeError("the history starts only in %s: it no longer reaches back to 2019" % oldest.isoformat())
+        raise RuntimeError("the history starts only in %s: it no longer reaches back to 2019 (the Permits page shows 24 months only)" % oldest.isoformat())
+    if len(events) < MIN_PERMITS:
+        raise RuntimeError("only %d permit events in all (expected %d or more): the history may be cut short" % (len(events), MIN_PERMITS))
     drills = collections.Counter(e["day"].year for e in events if e["band"] in ("new", "inj"))
     for y in range(2019, newest.year):
         if drills[y] < MIN_YEAR_PERMITS:
