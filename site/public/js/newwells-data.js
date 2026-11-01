@@ -169,6 +169,19 @@ export function newest(P, limit = 12, state = null) {
   return out;
 }
 
+// wells a day in the twelve months a day sits in, for all states or one: { perDay, from, to, latest }. The twelve months are centered on the day's month and kept inside the series
+// and the settled months; a day in the newest months (or after them) gets the last 12 settled months, with `latest` true. A day in 2014 is set against 2014, not against last year.
+export function typicalDay(doc, iso, state = null) {
+  const si = settledIndex(doc); let m = doc.months.indexOf(iso.slice(0, 7));
+  if (m < 0) m = iso.slice(0, 7) < doc.months[0] ? 0 : si; // outside the series: the nearest end of it
+  const start = Math.min(si - 11, Math.max(0, m - 5));
+  const months = doc.months.slice(start, start + 12); const rows = state ? [byId(doc, state)].filter(Boolean) : doc.states;
+  const wells = rows.reduce((t, s) => t + s.new.slice(start, start + 12).reduce((a, b) => a + b, 0), 0);
+  const days = months.reduce((t, ym) => t + new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5), 0)).getUTCDate(), 0);
+  return { perDay: wells / days, from: months[0], to: months[11], latest: start === si - 11 };
+}
+// a state that has had a well since the series began, even if none in the last year (the Daily report can show it for an older day)
+export const drilled = (s) => s.new.some((v) => v > 0);
 // "Texas", "Texas and Ohio", "Texas, Ohio and Utah": the names behind a figure
 export const listAnd = (items) => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1]);
 // a depth in feet and a water volume in gallons as the pages say them

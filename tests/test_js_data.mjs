@@ -411,6 +411,12 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(q.length === 2 && q[0].id === 'AL' && q[0].latest === NW.byId(doc, 'AL').latest && q[1].latest === null, 'newwells: a producing state with no well in the last 12 months is "quiet" (with its last job, or none ever), a state with wells is not');
   check(NW.listAnd(['a']) === 'a' && NW.listAnd(['a', 'b']) === 'a and b' && NW.listAnd(['a', 'b', 'c']) === 'a, b and c' && NW.feet(95) === '9,500 ft' && NW.feet(0) === null && NW.gallons(210) === '21.0 million gal' && NW.gallons(0) === null, 'newwells: the wording helpers (a list, feet in hundreds, gallons in hundreds of thousands, nothing for zero)');
   check(NW.colorOf('TX') === 'var(--st-tx)' && NW.colorOf('NM') === 'var(--st-nm)' && NW.colorOf('OK') === 'var(--st-ok)' && NW.colorOf('WY') === NW.OTHER_COLOR, 'newwells: Texas, New Mexico and Oklahoma keep the colors the rest of the site gives them; every other state is slate');
+  // typicalDay: a day is set against the twelve months it sits in
+  const tdNew = NW.typicalDay(doc, doc.asOf); const tdSettled = NW.typicalDay(doc, '2026-03-10'); const td14 = NW.typicalDay(doc, '2014-03-12'); const td11 = NW.typicalDay(doc, '2011-01-05'); const tdTx = NW.typicalDay(doc, '2014-03-12', 'TX');
+  check(tdNew.latest && tdNew.to === doc.settled.slice(0, 7) && Math.abs(tdNew.perDay - NW.totals(doc).p12 / 365) < 0.01 && tdSettled.latest, 'newwells: the newest days are set against the last 12 settled months (the figure the page always had: p12 over 365)');
+  check(!td14.latest && td14.from === '2013-10' && td14.to === '2014-09' && td14.perDay > 50 && td14.perDay < 120 && !td11.latest && td11.from === '2011-01' && td11.to === '2011-12' && tdTx.perDay > 0 && tdTx.perDay < td14.perDay,
+    'newwells: a day in 2014 is set against Oct 2013 to Sep 2014 (' + td14.perDay.toFixed(1) + ' a day, not last year\'s ' + tdNew.perDay.toFixed(1) + '), the first days against the first twelve months, one state against its own');
+  check(NW.typicalDay(doc, '2030-01-01').latest && NW.typicalDay(doc, '2001-01-01').from === '2011-01' && NW.drilled(NW.byId(doc, 'AL')) && !NW.drilled({ new: [0, 0] }), 'newwells: a day outside the series gets the nearest twelve months, and a state with a well only years ago counts as drilled');
   // the history: every well with a point since 2011, joined to the last two years' points
   const hist = read('newwells/points-history');
   const mp = NW.mergePoints(pts, hist); const PH = NW.decode(mp);
