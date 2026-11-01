@@ -1,8 +1,8 @@
-// Small helpers the Overview and the Sources page share: a link into the Operators table, the Sources page's filled-in figures, and the freshness list.
+// Small helpers the Overview and the Sources page share: a link into the Companies page's operators, the Sources page's filled-in figures, and the freshness list.
 import { el, fmt, fmtDate } from './util.js';
 import { icon } from './icons.js';
 
-export const opsLink = (name) => '#operators?' + new URLSearchParams({ q: name, band: 'all' });
+export const opsLink = (name) => '#companies?' + new URLSearchParams({ q: name, band: 'all' });
 const hide = (node) => { const c = node.closest('[data-card]'); (c || node).hidden = true; };
 
 export function fillMeta(m, extra = {}) {

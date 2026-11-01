@@ -32,7 +32,9 @@ const FAC_NAME = { refinery: 'Refinery', gasplant: 'Gas processing plant', lng: 
 // Texas's own files: production, jobs, establishments, companies, mineral value. A county of another state has no figure for them (not zero).
 const TEXAS_ONLY = new Set(['oil12', 'gas12', 'prodchg', 'oemp', 'semp', 'owage', 'e213', 'e211', 'co', 'mineral']);
 const NOT_TEXAS = 'Not available: this figure is Texas only';
-const opsLink = (name) => '#operators?' + new URLSearchParams({ q: name, band: 'all' });
+// an operator's row on the Companies page (its list of operators, narrowed to the operator's state: numbers repeat across states)
+const stOfNum = (num) => (String(num).includes(':') ? String(num).slice(0, String(num).indexOf(':')) : 'TX');
+const opsLink = (name, st) => '#companies?' + new URLSearchParams({ q: name, band: 'all', s: st });
 const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
 const an = (x) => (/^[aeiou]/i.test(x) ? 'an ' : 'a ') + x; // "a county", "an area"
 
@@ -441,14 +443,14 @@ export function createMapView({ root, meta }) {
         el('p', { class: 'fine', text: 'Census County Business Patterns. Bars start at the smallest class (1 to 4 employees); the axis shows each class’s lower bound. Classes with fewer than 3 establishments are withheld.' })) : null,
       ops.length ? el('div', { class: 'psec-block' }, el('h3', { class: 'psec-h3', text: 'Top operators, last 12 months' }),
         el('ul', { class: 'plist' }, ops.map(([name, num, n]) => el('li', {},
-          el('a', { class: 'plist-name', href: opsLink(name), text: name, title: name }),
+          el('a', { class: 'plist-name', href: opsLink(name, stOfNum(num)), text: name, title: name }),
           el('span', { class: 'plist-n', text: fmt.format(n) }),
           S.opIdx.has(num) ? el('a', { class: 'pill-link', href: '#map?op=' + num, 'aria-label': 'Show ' + name + ' on the map', text: 'Map' }) : null)))) : null,
       // no dot is either no location published for what happened here, or nothing happened here (most offshore areas have no well): say which, since only the first is a claim about the agency
       el('p', { class: 'fine', text: dots ? fmt.format(dots) + ' located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots in this ' + placeOf(cst).one + ' over 24 months. Counts above include every ' + meas.one + '.'
         : h.a + h.b === 0 ? 'No ' + (meas.id === 'spuds' ? 'wells were spudded' : 'new-drill permits were approved') + ' in this ' + placeOf(cst).one + ' in the last 24 months, so there is nothing to draw.'
           : 'No located ' + (meas.id === 'spuds' ? 'well' : 'permit') + ' dots here: ' + (own ? 'the RRC published no surface location for these permits.' : 'the ' + stateOf(cst).agency + ' published no location for these ' + meas.short + '.') }),
-      el('div', { class: 'psec-actions' }, own ? el('a', { class: 'btn sm primary', href: '#companies?county=' + c.f, text: 'List companies' }) : null, btn('Zoom to ' + placeOf(cst).one, () => fitCounty(i))));
+      el('div', { class: 'psec-actions' }, own ? el('a', { class: 'btn sm primary', href: '#companies?kind=directory&county=' + c.f, text: 'List companies' }) : null, btn('Zoom to ' + placeOf(cst).one, () => fitCounty(i))));
   }
 
   function operatorSection(num) {
@@ -483,7 +485,7 @@ export function createMapView({ root, meta }) {
       el('p', { class: 'fine', text: located
         ? 'Showing ' + fmt.format(located) + (total && located <= total ? ' of ' + fmt.format(total) + ' in 24 months' : '') + ' ' + what + ' that have a recorded ' + (own ? 'surface ' : '') + 'location. Other layers stay as set.'
         : 'None of this operator’s ' + what + ' has a recorded ' + (own ? 'surface ' : '') + 'location, so there is nothing to draw.' }),
-      el('div', { class: 'psec-actions' }, el('a', { class: 'btn sm primary', href: opsLink(name), text: 'See in Operators' }),
+      el('div', { class: 'psec-actions' }, el('a', { class: 'btn sm primary', href: opsLink(name, ost), text: 'See in Companies' }),
         btn('Show all operators', () => { setOp(null); engine.setPadBottom(coverPx()); engine.reset(); })));
   }
 
@@ -505,7 +507,7 @@ export function createMapView({ root, meta }) {
     return el('section', { class: 'psec' }, secHead('ZIP ' + z.zip, 'Companies in the pool', () => { state.detail = null; state.zip = null; setSel(); afterChange(); }),
       el('div', { class: 'kpis2' }, kpi('Companies', fmt.format(z.total)), kpi('Likely', fmt.format(z.likely)), kpi('New entities', fmt.format(z.isNew)), kpi('Matched to RRC', fmt.format(z.rrc))),
       el('p', { class: 'fine', text: 'Bubbles sit at the ZIP’s center. PO-box ZIPs with no Census center share their city’s point.' }),
-      el('div', { class: 'psec-actions' }, el('a', { class: 'btn sm primary', href: '#companies?q=' + z.zip, text: 'List companies' })));
+      el('div', { class: 'psec-actions' }, el('a', { class: 'btn sm primary', href: '#companies?kind=directory&q=' + z.zip, text: 'List companies' })));
   }
 
   function glanceSection() {
