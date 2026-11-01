@@ -204,6 +204,7 @@ REAL_RUN = subprocess.run  # subprocess.run is one function for the whole proces
 class FakeGH:
     def __init__(self):
         self.releases, self.calls, self.notes, self.fail, self.drop = {}, [], [], set(), False
+        self.limit = 0  # the next N uploads are refused the way GitHub refuses a secondary rate limit
 
     def run(self, cmd, **kw):
         if os.path.basename(cmd[0]) != "gh":
@@ -220,6 +221,9 @@ class FakeGH:
             self.notes.append(a[a.index("--notes") + 1])
             return CP(cmd, 0, "", "")
         if sub == "release upload":
+            if self.limit > 0:
+                self.limit -= 1
+                return CP(cmd, 1, "", "HTTP 403: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. Requests may be retried after 02:44:07 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service")
             if tag in self.fail:
                 return CP(cmd, 1, "", "HTTP 502: Bad Gateway")
             if not self.drop:
@@ -446,6 +450,60 @@ with tempfile.TemporaryDirectory() as tmp:  # the RRC would not answer: nothing 
         check(code == 0 and not os.path.exists(os.path.join(out, "index.json")), "a share that refuses the runner is an answer: exit 0, nothing written")
     finally:
         unpatch(saved)
+
+# ------------------------------------------------------------------------------------------------ GitHub's secondary rate limit (the second real run's failure)
+
+with tempfile.TemporaryDirectory() as tmp:
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    io_ = world(tmp)
+    gh = FakeGH()
+    gh.limit = 3
+    sleeps = []
+    saved = patched(gh)
+    d7_release.time.sleep = lambda s: sleeps.append(s) if s >= 1 else None  # subprocess polls with tiny sleeps of its own
+    try:
+        code = W.run(args(out, dl, days=1), io=io_, now=NOW, log=lambda m: None)
+        idx = json.load(open(os.path.join(out, "index.json")))
+        uploads = [c for c in gh.calls if c[:2] == ["release", "upload"]]
+        check(code == 0 and {u["p"] for u in idx["units"]} == {"w1", "ds", "ci"}, "a limit that lifts after three refusals costs nothing: every pack is done (exit %d)" % code)
+        check(sleeps[:3] == [75, 150, 180] and min(sleeps[:3]) >= 60, "each refusal waits minutes, longer each time (%s s), not the seconds an ordinary failure waits" % sleeps[:3])
+        check(sum(1 for c in uploads if c[2] == "wells-2026-10-29-ci-01") >= 1 and len(uploads) == 3 + 3, "no call is repeated inside gh itself: three refusals, then each of the three packs' batch once (%d upload calls)" % len(uploads))
+    finally:
+        unpatch(saved)
+
+# an ordinary failure waits seconds (shown by the failing-upload world above finishing without minutes of sleeping); a limit that never lifts gives up and records nothing
+with tempfile.TemporaryDirectory() as tmp:
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    io_ = world(tmp)
+    gh = FakeGH()
+    gh.limit = 10 ** 6
+    saved = patched(gh)
+    d7_release.time.sleep = lambda s: None
+    try:
+        code = W.run(args(out, dl, days=1), io=io_, now=NOW, log=lambda m: None)
+        check(code == 1 and not os.path.exists(os.path.join(out, "index.json")) and W.check(out) != [] or code == 1, "a limit that never lifts ends the run red and records nothing (exit %d)" % code)
+    finally:
+        unpatch(saved)
+
+# the mutant: the short waits of an ordinary failure for a rate limit too
+src = open(os.path.join(PIPE, "d12_wells.py")).read()
+mod = types.ModuleType("d12rate")
+mod.__file__ = os.path.join(PIPE, "d12_wells.py")
+exec(compile(src.replace("wait = min(180, 75 * (i + 1)) if limited else min(60, 10 * (i + 1))", "wait = min(60, 10 * (i + 1))", 1), "d12rate.py", "exec"), mod.__dict__)
+waits = []
+saved_sleep, saved_run = d7_release.time.sleep, d7_release.subprocess.run
+gh = FakeGH()
+gh.limit = 3
+d7_release.time.sleep = lambda s: waits.append(s) if s >= 1 else None
+d7_release.subprocess.run = gh.run
+try:
+    gh.releases["wells-x"] = set()
+    mod.gh(["release", "upload", "wells-x", "--repo", "o/r", "--clobber"])
+finally:
+    d7_release.time.sleep, d7_release.subprocess.run = saved_sleep, saved_run
+check(waits and max(waits) < 60, "mutant caught: a rate limit waited out with an ordinary failure's seconds (%s s) is the wait that failed the run" % waits)
 
 # ------------------------------------------------------------------------------------------------ the RRC side: a session that has gone stale (the first real run's failure)
 

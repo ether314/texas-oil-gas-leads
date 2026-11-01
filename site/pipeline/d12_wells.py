@@ -362,17 +362,25 @@ def stage(zf, docs, stage_dir, log=log):
 
 # ------------------------------------------------------------------------------------------------ releases
 
+RATE_LIMITED = re.compile(r"rate limit|scraping|abuse|wait a few minutes|retry-after|HTTP 429", re.I)
+
+
 def gh(args, timeout=900):
-    """A gh call that is retried patiently (an upload of many files meets resets and, sometimes, rate limits)."""
+    """A gh call, retried patiently and with one attempt at a time (no inner retries: asking again during a limit only extends it). A failure that reads as GitHub's secondary rate
+    limit (it began on the second run of 2026-11-01, after about 4,500 uploads in 35 minutes: "... scraping GitHub ...") waits minutes, not seconds; any other failure waits seconds."""
     last = None
-    for i in range(4):
+    for i in range(8):
         try:
-            return d7_release._gh(args, timeout=timeout)
+            return d7_release._gh(args, timeout=timeout, retry=False)
         except d7_release.ReleaseError as e:
             last = e
             if d7_release.DEADLINE is not None and d7_release.DEADLINE - time.time() < 60:
                 break
-            time.sleep(min(60, 10 * (i + 1)))
+            limited = bool(RATE_LIMITED.search(str(e)))
+            wait = min(180, 75 * (i + 1)) if limited else min(60, 10 * (i + 1))
+            if d7_release.DEADLINE is not None:
+                wait = min(wait, max(1, d7_release.DEADLINE - time.time() - 30))
+            time.sleep(wait)
     raise last
 
 

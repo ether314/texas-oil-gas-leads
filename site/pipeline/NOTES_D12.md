@@ -78,6 +78,11 @@ Found: **every download after the first failed** (`HTTP 500`, `ViewExpiredExcept
 reads the listing again before every download (`tests/test_d12_wells.py` replays the expiry, and a mutant that reuses the listing's session is caught). The run ended red, as designed: what was uploaded and recorded was committed, and the failed packs
 (that day's surveys and W-1 pack, and all of 10-29's) were left for the next run.
 
+The second run (after that fix) did four more packs (the 10-30 surveys and W-1 pack, the 10-29 completion images and surveys: 1,229 documents, 2,458 files, about 10 minutes) and then **GitHub refused the fifth pack's upload**
+(`gh release upload failed ... Please wait a few minutes ... scraping GitHub ...`): its secondary rate limit, reached after about 4,500 uploads in 35 minutes across the two runs. `gh()` retried for 2.5 minutes and gave up, so that pack (10-29's W-1) was left for the next run.
+Now a failure that reads as a rate limit waits 75, 150, then 180 s (up to 8 tries, never past the run's budget) and `gh` makes one attempt at a time (asking again during a limit extends it); any other failure waits seconds.
+A normal night is one new day, about 2,300 files and 10 minutes, well under what triggered it; a catch-up of several days in a row will wait, and stops cleanly at the run's budget.
+
 ## Checked before the first run (2026-11-01)
 
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its
