@@ -20,7 +20,9 @@ for name in names:
     print("%-28s %-4s %5.1fs  %s" % (name, "ok" if ok else "FAIL", time.time() - t, tail[:90]))
     if not ok:
         failed.append(name)
-        print("\n".join("    " + l for l in (r.stdout + r.stderr).strip().splitlines()[-25:]))
+        lines = (r.stdout + r.stderr).strip().splitlines()
+        fails = [l for l in lines if l.lstrip().startswith("FAIL ")]  # the failing checks themselves: a long test prints them well before its last 25 lines (a CI run of 2026-11-01 failed and the log did not say which check)
+        print("\n".join("    " + l for l in fails[:40] + [l for l in lines[-25:] if l not in fails]))
 print()
 print("FAILED: " + ", ".join(failed) if failed else "all %d test files passed" % len(names))
 sys.exit(1 if failed else 0)
