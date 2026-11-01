@@ -53,11 +53,24 @@ export function project(lon, lat, state, out = [0, 0]) {
   return out;
 }
 
-// the outlines in world units: { TX: { name, rings: [Float32Array x,y,x,y...], bb: [x0,y0,x1,y1], c: [cx, cy] } }, c the middle of the biggest ring's box (a label point)
+// a point inside the ring for a label or a ring to sit on: the middle of its box when that is inside, else the inside point nearest the middle of the inside points (Louisiana's box middle is in Mississippi)
+function insidePoint(r, box) {
+  const mid = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
+  if (inRing(r, mid[0], mid[1])) return mid;
+  const N = 28; const pts = []; let mx = 0; let my = 0;
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    const x = box[0] + ((i + 0.5) * (box[2] - box[0])) / N; const y = box[1] + ((j + 0.5) * (box[3] - box[1])) / N;
+    if (inRing(r, x, y)) { pts.push([x, y]); mx += x; my += y; }
+  }
+  if (!pts.length) return mid;
+  mx /= pts.length; my /= pts.length;
+  return pts.reduce((best, q) => (Math.hypot(q[0] - mx, q[1] - my) < Math.hypot(best[0] - mx, best[1] - my) ? q : best), pts[0]);
+}
+// the outlines in world units: { TX: { name, rings: [Float32Array x,y,x,y...], bb: [x0,y0,x1,y1], c: [cx, cy] } }, c a label point inside the biggest ring (the middle of its box, or the nearest inside point when that is outside it)
 export function buildOutlines(doc) {
   const out = {};
   for (const [code, s] of Object.entries(doc.states)) {
-    const rings = []; let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity; let big = 0; let bigBox = null;
+    const rings = []; let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity; let big = 0; let bigBox = null; let bigRing = null;
     const p = [0, 0];
     for (const flat of s.rings) {
       const r = new Float32Array(flat.length);
@@ -70,9 +83,9 @@ export function buildOutlines(doc) {
       rings.push(r);
       x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d);
       const area = (c - a) * (d - b);
-      if (area > big) { big = area; bigBox = [a, b, c, d]; }
+      if (area > big) { big = area; bigBox = [a, b, c, d]; bigRing = r; }
     }
-    out[code] = { name: s.name, rings, bb: [x0, y0, x1, y1], c: bigBox ? [(bigBox[0] + bigBox[2]) / 2, (bigBox[1] + bigBox[3]) / 2] : [0, 0] };
+    out[code] = { name: s.name, rings, bb: [x0, y0, x1, y1], c: bigBox ? insidePoint(bigRing, bigBox) : [0, 0] };
   }
   return out;
 }

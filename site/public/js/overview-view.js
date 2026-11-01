@@ -133,10 +133,13 @@ export function createOverview(meta) {
       put(box, g.agency ? el('p', { class: 'nat-agency', text: g.agency }) : null, el('div', { class: 'ov-fig' }, el('p', { class: 'ov-fig-h' }, ringKey(), 'Oil permits'), el('p', { text: g.why || 'Nothing has been built for this agency yet.' }), el('p', { class: 'fine', text: 'It is counted as not available, never as zero.' })));
     }
     // the registry
-    put(box, wf
+    const fedLand = id === C.BLM ? D.landShare(P, range[0], range[1]) : null; // the BLM is not a state: the registry's wells on federal or tribal land are the nearest thing it holds
+    put(box, fedLand
+      ? figure(dotKey(), 'Fractured wells', fmt.format(fedLand.n), ' on federal or tribal land in the 12 months to ' + settled, null, 'Of the ' + fmt.format(fedLand.of) + ' wells of that year. The registry counts wells by state, so they are in the states’ figures; the BLM’s permits above and these wells are different counts and are never added.')
+      : wf
       ? figure(dotKey(), 'Fractured wells', fmt.format(wf.n), ' in the 12 months to ' + settled, wf.change != null ? delta(wf.change) : null, 'Newest job ' + fmtDate(wf.latest) + ' · counted by the day of the first job')
       : el('div', { class: 'ov-fig' }, el('p', { class: 'ov-fig-h' }, dotKey(), 'Fractured wells'), el('p', { class: 'nd', text: w ? 'None in the last 12 months' + (w.latest ? ' (the newest job in the registry is ' + monthLabel(w.latest.slice(0, 7)) + ')' : '') + '.' : 'Not in the registry.' }),
-        el('p', { class: 'fine', text: 'The registry lists only wells that were hydraulically fractured, so this is not the same as no drilling' + (p ? ': ' + N.inName(id, j.name) + '’s permits are counted above.' : '.') })));
+        el('p', { class: 'fine', text: 'The registry lists only wells that were hydraulically fractured, so this is not the same as no drilling' + (p ? ': ' + (id === C.BLM ? 'the BLM' : N.inName(id, j.name)) + '’s permits are counted above.' : '.') })));
     // both, over time
     const sm = C.stateMonthly(nat, doc, id, 36);
     if (sm.permits || sm.wells) put(box, el('div', { class: 'ov-dualbox' }, dual(sm, j.name, D.colorOf(id)),
@@ -175,6 +178,8 @@ export function createOverview(meta) {
   }
   // the address: #overview?s=TX&y=all&k=wells (the state the map is zoomed to, every year since 2011 instead of the last two, and which layer)
   const addr = () => '#overview' + [sel ? 's=' + sel : null, S.all ? 'y=all' : null, kinds !== 'both' ? 'k=' + kinds : null].filter(Boolean).map((x, i) => (i ? '&' : '?') + x).join('');
+  // the address says what the page shows: a jurisdiction that does not exist (s=ZZ), a layer that is not one, a lower-case state or the years that did not load are not left in it
+  const settle = () => { const a = addr(); if (location.hash !== a) history.replaceState(null, '', a); };
   function select(id, { fromHash = false } = {}) {
     const dt = loaded; if (!dt) return;
     sel = known(dt, id) ? id : null;
@@ -304,7 +309,7 @@ export function createOverview(meta) {
     });
     renderFreshness($('#fresh-list'), freshnessItems(dt.nat, dt.doc));
     started = true;
-    select(sel, { fromHash: true });
+    select(sel, { fromHash: true }); settle();
     if (/[?&]debug\b/.test(location.search)) window.__nw = { get map() { return S.map; }, hero: S.hero, get P() { return scope(dt).P; }, doc: dt.doc, nat: dt.nat, D, C, years: switchYears };
   }
 
@@ -314,7 +319,7 @@ export function createOverview(meta) {
       const want = ((params && params.get('s')) || '').toUpperCase() || null; const years = !!params && params.get('y') === 'all';
       const k = params && params.get('k'); const wk = k === 'wells' || k === 'permits' ? k : 'both';
       if (!started && !seq) { seq++; sel = want; wantAll = years; wantKinds = wk; await draw(seq); return; }
-      if (started) { select(want, { fromHash: true }); if (years !== S.all) await switchYears(years); setKinds(wk, { fromHash: true }); } else { sel = want; wantAll = years; wantKinds = wk; }
+      if (started) { select(want, { fromHash: true }); if (years !== S.all) await switchYears(years); setKinds(wk, { fromHash: true }); settle(); } else { sel = want; wantAll = years; wantKinds = wk; }
     },
     get selected() { return sel; },
     pause() { if (S.tl && S.tl.open) S.tl.pause(); },

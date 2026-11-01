@@ -187,12 +187,15 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
   }
 
   const ringRadius = (r) => 4 + (clamp(view.k * 60, 15, 44) - 4) * Math.sqrt(r.n / rgMax); // the biggest ring is 44 px on a wide map and scales down with it
-  // the oil permit rings of the whole country: hollow, in a neutral line over the dots (the zoomed view of one state shows its panel's figures instead: a ring there would mean nothing)
+  // the rings on show: all of them for the country; for one state zoomed to, none while the wells are drawn too (the panel's figures say it, and a ring there would sit over the dots),
+  // and only that state's when the permits are drawn alone (an empty map would say nothing)
+  const ringsOn = () => (!showR ? [] : !selected ? rg : showW ? [] : rg.filter((r) => r.id === selected));
+  // the oil permit rings: hollow, in a neutral line over the dots
   function paintRings() {
     drawnR = 0;
-    if (!showR || selected || !rg.length) return;
+    const on = ringsOn(); if (!on.length) return;
     const c = BASE[dark ? 'dark' : 'light'];
-    for (const r of rg) {
+    for (const r of on) {
       const x = r.x * view.k + view.tx; const y = r.y * view.k + view.ty;
       if (x < -60 || y < -60 || x > w + 60 || y > h + 60) continue;
       ctx.beginPath(); ctx.arc(x, y, ringRadius(r), 0, TAU);
@@ -204,9 +207,8 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
   }
   // the ring under a point (a jurisdiction with no outline, the federal offshore, can only be reached this way)
   function ringAt(px, py) {
-    if (!showR || selected) return null;
     let best = null; let bd = Infinity;
-    for (const r of rg) { const d = Math.hypot(px - (r.x * view.k + view.tx), py - (r.y * view.k + view.ty)); if (d <= ringRadius(r) + 3 && d < bd) { bd = d; best = r.id; } }
+    for (const r of ringsOn()) { const d = Math.hypot(px - (r.x * view.k + view.tx), py - (r.y * view.k + view.ty)); if (d <= ringRadius(r) + 3 && d < bd) { bd = d; best = r.id; } }
     return best;
   }
 

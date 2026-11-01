@@ -35,7 +35,7 @@ export function listBlock(rows, what) {
 export function rankingCard({ nat, doc, select, rows: rowMap, scrollTo, getSel }) {
   let by = 'permits';
   const body = el('div', { class: 'ov-rank' });
-  const seg = segmented({ label: 'Rank the states by', tabs: false, prefix: 'ovr', value: by, options: [{ id: 'permits', label: 'Oil permits' }, { id: 'wells', label: 'Fracked wells' }], onChange: (id) => { by = id; draw(); } });
+  const seg = segmented({ label: 'Rank the states by', tabs: false, prefix: 'ovr', value: by, options: [{ id: 'permits', label: 'Oil permits' }, { id: 'wells', label: 'Fractured wells' }], onChange: (id) => { by = id; draw(); } });
   function cells(j, topP, topW) {
     // the agency's cell
     const p = j.p ? C.permitFigure(j.p) : null; const w = C.wellFigure(j.w);
@@ -46,7 +46,7 @@ export function rankingCard({ nat, doc, select, rows: rowMap, scrollTo, getSel }
       const bar = el('i', { class: 'nat-rb is-ring' + (p.measure === 'spuds' ? ' is-dash' : p.measure === 'permits' ? '' : ' is-dot') }); bar.style.setProperty('--p', String(p.n / topP));
       put(pc, el('span', { class: 'nat-rt' }, bar), el('span', { class: 'ov-vu' }, el('span', { class: 'nat-rv', text: fmt.format(p.n) }), el('span', { class: 'ov-u', text: unit(p.n, p.word) })), el('span', { class: 'nat-rd' }, p.change != null ? delta(p.change) : el('span', { class: 'nd', text: 'n/a' })));
     }
-    const wc = el('span', { class: 'ov-cell ov-w' }, el('span', { class: 'ov-lab' }, dotKey(), 'Fracked wells'));
+    const wc = el('span', { class: 'ov-cell ov-w' }, el('span', { class: 'ov-lab' }, dotKey(), 'Fractured wells'));
     if (!w) put(wc, el('span', { class: 'ov-none', text: j.w ? 'None in 12 months' : 'Not in the registry', title: 'FracFocus lists only wells that were hydraulically fractured: no fractured well here in the last 12 settled months is not the same as no drilling' }));
     else {
       const bar = el('i', { class: 'nat-rb' }); bar.style.setProperty('--p', String(w.n / topW)); bar.style.setProperty('--c', D.colorOf(j.id));
@@ -164,9 +164,11 @@ export function monthsCard({ nat, doc }) {
   card.querySelector('h2').id = 'months-h';
   const redraw = () => { slot.replaceChildren(...chart()); drawnAt = chartWidth(slot, 1200); };
   redraw(); put(card, notes(), table());
-  // the chart is drawn at its container's width: a window that changes size draws it again (not on every pixel), and so does a card that was hidden when it was built
-  let timer = null;
-  window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (slot.isConnected && slot.clientWidth && Math.abs(chartWidth(slot, 1200) - drawnAt) > 24) redraw(); }, 150); });
+  // the chart is drawn at its container's width, and the card is built before it is on the page (a detached box has no width, so the first drawing is 1,200 wide: a phone's axis text came out 2.7 px): it is drawn again
+  // once the box has its width, whenever the box changes size (a window that is resized, a card that was hidden) and never for a change under 24 px
+  const again = () => { if (slot.isConnected && slot.clientWidth && Math.abs(chartWidth(slot, 1200) - drawnAt) > 24) redraw(); };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(again).observe(slot);
+  else { let timer = null; window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(again, 150); }); }
   return { el: card, redraw };
 }
 
@@ -186,7 +188,9 @@ export function leadersCards({ nat, doc, scope }) {
     const wEmpty = 'Not in the registry in the last 12 months: it lists only wells that were fractured.';
     const cP = sel ? C.stateLeaders(p, 'counties', 8).map((r) => ({ ...r, showState: false })) : C.permitLeaders(nat, 'counties', 8).rows;
     const oP = sel ? C.stateLeaders(p, 'operators', 8) : C.permitLeaders(nat, 'operators', 8).rows;
-    const cW = D.leaders(P, range[0], range[1], { state: sel, by: 'c', limit: 8 }); const oW = D.leaders(P, range[0], range[1], { state: sel, by: 'o', limit: 8 });
+    // a jurisdiction the registry does not list at all (Missouri, the BLM, the federal offshore, Arizona) has no wells: D.leaders only filters by a state it knows, and would answer with the country's
+    const inReg = !sel || P.states.includes(sel); const noWells = { rows: [], unnamed: 0, total: 0 };
+    const cW = inReg ? D.leaders(P, range[0], range[1], { state: sel, by: 'c', limit: 8 }) : noWells; const oW = inReg ? D.leaders(P, range[0], range[1], { state: sel, by: 'o', limit: 8 }) : noWells;
     cW.rows.forEach((r) => { r.showState = !sel; });
     const tag = p ? ' (' + (p.unit || N.measureOf(p.measure).one) + ')' : '';
     where.sub.textContent = sel ? name + ', the last 12 months. The agency’s own top ' + (p && p.place ? p.place : 'counties') + ' and the registry’s.' : 'The top 8 across the country in the last 12 months: where the agencies approved the most oil permits, and where the most wells were fractured.';
