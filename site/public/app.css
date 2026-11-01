@@ -743,6 +743,56 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 @media (max-width: 960px) { .nw-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .nw-explore { padding: var(--sp-4); } .nw-stage { border-radius: var(--r-md); } .nw-chip { min-height: 26px; padding: 2px 9px; } .nw-keys { gap: 4px 6px; } }
 
+/* ---------- the merged Overview: oil permits and fractured wells, each marked the same way everywhere ---------- */
+/* a hollow ring (an outlined bar, a ringed line) is a state agency's oil permits (dashed: wells spudded, dotted: counted another way), a filled dot (a filled bar) is a fractured well */
+.dd-ringkey.is-dash { border-style: dashed; } .dd-ringkey.is-dot { border-style: dotted; }
+.nat-rb.is-ring, .nat-lb.is-ring { background: transparent; border: 1.5px solid var(--ink); box-sizing: border-box; }
+.nat-rb.is-dash, .nat-lb.is-dash { border-style: dashed; } .nat-rb.is-dot, .nat-lb.is-dot { border-style: dotted; }
+.ov-head, .ov-row { grid-template-columns: minmax(130px, 190px) minmax(0, 1fr) minmax(0, 1fr); }
+.ov-head { display: grid; align-items: end; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-2); font-size: var(--fs-xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.ov-head span { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ov-row { align-items: center; }
+.ov-cell { display: grid; grid-template-columns: minmax(36px, 1fr) minmax(76px, auto) 68px; align-items: center; gap: var(--sp-2); min-width: 0; }
+.ov-cell .ov-lab { display: none; }
+.ov-vu { display: flex; align-items: baseline; justify-content: flex-end; gap: 5px; white-space: nowrap; }
+.ov-u { font-size: var(--fs-xs); color: var(--ink-2); }
+.ov-none { grid-column: 1 / -1; font-size: var(--fs-sm); color: var(--ink-2); }
+.ov-fed { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px dashed var(--border-2); }
+.ov-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ov-list li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(24px, 1fr) auto; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.ov-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: var(--sp-4) var(--sp-5); margin-top: var(--sp-4); }
+.ov-layer h4 { display: flex; align-items: center; gap: var(--sp-2); }
+.ov-layer .fine { margin: 0; }
+/* the month chart: the agencies' counts as lines over the registry's bars */
+.ov-halo { fill: none; stroke: var(--surface); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.ov-line, .ov-p-line { fill: none; stroke: var(--ink); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.ov-line.ov-spuds { stroke-dasharray: 5 3.5; stroke-width: 1.6; }
+.ov-end, .ov-p-end { fill: var(--surface); stroke: var(--ink); stroke-width: 1.8; pointer-events: none; }
+.ov-linekey { flex: none; overflow: visible; }
+.ov-keys .ov-keylab { margin-left: var(--sp-3); }
+/* the state panel: one block for each count, then both as lines */
+.ov-fig { padding: var(--sp-3) 0; border-top: 1px solid var(--border); }
+.ov-fig:first-of-type { border-top: 0; }
+.ov-fig .fine { margin: var(--sp-1) 0 0; }
+.ov-fig-h { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-1); font-size: var(--fs-xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.nat-panel > .nat-ph + .ov-fig { border-top: 0; }
+.ov-dualbox { margin: var(--sp-2) 0 var(--sp-3); }
+.ov-dual { display: block; width: 100%; height: auto; overflow: visible; }
+.ov-w-line { fill: none; stroke: var(--c); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ov-w-line.is-late { stroke-dasharray: 3 3; opacity: 0.85; }
+.ov-dualkey { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-4); margin: var(--sp-1) 0 0; }
+.ov-dualkey span { display: inline-flex; align-items: center; gap: 5px; }
+@media (max-width: 860px) {
+  .ov-head { display: none; }
+  .ov-head, .ov-row { grid-template-columns: minmax(0, 1fr); }
+  .ov-row { row-gap: 8px; padding-block: 10px; grid-template-areas: none; }
+  .ov-row .nat-rn { grid-area: auto; }
+  .ov-cell { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "lab vu del" "bar bar bar"; row-gap: 4px; }
+  .ov-cell .ov-lab { display: inline-flex; align-items: center; gap: var(--sp-2); grid-area: lab; font-size: var(--fs-xs); color: var(--ink-2); }
+  .ov-cell .nat-rt { grid-area: bar; } .ov-cell .ov-vu { grid-area: vu; } .ov-cell .nat-rd { grid-area: del; text-align: right; }
+  .ov-cell .ov-none { grid-area: vu; grid-column: auto; text-align: right; }
+  .ov-row .nat-rv, .ov-row .nat-rd { grid-area: auto; }
+}
 /* ---------- the Daily report: one day of new wells ---------- */
 .dd-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-4); }
 .dd-mid { flex: 1 1 260px; min-width: 0; display: grid; gap: 2px; }

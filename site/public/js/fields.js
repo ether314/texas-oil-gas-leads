@@ -137,7 +137,7 @@ export function createFieldsView({ root }) {
       el('div', { class: 'nat-sub' }, el('h4', { text: 'The permit form' }), el('p', { text: s.form.name + (s.form.number ? ' (' + s.form.number + ')' : '') + (s.form.read ? '' : '. Not read: the cells are unverified.') }), s.form.url ? ext(s.form.url, 'Open the form') : null),
       el('div', { class: 'nat-sub' }, el('h4', { text: 'What it publishes' }), srcs),
       s.unknowns.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Not determined' }), el('ul', { class: 'fx-unk' }, s.unknowns.map((u) => el('li', { text: u })))) : null,
-      el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#national?s=' + sid }, 'See its permits in the national report', icon('arrow', 16)), s.agency.url ? ext(s.agency.url, 'The agency') : null));
+      el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#overview?s=' + sid }, 'See its permits on the Overview', icon('arrow', 16)), s.agency.url ? ext(s.agency.url, 'The agency') : null));
   }
   function metricPanel(key) {
     const m = doc.metrics.find((x) => x.key === key); const ms = F.metricScore(doc, key); const by = F.byStatus(doc, key);

@@ -4,20 +4,20 @@ import { initTheme } from './theme.js';
 import { hideTip } from './tip.js';
 import { fillMeta } from './overview.js';
 import { createOverview } from './overview-view.js';
-import { createMapView } from './map.js';
 import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
-import { createNationalView } from './national.js';
 import { sourceHref } from './national-data.js';
 import { createImagesView } from './images.js';
 import { createFieldsView } from './fields.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, statesIn, inName, shortName, placesOne, measurePhrase, measureAnd, everyOf, spudCaveat, ucFirst, listOr } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, statesIn, inName, shortName, measurePhrase, spudCaveat, listOr } from './states.js';
 
-const VIEWS = { overview: 'Overview', national: 'National report', fields: 'Permit data', images: 'Texas images', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
-// the views that follow the states bar; the others (Sources) hide it
-const STATE_VIEWS = new Set(['map', 'operators', 'companies']);
+const VIEWS = { overview: 'Overview', fields: 'Permit data', images: 'Texas images', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
+// the views that follow the states bar; the others (the Overview is national, Sources) hide it
+const STATE_VIEWS = new Set(['operators', 'companies']);
+// the Overview is the old Overview, National report and Map in one: a link to either of the other two opens it, on the state the link named
+const OLD_VIEWS = { national: (p) => (p.get('s') || '').toUpperCase(), map: (p) => ((p.get('st') || '').split(',').length === 1 ? (p.get('st') || '').toUpperCase() : '') };
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -56,7 +56,7 @@ async function fillFromFiles(meta) {
   fillMeta(meta, extra);
 }
 
-/* the Sources page's list of the state agencies behind the National report is made from national.json (each state's source, cadence and what it counts), so it cannot go stale;
+/* the Sources page's list of the state agencies behind the Overview’s oil permit counts is made from national.json (each state's source, cadence and what it counts), so it cannot go stale;
    the four jurisdictions that have their own entries above are left out, and a missing file leaves the one line of text that is already there */
 async function fillNational() {
   const [doc, fields] = await Promise.all([loadOpt('national'), loadOpt('permit-fields')]);
@@ -67,7 +67,7 @@ async function fillNational() {
     return el('li', {}, el('small', { class: 'fresh-cad src-cad', text: s.cadence ? s.cadence.charAt(0).toUpperCase() + s.cadence.slice(1) : 'Irregular' }), ' ',
       h ? el('a', { href: h.href, rel: 'noopener noreferrer', text: s.agency }) : el('span', { text: s.agency }), ': ' + s.source.name + '; counted by ' + s.basis + '.');
   });
-  const gaps = doc.gaps && doc.gaps.length ? [el('li', {}, 'Not read yet, with the reason for each in the report’s coverage table: ' + doc.gaps.map((g) => g.name).join(', ') + '.')] : [];
+  const gaps = doc.gaps && doc.gaps.length ? [el('li', {}, 'Not read yet, with the reason for each in the Overview’s coverage table: ' + doc.gaps.map((g) => g.name).join(', ') + '.')] : [];
   ul.append(...rows, ...gaps);
 }
 
@@ -107,9 +107,7 @@ async function boot() {
   const overview = createOverview(meta);
 
   const tables = createTables(meta);
-  const map = createMapView({ root: $('#map-root'), meta });
   const daily = createDailyView({ root: $('#daily-root') });
-  const national = createNationalView({ root: $('#national-root') });
   const images = createImagesView({ root: $('#images-root') });
   const fields = createFieldsView({ root: $('#fields-root') });
   const lazy = { operators: { t: tables.operators, started: false, key: '' }, companies: { t: tables.companies, started: false, key: '' } };
@@ -122,7 +120,6 @@ async function boot() {
     item.t.load(activeStates()).catch(() => { item.started = false; item.key = ''; item.t.ex.fail('Could not load the data. Reload the page to try again.'); });
   }
   // what the Operators and Companies pages say about the states shown. Companies are the Texas Comptroller's records, so they are Texas only.
-  const MAP_TX = 'County activity, permit locations and energy facilities across Texas. Shading and counts use every permit; dots show the ones with a recorded location.';
   const TX_WHAT = 'Active RRC registrants that are corporations, LLCs or limited partnerships, ranked by drilling permits.';
   function pageTexts() {
     const ids = activeStates();
@@ -131,10 +128,6 @@ async function boot() {
     $('#ops-what').textContent = ids.length === 1 && ids[0] === 'TX' ? TX_WHAT
       : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.' + (spudCaveat(ids) ? ' ' + spudCaveat(ids) : '');
     const tx = ids.includes('TX');
-    // the dots are permits where a state counts permits and wells where it counts spuds, and a county is an area offshore
-    $('#map-lede').textContent = ids.length === 1 && tx ? MAP_TX
-      : ucFirst(placesOne(ids)) + ' activity and ' + measureAnd(ids) + ' locations across ' + statesIn(ids) + '. Shading and counts use ' + everyOf(ids)
-        + '; dots show the ones with a recorded location.' + (tx ? ' Plants, company ZIPs and basins are Texas only.' : '');
     $('#co-root').hidden = !tx;
     const co = $('#co-note');
     co.hidden = tx && ids.length === 1;
@@ -179,6 +172,12 @@ async function boot() {
       history.replaceState(null, '', '#daily?' + params);
       view = 'daily'; hasQuery = true;
     }
+    // the National report and the Map are the Overview now: their old addresses open it (the state a link named stays chosen)
+    if (Object.prototype.hasOwnProperty.call(OLD_VIEWS, view)) {
+      const s = OLD_VIEWS[view](params); const q = new URLSearchParams(); if (s) q.set('s', s);
+      history.replaceState(null, '', '#overview' + (q.toString() ? '?' + q : ''));
+      view = 'overview'; params = q; hasQuery = !!s;
+    }
     const id = Object.prototype.hasOwnProperty.call(VIEWS, view) ? view : 'overview';
     // an address that names the states sets the choice (quietly: this view is about to be drawn for it); one that does not keeps
     // the choice, and says so in the address
@@ -197,12 +196,10 @@ async function boot() {
     document.title = (id === 'overview' ? '' : VIEWS[id] + ' · ') + 'Oil tracker';
     // a link with a query (a bar or tile on the overview) restarts that view from its defaults plus the query
     if (hasQuery && lazy[id]) lazy[id].t.ex.apply(params);
-    if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
     pageTexts();
     ensure(id);
     if (id === 'overview') overview.show(params); else if (shown === 'overview') overview.pause();
     if (id === 'daily') daily.activate(params); else if (shown === 'daily') daily.deactivate();
-    if (id === 'national') national.activate(params); else if (shown === 'national') national.deactivate();
     if (id === 'images') images.activate(params); else if (shown === 'images') images.deactivate();
     if (id === 'fields') fields.activate(params); else if (shown === 'fields') fields.deactivate();
     if (id === 'about') fillProdNote();
@@ -220,8 +217,7 @@ async function boot() {
     bar.set(choice(), false);
     syncAddress();
     pageTexts();
-    if (shown === 'map') map.setStates();
-    else if (shown === 'operators' || shown === 'companies') ensure(shown);
+    if (shown === 'operators' || shown === 'companies') ensure(shown);
     setNote();
   });
   window.addEventListener('hashchange', () => show(true));

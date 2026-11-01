@@ -1,5 +1,7 @@
 # NOTES_UI: front end v2 (UI builder)
 
+> **2026-11-02:** the Map tab (`map.js`, `engine.js`) and the National report (`national.js`) were merged into the one Overview and deleted (`overview-view.js`, `overview-cards.js`, `combined-data.js`). This file describes the front end as it was built; whatever it says about `map.js`, `engine.js` or the Map tab no longer exists.
+
 Static, no build step, no external requests. CSP meta tag unchanged. Old `app.js` is deleted (nothing references it).
 Entry: `public/index.html` loads `js/boot.js` (classic, 300 bytes, sets the saved theme before first paint) and `js/main.js` (module).
 JS is 128 KB unminified in 12 modules; `app.css` is 29 KB; `index.html` 19 KB. Names and labels only ever enter the DOM as text (no innerHTML).

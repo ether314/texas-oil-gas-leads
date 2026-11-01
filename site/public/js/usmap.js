@@ -1,6 +1,8 @@
 // The national wells map: the 49 state outlines and every new well of the last 24 months as a glowing dot, drawn on a canvas. Used twice: as the Overview's
 // backdrop (nothing to touch) and as the explorer (hover a dot for its well, click a state to zoom in, replay two years with the shared replay bar).
-// A second layer can ride on it (Q, the Daily report's oil permits and spuds, newwells-data.js decodePermits): a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud, in the state's color.
+// A second layer can ride on it, in one of two forms. Q is the Daily report's oil permits and spuds one by one (newwells-data.js decodePermits): a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud,
+// in the state's color. `rings` is the merged Overview's: one ring a state, centered on it, its area the state agency's count of oil permits (a dashed one counts wells spudded, a dotted one something else), in a neutral
+// line so it cannot be taken for a state's dots.
 // The still layers (outlines, settled dots) are painted once to offscreen canvases; each frame only blits them and draws the newest dots and the pulses.
 // The loop runs only while something moves (a replay, a zoom, pulses on a visible map) and never with reduced motion.
 import { clamp, reduced, onReducedChange, whenVisible, fmtDate, fmt, el } from './util.js';
@@ -18,8 +20,8 @@ const RGB = {
 };
 const KEYS = Object.keys(RGB);
 const BASE = {
-  dark: { line: 'rgba(150,180,220,0.22)', fill: 'rgba(110,150,215,0.05)', sel: 'rgba(190,215,250,0.95)', glow: 'rgba(60,130,230,0.09)', text: 'rgba(205,222,245,0.72)', ring: 'rgba(255,255,255,0.95)' },
-  light: { line: 'rgba(20,45,90,0.26)', fill: 'rgba(255,255,255,0.55)', sel: 'rgba(20,70,150,0.95)', glow: 'rgba(42,120,214,0.07)', text: 'rgba(30,50,90,0.72)', ring: 'rgba(20,30,50,0.9)' },
+  dark: { line: 'rgba(150,180,220,0.22)', fill: 'rgba(110,150,215,0.05)', sel: 'rgba(190,215,250,0.95)', glow: 'rgba(60,130,230,0.09)', text: 'rgba(205,222,245,0.72)', ring: 'rgba(255,255,255,0.95)', permit: 'rgba(255,255,255,0.9)', permitFill: 'rgba(255,255,255,0.025)' },
+  light: { line: 'rgba(20,45,90,0.26)', fill: 'rgba(255,255,255,0.55)', sel: 'rgba(20,70,150,0.95)', glow: 'rgba(42,120,214,0.07)', text: 'rgba(30,50,90,0.72)', ring: 'rgba(20,30,50,0.9)', permit: 'rgba(16,26,46,0.88)', permitFill: 'rgba(16,26,46,0.03)' },
 };
 function palette(rgb, dark) {
   const [r, g, b] = rgb; const mix = (c, t) => Math.round(c + (255 - c) * t);
@@ -47,7 +49,8 @@ function rng(seed) {
 
 // canvas, host: the element that sizes it. outlines: usgeo.buildOutlines. P: newwells-data.decode. doc: the summary (for a state's figures).
 // box(w, h): the drawing box in CSS px (the Overview's backdrop keeps clear of its text); default is the whole canvas with a margin.
-export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = false, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
+// rings: [{ id, n, measure }] the oil permit rings (see above); has(id): whether a state can be hovered and chosen (default: it has a well in the registry); stateTip(id, zoomed): the nodes of a state's tooltip.
+export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = false, rings = null, has = null, stateTip = null, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
   const ctx = canvas.getContext('2d');
   const baseC = document.createElement('canvas'); const dotsC = document.createElement('canvas');
   const bctx = baseC.getContext('2d'); const dctx = dotsC.getContext('2d');
@@ -60,6 +63,12 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
   const qn = Q ? Q.n : 0; const qx = new Float32Array(qn); const qy = new Float32Array(qn); const qslot = new Uint8Array(qn);
   if (Q) { const o = [0, 0]; const slotOf = Q.states.map((id) => { const k = KEYS.indexOf(id); return k < 0 ? KEYS.length - 1 : k; });
     for (let i = 0; i < qn; i++) { G.project(Q.lon[i], Q.lat[i], Q.states[Q.s[i]], o); qx[i] = o[0]; qy[i] = o[1]; qslot[i] = slotOf[Q.s[i]]; } }
+  // the permit rings: one per jurisdiction, centered on its outline (the federal offshore has none: it sits in the Gulf), the radius from the square root of the count so the area is the count
+  const FO_AT = G.project(-91, 27.6, 'FO');
+  const rg = (rings || []).map((r) => { const c = r.id === 'FO' ? FO_AT : outlines[r.id] && outlines[r.id].c; return c && r.n > 0 ? { ...r, x: c[0], y: c[1] } : null; }).filter(Boolean);
+  const rgMax = Math.max(1, ...rg.map((r) => r.n));
+  let showR = rg.length > 0; let drawnR = 0;
+  const hasState = (id) => (has ? !!has(id) : !!doc.states.find((x) => x.id === id && x.p12 > 0));
   let showW = true; let showQ = !!Q; let hoverQ = -1; let lastWd = Infinity; let lastQd = Infinity; let drawnQ = 0;
   // a grid over the wells so the nearest dot to the pointer is found without looking at all of them
   const CELL = 8; const COLS = Math.ceil(G.WIDTH / CELL) + 2; const grid = new Map();
@@ -98,10 +107,9 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
     baseC.width = Math.round(w * dpr); baseC.height = Math.round(h * dpr);
     bctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.tx, dpr * view.ty);
     bctx.lineJoin = 'round';
-    const have = new Set(D.active(doc).map((s) => s.id));
     for (const code of Object.keys(paths)) {
       const sel = code === selected;
-      bctx.fillStyle = sel ? c.fill : have.has(code) ? c.fill : 'rgba(0,0,0,0)';
+      bctx.fillStyle = sel ? c.fill : hasState(code) ? c.fill : 'rgba(0,0,0,0)';
       bctx.fill(paths[code]);
     }
     bctx.lineWidth = 5 / view.k; bctx.strokeStyle = c.glow;
@@ -178,6 +186,30 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
     ctx.globalAlpha = 1;
   }
 
+  const ringRadius = (r) => 4 + (clamp(view.k * 60, 15, 44) - 4) * Math.sqrt(r.n / rgMax); // the biggest ring is 44 px on a wide map and scales down with it
+  // the oil permit rings of the whole country: hollow, in a neutral line over the dots (the zoomed view of one state shows its panel's figures instead: a ring there would mean nothing)
+  function paintRings() {
+    drawnR = 0;
+    if (!showR || selected || !rg.length) return;
+    const c = BASE[dark ? 'dark' : 'light'];
+    for (const r of rg) {
+      const x = r.x * view.k + view.tx; const y = r.y * view.k + view.ty;
+      if (x < -60 || y < -60 || x > w + 60 || y > h + 60) continue;
+      ctx.beginPath(); ctx.arc(x, y, ringRadius(r), 0, TAU);
+      ctx.fillStyle = c.permitFill; ctx.fill();
+      ctx.setLineDash(r.measure === 'spuds' ? [5, 3] : r.measure === 'permits' ? [] : [1.5, 3]);
+      ctx.lineWidth = r.id === hoverState ? 2.8 : 1.7; ctx.strokeStyle = c.permit; ctx.stroke(); ctx.setLineDash([]);
+      drawnR++;
+    }
+  }
+  // the ring under a point (a jurisdiction with no outline, the federal offshore, can only be reached this way)
+  function ringAt(px, py) {
+    if (!showR || selected) return null;
+    let best = null; let bd = Infinity;
+    for (const r of rg) { const d = Math.hypot(px - (r.x * view.k + view.tx), py - (r.y * view.k + view.ty)); if (d <= ringRadius(r) + 3 && d < bd) { bd = d; best = r.id; } }
+    return best;
+  }
+
   function draw(now = 0) {
     if (!w) return;
     const cheap = !!from;
@@ -218,7 +250,8 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
       }
       paintPermits(rn);
       paintLabels();
-      if (hoverState && !selected) { const c2 = BASE[dark ? 'dark' : 'light']; ctx.save(); ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.tx, dpr * view.ty); ctx.lineWidth = 1.6 / view.k; ctx.strokeStyle = c2.sel; ctx.stroke(paths[hoverState]); ctx.restore(); }
+      paintRings();
+      if (hoverState && paths[hoverState] && !selected) { const c2 = BASE[dark ? 'dark' : 'light']; ctx.save(); ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.tx, dpr * view.ty); ctx.lineWidth = 1.6 / view.k; ctx.strokeStyle = c2.sel; ctx.stroke(paths[hoverState]); ctx.restore(); }
       if (hoverQ >= 0) {
         const x = qx[hoverQ] * view.k + view.tx; const y = qy[hoverQ] * view.k + view.ty;
         ctx.lineWidth = 2; ctx.strokeStyle = c.ring; ctx.beginPath(); ctx.arc(x, y, Math.max(3, rn * 1.7) + 5, 0, TAU); ctx.stroke();
@@ -311,13 +344,13 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
     const r = canvas.getBoundingClientRect(); const px = e.clientX - r.left; const py = e.clientY - r.top;
     let i = nearest(px, py); const j = nearestQ(px, py); let q = -1;
     if (j >= 0 && (i < 0 || lastQd < lastWd)) { q = j; i = -1; } // a ring and a dot under the pointer: the nearer one answers
-    const st = i < 0 && q < 0 ? stateAtPx(px, py) : null;
-    const s = st && doc.states.find((x) => x.id === st && x.p12 > 0);
+    const st = i < 0 && q < 0 ? stateAtPx(px, py) || ringAt(px, py) : null;
+    const s = st && hasState(st) ? st : null;
     if (i !== hoverPt || q !== hoverQ || st !== hoverState) { hoverPt = i; hoverQ = q; hoverState = s ? st : null; draw(performance.now()); }
     canvas.style.cursor = i >= 0 || q >= 0 || s || selected ? 'pointer' : 'default';
     if (i >= 0) showTip(tipOf(i), e.clientX, e.clientY);
     else if (q >= 0) showTip(tipOfQ(q), e.clientX, e.clientY);
-    else if (s) showTip([el('div', { class: 'tip-head', text: s.name }), tipRow(fmt.format(s.p12), 'new wells in the last 12 months'), tipRow(selected ? '' : 'Click to zoom in', '')], e.clientX, e.clientY);
+    else if (s) showTip(stateTip ? stateTip(s, !!selected) : (() => { const x = doc.states.find((y) => y.id === s); return [el('div', { class: 'tip-head', text: x.name }), tipRow(fmt.format(x.p12), 'new wells in the last 12 months'), tipRow(selected ? '' : 'Click to zoom in', '')]; })(), e.clientX, e.clientY);
     else hideTip();
     if (onHover) onHover(i, st);
   }
@@ -327,11 +360,11 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
     const r = canvas.getBoundingClientRect(); const px = e.clientX - r.left; const py = e.clientY - r.top;
     const dot = nearest(px, py); const ring = nearestQ(px, py);
     if ((dot >= 0 || ring >= 0) && selected) { move(e); return; } // a tap on a dot of the state already zoomed to shows that well (a touch screen has no hover)
-    let st = stateAtPx(px, py);
+    let st = stateAtPx(px, py) || ringAt(px, py);
     if (!st && dot >= 0) st = D.stateOfPoint(P, dot);
     if (!st && ring >= 0) st = Q.states[Q.s[ring]];
-    const have = st && doc.states.find((x) => x.id === st && x.p12 > 0);
-    if (have && st !== selected) api.select(st); else if (selected) api.select(null);
+    if (st && hasState(st) && st !== selected) { if (outlines[st]) api.select(st); else if (onSelect) onSelect(st); } // a jurisdiction with no outline (the federal offshore) is chosen without a zoom
+    else if (selected) api.select(null);
   }
   if (interactive) { canvas.addEventListener('pointermove', move); canvas.addEventListener('pointerleave', leave); canvas.addEventListener('click', click); }
 
@@ -360,11 +393,14 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = 
     count: () => idxHi() - idxLo(),
     // which layers are drawn: the fracked wells (dots), the oil permits and spuds (rings); the permits only when the map was given them
     setKinds({ wells = true, permits = true } = {}) {
-      showW = !!wells; showQ = !!Q && !!permits; hoverPt = -1; hoverQ = -1; hideTip();
+      showW = !!wells; showQ = !!Q && !!permits; showR = rg.length > 0 && !!permits; hoverPt = -1; hoverQ = -1; hideTip();
       dotsKey = ''; pickPulses(); render(performance.now()); kick();
     },
     get kinds() { return { wells: showW, permits: showQ }; },
     get drawnPermits() { return drawnQ; }, // the rings painted in the last frame (QA)
+    get drawnRings() { return drawnR; }, // the state rings painted in the last frame (QA)
+    screenOfRing: (id) => { const r = rg.find((x) => x.id === id); return r ? [r.x * view.k + view.tx, r.y * view.k + view.ty] : null; }, // where a state's ring is on the canvas, in CSS pixels (QA)
+    ringRadiusOf: (id) => { const r = rg.find((x) => x.id === id); return r ? ringRadius(r) : null; },
     get pulsing() { return pulses.length; }, // wells chosen to pulse (QA): none while permit rings are shown
     // the permits and spuds in the shown days that the chosen state allows (QA and the Daily's counts)
     permitCount() { if (!Q || !showQ) return 0; let n = 0; const cur = qCur(); for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) if (showingQ(j)) n++; return n; },

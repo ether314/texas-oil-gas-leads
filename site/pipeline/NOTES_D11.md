@@ -1,7 +1,7 @@
 # NOTES_D11: the national report (every state agency's permits, side by side)
 
 Scripts: `site/pipeline/d11_nat_common.py` (what every state producer shares), `d11_nat_build.py` (the merge into `national.json`) and, per state,
-`d11_nat_<st>.py` (added in waves). The page: `site/public/js/national.js` (the view) and `national-data.js` (pure data code, tested under Node).
+`d11_nat_<st>.py` (added in waves). The page: since 2026-11-02 the report is part of the one Overview (`#overview`: `overview-view.js`, `overview-cards.js` and `combined-data.js`, which show it beside the FracFocus wells; `national-data.js` is the pure data code of this file, tested under Node). The old `national.js` and the `#national` address are gone (the address redirects to the Overview); the section "The view" below describes the page as it was and is kept for the reasoning behind each rule.
 Owner's brief (2026-10-31): a national report from each state-level agency's permits, unified visuals, all data together; every oil-producing state;
 all permit activity (not only new drills); onshore federal land (BLM) too.
 

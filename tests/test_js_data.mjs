@@ -16,6 +16,7 @@ const O = await imp('overview-data.js');
 const GEO = await imp('usgeo.js');
 const NW = await imp('newwells-data.js');
 const OD = await imp('oil-day-data.js');
+const CB = await imp('combined-data.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
 
 let fails = 0;
@@ -533,6 +534,55 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   const wk = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay(); let weekend = 0; let weekdays = 0;
   for (const [d, n] of real.per.OK) if (d >= real.first && d <= real.last) { if (wk(d) === 0 || wk(d) === 6) weekend += n; else weekdays += n; }
   check(weekdays > 20 && weekend <= weekdays / 10, 'oil days: Oklahoma approves on weekdays (' + weekdays + ' on weekdays and ' + weekend + ' on weekends in the covered days), so a weekend zero is a real zero and not a gap');
+}
+
+/* ---------- combined-data.js: the merged Overview's two national sources side by side ---------- */
+{
+  const nat = read('national'); const doc = read('newwells/summary'); const Nn = await imp('national-data.js');
+  const list = CB.jurisdictions(nat, doc);
+  const ids = list.map((j) => j.id);
+  check(new Set(ids).size === ids.length && nat.states.every((s) => ids.includes(s.id)) && nat.gaps.every((g) => ids.includes(g.id)) && doc.states.every((s) => ids.includes(s.id)), 'combined: one list of every jurisdiction either source knows, each once (' + ids.length + ')');
+  check(list.filter((j) => j.p).length === nat.states.length && list.filter((j) => j.w).length === doc.states.length && list.every((j) => !(j.p && j.g)), 'combined: each row holds the agency\'s record, the registry\'s record, or both, and a state is not both read and a gap');
+  const T = CB.totals(nat, doc);
+  check(T.permits === nat.totals.permits12 && T.spuds === nat.totals.spuds12 && T.permitStates === nat.totals.permitStates && T.spudStates === nat.totals.spudStates, 'combined: the permits and the wells spudded are the national report\'s totals, each within its own count');
+  check(T.wells === doc.states.reduce((t, s) => t + s.p12, 0) && T.wellStates === doc.states.filter((s) => s.p12 > 0).length && !('all' in T) && !('total' in T), 'combined: the fractured wells are the registry\'s, and no total adds the two layers');
+  check(T.both + T.permitsOnly === T.permitJurisdictions && T.both <= T.wellJurisdictions && T.blm === Nn.byId(nat, 'BL').p12, 'combined: the states with both, with permits only and the BLM add up and the BLM is apart');
+  const pf = (id) => CB.permitFigure(Nn.byId(nat, id));
+  check(pf('AZ').none === true && pf('CA').change === null && pf('TX').sum === true && pf('BL').sum === false && pf('BL').overlap === true && pf('VA').sum === false && pf('NM').word === 'spuds' && pf('TX').word === 'permits' && CB.permitFigure(null) === null,
+    'combined: a figure says none recorded where the source dates nothing, shows no change from a small base, adds only permits and spuds (not the BLM, applications or wells drilled) and names what it counts');
+  check(CB.wellFigure(Nn.byId(nat, 'TX') && doc.states.find((s) => s.id === 'TX')).n > 0 && CB.wellFigure(doc.states.find((s) => s.p12 === 0)) === null && CB.wellFigure(null) === null, 'combined: a state with no fractured well in 12 months has no figure (the page says "not in the registry", never 0)');
+  for (const by of ['permits', 'wells']) {
+    const R = CB.rankRows(nat, doc, by); const all = [...R.rows, ...R.none, R.fed].map((j) => j.id);
+    const key = (j) => (by === 'wells' ? (CB.wellFigure(j.w) ? j.w.p12 : -1) : (j.p ? j.p.p12 : -1));
+    check(all.length === ids.length && new Set(all).size === ids.length && R.fed.id === 'BL' && R.rows.every((j, i) => !i || key(R.rows[i - 1]) >= key(j)) && R.none.every((j) => !j.p && !CB.wellFigure(j.w)),
+      'combined: ranked by ' + by + ', every jurisdiction is in exactly one place, in order, the BLM apart and the ones with nothing in neither source last');
+  }
+  const M = CB.monthly(nat, doc);
+  const ps = Nn.stack(nat, 'permits', nat.months.length); const ss = Nn.stack(nat, 'spuds', nat.months.length);
+  check(M.months[0] === nat.months[0] && M.months.length === M.wells.months.length && M.permits.values.length === M.months.length && M.spuds.values.length === M.months.length
+    && M.months.every((m, i) => { const a = ps.months.indexOf(m); const b = ss.months.indexOf(m); return M.permits.values[i] === (a < 0 ? null : ps.totals[a]) && M.spuds.values[i] === (b < 0 ? null : ss.totals[b]); }),
+    'combined: the month chart runs from the agencies\' first month, each line is the national report\'s stack for its own count (null after its end), and the bars are the registry\'s months');
+  check(M.permits.end === ps.end && M.spuds.end === ss.end && M.permits.values[M.months.indexOf(M.permits.end)] != null && M.permits.values.slice(M.months.indexOf(M.permits.end) + 1).every((v) => v == null) && M.wells.settledAt >= 0, 'combined: a line ends where its agencies\' files do, so a late agency is never read as a fall');
+  const sm = CB.stateMonthly(nat, doc, 'TX', 36); const tx = Nn.byId(nat, 'TX');
+  check(sm.months.length === 36 && sm.permits.length === 36 && sm.wells.length === 36
+    && sm.permits.slice(0, 20).every((v, i) => v === tx.bands.new[nat.months.indexOf(sm.months[i])]) && sm.wells.slice(0, 20).every((v, i) => v === doc.states.find((s) => s.id === 'TX').new[doc.months.indexOf(sm.months[i])]), 'combined: one state\'s two lines are its own monthly figures from each file');
+  const al = CB.stateMonthly(nat, doc, 'AL', 12); const bl = CB.stateMonthly(nat, doc, 'BL', 12);
+  check(al.wells === null && al.permits.length === 12 && bl.wells === null && bl.permits.length === 12 && CB.stateMonthly(nat, doc, 'MO', 12).permits === null, 'combined: a state with no fractured well has no wells line, and one with no agency file read has no permits line');
+  // leaders: only the agencies that count permits approved, each state's top list, operators added up by name
+  const fake = { months: ['2026-01'], states: [
+    { id: 'AA', name: 'Aland', measure: 'permits', p12: 10, prev12: 9, counties: [['North', 6], ['South', 4]], operators: [['Big Oil, Inc.', 5], ['Small LLC', 3]], bands: { new: [10] } },
+    { id: 'BB', name: 'Bland', measure: 'permits', p12: 9, prev12: 9, counties: [['North', 9]], operators: [['BIG OIL INC', 4]], bands: { new: [9] } },
+    { id: 'CC', name: 'Cland', measure: 'spuds', p12: 99, prev12: 9, counties: [['Far', 99]], operators: [['Spud Co', 99]], bands: { new: [99] } },
+    { id: 'BL', name: 'Federal', measure: 'permits', p12: 500, prev12: 9, counties: [['Fed', 500]], operators: [['Fed Co', 500]], bands: { new: [500] } },
+  ], gaps: [] };
+  const lc = CB.permitLeaders(fake, 'counties', 5); const lo = CB.permitLeaders(fake, 'operators', 5);
+  check(lc.rows.map((r) => r.label + r.state + r.n).join() === 'NorthBB9,NorthAA6,SouthAA4' && lc.states === 2, 'combined: the busiest counties are kept apart by state, and a state that counts spuds and the BLM are left out');
+  check(lo.rows.map((r) => r.n).join() === '9,3' && lo.rows[0].label === 'Big Oil, Inc.' && lo.rows[0].state === null, 'combined: the top operators add up one company across states by name (case and punctuation aside), never the spud states or the BLM');
+  check(CB.stateLeaders({ counties: [['A', 3], ['B', 2]] }, 'counties', 1).length === 1 && CB.stateLeaders(null, 'counties').length === 0, 'combined: one agency\'s own top list, none for a state with no file');
+  const R = CB.rings(nat);
+  check(R.every((r) => r.n > 0 && r.id !== 'BL') && R.some((r) => r.id === 'FO') && !R.some((r) => r.id === 'AZ'), 'combined: a ring for every agency with something dated in 12 months, none for the BLM (not a place) or a state with none recorded');
+  const Rc = CB.reach(nat, doc);
+  check(/^\d{4}-\d{2}$/.test(Rc.permitsMedian) && Rc.permitsFirst <= Rc.permitsMedian && Rc.permitsMedian <= Rc.permitsLast && Rc.wells === doc.asOf, 'combined: how far each source runs is the registry\'s newest job and the month the agencies\' files end in');
 }
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
