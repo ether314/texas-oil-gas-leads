@@ -3,7 +3,7 @@
 
 Where the dates are. The Board's weekly activity letters (one PDF a week) are the public notice of each approval, but the folder that serves them holds only the current year (2026: 42 letters; its
 2025 and 2024 folders are empty), and the monthly well zips carry only the date a well was permitted for the wells that still exist (an expired or never-drilled permit is gone from them: 27, 34, 45
-permits a year against the Board's 37, 41, 53). The Board's Dataminer (https://bogapps.dnrc.mt.gov/dataminer/) is the full record. Its "Permits" page shows only the last 24 months and misses some
+permits a year for 2020 to 2022 against the Board's 37, 41, 54). The Board's Dataminer (https://bogapps.dnrc.mt.gov/dataminer/) is the full record. Its "Permits" page shows only the last 24 months and misses some
 approvals, but its "Well History" page lists every event on every well with the day it was approved (`Dt_Effect`, "Date Approved") and a type of work, back to the start of the file, and offers the
 result as a CSV export. This asks that page for everything approved after 12/31/2018, the way the page's own form does (four requests, three seconds apart: the page, the choice of the date field, the
 search, the export), and counts the permit events by the day they were approved: `measure` "permits", `basis` "approval date". What it counts (the Board's own words for the type of work):
