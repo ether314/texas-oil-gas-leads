@@ -42,7 +42,7 @@ export function createNationalView({ root }) {
       { label: 'Agencies with data', value: have + ' of ' + all, note: all - have + ' not read yet' },
       { label: 'Permits approved, last 12 months', value: fmt.format(t.permits12), note: nameList('permits') },
       t.spudStates ? { label: 'Wells spudded, last 12 months', value: fmt.format(t.spuds12), note: nameList('spuds') + ' (no approval dates by well)' } : null,
-      { label: 'Latest update', value: fmtDate(N.newest(doc)), note: 'the newest day any agency’s file was current to; each state’s own date is below' },
+      { label: 'Newest record', value: fmtDate(N.newest(doc)), note: 'each state’s own date is below' },
     ].filter(Boolean).map((x) => el('div', { class: 'dr-tile' }, el('dt', { text: x.label }), el('dd', { text: x.value }), el('small', { text: x.note }))));
   }
 
