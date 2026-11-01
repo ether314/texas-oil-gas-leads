@@ -15,19 +15,19 @@
  },
  "cells": {
   "api_number": {
-   "s": "unknown",
-   "e": "none",
-   "n": ""
+   "s": "data",
+   "e": "file",
+   "n": "API No in the map layer and the Data Viewer report (one row per permit, 16,614 since 1968)"
   },
   "permit_number": {
-   "s": "unknown",
-   "e": "none",
-   "n": "A permit exists; field list of the Data Viewer not seen (403)"
+   "s": "data",
+   "e": "file",
+   "n": "Permit No in the layer and the viewer; the numbers run in date order without a gap since 2019"
   },
   "well_name": {
-   "s": "form",
-   "e": "doc",
-   "n": "Rule 0400-52-02-.02: amending changes to well name/number needs CN-0228"
+   "s": "data",
+   "e": "file",
+   "n": "Well Name And No in the layer and the viewer; rule 0400-52-02-.02: a change needs CN-0228"
   },
   "lease_name": {
    "s": "form",
@@ -35,14 +35,14 @@
    "n": "Newspaper notice for close-spacing permits names operator, lease, well number"
   },
   "operator_name": {
-   "s": "form",
-   "e": "doc",
-   "n": "CN-0219 Organization Report names the responsible parties"
+   "s": "data",
+   "e": "file",
+   "n": "Operator Name in the layer and the viewer; CN-0219 Organization Report names the responsible parties"
   },
   "operator_id": {
    "s": "unknown",
    "e": "none",
-   "n": ""
+   "n": "No operator number among the 11 columns of the layer and the viewer"
   },
   "operator_type": {
    "s": "unknown",
@@ -55,9 +55,9 @@
    "n": "Plugging and reclamation bond required with application; amount on Bonds page"
   },
   "county": {
-   "s": "unknown",
-   "e": "none",
-   "n": ""
+   "s": "data",
+   "e": "file",
+   "n": "County in the layer and the viewer"
   },
   "district": {
    "s": "unknown",
@@ -67,12 +67,12 @@
   "field_pool": {
    "s": "unknown",
    "e": "none",
-   "n": ""
+   "n": "No field among the 11 columns (only Formation At Total Depth)"
   },
   "surface_latlon": {
-   "s": "form",
-   "e": "doc",
-   "n": "Plat (surveyor) gives lat/long and Carter Coordinates; rule 0400-52-03-.01"
+   "s": "data",
+   "e": "file",
+   "n": "Latitude and Longitude in the layer and the viewer; the plat also gives Carter coordinates (rule 0400-52-03-.01)"
   },
   "surface_plss": {
    "s": "form",
@@ -90,9 +90,9 @@
    "n": ""
   },
   "elevation": {
-   "s": "form",
-   "e": "doc",
-   "n": "Plat shows surface elevation above MSL and a benchmark; rule 0400-52-03-.01"
+   "s": "data",
+   "e": "file",
+   "n": "Elevation in the layer and the viewer; the plat shows surface elevation above MSL (rule 0400-52-03-.01)"
   },
   "surface_owner": {
    "s": "form",
@@ -100,14 +100,14 @@
    "n": "Surface Owner Certification CN-0694; plat names surface owners within 3,000 ft"
   },
   "well_type": {
-   "s": "unknown",
-   "e": "none",
-   "n": ""
+   "s": "data",
+   "e": "file",
+   "n": "Purpose of Well (Dry & Abandoned, Oil, Well Location...) is the outcome, not what was applied for"
   },
   "work_type": {
    "s": "unknown",
    "e": "none",
-   "n": ""
+   "n": "No type-of-permit column among the 11; amendments and transfers are not rows of their own"
   },
   "well_direction": {
    "s": "unknown",
@@ -205,19 +205,19 @@
    "n": ""
   },
   "date_approved": {
-   "s": "unknown",
-   "e": "none",
-   "n": ""
+   "s": "data",
+   "e": "file",
+   "n": "Permit Date in the layer and the viewer (the table's only date), read as the issue date; no TDEC definition seen"
   },
   "date_expires": {
    "s": "unknown",
    "e": "none",
-   "n": "Rule: valid 365 days from issuance; whether the data shows it unknown"
+   "n": "Rule: valid 365 days from issuance; no expiry column among the 11 in the layer or the viewer"
   },
   "spud_date": {
    "s": "unknown",
    "e": "none",
-   "n": ""
+   "n": "No spud date among the 11 columns of the layer and the viewer"
   },
   "completion_date": {
    "s": "unknown",
@@ -227,7 +227,7 @@
   "status": {
    "s": "unknown",
    "e": "none",
-   "n": ""
+   "n": "No status column; Purpose of Well mixes outcome and status words (Well Location, Abandoned Loc, Shut-in Gas)"
   },
   "plat_image": {
    "s": "unknown",
@@ -258,53 +258,81 @@
  "sources": [
   {
    "id": "tn-dataviewer",
-   "name": "TDEC Oil and Gas Data Viewer (Oil and Gas Well Permits)",
+   "name": "TDEC Oil and Gas Data Viewer, 'Oil and Gas Well Permits' report (Oracle APEX interactive report, guest user, 50 rows a page)",
    "url": "https://dataviewers.tdec.tn.gov/dataviewers/r/tdec_reports/f11776/oil-and-gas-well-permits",
    "kind": "query",
    "format": "html",
    "grain": "permit",
-   "cadence": "daily",
-   "history_from": "unknown",
+   "cadence": "monthly",
+   "history_from": "1968",
    "size_mb": 0,
    "free": true,
    "login": false,
    "license": "unknown",
-   "columns": [],
-   "has_approval_date": false,
+   "columns": [
+    "API No",
+    "Permit Date",
+    "Permit No",
+    "Operator Name",
+    "Well Name And No",
+    "County",
+    "Latitude",
+    "Longitude",
+    "Elevation",
+    "Formation At Total Depth",
+    "Purpose of Well"
+   ],
+   "has_approval_date": true,
    "has_spud_date": false,
-   "has_well_type": false,
+   "has_well_type": true,
    "has_work_type": false,
-   "has_location": false,
-   "activity_types": [],
-   "reachable": "blocked-403",
-   "tested": "One GET with curl: HTTP 403 (server awselb/2.0, 118-byte page). Not repeated. Agency page says the database of permits is searchable here and that changes show up the next day (search summary). Flag fields (approval date, type) are NOT verified; page looks like an Oracle APEX report."
+   "has_location": true,
+   "activity_types": [
+    "permits to drill (16,614 rows on 2026-11-01; 3,190 old rows have no date)"
+   ],
+   "reachable": "ok",
+   "tested": "Read 2026-11-01. The host answers 403 to a generic automated agent and 200 to one that names itself (the one allowance for this host). The page says 'Oil and Gas data is updated monthly'. The same 16,614 rows as the map layer (same total, same count for every year from 2019, same newest permit). It can be paged by a script with no login: GET the page (the server sets its own guest-session cookie), then POST its ajax endpoint with the report's identifiers; one reply held the 500 newest permits (back to 2017-10-31). Not used, because the layer gives the same table as JSON. Whether the viewer's Actions menu offers a CSV download was not looked at (the menu is built by script)."
   },
   {
    "id": "tn-og-mapserver",
-   "name": "TDEC Oil and Gas Wells map layer (Oil_and_Gas2 MapServer, layer 0)",
+   "name": "TDEC Oil and Gas Wells map layer (Oil_and_Gas2 MapServer, layer 0; ArcGIS 11.5, one point per permit, the same 11 columns as the Data Viewer)",
    "url": "https://tdeconline.tn.gov/arcgis/rest/services/Oil_and_Gas2/MapServer/0",
    "kind": "map",
    "format": "arcgis",
-   "grain": "well",
-   "cadence": "unknown",
-   "history_from": "unknown",
+   "grain": "permit",
+   "cadence": "monthly",
+   "history_from": "1968",
    "size_mb": 0,
    "free": true,
    "login": false,
    "license": "unknown",
-   "columns": [],
-   "has_approval_date": false,
+   "columns": [
+    "API No",
+    "Permit Date",
+    "Permit No",
+    "Operator Name",
+    "Well Name And No",
+    "County",
+    "Latitude",
+    "Longitude",
+    "Elevation",
+    "Formation At Total Depth",
+    "Purpose of Well"
+   ],
+   "has_approval_date": true,
    "has_spud_date": false,
-   "has_well_type": false,
+   "has_well_type": true,
    "has_work_type": false,
    "has_location": true,
-   "activity_types": [],
-   "reachable": "blocked-403",
-   "tested": "One GET of layer0?f=json with curl: HTTP 403 (118-byte page). Not repeated. Existence, point geometry and display field PERMIT_NO come only from a web search summary of the service directory; fields and date columns are unverified."
+   "activity_types": [
+    "permits to drill since 1968, with the purpose the well turned out to have"
+   ],
+   "reachable": "ok",
+   "tested": "Read 2026-11-01: 200 to an agent string that names itself (403 to a generic one); no cookie, login or captcha. maxRecordCount 17,000 and statistics are supported, so the whole table (16,614 rows) comes in one query: 2 requests, 3 s apart, about 70 KB. 'Permit Date' is stored as a calendar day (midnight UTC on all 16,614 rows). Permit numbers run in date order: 13004 to 13409 without a gap in the layer. Purpose of Well since 2019 (405 permits): Dry & Abandoned 313 (77%), Oil 39, Well Location 29, Abandoned Loc 18, NCG - Domestic 4, Shut-in Gas 2, Oil And Gas 1. Permits by year, 2019 to 2026 (to Aug 6): 61, 31, 56, 83, 72, 44, 26, 32, equal in the viewer."
   },
   {
    "id": "tn-og-mapviewer",
-   "name": "DMGR Map Viewer (permitted wells with links to the Data Viewer)",
+   "name": "DMGR Map Viewer page (permitted wells with links to the Data Viewer)",
    "url": "https://www.tn.gov/environment/mineral-geologic/oil-gas/data-map-viewers/map-viewer.html",
    "kind": "map",
    "format": "html",
@@ -323,21 +351,23 @@
    "has_location": true,
    "activity_types": [],
    "reachable": "blocked-403",
-   "tested": "The Data and Map Viewers page itself answered 200 (it describes both tools); the map viewer page answered 403 on one GET, not repeated."
+   "tested": "The Data and Map Viewers page answered 200 (it describes both tools); the map viewer page on www.tn.gov answered 403 on one request, and the agency's other tn.gov pages (oil-gas, permitting, data-map-viewers) answer 403 to scripts. Not used: the layer behind it is read directly."
   }
  ],
- "grade": "D",
- "grade_reason": "Every TDEC data host answered 403 to one polite request from this machine (data viewer, map layer, form PDF), and no bulk file or documented API was found. The agency does publish a searchable permit database and a map layer, so this would be C (query/HTML only) if a runner can reach them.",
- "producer_plan": "Best case: the Oil and Gas Data Viewer (an interactive report; an APEX report normally offers a CSV download, unverified) or the Oil_and_Gas2 map layer (query with where=1=1, resultOffset paging) would give one row per permit or well with the permit number; whether an approval date and work type exist is unknown. Tennessee permits are few (tens a year), so a monthly count would be tiny and noisy. Next step for a human: open the viewer in a browser, look for the CSV download and the column list, and try the map layer from a GitHub runner once. Failing that, a public-records request to the Oil and Gas Program.",
- "activity_bands_possible": [],
- "privacy_notes": "Not seen. The permit database likely names operators and may include individuals; apply the tracker rule (organizations only).",
+ "grade": "B",
+ "grade_reason": "The Division's table of every oil and gas well permit since 1968 (16,614 rows) is free and shown two ways, a Data Viewer report and a map layer behind its Map Viewer, with the same eleven columns: API number, permit number, permit date, operator, well name, county, coordinates, elevation, formation at total depth and purpose of well. Held to B, not A: the table's only date is the permit date, read as the issue date without a TDEC definition; it has no type of permit, and the purpose of well is the outcome (three permits in four are dry holes), not what was applied for; the Division updates it monthly; and its servers refuse a generic automated agent (403) and answer one that names itself. Updated 2026-11-01: a producer reads the layer weekly in two requests; the viewer and the layer give the same total and yearly counts, though no count from a second system was found.",
+ "producer_plan": "Built: d11_nat_tn.py. Reads the Oil_and_Gas2 layer 0 in two requests 3 s apart (a statistics count, then one query of the 11 columns: the whole table is under maxRecordCount 17,000), sending the one honest agent string the host accepts (HEADERS in the producer). Counts every permit by PERMIT_DATE (a calendar day at midnight UTC: a layer that stores any other moment fails the run); new is every permit, a service or test purpose (none issued since 2014) would be left out of new and told in the note; inj, redrill, rework, amend and other are null (no type of permit; the purpose is an outcome). Fluid from the purpose (Oil, Oil And Gas, Gas and Shut-in Gas; a dry hole, a location not drilled and NCG are unknown). The last 60 days are not shown (the Division updates monthly and gaps between permits reach 98 days); asOf is the day of the read. Operators are named only if a corporation, LLC or partnership. Guards: an error reply, a renamed column, under 15,000 rows, fewer than 150 permits since 2019, dates not at midnight, holes in the numbering over 5%, a purpose never seen, a newest permit over a year old. The Data Viewer gives the same rows if the layer goes away.",
+ "activity_bands_possible": [
+  "new"
+ ],
+ "privacy_notes": "The table names operators; a few permits are in a person's name (never published: the producer names only corporations, LLCs and partnerships). It holds no street address or phone number, but it has coordinates and well names, which the producer never asks for.",
  "unknowns": [
-  "Fields, size, history and cadence of the Data Viewer and map layer",
-  "Whether any bulk download exists",
-  "Whether approval or spud dates are published",
-  "The permit form itself (403)",
-  "API number format used by the agency",
-  "Whether completion paperwork is online"
+  "The permit form itself (CN-0211): the form PDF and the agency's tn.gov pages answered 403",
+  "Whether the viewer's Actions menu offers a CSV download",
+  "Whether 'Permit Date' is the issue date or the filing date (no TDEC definition seen; permits are valid 365 days from issuance)",
+  "Whether completion paperwork, plats and scanned forms are online",
+  "Whether TDEC's servers answer GitHub's addresses (they refused a generic agent string, not the research machine)",
+  "What 'NCG - Domestic' means in Purpose of Well"
  ],
  "researched": "2026-10-31"
 }

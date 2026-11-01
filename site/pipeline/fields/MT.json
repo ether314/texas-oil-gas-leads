@@ -396,7 +396,7 @@
    "login": false,
    "license": "No license stated",
    "columns": [
-    "MT_CompleteWellList.zip: tab-separated, one row per well, with a 'Permitted' date column",
+    "MT_CompleteWellList.zip: one row per well, with a 'Permitted' date",
     "MT_MonthlyUpdate.zip: production and injection updates"
    ],
    "has_approval_date": true,
@@ -435,7 +435,7 @@
   },
   {
    "id": "mt-dataminer-wellhistory",
-   "name": "MBOGC Dataminer: Wells > Well History (every event on every well: permits, notices of intent, completions, spuds, plugging, expiry dates, changes of bonded operator; filter by Date Approved; CSV export)",
+   "name": "MBOGC Dataminer: Wells > Well History (every event on every well: permits, notices, completions, spuds, plugging; filter by Date Approved; CSV export)",
    "url": "https://bogapps.dnrc.mt.gov/dataminer/Wells/WellHistory.aspx",
    "kind": "query",
    "format": "csv",
@@ -488,7 +488,7 @@
   "Whether Form 22 has a newer revision than R 10/09 (the PDF was last modified April 2016); the APD checklist and eForm status were not read",
   "Fee amount, bond rules, and ARM 36.22.601 notice details (rule pages not opened)",
   "Whether scanned forms, plats and logs are online per well",
-  "Whether a GitHub runner is answered by the Dataminer's firewall (a refusal exits 2 and keeps the file)",
+  "Whether the Dataminer's firewall lets GitHub's servers through (a refusal exits 2 and keeps the file)",
   "The meaning of the production zips' columns (not opened)"
  ],
  "researched": "2026-10-31"

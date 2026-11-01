@@ -276,7 +276,7 @@
     "WellName",
     "WellConfidential",
     "OperatorName",
-    "TypeWork (the event: Dt Application Received (10-401), Dt Well Permit Approved, Dt Well Permit Issued, Dt Well Permit Re-Issued, Dt Well Spudded, Dt Well Completed, Report: ...)"
+    "TypeWork (the event, e.g. Dt Well Permit Approved)"
    ],
    "has_approval_date": true,
    "has_spud_date": true,
@@ -388,7 +388,7 @@
    "license": "unknown",
    "columns": [
     "Wells and Well Work Dates: the columns of the two exports above",
-    "Production: production, injection, storage and NGL volumes (per the AOGCC flyer; not opened)"
+    "Production: production, injection, storage, NGL volumes (flyer; not opened)"
    ],
    "has_approval_date": true,
    "has_spud_date": true,
@@ -490,7 +490,7 @@
   "Whether the Access Data Extract holds more than the two Data Miner exports (not requested)",
   "Operator number and type, borough, bond amount and fee: not in the files, and the blank form was not read",
   "Whether the AOGCC_SQL_Test ArcGIS service is a supported public layer",
-  "Whether a GitHub runner is answered by the agency's storage address (likely; not tried)"
+  "Whether the agency's storage address answers GitHub's servers (likely; not tried)"
  ],
  "researched": "2026-10-31"
 }

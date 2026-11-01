@@ -11,7 +11,7 @@
   "number": "MO 780-0211",
   "url": "https://dnr.mo.gov/document-search/oil-gas-permit-drill-or-modify-well-application-mo-780-0211",
   "read": false,
-  "notes": "NOT READ. The DNR's Oil and Gas Permits page and the form's own document page answer 200; the 403 the first research met was a retired address (it now redirects to a page that returns the CMS's own 403, while every other dnr.mo.gov page answered the same agent). The form's PDF itself was not read, so every form-only cell stays unknown. The permits page lists the fees ($100 for the Application for Permit to Drill, Deepen, Plug-back or Recomplete, $100 for the Permit to Inject Application) and links the forms: MO 780-0211 (drill or modify), 780-0212 (inject), 780-0215 (completion and log), 780-2227 (cancel a permit), 780-2634 (transfer). The Secretary of State's rule page (10 CSR 50-2) answered 403 on one request. A third-party copy shows only the title and a 2018 release date."
+  "notes": "NOT READ. The DNR's Oil and Gas Permits page and the form's own document page answer 200; the 403 the first research met was a retired address (it now redirects to a page that returns the CMS's own 403, while every other dnr.mo.gov page answered the same agent). The form's PDF was not read, so every form-only cell stays unknown. The permits page lists the fees ($100 for the Application for Permit to Drill, Deepen, Plug-back or Recomplete, $100 for the Permit to Inject) and links the forms: MO 780-0211 (drill or modify), 780-0212 (inject), 780-0215 (completion and log), 780-2227 (cancel), 780-2634 (transfer). The Secretary of State's rule page (10 CSR 50-2) answered 403 on one request."
  },
  "cells": {
   "api_number": {
