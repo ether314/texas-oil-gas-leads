@@ -477,9 +477,9 @@ def publish_chunk(repo, tag, day, pack, folder, names, log=log):
 
 
 def publish_unit(repo, day, pack, folder, docs, log=log):
-    """Upload every document of a pack in releases of at most MAX_ASSETS files. Sets d['tag'] on each doc; returns the tags. All or nothing: a
-    failure raises, and the caller records nothing (so no entry ever points at a file that is not there)."""
-    tags = []
+    """Upload every document of a pack in releases of at most MAX_ASSETS files. Sets d['tag'] on each doc; returns (tags, files sent): a file the release already held is not sent. All or
+    nothing: a failure raises, and the caller records nothing (so no entry ever points at a file that is not there)."""
+    tags, sent = [], 0
     for i, group in enumerate(chunks(docs), 1):
         tag = tag_name(day, pack, i)
         names = []
@@ -487,11 +487,11 @@ def publish_unit(repo, day, pack, folder, docs, log=log):
             names.append("%s.%s" % (d["f"], d["ext"]))
             if d.get("pv"):
                 names.append(d["f"] + ".jpg")
-        publish_chunk(repo, tag, day, pack, folder, names, log)
+        sent += publish_chunk(repo, tag, day, pack, folder, names, log)
         for d in group:
             d["tag"] = tag
         tags.append(tag)
-    return tags
+    return tags, sent
 
 
 def prune_releases(repo, keep_from, log=log):
@@ -809,13 +809,14 @@ def do_unit(u, io, state, lk, repo, work, upload, perms_cache, log=log):
             state.remove(day.isoformat(), pack)
             state.units[(day.isoformat(), pack)] = {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": 0, "untied": untied, "rejected": rejected, "rules": RULES, "wells": 0, "tags": [], "assetBytes": 0}
             return 0
+        sent = 0
         if upload:
-            publish_unit(repo, day, pack, stage_dir, kept, log)
+            sent = publish_unit(repo, day, pack, stage_dir, kept, log)[1]
         else:
             for d in kept:
                 d["tag"] = tag_name(day, pack, 1)
         state.add(day.isoformat(), pack, {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": len(kept), "untied": untied, "rejected": rejected, "rules": RULES}, kept, lk)
-        return sum(2 if d.get("pv") else 1 for d in kept) if upload else 0
+        return sent
     finally:
         shutil.rmtree(folder, ignore_errors=True)
 
