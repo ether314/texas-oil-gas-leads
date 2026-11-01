@@ -126,6 +126,7 @@ script or style, text-only DOM insertion (static greps clean), 375 px without ho
 ## New deep-link parameters (all optional, unknown values ignored)
 - `#map?basin=permian|eagleford|haynesville|barnett` fits and outlines the basin (a `county=` in the same link takes the camera, the outline stays).
 - `#map?metric=` adds `oil12`, `gas12`, `prodchg`, `e213`, `e211`, `mineral` (a metric whose file is missing is ignored). Existing `county`, `layers`, `op`, `zip` unchanged.
+- (Since 2026-11-01 the Operators and Companies tabs are one page, `#companies`: read `#operators?...` below as `#companies?...` for the operators and `#companies?kind=directory&...` for the Texas directory; the old addresses are translated.)
 - `#operators?top=1` (Top producers), `sort=<column key>` with `dir=asc|desc`; column keys include `oil12`, `gas12`, `ptrend`, plus the existing ones. Every filter id, `q`,
   `sort` and `dir` are written back to the URL, so **Share this view** copies a link that reopens the same table. Companies likewise (`seg`, `fit`, `county`, `tx`, `isNew`, `match`, `q`).
 - QA only: `?still` (no motion, no reveal, no count-up), `?debug` (adds `window.__map` with `engine`, `state`, `S`, `tl`, `setBasin`; `window.__app`).

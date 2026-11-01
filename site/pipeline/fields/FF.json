@@ -1,0 +1,652 @@
+{
+ "state": "FF",
+ "name": "FracFocus",
+ "agency": {
+  "name": "FracFocus Chemical Disclosure Registry (Ground Water Protection Council and Interstate Oil and Gas Compact Commission)",
+  "short": "FracFocus",
+  "url": "https://fracfocus.org/"
+ },
+ "form": {
+  "name": "Hydraulic fracturing chemical disclosure (filed by the operator or its agent through the FracFocus website; not a permit)",
+  "number": "FracFocus versions 1.0 to 4.0",
+  "url": "https://fracfocus.org/data-download",
+  "read": true,
+  "notes": "Read through the registry's own data dictionary (the readme inside the download, last updated November 2023) and the real column headers of all three kinds of file, checked on 2026-11-01. Operators file through the FracFocus website behind a login; the filing form itself was not opened. Versions: 1.0 (January 2011 to May 2013) holds header data only, 2.0 to 4.0 add the chemicals, and 4.0 (December 2023) adds optional water sources."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "APINumber in every file, 14 digits as xx-xxx-xxxxx-00-00; the first ten digits are the well"
+  },
+  "permit_number": {
+   "s": "none",
+   "e": "file",
+   "n": "No permit or application number in any file; a disclosure has its own key, DisclosureId"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WellName, as the filer typed it"
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "file",
+   "n": "No lease, unit or property column"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "OperatorName: the organization that filed, the operator or its agent (a person in some cases)"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "file",
+   "n": "No operator number: the name is the only identifier"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "file",
+   "n": "No business-type column"
+  },
+  "bond": {
+   "s": "none",
+   "e": "file",
+   "n": "No bond or financial assurance column"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "CountyName, worked out from the API number"
+  },
+  "district": {
+   "s": "none",
+   "e": "file",
+   "n": "No district or region column"
+  },
+  "field_pool": {
+   "s": "none",
+   "e": "file",
+   "n": "No field, pool or play column"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude, Longitude and the datum (Projection: NAD27, NAD83 or WGS84)"
+  },
+  "surface_plss": {
+   "s": "none",
+   "e": "file",
+   "n": "No section, township, range or footages"
+  },
+  "bottom_hole_loc": {
+   "s": "none",
+   "e": "file",
+   "n": "One point per disclosure, the surface location; no bottom-hole point"
+  },
+  "lateral_path": {
+   "s": "none",
+   "e": "file",
+   "n": "No survey or path"
+  },
+  "elevation": {
+   "s": "none",
+   "e": "file",
+   "n": "No elevation column (TVD is measured from the kelly bushing, whose height is not given)"
+  },
+  "surface_owner": {
+   "s": "none",
+   "e": "file",
+   "n": "No surface owner or surface use column"
+  },
+  "well_type": {
+   "s": "none",
+   "e": "file",
+   "n": "Oil or gas is not told apart; wells that are not oil or gas are a separate download"
+  },
+  "work_type": {
+   "s": "none",
+   "e": "file",
+   "n": "No type of work: new drill, re-entry or recompletion is not said"
+  },
+  "well_direction": {
+   "s": "none",
+   "e": "file",
+   "n": "No vertical, directional or horizontal flag"
+  },
+  "proposed_depth_md": {
+   "s": "none",
+   "e": "file",
+   "n": "True vertical depth only; no measured depth"
+  },
+  "proposed_depth_tvd": {
+   "s": "data",
+   "e": "file",
+   "n": "TVD, usually the current or final depth as filed; not a planned depth"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "file",
+   "n": "No lateral length"
+  },
+  "target_formation": {
+   "s": "none",
+   "e": "file",
+   "n": "No formation column"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "file",
+   "n": "No formation tops"
+  },
+  "casing_program": {
+   "s": "none",
+   "e": "file",
+   "n": "No casing column"
+  },
+  "cement_program": {
+   "s": "none",
+   "e": "file",
+   "n": "No cement column"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "file",
+   "n": "No blowout preventer or pressure control column"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "file",
+   "n": "No hydrogen sulfide column"
+  },
+  "pit_waste": {
+   "s": "none",
+   "e": "file",
+   "n": "No pit or waste column"
+  },
+  "water": {
+   "s": "data",
+   "e": "file",
+   "n": "Gallons of water and of other base fluid; each water source and its share (optional since Dec 2023)"
+  },
+  "fracture_plan": {
+   "s": "data",
+   "e": "file",
+   "n": "The job as done, not a plan: each additive's purpose, supplier, ingredients, CAS number, share and mass"
+  },
+  "spacing_unit": {
+   "s": "none",
+   "e": "file",
+   "n": "No spacing unit, acreage or pooling column"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "file",
+   "n": "No exception column"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "Only a yes or no for federal and for tribal land or minerals (FederalWell, IndianWell); no owner"
+  },
+  "fee": {
+   "s": "none",
+   "e": "file",
+   "n": "No fee column"
+  },
+  "notice_hearing": {
+   "s": "none",
+   "e": "file",
+   "n": "No notice, hearing or protest column"
+  },
+  "date_received": {
+   "s": "none",
+   "e": "file",
+   "n": "No filing date in the download; the two job dates are its only dates"
+  },
+  "date_approved": {
+   "s": "none",
+   "e": "file",
+   "n": "A disclosure is not approved by an agency; no approval or issue date"
+  },
+  "date_expires": {
+   "s": "none",
+   "e": "file",
+   "n": "No expiration date"
+  },
+  "spud_date": {
+   "s": "none",
+   "e": "file",
+   "n": "JobStartDate is the start of the fracturing job, not the spud date"
+  },
+  "completion_date": {
+   "s": "none",
+   "e": "file",
+   "n": "JobEndDate is the end of the fracturing job, not the date the well was completed"
+  },
+  "status": {
+   "s": "none",
+   "e": "file",
+   "n": "No well or permit status"
+  },
+  "plat_image": {
+   "s": "none",
+   "e": "file",
+   "n": "No plat or survey image"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "The disclosure PDF, named on the data download page; the Find a Well search is one well at a time"
+  },
+  "completion_report": {
+   "s": "none",
+   "e": "file",
+   "n": "No completion report"
+  },
+  "logs": {
+   "s": "none",
+   "e": "file",
+   "n": "No well logs"
+  },
+  "production_link": {
+   "s": "none",
+   "e": "file",
+   "n": "No link to production"
+  }
+ },
+ "sources": [
+  {
+   "id": "ff-registry",
+   "name": "FracFocus data download: FracFocusRegistry_N.csv, a row for every ingredient of every disclosure (15 files in one 443 MB zip)",
+   "url": "https://fracfocus.org/data-download",
+   "kind": "bulk",
+   "format": "csv in a zip",
+   "grain": "disclosure",
+   "cadence": "5 days a week",
+   "history_from": "2011-01",
+   "size_mb": 443,
+   "free": true,
+   "login": false,
+   "license": "Terms of use accepted on the download page: the data may be combined with other data but not altered",
+   "reachable": "ok",
+   "columns": [
+    "DisclosureId",
+    "JobStartDate",
+    "JobEndDate",
+    "APINumber",
+    "StateName",
+    "CountyName",
+    "OperatorName",
+    "WellName",
+    "Latitude",
+    "Longitude",
+    "Projection",
+    "TVD",
+    "TotalBaseWaterVolume",
+    "TotalBaseNonWaterVolume",
+    "FFVersion",
+    "FederalWell",
+    "IndianWell",
+    "PurposeId",
+    "TradeName",
+    "Supplier",
+    "Purpose",
+    "IngredientsId",
+    "CASNumber",
+    "IngredientName",
+    "IngredientCommonName",
+    "PercentHighAdditive",
+    "PercentHFJob",
+    "IngredientComment",
+    "IngredientMSDS",
+    "MassIngredient",
+    "ClaimantCompany"
+   ],
+   "has_location": true,
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false
+  },
+  {
+   "id": "ff-disclosures",
+   "name": "FracFocus data download: DisclosureList_N.csv, one row for each disclosure (the well, the job, the water; no chemicals)",
+   "url": "https://fracfocus.org/data-download",
+   "kind": "bulk",
+   "format": "csv in a zip",
+   "grain": "disclosure",
+   "cadence": "5 days a week",
+   "history_from": "2011-01",
+   "size_mb": 443,
+   "free": true,
+   "login": false,
+   "license": "Terms of use accepted on the download page: the data may be combined with other data but not altered",
+   "reachable": "ok",
+   "columns": [
+    "DisclosureId",
+    "JobStartDate",
+    "JobEndDate",
+    "APINumber",
+    "StateName",
+    "CountyName",
+    "OperatorName",
+    "WellName",
+    "Latitude",
+    "Longitude",
+    "Projection",
+    "TVD",
+    "TotalBaseWaterVolume",
+    "TotalBaseNonWaterVolume",
+    "FFVersion",
+    "FederalWell",
+    "IndianWell"
+   ],
+   "has_location": true,
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false
+  },
+  {
+   "id": "ff-water",
+   "name": "FracFocus data download: WaterSource_N.csv, one row for each water source of a disclosure",
+   "url": "https://fracfocus.org/data-download",
+   "kind": "bulk",
+   "format": "csv in a zip",
+   "grain": "disclosure",
+   "cadence": "5 days a week",
+   "history_from": "2023-12",
+   "size_mb": 443,
+   "free": true,
+   "login": false,
+   "license": "Terms of use accepted on the download page: the data may be combined with other data but not altered",
+   "reachable": "ok",
+   "columns": [
+    "WaterSourceId",
+    "DisclosureId",
+    "APINumber",
+    "StateName",
+    "CountyName",
+    "OperatorName",
+    "WellName",
+    "Description",
+    "Percent"
+   ],
+   "has_location": false,
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false
+  },
+  {
+   "id": "ff-find-a-well",
+   "name": "Find a Well (Find O&G Disclosures): the registry's search, with the disclosure PDF of a well",
+   "url": "https://fracfocus.org/wells",
+   "kind": "query",
+   "format": "web page and PDF",
+   "grain": "well",
+   "free": true,
+   "login": false,
+   "reachable": "ok",
+   "columns": [],
+   "has_location": null,
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": null,
+   "has_work_type": null
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "Its dates are those of the fracturing job, filed after it, not of a permit, so it cannot count permits. It is bulk, free and open, and holds every fractured well in the country with its point, county, depth, water and every chemical. The download page says the data are as the operator filed them and that corrections are approved by the state agencies that require a disclosure.",
+ "producer_plan": "Already built. The Overview's map and the Daily report read the disclosure list by range requests (d13_newwells.py, data/newwells/), and build_db.py --fracfocus loads the whole registry with its water sources into the local database; the ingredients are only in the local database (about 2.5 GB). A disclosure comes weeks to months after the permit, so it is shown beside the permit counts and never added into them.",
+ "activity_bands_possible": [],
+ "privacy_notes": "The registry names API numbers and well names, and some operators are people. The site publishes none of those from it: the map holds a well's point, county, day, depth and water, and an operator only when it is a corporation, LLC or limited partnership. The local database snapshot holds the registry as filed (README, Privacy).",
+ "unknowns": [
+  "Whether every disclosure has a PDF online: the download page names the disclosure PDF files, but the Find a Well page needs JavaScript and was not opened",
+  "Whether the terms of use are a license: they say the data may be combined but not altered, and no open license is named",
+  "Which states require a disclosure and how soon after the job: the rules differ by state and none is in the files",
+  "Wells that are not oil and gas wells are a separate download, which was not read"
+ ],
+ "researched": "2026-11-01",
+ "registry_fields": [
+  {
+   "column": "DisclosureId",
+   "label": "Disclosure ID",
+   "group": "well",
+   "plain": "The key for one disclosure; every file links back to it.",
+   "metric": ""
+  },
+  {
+   "column": "APINumber",
+   "label": "API number",
+   "group": "well",
+   "plain": "The well's API number, written xx-xxx-xxxxx-00-00: state, county, well.",
+   "metric": "api_number"
+  },
+  {
+   "column": "StateName",
+   "label": "State",
+   "group": "well",
+   "plain": "The state of the well's surface location, worked out from the API number.",
+   "metric": ""
+  },
+  {
+   "column": "CountyName",
+   "label": "County",
+   "group": "well",
+   "plain": "The county of the well's surface location, worked out from the API number.",
+   "metric": "county"
+  },
+  {
+   "column": "OperatorName",
+   "label": "Operator",
+   "group": "well",
+   "plain": "The organization that filed the disclosure: the operator or its agent.",
+   "metric": "operator_name"
+  },
+  {
+   "column": "WellName",
+   "label": "Well name",
+   "group": "well",
+   "plain": "The name of the well, as filed.",
+   "metric": "well_name"
+  },
+  {
+   "column": "FederalWell",
+   "label": "On federal land or minerals",
+   "group": "well",
+   "plain": "Yes or no: the well is on federal land or minerals.",
+   "metric": "mineral_owner"
+  },
+  {
+   "column": "IndianWell",
+   "label": "On tribal land or minerals",
+   "group": "well",
+   "plain": "Yes or no: the well is on tribal land or minerals.",
+   "metric": "mineral_owner"
+  },
+  {
+   "column": "FFVersion",
+   "label": "FracFocus version",
+   "group": "well",
+   "plain": "Which version of the FracFocus form the filer used, 1.0 to 4.0.",
+   "metric": ""
+  },
+  {
+   "column": "Latitude",
+   "label": "Latitude",
+   "group": "where",
+   "plain": "Decimal degrees of the well's location, as filed.",
+   "metric": "surface_latlon"
+  },
+  {
+   "column": "Longitude",
+   "label": "Longitude",
+   "group": "where",
+   "plain": "Decimal degrees of the well's location, as filed; west is negative.",
+   "metric": "surface_latlon"
+  },
+  {
+   "column": "Projection",
+   "label": "Datum",
+   "group": "where",
+   "plain": "The coordinate system of the point: NAD27, NAD83 or WGS84.",
+   "metric": "surface_latlon"
+  },
+  {
+   "column": "JobStartDate",
+   "label": "Job start",
+   "group": "job",
+   "plain": "The day the fracturing job started, not counting site preparation. It is not the spud date.",
+   "metric": ""
+  },
+  {
+   "column": "JobEndDate",
+   "label": "Job end",
+   "group": "job",
+   "plain": "The day the fracturing job was completed, not counting teardown. It is not the well's completion date.",
+   "metric": ""
+  },
+  {
+   "column": "TVD",
+   "label": "True vertical depth",
+   "group": "job",
+   "plain": "The vertical distance from the surface to a point in the well, usually the current or final depth.",
+   "metric": "proposed_depth_tvd"
+  },
+  {
+   "column": "TotalBaseWaterVolume",
+   "label": "Water used",
+   "group": "water",
+   "plain": "Gallons of water used as the carrier fluid of the job.",
+   "metric": "water"
+  },
+  {
+   "column": "TotalBaseNonWaterVolume",
+   "label": "Other base fluid",
+   "group": "water",
+   "plain": "Gallons of carrier fluid that is not water.",
+   "metric": "water"
+  },
+  {
+   "column": "WaterSourceId",
+   "label": "Water source ID",
+   "group": "water",
+   "plain": "The key for one water source of a disclosure. Water sources are optional since December 2023.",
+   "metric": ""
+  },
+  {
+   "column": "Description",
+   "label": "Water source",
+   "group": "water",
+   "plain": "What kind of water was used, such as surface water, produced water or recycled water.",
+   "metric": "water"
+  },
+  {
+   "column": "Percent",
+   "label": "Share of the water",
+   "group": "water",
+   "plain": "The percent of the job's water that came from that source.",
+   "metric": "water"
+  },
+  {
+   "column": "PurposeId",
+   "label": "Additive ID",
+   "group": "chem",
+   "plain": "The key for one additive of a disclosure.",
+   "metric": ""
+  },
+  {
+   "column": "TradeName",
+   "label": "Trade name",
+   "group": "chem",
+   "plain": "The name of the product, as its supplier gives it.",
+   "metric": ""
+  },
+  {
+   "column": "Supplier",
+   "label": "Supplier",
+   "group": "chem",
+   "plain": "The company that supplied the product, usually the service company.",
+   "metric": ""
+  },
+  {
+   "column": "Purpose",
+   "label": "Purpose",
+   "group": "chem",
+   "plain": "Why the product was used: a surfactant, a biocide, a proppant and so on.",
+   "metric": "fracture_plan"
+  },
+  {
+   "column": "IngredientsId",
+   "label": "Ingredient ID",
+   "group": "chem",
+   "plain": "The key for one ingredient of an additive.",
+   "metric": ""
+  },
+  {
+   "column": "CASNumber",
+   "label": "CAS number",
+   "group": "chem",
+   "plain": "The Chemical Abstracts Service number that identifies the chemical.",
+   "metric": "fracture_plan"
+  },
+  {
+   "column": "IngredientName",
+   "label": "Chemical name",
+   "group": "chem",
+   "plain": "The name of the chemical or, for a trade secret, its chemical family.",
+   "metric": ""
+  },
+  {
+   "column": "IngredientCommonName",
+   "label": "Common name",
+   "group": "chem",
+   "plain": "A common name for the chemical, chosen by how often it is filed.",
+   "metric": ""
+  },
+  {
+   "column": "PercentHighAdditive",
+   "label": "Share of the product",
+   "group": "chem",
+   "plain": "The most of the ingredient in the product, in percent, from the product's safety data sheet.",
+   "metric": ""
+  },
+  {
+   "column": "PercentHFJob",
+   "label": "Share of the job",
+   "group": "chem",
+   "plain": "The ingredient's share of the whole fracturing fluid, in percent by mass.",
+   "metric": "fracture_plan"
+  },
+  {
+   "column": "IngredientComment",
+   "label": "Comment",
+   "group": "chem",
+   "plain": "Any note the filer made about the ingredient.",
+   "metric": ""
+  },
+  {
+   "column": "IngredientMSDS",
+   "label": "On a safety data sheet",
+   "group": "chem",
+   "plain": "Yes or no: the ingredient is listed on the product's safety data sheet.",
+   "metric": ""
+  },
+  {
+   "column": "MassIngredient",
+   "label": "Mass used",
+   "group": "chem",
+   "plain": "Pounds of the ingredient used on the job.",
+   "metric": "fracture_plan"
+  },
+  {
+   "column": "ClaimantCompany",
+   "label": "Trade-secret claimant",
+   "group": "chem",
+   "plain": "The company claiming a trade secret on the ingredient.",
+   "metric": ""
+  }
+ ]
+}

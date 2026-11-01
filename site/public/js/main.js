@@ -1,22 +1,20 @@
 // Boot, hash routing and wiring. Every data-dependent block degrades on its own if its file is missing.
-import { $, $$, el, load, loadOpt, parseHash, replaceHash, fmt, fmtDate, monthLabel, reduced } from './util.js';
+import { $, $$, el, load, loadOpt, parseHash, queryText, fmt, fmtDate, monthLabel, reduced } from './util.js';
 import { initTheme } from './theme.js';
 import { hideTip } from './tip.js';
 import { fillMeta } from './overview.js';
 import { createOverview } from './overview-view.js';
-import { createTables } from './tables.js';
+import { createCompaniesView } from './companies.js';
 import { createDailyView } from './daily.js';
 import { sourceHref } from './national-data.js';
 import { createImagesView } from './images.js';
 import { createFieldsView } from './fields.js';
 import { icon } from './icons.js';
-import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, statesIn, inName, shortName, measurePhrase, spudCaveat, listOr } from './states.js';
+import { initReveal, navIndicator } from './ui.js';
+import { fromOperators } from './companies-data.js';
 
-const VIEWS = { overview: 'Overview', fields: 'Permit data', images: 'Texas images', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
-// the views that follow the states bar; the others (the Overview is national, Sources) hide it
-const STATE_VIEWS = new Set(['operators', 'companies']);
-// the Overview is the old Overview, National report and Map in one: a link to either of the other two opens it, on the state the link named
+const VIEWS = { overview: 'Overview', fields: 'Permit data', images: 'Texas images', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
+// the Overview is the old Overview, National report and Map in one: a link to either of the other two opens it, on the state the link named (the Map's st=fo, one state; two states or none: the country)
 const OLD_VIEWS = { national: (p) => (p.get('s') || '').toUpperCase(), map: (p) => ((p.get('st') || '').split(',').length === 1 ? (p.get('st') || '').toUpperCase() : '') };
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
@@ -106,63 +104,10 @@ async function boot() {
   fillNational().catch(() => {});
   const overview = createOverview(meta);
 
-  const tables = createTables(meta);
   const daily = createDailyView({ root: $('#daily-root') });
   const images = createImagesView({ root: $('#images-root') });
   const fields = createFieldsView({ root: $('#fields-root') });
-  const lazy = { operators: { t: tables.operators, started: false, key: '' }, companies: { t: tables.companies, started: false, key: '' } };
-  // loads a table the first time its view is shown, and the Operators again when the states shown have changed since
-  function ensure(name) {
-    const item = lazy[name];
-    const key = name === 'operators' ? statesKey(activeStates()) : '';
-    if (!item || (item.started && item.key === key)) return;
-    item.started = true; item.key = key;
-    item.t.load(activeStates()).catch(() => { item.started = false; item.key = ''; item.t.ex.fail('Could not load the data. Reload the page to try again.'); });
-  }
-  // what the Operators and Companies pages say about the states shown. Companies are the Texas Comptroller's records, so they are Texas only.
-  const TX_WHAT = 'Active RRC registrants that are corporations, LLCs or limited partnerships, ranked by drilling permits.';
-  function pageTexts() {
-    const ids = activeStates();
-    // the sentence on what the operators are; tables.js adds the dates each state's data runs to when its files are in
-    // (what a state's count leaves out, where it has something to say: a sidetrack is not a new well offshore, so an operator that sidetracked ten times ranks with none)
-    $('#ops-what').textContent = ids.length === 1 && ids[0] === 'TX' ? TX_WHAT
-      : 'Operators that are corporations, LLCs or limited partnerships, ranked by ' + measurePhrase(ids) + ' in the last 12 months.' + (spudCaveat(ids) ? ' ' + spudCaveat(ids) : '');
-    const tx = ids.includes('TX');
-    $('#co-root').hidden = !tx;
-    const co = $('#co-note');
-    co.hidden = tx && ids.length === 1;
-    // with Texas among several states the note is a line under the heading; with none of them it is the page's empty state
-    co.className = tx ? 'fine' : 'empty';
-    co.textContent = !tx ? 'Companies come from the Texas Comptroller’s franchise-tax records, so there is nothing to list for ' + listOr(ids.map(inName))
-      + ': no public bulk list like it exists there. Choose All or Texas to browse the Texas pool.' : ids.length > 1 ? 'The company pool is the Texas Comptroller’s, so this list is Texas only.' : '';
-  }
-
-  /* ---------- the states shown: one choice for every view that follows it, kept in the address as st=tx or st=ok ---------- */
-  // the bar offers All and each state; an address can also name two of three (st=tx,ok): then the bar has none chosen, and the note below says which are shown
-  const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : null);
-  const bar = segmented({
-    label: 'States shown', tabs: false, prefix: 'sb', value: choice(),
-    options: [{ id: 'all', label: 'All', dot: 'st-all' },
-      // the name a screen reader says holds the visible label ("Texas (TX)", "Federal offshore" for "Offshore"); a phone shows TX, OK, NM
-      ...STATES.map((x) => ({ id: x.id, label: shortName(x.id), abbr: x.short ? null : x.id, title: x.short ? x.name : x.name + ' (' + x.id + ')', dot: 'st-' + x.id.toLowerCase() }))],
-    onChange: (id) => setStates(id === 'all' ? STATES.map((x) => x.id) : [id]),
-  });
-  $('#statebar-seg').append(bar.el);
-  // keeps the address bar in step with the choice without firing hashchange: st is only in it when the choice is not both
-  function syncAddress() {
-    const { view, params } = parseHash();
-    const sp = stateParam(activeStates());
-    if (sp) params.set('st', sp); else params.delete('st');
-    replaceHash(view, params);
-  }
-
-  // what the bar says when the address names two states of the four: which are shown
-  const note = $('#statebar-note');
-  function setNote() {
-    let text = activeStates().length > 1 && activeStates().length < STATES.length ? 'Showing ' + statesIn(activeStates()) + '. Choose a state, or All, to change it.' : '';
-    note.textContent = text;
-  }
-
+  const companies = createCompaniesView({ meta });
   let shown = '';
   function show(moveFocus) {
     let { view, params, hasQuery } = parseHash();
@@ -172,20 +117,20 @@ async function boot() {
       history.replaceState(null, '', '#daily?' + params);
       view = 'daily'; hasQuery = true;
     }
+    // the Operators list is part of the Companies page now (the states bar's choice becomes the page's State filter): an old link to it opens the page on the operators
+    if (view === 'operators') {
+      params = fromOperators(params);
+      const q = queryText(params);
+      history.replaceState(null, '', '#companies' + (q ? '?' + q : ''));
+      view = 'companies'; hasQuery = q !== '';
+    }
     // the National report and the Map are the Overview now: their old addresses open it (the state a link named stays chosen)
     if (Object.prototype.hasOwnProperty.call(OLD_VIEWS, view)) {
-      const s = OLD_VIEWS[view](params); const q = new URLSearchParams(); if (s) q.set('s', s);
+      const st = OLD_VIEWS[view](params); const q = new URLSearchParams(); if (st) q.set('s', st);
       history.replaceState(null, '', '#overview' + (q.toString() ? '?' + q : ''));
-      view = 'overview'; params = q; hasQuery = !!s;
+      view = 'overview'; params = q; hasQuery = !!st;
     }
     const id = Object.prototype.hasOwnProperty.call(VIEWS, view) ? view : 'overview';
-    // an address that names the states sets the choice (quietly: this view is about to be drawn for it); one that does not keeps
-    // the choice, and says so in the address
-    if (params.has('st')) setStates(parseStates(params.get('st')), true); else if (STATE_VIEWS.has(id) && stateParam(activeStates())) syncAddress();
-    bar.set(choice(), false);
-    const rest = new URLSearchParams(params); rest.delete('st');
-    hasQuery = rest.toString() !== '';
-    $('#statebar').hidden = !STATE_VIEWS.has(id);
     hideTip();
     Object.keys(VIEWS).forEach((v) => { $('#view-' + v).hidden = v !== id; });
     $$('.nav a').forEach((a) => {
@@ -194,10 +139,8 @@ async function boot() {
     });
     placeNav();
     document.title = (id === 'overview' ? '' : VIEWS[id] + ' · ') + 'Oil tracker';
-    // a link with a query (a bar or tile on the overview) restarts that view from its defaults plus the query
-    if (hasQuery && lazy[id]) lazy[id].t.ex.apply(params);
-    pageTexts();
-    ensure(id);
+    // a link with a query restarts the Companies lists from their defaults plus the query; with none the page opens as it was left
+    if (id === 'companies') companies.activate(params, hasQuery); else if (shown === 'companies') companies.deactivate();
     if (id === 'overview') overview.show(params); else if (shown === 'overview') overview.pause();
     if (id === 'daily') daily.activate(params); else if (shown === 'daily') daily.deactivate();
     if (id === 'images') images.activate(params); else if (shown === 'images') images.deactivate();
@@ -210,16 +153,7 @@ async function boot() {
       h.focus({ preventScroll: true });
     }
     shown = id;
-    setNote();
   }
-  // the choice changed on the page (the bar): the address follows, and the view on screen is drawn again
-  onStates((ids) => {
-    bar.set(choice(), false);
-    syncAddress();
-    pageTexts();
-    if (shown === 'operators' || shown === 'companies') ensure(shown);
-    setNote();
-  });
   window.addEventListener('hashchange', () => show(true));
   show(false);
   document.documentElement.classList.add('ready');

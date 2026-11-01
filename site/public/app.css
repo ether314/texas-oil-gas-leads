@@ -114,27 +114,22 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .st-tag.st-ok { --c: var(--st-ok); }
 .st-tag.st-nm { --c: var(--st-nm); }
 .st-tag.st-fo { --c: var(--st-fo); }
+.st-tag.st-xx { --c: var(--n-other); } /* every other state: the quiet slate of the national view */
 /* a state's dot in the bar: the color it has in every map, chart and legend; All is the four together */
-.seg-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--st-tx)); }
-.seg-dot.st-ok { --c: var(--st-ok); }
-.seg-dot.st-nm { --c: var(--st-nm); }
-.seg-dot.st-fo { --c: var(--st-fo); }
-.seg-dot.st-all { background: conic-gradient(var(--st-tx) 0 25%, var(--st-ok) 0 50%, var(--st-nm) 0 75%, var(--st-fo) 0); }
+
 /* the states shown: one choice above every view that follows it */
-.statebar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-4) 0; }
-.statebar[hidden] { display: none; }
-.statebar-label { font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
-.statebar-note { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
-.statebar-note:empty { display: none; }
-#statebar-seg { min-width: 0; max-width: 100%; }
-@media (max-width: 520px) { .statebar .seg button { padding: 0 9px; gap: 5px; } }
+
 /* the bar's five choices do not always fit with full names: TX, OK, NM, Offshore (the button's name stays "Texas (TX)"). ui.js measures the bar and sets data-fit: full while the
    names fit (429 px in one system font, 466 in another), short when they do not, tight (3 px less padding a side) when even those do not (swept 300 to 1280 px: nothing clipped) */
-.seg-a { display: none; }
-.statebar .seg[data-fit="short"] .seg-l.has-abbr, .statebar .seg[data-fit="tight"] .seg-l.has-abbr { display: none; }
-.statebar .seg[data-fit="short"] .seg-a, .statebar .seg[data-fit="tight"] .seg-a { display: inline; }
-.statebar .seg[data-fit="tight"] button { padding: 0 6px; gap: 4px; }
+
 .view-head { padding-block: var(--sp-7) var(--sp-2); }
+/* the Companies page: one switch between its two lists, and a line that says what the list is and leaves out */
+.co-bar { padding-block: var(--sp-4) 0; }
+.co-note { max-width: 78ch; margin-top: var(--sp-3); }
+.co-more { max-width: 78ch; margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--ink-2); }
+.co-more[hidden] { display: none; }
+.co-more summary { cursor: pointer; width: fit-content; font-weight: 600; }
+.co-more .fine { margin-top: var(--sp-2); }
 .view-head.compact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; padding-block: var(--sp-5) 0; }
 .view-head.compact .lede { margin: 0; font-size: var(--fs-md); flex: 1 1 360px; }
 .stack { margin-top: var(--gap); padding-bottom: var(--sp-2); }
@@ -368,6 +363,7 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); white-space: nowrap; font-size: var(--fs-sm); font-weight: 620; color: var(--ink-2); box-shadow: 0 1px 0 var(--axis); border-bottom: 0; }
 .grid th.num, .grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid td.num.on { font-weight: 650; }
+.grid .cnt .unit { color: var(--ink-2); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.02em; } /* a count of wells (spuds, drilled) says what it is beside the number */
 .grid tbody th { font-weight: 560; }
 .grid td.name { min-width: 260px; font-weight: 560; }
 .grid td.loc, .grid td.trend { white-space: nowrap; }
@@ -853,6 +849,23 @@ table.fx thead tr.fx-score td { position: sticky; top: 31px; z-index: 3; }
 .fx-chips .link { display: inline-flex; align-items: center; min-height: 24px; }
 .fx-panel-slot .nat-panel { background: var(--surface-2); }
 @media (max-width: 640px) { .fx-corner, .fx-rh { min-width: 144px; max-width: 150px; } .fx-m { font-size: var(--fs-xs); } }
+/* the registry's column (FracFocus: first, a disclosure and not an agency) and the card that lists every field it holds */
+.fx-col.is-reg { width: 76px; min-width: 76px; }
+.fx-col.is-reg .fx-h { font-size: var(--fs-xs); }
+table.fx th.is-reg, table.fx td.is-reg { border-right: 2px solid var(--border-2); }
+table.fx td.is-reg { background: color-mix(in srgb, var(--s1) 7%, var(--surface)); }
+.fx-rg { margin-top: var(--sp-5); }
+.fx-rg h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.fx-rfs { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border); }
+.fx-rf { display: grid; grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1.6fr) minmax(170px, 1fr); gap: var(--sp-1) var(--sp-5); align-items: baseline; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
+.fx-rf-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); min-width: 0; }
+.fx-rf-name strong { font-size: var(--fs-sm); }
+.fx-rf-name code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--fs-xs); color: var(--ink-2); overflow-wrap: anywhere; }
+.fx-rf-what { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+.fx-rf-link { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); min-width: 0; font-size: var(--fs-sm); }
+.fx-rf-link small { color: var(--ink-2); font-size: var(--fs-xs); }
+.fx-rf-link .link { min-height: 24px; text-align: left; }
+@media (max-width: 720px) { .fx-rf { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 /* readable previews of the scanned filings (js/previews.js): a grid of small pages, and one native dialog that opens a page larger */
 .img-files.pv { grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: var(--sp-4) var(--sp-5); }
@@ -889,7 +902,7 @@ body:has(.pv-dialog[open]) { overflow: hidden; }
   body { background: #fff; }
   body::before { display: none; }
   /* what only works on a screen: the header, the states bar, the controls, the buttons and the segmented switches */
-  .top, .statebar, .skip, .toast, .btn, .ibtn, .seg, .filters, .theme { display: none !important; }
+  .top, .skip, .toast, .btn, .ibtn, .seg, .filters, .theme { display: none !important; }
   .wrap { max-width: none; padding-inline: 0; }
   .js .reveal, .reveal { opacity: 1 !important; transform: none !important; }
   .card { break-inside: avoid; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }

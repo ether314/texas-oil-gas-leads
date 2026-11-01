@@ -84,12 +84,15 @@ const VIEWS = [
   ['#overview?s=BL', OV_PANEL, async (page) => (/^Federal onshore \(BLM\)$/.test(await page.locator(OV_PANEL).first().innerText()) ? null : 'an address naming the BLM should open its panel')],
   ['#overview?s=MO', OV_PANEL, async (page) => (/^Missouri$/.test(await page.locator(OV_PANEL).first().innerText()) && /never as zero/.test(await page.locator('.nw-grid .nat-panel').innerText()) ? null : 'Missouri has no source: its panel should say it is not available, never as zero')],
   ['#overview?k=permits', OV_PANEL, async (page) => ((await page.locator('#nwk-permits').getAttribute('aria-pressed')) === 'true' && (await page.locator('.nw-explore .card-tools .btn').isDisabled()) ? null : 'an address with k=permits should show the rings alone and switch the replay off')],
-  ['#operators?st=fo', '#ops-root table'],
-  ['#operators', '#ops-root table'],
+  ['#companies?s=FO', '#ops-root table'],
+  ['#companies', '#ops-root table'],
+  ['#operators?st=fo', '#ops-root table', async (page) => (/^#companies\?s=FO/.test(await page.evaluate(() => location.hash)) ? null : 'an old #operators link should open the Companies page on that state')],
   ['#daily', '#daily-root .dd-nav', async (page) => ((await page.locator('#daily-root .dd-nav').count()) === 1 && !(await page.locator('#statebar').isVisible()) ? null : 'the Daily report should be national: a day control and no states bar')],
   ['#daily?d=2026-02-02&s=TX', '#daily-root .dd-nav', async (page) => (/Monday, Feb 2, 2026/.test(await page.locator('#daily-root .dd-date').innerText()) && /in Texas/.test(await page.locator('#dd-table-h').innerText()) ? null : 'an address naming a day and Texas should open on them')],
   ['#oklahoma', '#daily-root .dd-nav', async (page) => (/s=OK/.test(await page.evaluate(() => location.hash)) ? null : 'an old #oklahoma link should open the Daily report on Oklahoma\'s wells')],
-  ['#companies', '#co-root table'],
+  ['#operators?top=1', '#ops-root table tbody tr', async (page) => { await page.waitForFunction(() => /top=1/.test(location.hash), null, { timeout: 5000 }).catch(() => {}); const h = await page.evaluate(() => location.hash); return /s=TX/.test(h) && /top=1/.test(h) && (await page.locator('#ops-root label.check', { hasText: 'Top producers' }).locator('input').isChecked()) && /^[\d,]+ of [\d,]+ rows match\. Top 100 by oil/.test(await page.locator('#ops-root .status').innerText()) ? null : 'an old #operators?top=1 link should open the operators on Texas with Top producers on, not lose the filter: ' + h; }],
+  ['#companies?s=XX', '#ops-root table tbody tr', async (page) => (/^#companies$/.test(await page.evaluate(() => location.hash)) ? null : 'a state that is not one should leave the list on all states and out of the address')],
+  ['#companies?kind=directory', '#co-root table'],
   ['#about', '#view-about h1'],
   ['#images', '#images-root .img-stage', async (page) => ((await page.locator('#images-root .img-stage').count()) === 3 ? null : 'the images view should show the three stages of a well')],
   ['#images?d=2026-10-30', '#images-root .img-pack', async (page) => ((await page.locator('#images-root .img-pack').count()) === 3 ? null : 'a day should show its three packs')],
@@ -154,7 +157,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 3. the states shown: one choice in a bar above the views that follow it (Operators and Companies), kept in the address. Every other view is national and has no bar, and the Overview does not follow the choice
+  // 3. no view has a states bar any more (the Map, the last one that followed it, is part of the Overview); the Companies page is national and has a State filter of its own, kept in the address
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
@@ -162,65 +165,68 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
     page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
-    const pressed = () => page.locator('#statebar button[aria-pressed="true"]').innerText();
     const hash = () => page.evaluate(() => location.hash);
     try {
-      // the Overview, the Daily report, the permit-data matrix, the Texas images and Sources are national and have no states bar; Operators and Companies follow it
-      for (const [v, ready] of [['#overview', '.nw-canvas'], ['#daily', '#daily-root .dd-nav'], ['#fields', '#fields-root button.fx-c'], ['#images', '#images-root .img-stage'], ['#about', '#view-about h1']]) {
+      // no view has a states bar any more (the Map was the last one that followed it): the Overview, the Daily report, the permit-data matrix, the Texas images, Sources and Companies are national
+      for (const [v, ready] of [['#overview', '.nw-canvas'], ['#daily', '#daily-root .dd-nav'], ['#fields', '#fields-root button.fx-c'], ['#images', '#images-root .img-stage'], ['#about', '#view-about h1'], ['#companies', '#ops-root tbody tr']]) {
         await page.goto(base + v, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
-        check(!(await page.locator('#statebar').isVisible()), 'the ' + v.slice(1) + ' view is the same for every state: it has no states bar');
+        check((await page.locator('#statebar, #statebar-seg').count()) === 0, 'the ' + v.slice(1) + ' view is national: there is no states bar in the page');
       }
-      await page.goto(base + '#companies', { waitUntil: 'load' });
-      await page.waitForSelector('#co-root table', { timeout: 25000 });
-      check((await pressed()) === 'All' && (await page.locator('#statebar').isVisible()), 'the states bar is on Companies and starts on All');
-      check((await page.locator('#statebar .seg-dot').count()) === 5 && (await page.locator('#statebar .seg-dot.st-nm').count()) === 1 && (await page.locator('#statebar .seg-dot.st-fo').count()) === 1, 'each state wears its color in the bar (All the four together)');
-      await page.click('#statebar button[data-id="OK"]');
-      await page.click('.nav a[href="#operators"]');
-      await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
-      check((await page.locator('#statebar').isVisible()) && /st=ok/.test(await hash()) && !(await page.locator('#ops-root tbody tr .st-tag').first().isVisible()), 'the Operators page follows the choice: Oklahoma alone has no State column, st=ok stays in the address');
-      const lede = await page.locator('#ops-lede').innerText();
-      check(/ranked by new-drill permits in the last 12 months/.test(lede) && /Data runs through [A-Z][a-z]{2} \d+, 2026\./.test(lede) && !/New Mexico/.test(lede), 'and its lede says what is ranked and how far Oklahoma\'s own data runs');
-      check(!(await page.locator('#ops-root label.check', { hasText: 'Top producers' }).isVisible()) && !(await page.locator('#ops-root label.check', { hasText: 'New P-5' }).isVisible()), 'the filters only Texas\'s records can answer are hidden without Texas');
-      const heads = async () => (await page.locator('#ops-root thead th:not([hidden])').allInnerTexts()).map((t) => t.trim());
-      const okHeads = await heads();
-      check(okHeads.includes('Location') && !okHeads.includes('Spud (12 mo)') && !okHeads.includes('District') && !okHeads.includes('State'), 'Oklahoma alone: no column of blanks (no Spud, no District, no State)');
-      // the Overview is the same country whatever was chosen here: it neither follows the choice nor puts it in its address
-      await page.click('.nav a[href="#overview"]');
-      await page.waitForSelector(OV_PANEL, { timeout: 25000 });
-      check(/^All states$/.test(await page.locator(OV_PANEL).first().innerText()) && !/st=/.test(await hash()) && !(await page.locator('#statebar').isVisible()), 'the Overview ignores the states chosen on Operators: all states, no bar, no st in its address');
-      await page.click('.nav a[href="#operators"]');
-      await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
-      await page.click('#statebar button[data-id="NM"]');
-      await page.waitForFunction(() => /Aug 31/.test(document.querySelector('#ops-lede').textContent), null, { timeout: 25000 });
-      const nmHeads = await heads();
-      check(!nmHeads.includes('Location') && !nmHeads.includes('Permits (12 mo)') && !nmHeads.includes('Spud (12 mo)') && nmHeads.includes('Top county'), 'New Mexico alone: no Location (no addresses), no permit counts (it counts spuds), no Spud column; its own end date in the lede');
-      check((await page.locator('#ops-root a.pill-link, #ops-root a[href^="#map"]').count()) === 0 && (await page.locator('#ops-root tbody td.loc a').count()) === 0, 'an operator and its top county are plain text now: no "Map" pill and no link into the Map tab that is gone');
-      await page.click('#statebar button[data-id="all"]');
-      await page.waitForFunction(() => { const t = [...document.querySelectorAll('#ops-root tbody tr .st-tag')].map((e) => e.textContent); return t.includes('NM') && t.includes('OK') && t.includes('TX'); }, null, { timeout: 25000 });
-      check(await page.locator('#ops-root tbody tr .st-tag').first().isVisible(), 'all states: one ranking with the State column showing, the busiest operators of every state in the first rows');
-      const lede3 = await page.locator('#ops-lede').innerText();
-      check(/wells spudded in New Mexico/.test(lede3) && /\(New Mexico\)/.test(lede3) && /\(Oklahoma\)/.test(lede3) && (await page.locator('#ops-root label.check', { hasText: 'Top producers' }).isVisible()), 'and its lede names each state\'s own end date and measure; the Texas filters are back');
-      await page.click('#statebar button[data-id="NM"]');
+      // Companies: the operators of every state that names them, with a State filter of its own
       await page.click('.nav a[href="#companies"]');
-      await page.waitForSelector('#co-note:not([hidden])', { timeout: 25000 });
-      check(!(await page.locator('#co-root').isVisible()) && /Texas Comptroller/.test(await page.locator('#co-note').innerText()), 'Companies with no Texas in the choice: no table, and a note on why');
+      await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
+      check(!/st=/.test(await hash()) && (await page.locator('#ops-root tbody tr .st-tag').first().isVisible()), 'Companies is national: no st in the address, the State column showing');
+      const stateSel = page.locator('#ops-root .field:has(> .field-label:text-is("State")) select');
+      const stateOpts = await stateSel.locator('option').allInnerTexts();
+      check(stateOpts[0] === 'All states' && stateOpts.length >= 28 && ['Texas', 'Oklahoma', 'New Mexico', 'Federal offshore', 'North Dakota', 'Utah', 'Pennsylvania', 'Colorado', 'Alaska'].every((n) => stateOpts.includes(n)) && !stateOpts.includes('Arizona'),
+        'the State filter lists every state that names operators (' + stateOpts.length + ' choices) and no state that names none: ' + stateOpts.slice(0, 6).join(', ') + '...');
+      const heads = async () => (await page.locator('#ops-root thead th:not([hidden])').allInnerTexts()).map((t) => t.trim());
+      const allHeads = await heads();
+      check(allHeads.includes('State') && allHeads.includes('Last permit or spud') && allHeads.includes('Top county or area') && !(await page.locator('#ops-root label.check', { hasText: 'Top producers' }).isVisible()) && !(await page.locator('#ops-root label.check', { hasText: 'New P-5' }).isVisible()),
+        'all states: the State column, the date and the place named for permits or spuds and counties or areas, and the filters only Texas\'s records can answer hidden: ' + allHeads.slice(0, 9).join(' | '));
+      const tags = await page.locator('#ops-root tbody tr .st-tag').evaluateAll((els) => els.map((e) => e.textContent));
+      check(tags.includes('TX') && tags.includes('NM') && tags.includes('UT') && tags.includes('ND'), 'one ranking, the busiest operators of every state in the first rows (Texas, New Mexico, Utah and North Dakota among them): ' + [...new Set(tags)].join(','));
+      const units = await page.locator('#ops-root tbody tr .cnt .unit').evaluateAll((els) => [...new Set(els.map((e) => e.textContent.trim()))]);
+      check(units.includes('spuds'), 'a count of wells spudded says "spuds" beside the number; a permit count is a bare number: ' + units.join(','));
+      await stateSel.selectOption({ label: 'Oklahoma' });
+      await page.waitForFunction(() => /Oklahoma Corporation Commission/.test(document.querySelector('#ops-root .status').textContent), null, { timeout: 10000 });
+      const okHeads = await heads();
+      check(/s=OK/.test(await hash()) && !(await page.locator('#ops-root tbody tr .st-tag').first().isVisible()) && okHeads.includes('Location') && okHeads.includes('Last permit') && okHeads.includes('Top county') && !okHeads.includes('Spud (12 mo)') && !okHeads.includes('District') && !okHeads.includes('State'),
+        'Oklahoma alone: s=OK in the address, no State column, no column of blanks (no Spud, no District), "Last permit" and "Top county": ' + okHeads.join(' | '));
+      check(/counted by new-drill permits; data runs through [A-Z][a-z]{2} \d+, 2026\./.test(await page.locator('#ops-root .status').innerText()), 'and the line under the table says whose figures these are, what they count and how far Oklahoma\'s own data runs');
+      await stateSel.selectOption({ label: 'New Mexico' });
+      await page.waitForFunction(() => /Aug 31/.test(document.querySelector('#ops-root .status').textContent), null, { timeout: 10000 });
+      const nmHeads = await heads();
+      check(!nmHeads.includes('Location') && !nmHeads.includes('Permits (12 mo)') && !nmHeads.includes('Spud (12 mo)') && nmHeads.includes('Top county') && nmHeads.includes('Last spud'), 'New Mexico alone: no Location (no addresses), no permit counts (it counts spuds), no Spud column; its own end date under the table');
+      await stateSel.selectOption({ label: 'North Dakota' });
+      await page.waitForFunction(() => /North Dakota Industrial Commission/.test(document.querySelector('#ops-root .status').textContent), null, { timeout: 10000 });
+      const ndHeads = await heads(); const ndRows = await page.locator('#ops-root tbody tr').count();
+      check(ndRows === 15 && ndHeads.join('|') === 'Band|Operator|New wells (12 mo)' && /15 busiest operators are listed/.test(await page.locator('#ops-root .status').innerText()),
+        'a state with only the 15 busiest listed (North Dakota): 15 rows, only the columns it can fill (band, operator, new wells), and the line says it is the 15 busiest: ' + ndHeads.join(' | '));
+      await stateSel.selectOption({ label: 'Texas' });
+      await page.waitForFunction(() => [...document.querySelectorAll('#ops-root label.check')].some((l) => /Top producers/.test(l.textContent) && !l.hidden), null, { timeout: 10000 });
+      check((await page.locator('#ops-root label.check', { hasText: 'Top producers' }).isVisible()) && (await page.locator('#ops-root label.check', { hasText: 'New P-5' }).isVisible()), 'Texas alone brings back the filters only its registrations can answer');
+      await stateSel.selectOption({ label: 'All states' });
+      await page.waitForFunction(() => !/s=/.test(location.hash) || /s=all/.test(location.hash), null, { timeout: 10000 });
+      check(!/s=/.test(await hash()), 'choosing All states leaves s out of the address');
+      // the two lists behind one switch: the search carries over, the address names the list, the other list is Texas only and says so
+      await page.fill('#ops-root input[type="search"]', 'pioneer');
+      await page.waitForTimeout(400);
+      await page.click('#cok-directory');
+      await page.waitForSelector('#co-root tbody tr', { timeout: 25000 });
+      check(!(await page.locator('#ops-root').isVisible()) && (await page.locator('#co-root').isVisible()) && /kind=directory/.test(await hash()) && (await page.locator('#co-root input[type="search"]').inputValue()) === 'pioneer' && /Texas only/.test(await page.locator('#co-note').innerText()),
+        'the Texas directory is the other half of the page: the switch shows it, the address says kind=directory, what was typed in the search carries over, and the note says it is Texas only');
+      await page.click('#cok-operators');
+      await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
+      check((await page.locator('#ops-root').isVisible()) && !/kind=/.test(await hash()) && (await page.locator('#ops-root input[type="search"]').inputValue()) === 'pioneer', 'and back: the operators, no kind in the address, the search kept');
       await page.click('.nav a[href="#about"]');
       await page.waitForSelector('#view-about h1', { timeout: 25000 });
-      check(!(await page.locator('#statebar').isVisible()) && !/st=/.test(await hash()), 'a view that does not follow the choice (Sources) hides the bar and has no state in its address');
-      await page.click('.nav a[href="#operators"]');
-      await page.waitForSelector('#ops-root tbody tr', { timeout: 25000 });
-      check((await pressed()) === 'New Mexico' && /st=nm/.test(await hash()), 'and the choice is still there when you come back to a view that follows it');
-      await page.goto(base + '#operators?st=tx', { waitUntil: 'load' });
-      await page.waitForFunction(() => /Active RRC registrants/.test((document.querySelector('#ops-what') || {}).textContent || '') && !!document.querySelector('#ops-root tbody tr'), null, { timeout: 25000 });
-      check((await pressed()) === 'Texas', 'an address with st=tx opens Operators on Texas alone, and the bar says so');
-      await page.click('#statebar button[data-id="all"]');
-      await page.waitForFunction(() => { const t = [...document.querySelectorAll('#ops-root tbody tr .st-tag')].map((e) => e.textContent); return t.includes('NM') && t.includes('OK') && t.includes('TX'); }, null, { timeout: 25000 });
-      check(!/st=/.test(await hash()) && (await pressed()) === 'All', 'choosing All on Operators shows the states together and leaves st out of the address');
+      check(!/st=/.test(await hash()), 'Sources has no state in its address');
     } catch (e) {
-      check(false, 'the states bar: ' + e.message.split('\n')[0].slice(0, 160));
+      check(false, 'the Companies page: ' + e.message.split('\n')[0].slice(0, 160));
     }
-    check(!errs.length, 'the states bar loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    check(!errs.length, 'the Companies page loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 
@@ -239,7 +245,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check((await more()) === 'start', 'and at the left edge once the current tab has been brought into view');
       // the current tab is always whole in the tabs' window, and the tabs do not move for a tab that is already in view (the first ones stay put while they fit)
       const seen = [];
-      for (const v of ['#overview', '#fields', '#operators', '#companies', '#daily', '#images', '#about']) {
+      for (const v of ['#overview', '#fields', '#companies', '#daily', '#images', '#about']) {
         await page.evaluate((h) => { location.hash = h; }, v);
         await page.waitForTimeout(250);
         seen.push(await page.evaluate((h) => {
@@ -269,12 +275,12 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 8. the Operators CSV for all three states: a column that says which state, figures a state does not publish left blank (never zero), and a fall stays a number
+  // 8. the Operators CSV for every state: a column that says which state, figures a state does not publish left blank (never zero), and a fall stays a number
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
     const page = await ctx.newPage();
     try {
-      await page.goto(base + '#operators', { waitUntil: 'load' });
+      await page.goto(base + '#companies?band=all', { waitUntil: 'load' });
       await page.waitForFunction(() => { const b = [...document.querySelectorAll('#ops-root button')].find((x) => /Download CSV/.test(x.textContent)); return b && !b.disabled; }, null, { timeout: 25000 });
       const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#ops-root button', { hasText: 'Download CSV' }).click()]);
       const text = fs.readFileSync(await dl.path(), 'utf8').replace(/^\uFEFF/, '');
@@ -293,7 +299,11 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const head = table[0];
       const col = (name) => head.indexOf(name);
       const states = new Set(table.slice(1).map((r) => r[0]));
-      check(head[0] === 'data_state' && ['TX', 'OK', 'NM'].every((x) => states.has(x)), 'the CSV says which state each row is, and holds all three: ' + [...states].sort().join(','));
+      check(head[0] === 'data_state' && ['TX', 'OK', 'NM', 'FO', 'ND', 'UT', 'PA'].every((x) => states.has(x)) && states.size >= 27, 'the CSV says which state each row is, and holds every state that names operators (' + states.size + '): ' + [...states].sort().join(','));
+      // a state that lists only its 15 busiest operators: what it counts is named, and what only a full file has is blank (never zero)
+      const nd = table.slice(1).filter((r) => r[0] === 'ND'); const ut = table.slice(1).filter((r) => r[0] === 'UT');
+      check(nd.length === 15 && nd.every((r) => r.length === head.length && r[col('counts_are_of')] === 'wells spudded' && r[col('all_permits_12m')] === '' && r[col('trend_pct_full_months')] === '' && r[col('top_county_24m')] === '' && Number(r[col('new_well_permits_12m')]) > 0)
+        && ut.length > 0 && ut.every((r) => r[col('counts_are_of')] === 'new-drill permits'), 'North Dakota\'s 15 rows say they count wells spudded and leave the trend and county blank, Utah\'s count permits (' + nd.length + ', ' + ut.length + ' rows)');
       // New Mexico publishes no all-kinds permit count: the cell is empty, not 0
       const nm = table.slice(1).filter((r) => r[0] === 'NM');
       check(nm.length > 0 && nm.every((r) => r.length === head.length && r[col('all_permits_12m')] === '' && r[col('all_permits_24m')] === ''), 'a figure New Mexico does not publish is blank in its rows, not zero (' + nm.length + ' rows)');
@@ -363,28 +373,12 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     }
   }
 
-  // 14. an address that names two of the states lights nothing in the bar and a note says which are shown (found by an independent review of the pages)
-  {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
-    const page = await ctx.newPage();
-    try {
-      await page.goto(base + '#operators?st=tx,ok', { waitUntil: 'load' });
-      await page.waitForSelector('#statebar-seg button', { timeout: 25000 });
-      await page.waitForTimeout(400);
-      const pair = await page.evaluate(() => ({ on: [...document.querySelectorAll('#statebar-seg button')].filter((b) => b.getAttribute('aria-pressed') === 'true').length, note: document.querySelector('#statebar-note').textContent }));
-      check(pair.on === 0 && /Showing Texas and Oklahoma/.test(pair.note), 'two states named in the address: no segment of the bar is lit and the note says "' + pair.note.slice(0, 60) + '"');
-    } catch (e) {
-      check(false, 'what a state does not publish: ' + e.message.split('\n')[0].slice(0, 200));
-    }
-    await ctx.close();
-  }
-
   // 15. a button's words are one piece: a label split into two flex items ("Share" and "this view") gets the icon's gap between them, which reads as a double space
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     try {
-      for (const v of ['#overview', '#operators', '#companies', '#daily', '#overview?s=TX', '#overview?k=permits']) {
+      for (const v of ['#overview', '#companies', '#companies?kind=directory', '#daily', '#overview?s=TX', '#overview?k=permits']) {
         await page.goto(base + v, { waitUntil: 'load' });
         await page.waitForFunction(() => [...document.querySelectorAll('.btn')].some((b) => b.offsetParent), null, { timeout: 25000 }); // the first .btn in the page may sit in a view that is hidden
         await page.waitForTimeout(500);
@@ -441,8 +435,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 17. the federal offshore: the bar's five choices fit a 360 px phone (TX, OK, NM, Offshore) and keep their full names for a screen reader; the pages that
-  // follow the bar say areas where it has areas its operators are named by the same rule
+  // 17. the federal offshore on the Companies page, at 360 px: areas where it has areas, wells spudded where it counts spuds, its operators named by the same rule
   {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
@@ -450,58 +443,27 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
     page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push('console: ' + m.text().slice(0, 160)); });
     page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
-    const bar = () => page.evaluate(() => { const seg = document.querySelector('#statebar .seg'); const bs = [...seg.querySelectorAll('button')]; return { room: seg.scrollWidth - seg.clientWidth, shown: bs.map((b) => b.innerText.trim()), names: bs.map((b) => b.getAttribute('aria-label') || b.innerText.trim()) }; });
     try {
-      await page.goto(base + '#operators', { waitUntil: 'load' });
-      await page.waitForSelector('#statebar .seg button', { timeout: 25000 });
-      const phone = await bar();
-      check(phone.room <= 1 && phone.shown.join() === 'All,TX,OK,NM,Offshore', 'on a 360 px phone all five choices of the states bar are in view with no sideways scrolling (' + phone.shown.join(' ') + ', ' + phone.room + ' px to spare)');
-      check(phone.names.join() === 'All,Texas (TX),Oklahoma (OK),New Mexico (NM),Federal offshore', 'each keeps its full name for a screen reader, which holds the visible label: ' + phone.names.join(' | '));
-      await page.setViewportSize({ width: 1280, height: 800 });
-      await page.waitForTimeout(300);
-      const wide = await bar();
-      check(wide.shown.join() === 'All,Texas,Oklahoma,New Mexico,Offshore', 'on a wide screen the full names show again: ' + wide.shown.join(' '));
-      // no width clips the bar, in whatever font the machine has: the bar measures itself and shows the full names while they fit, then the short ones, then tighter buttons
-      const clipped = []; const fits = {};
-      for (const w of [320, 330, 340, 390, 440, 441, 450, 460, 462, 463, 470, 520, 768, 1280]) {
-        await page.setViewportSize({ width: w, height: 800 });
-        await page.waitForTimeout(250);
-        const b = await bar();
-        fits[w] = await page.evaluate(() => document.querySelector('#statebar .seg').dataset.fit);
-        if (b.room > 1) clipped.push(w + ' px (' + b.room + ' px)');
-      }
-      check(!clipped.length, 'the states bar is never clipped, at any width from 320 to 1280 px' + (clipped.length ? ': ' + clipped.join(', ') : ''));
-      check(fits[1280] === 'full' && fits[320] !== 'full' && fits[390] !== 'full', 'the full names show on a wide screen and give way to the short ones on a phone (data-fit by width: ' + JSON.stringify(fits) + ')');
-      // Companies are the Texas Comptroller's: with the offshore alone the page says so in a sentence
-      await page.goto(base + '#companies?st=fo', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#co-note', { state: 'visible', timeout: 25000 });
-      check(/nothing to list for the federal offshore:/.test(await page.locator('#co-note').innerText()), 'Companies with the offshore alone says there is nothing to list for the federal offshore');
-      // Operators: sixteen named corporations, a Top area column, no State column, no address, no permit counts
-      await page.goto(base + '#operators?st=fo&band=all', { waitUntil: 'load' });
+      // Companies: sixteen named corporations, a Top area column, no State column, no address, no permit counts
+      await page.goto(base + '#companies?s=FO&band=all', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
       await page.waitForSelector('#ops-root table tbody tr', { timeout: 25000 });
       const heads = (await page.locator('#ops-root thead th:visible').allInnerTexts()).map((t) => t.trim());
       const rows = await page.locator('#ops-root tbody tr').count();
-      check(rows === 16 && heads.includes('Top area') && !heads.includes('State') && !heads.includes('Top county') && !heads.includes('Location') && !heads.includes('Avg depth (ft)'), 'Operators with the offshore alone: 16 rows, "Top area", no State, Location or depth column: ' + rows + ' rows, ' + heads.join(' | '));
-      check(/wells spudded/.test(await page.locator('#ops-what').innerText()) && /Aug \d+, \d{4}/.test(await page.locator('#ops-through').innerText()), 'and its lede says what is ranked and where the offshore\'s own data ends');
-      check(/ A well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted\.$/.test(await page.locator('#ops-what').innerText()), 'and what a sidetrack is (an operator that sidetracks old wells ranks with none)');
+      check(rows === 16 && heads.includes('Top area') && !heads.includes('State') && !heads.includes('Top county') && !heads.includes('Location') && !heads.includes('Avg depth (ft)'), 'Companies with the offshore alone: 16 rows, "Top area", no State, Location or depth column: ' + rows + ' rows, ' + heads.join(' | '));
+      check(/counted by wells spudded; data runs through Aug \d+, \d{4}/.test(await page.locator('#ops-root .status').innerText()), 'and the line under the table says what is counted and where the offshore\'s own data ends');
+      check(/ A well counts once, on its first borehole; sidetracks and bypasses of existing wells are drilling too, but are not counted\.$/.test(await page.locator('#ops-root .status').innerText()), 'and what a sidetrack is (an operator that sidetracks old wells ranks with none)');
       // what a band and the last-date column mean is said in the row's own measure: spuds, never permits
       const chipTitles = await page.locator('#ops-root tbody .chip').evaluateAll((els) => els.map((e) => e.title));
       check(chipTitles.length >= 16 && chipTitles.every((t) => /wells spudded/.test(t) && !/permit/i.test(t)) && chipTitles.some((t) => /^No wells spudded in the last 12 months, but some in the 12 before$/.test(t)) && heads.includes('Last spud') && !heads.includes('Last permit'),
         'the offshore\'s bands are described in wells spudded (band C had some in the 12 before) and the date column is "Last spud": ' + [...new Set(chipTitles)].join(' | ') + ' · ' + heads.filter((h) => /^Last/.test(h)).join());
-      // the bands of a mixed list say permits for Texas rows and spuds for the offshore's
-      await page.goto(base + '#operators?st=tx,fo&band=all', { waitUntil: 'load' });
+      // the bands of the whole list say permits for Texas rows and spuds for the offshore's
+      await page.goto(base + '#companies?band=all', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
       await page.waitForSelector('#ops-root table tbody tr', { timeout: 25000 });
       const mixedHeads = (await page.locator('#ops-root thead th:visible').allInnerTexts()).map((t) => t.trim());
       const mixedTitles = new Set(await page.locator('#ops-root tbody .chip').evaluateAll((els) => els.map((e) => e.title)));
-      check(mixedHeads.includes('Last permit or spud') && mixedTitles.has('10 or more new-well permits in the last 12 months') && mixedTitles.has('10 or more wells spudded in the last 12 months'), 'a list of Texas and the offshore describes each row\'s band in its own measure and calls the date "Last permit or spud": ' + mixedHeads.filter((h) => /^Last/.test(h)).join());
-      await page.goto(base + '#operators?st=tx,fo', { waitUntil: 'load' });
-      await page.reload({ waitUntil: 'load' });
-      await page.waitForSelector('#statebar-note', { timeout: 25000 });
-      await page.waitForTimeout(300);
-      check(/^Showing Texas and the federal offshore\./.test(await page.locator('#statebar-note').innerText()), 'the bar\'s note says "Showing Texas and the federal offshore"');
+      check(mixedHeads.includes('Last permit or spud') && mixedTitles.has('10 or more new-well permits in the last 12 months') && mixedTitles.has('10 or more wells spudded in the last 12 months'), 'the whole list describes each row\'s band in its own measure and calls the date "Last permit or spud": ' + mixedHeads.filter((h) => /^Last/.test(h)).join());
       // the Sources page's offshore figures are filled from its files (the date the data ends, the year's wells, the operators, the EIA's month), none left empty
       await page.goto(base + '#about', { waitUntil: 'load' });
       await page.reload({ waitUntil: 'load' });
@@ -698,6 +660,30 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const text = await page.locator('#view-fields').innerText();
       check(!/NaN|undefined|Infinity|\bnull\b/.test(text), 'the matrix shows no NaN, undefined, null or Infinity');
       check(/Not verified/.test(text), 'the page says what it could not verify');
+      // FracFocus, the registry of fracturing jobs: the first column, counted apart from the 35 agencies, with a card listing every field in its download
+      await page.goto(base + '#fields', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root button.fx-c', { timeout: 25000 });
+      const ffm = await page.evaluate(() => ({
+        heads: [...document.querySelectorAll('#fields-root th.fx-col button.fx-h')].map((b) => b.textContent), reg: document.querySelectorAll('#fields-root th.fx-col.is-reg').length,
+        regCells: document.querySelectorAll('#fields-root td.fx-cell.is-reg').length, rows: document.querySelectorAll('#fields-root tr[data-m]').length,
+        total: document.querySelector('#fields-root tr[data-m="api_number"] td.fx-n:last-child').textContent, score: document.querySelector('#fields-root tr.fx-score td.fx-n.is-reg').textContent,
+        label: document.querySelector('#fields-root tr[data-m="water"] td.fx-cell.is-reg button').getAttribute('aria-label'), kpis: document.querySelector('#fields-root .nat-kpis').innerText.replace(/\s+/g, ' ') }));
+      check(ffm.heads.length === 36 && ffm.heads[0] === 'FracFocus' && ffm.reg === 1 && ffm.regCells === ffm.rows && ffm.rows === 48, 'the matrix has FracFocus as its first column, a cell on each of the 48 rows, and 35 agencies after it: ' + ffm.heads.slice(0, 3).join(','));
+      check(/^\d+ of 35$/.test(ffm.total) && ffm.score === '9' && /published as data/.test(ffm.label) && /Agencies compared 35/.test(ffm.kpis) && /What FracFocus adds 3 metrics/.test(ffm.kpis) && /Hydraulic fracturing plan 0 of 35/.test(ffm.kpis),
+        'FracFocus is not counted as an agency (a row still totals "of 35"), its score is 9 metrics as data and the figures say what it adds: ' + ffm.total + ' / ' + ffm.score + ' / ' + ffm.kpis.slice(0, 200));
+      await page.goto(base + '#fields?s=FF', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root .nat-panel', { timeout: 25000 });
+      const ffp = await page.locator('#fields-root .fx-panel-slot').innerText();
+      const ffHref = await page.locator('#fields-root .fx-panel-slot a.more-link:not([target])').first().getAttribute('href');
+      check(/What a disclosure captures/i.test(ffp) && /The disclosure/i.test(ffp) && !/The permit form/i.test(ffp) && /one row a disclosure/.test(ffp) && /one well at a time/.test(ffp) && ffHref === '#overview', 'FracFocus\'s panel speaks of a disclosure, not a permit, says what each file holds and links to the map: ' + ffHref);
+      const card = await page.evaluate(() => ({ groups: document.querySelectorAll('#fx-registry .fx-rg').length, rows: document.querySelectorAll('#fx-registry li.fx-rf').length, text: document.querySelector('#fx-registry').innerText,
+        links: [...document.querySelectorAll('#fx-registry .fx-rf-link button')].length, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
+      check(card.groups === 5 && card.rows === 34 && /CASNumber/.test(card.text) && /TotalBaseWaterVolume/.test(card.text) && /JobStartDate/.test(card.text) && /1 of 35 agencies publish it as data/.test(card.text) && /Not one of the permit metrics/.test(card.text) && card.links >= 15 && !card.sideways,
+        'the card lists the registry\'s 34 fields in five groups, the permit metric each matches with how many agencies publish it, and the page does not scroll sideways: ' + card.rows + ' rows');
+      await page.click('#fx-registry .fx-rf-link button >> nth=0');
+      await page.waitForTimeout(200);
+      const mp = await page.locator('#fields-root .fx-panel-slot').innerText();
+      check(/API well number/.test(mp) && /a registry counted apart/i.test(mp) && /FracFocus on/.test(mp) && /of 35 as data/.test(mp), 'a field\'s metric opens its panel, which counts the agencies and names FracFocus apart: ' + mp.replace(/\s+/g, ' ').slice(0, 160));
     } catch (e) {
       check(false, 'the permit-data matrix: ' + e.message.split('\n')[0].slice(0, 200));
     }
@@ -1276,7 +1262,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
-  // 26. one Overview and seven tabs (2026-11-02): the Map and the National report are not tabs any more. The nav has exactly seven, no section of either is left in the page, and their old addresses open the Overview
+  // 26. one Overview and six tabs (2026-11-02): the Map and the National report are not tabs any more (nor is Operators: it is part of Companies, nor the states bar). The nav has exactly six, no section of either is left in the page, and their old addresses open the Overview
   //     on the state they named, whether typed (a fresh load) or followed inside the page (a link in a bookmark that the page meets as a hash change), with the address rewritten and no error
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
@@ -1289,10 +1275,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.goto(base + '#overview', { waitUntil: 'load' });
       await page.waitForSelector('.ov-row', { timeout: 25000 });
       const nav = await page.evaluate(() => ({ hrefs: [...document.querySelectorAll('.nav a')].map((a) => a.getAttribute('href')), names: [...document.querySelectorAll('.nav a')].map((a) => a.textContent.replace(/\s+/g, ' ').trim()),
-        views: [...document.querySelectorAll('[data-view]')].map((v) => v.id), gone: document.querySelectorAll('#view-map, #view-national, #map-root, #national-root, #map-lede, #map-metric, .map-table, .nat-tile').length, cur: [...document.querySelectorAll('.nav a[aria-current="page"]')].map((a) => a.getAttribute('href')) }));
-      check(nav.hrefs.join() === '#overview,#fields,#operators,#companies,#daily,#images,#about' && nav.names.join('|') === 'Overview|Permit data|Operators|Companies|Daily|Texas images|Sources & method' && nav.cur.join() === '#overview',
-        'the nav has exactly seven tabs (' + nav.names.join(', ') + '), none of them the Map or the National report, and the Overview is the current one');
-      check(nav.views.join() === 'view-overview,view-fields,view-operators,view-companies,view-daily,view-images,view-about' && nav.gone === 0, 'the page has seven views and no section, control or tile of the Map or the National report is left in it: ' + nav.views.join(','));
+        views: [...document.querySelectorAll('[data-view]')].map((v) => v.id), gone: document.querySelectorAll('#view-map, #view-national, #view-operators, #map-root, #national-root, #ops-lede, #map-lede, #map-metric, .map-table, .nat-tile, #statebar').length, cur: [...document.querySelectorAll('.nav a[aria-current="page"]')].map((a) => a.getAttribute('href')) }));
+      check(nav.hrefs.join() === '#overview,#fields,#companies,#daily,#images,#about' && nav.names.join('|') === 'Overview|Permit data|Companies|Daily|Texas images|Sources & method' && nav.cur.join() === '#overview',
+        'the nav has exactly six tabs (' + nav.names.join(', ') + '), none of them the Map, the National report or Operators (it is part of Companies), and the Overview is the current one');
+      check(nav.views.join() === 'view-overview,view-fields,view-companies,view-daily,view-images,view-about' && nav.gone === 0, 'the page has six views and no section, control, tile or states bar of the Map or the National report is left in it: ' + nav.views.join(','));
       const cases = [['#national', '#overview', 'All states'], ['#national?s=OK&m=spuds', '#overview?s=OK', 'Oklahoma'], ['#national?s=NM&m=permits', '#overview?s=NM', 'New Mexico'], ['#national?s=BL', '#overview?s=BL', 'Federal onshore (BLM)'],
         ['#map', '#overview', 'All states'], ['#map?st=tx', '#overview?s=TX', 'Texas'], ['#map?st=fo', '#overview?s=FO', 'Federal offshore'], ['#map?st=tx,ok', '#overview', 'All states'], ['#map?st=ok&county=OK:039', '#overview?s=OK', 'Oklahoma'], ['#map?metric=depth&st=nm', '#overview?s=NM', 'New Mexico']];
       const wrong = [];
@@ -1309,18 +1295,18 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         for (const [how, r] of [['typed', typed], ['followed', followed]]) if (r[0] !== want || r[1] !== h3 || !r[2] || r[3]) wrong.push(old + ' ' + how + ' -> ' + r.join(' / '));
       }
       check(!wrong.length, 'each old address of the Map or the National report opens the Overview on the state it named, typed or followed, with the address rewritten and no states bar (' + cases.length + ' addresses)' + (wrong.length ? ' [' + wrong.join(' | ') + ']' : ''));
-      // the states bar is the Operators' and Companies' alone
+      // the states bar is gone from every view: its last view, the Map, is part of the Overview
       const bar = [];
-      for (const [v, ready] of [['#overview', '.ov-row'], ['#operators', '#ops-root tbody tr'], ['#companies', '#co-root table'], ['#fields', '#fields-root button.fx-c']]) {
+      for (const [v, ready] of [['#overview', '.ov-row'], ['#companies', '#co-root table'], ['#fields', '#fields-root button.fx-c']]) {
         await page.goto('about:blank');
         await page.goto(base + v, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
-        bar.push(v.slice(1) + ':' + (await page.locator('#statebar').isVisible()));
+        bar.push(v.slice(1) + ':' + (await page.locator('#statebar, #statebar-seg').count()));
       }
-      check(bar.join() === 'overview:false,operators:true,companies:true,fields:false', 'the states bar is hidden on the Overview and the matrix and shown on Operators and Companies: ' + bar.join(' '));
+      check(bar.join() === 'overview:0,companies:0,fields:0', 'there is no states bar in the Overview, Companies or the matrix: ' + bar.join(' '));
       // nothing in any view links to a tab that is gone
       const links = [];
-      for (const [v, ready] of [['#overview?s=TX', OV_PANEL], ['#operators', '#ops-root tbody tr'], ['#companies?st=tx', '#co-root table'], ['#daily', '#daily-root .dd-nav'], ['#images', '#images-root .img-stage'], ['#fields?s=TX', '#fields-root .nat-panel h3'], ['#about', '#view-about h1']]) {
+      for (const [v, ready] of [['#overview?s=TX', OV_PANEL], ['#companies', '#ops-root tbody tr'], ['#companies?kind=directory', '#co-root table'], ['#daily', '#daily-root .dd-nav'], ['#images', '#images-root .img-stage'], ['#fields?s=TX', '#fields-root .nat-panel h3'], ['#about', '#view-about h1']]) {
         await page.goto('about:blank');
         await page.goto(base + v, { waitUntil: 'load' });
         await page.waitForSelector(ready, { timeout: 25000 });
@@ -1864,7 +1850,8 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/North Dakota publishes no oil permit locations/.test(nd) && !/oil permits and spuds with a location/.test(nd) && !/oil permit/.test(await tableHead()), label + ': a state that publishes no location says so instead of showing none');
       // fractured wells found and oil well permits approved, day by day, marked and never added (2026-11-02)
       const readIdx = (d) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', d, 'index.json'), 'utf8')).days;
-      const idxTx = readIdx('daily'); const newestIdx = idxTx[idxTx.length - 1].d;
+      // the card's newest row is the newest day any of the three states has a report for (Texas's capture can end a day before Oklahoma's and New Mexico's), not Texas's newest
+      const newestIdx = ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const days = readIdx(dir); return days[days.length - 1].d; }).sort().pop();
       const oilOf = (d) => ['daily', 'daily-ok', 'daily-nm'].map((dir) => { const e = readIdx(dir).find((x) => x.d === d && x.s === 'ok'); return e ? e.pn : 0; });
       const arrCard = page.locator('section[aria-labelledby="dd-arr-h"]');
       await page.goto(base + '?fresh=8#daily', { waitUntil: 'load' });
@@ -1950,7 +1937,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
     try {
-      await page.goto(base + '#companies?st=tx', { waitUntil: 'load' });
+      await page.goto(base + '#companies?kind=directory', { waitUntil: 'load' });
       await page.waitForSelector('#co-root td.segcell', { timeout: 25000 });
       check(await page.evaluate(() => getComputedStyle(document.querySelector('#co-root td.segcell')).display === 'table-cell'), 'the Companies table\'s Segment column is plain table cells, not the segmented control\'s pills');
     } catch (e) {
