@@ -141,7 +141,9 @@ function headerLayout(nav) {
     row.dataset.fit = mode;
   };
   layout();
-  if ('ResizeObserver' in window) new ResizeObserver(layout).observe(row);
+  // only a change of width needs a new layout: the header's own height changes when it stacks, which must not ask for another
+  let lastWidth = row.clientWidth;
+  if ('ResizeObserver' in window) new ResizeObserver(() => { if (row.clientWidth === lastWidth) return; lastWidth = row.clientWidth; layout(); }).observe(row);
 }
 
 /* nav: a pill that slides to the current link */
@@ -154,7 +156,12 @@ export function navIndicator(nav) {
     if (!a || !a.offsetWidth) { ind.classList.remove('on'); return; }
     nav.style.setProperty('--nx', a.offsetLeft + 'px'); nav.style.setProperty('--nw', a.offsetWidth + 'px');
     ind.classList.add('on');
-    if (nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, a.offsetLeft - 40);
+    // where the tabs scroll, the current tab is brought into view only when it is not already, with some of its neighbor showing: the first tabs stay put while they fit
+    if (nav.scrollWidth > nav.clientWidth) {
+      const left = a.offsetLeft; const right = left + a.offsetWidth; const pad = 28;
+      if (left < nav.scrollLeft + pad) nav.scrollLeft = Math.max(0, left - pad);
+      else if (right > nav.scrollLeft + nav.clientWidth - pad) nav.scrollLeft = right - nav.clientWidth + pad;
+    }
     edges();
     requestAnimationFrame(() => ind.classList.remove('snap'));
   };
