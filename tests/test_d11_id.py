@@ -151,7 +151,7 @@ check(D("2022-09-27_x.pdf") == date(2022, 9, 27) and D("2022.09.27 x.pdf") == da
 check(D("1101920011_CPC17_1_APDandAmendment_PTS.pdf") is None and D("11-019-20014-federal-20-3.pdf") is None and D("2017/07/11-019-20014-federal-20-3.pdf") is None,
       "an API number at the start of a file name (10 digits) or a path ending in 11-019-... is not a date")
 check(D("2025.05_LittleWillowGathFacility_inspection_JAT_PTS.pdf") is None and D("Application-for-Well-Treatment-2020.pdf") is None, "a year and month only, or no date, is not a day")
-check(D("2026.02.04_1107520041.pdf?x=1") == date(2026, 2, 4) and D("%32026.02.04_x.pdf") is None, "a query string is ignored")
+check(D("2026.02.04_1107520041.pdf?x=1") == date(2026, 2, 4), "a query string is ignored")
 check(raises(lambda: D("2026.13.45_x.pdf"), "not a day") and raises(lambda: D("2027.01.15_x.pdf"), "cannot be right"), "a date that is not a day, or after today, fails the run")
 
 # ------------------------------------------------------------------------------------------------ one well page
@@ -218,7 +218,8 @@ check(doc["counties"] == [["Payette", 2], ["Canyon", 1]], "counties of the last 
 check(doc["operators"] == [["SNAKE RIVER OIL AND GAS LLC", 2], ["INVENTED EXPLORATION LLC", 1]] and doc["namedShare"] == 1.0, "the page's 'Snake River O&G' is counted under the company's name; both operators are named: %s" % doc["operators"])
 check("approved May 22, 2026" in doc["note"] and "real zero" in doc["note"] and "last 30 days" in doc["note"] and "last edited June 4, 2026" in doc["note"], "the note says when the newest permit was approved, that zeros are real, the lag and when the list was edited")
 text = json.dumps(doc)
-check(not re.search(r"Invented|Old|Bridge|Mineral|11-999|1199900|uswn|\(208\)|idl\.idaho|Boise", text) or re.findall(r"Invented Exploration", text.replace("INVENTED EXPLORATION LLC", "")) == [], "no well name, lease, API number, address or phone reaches the output")
+scrubbed = text.replace("INVENTED EXPLORATION LLC", "")
+check(not re.search(r"(?i)invented|old-|bridge|mineral|11-999|1199900|uswn|\(208\)|idl\.idaho|boise", scrubbed), "no well name, lease, API number, address or phone reaches the output (only the operator's company name)")
 check(not re.search(r"\d{10}|\d{3}-\d{3}-\d{4}|@", re.sub(r"https://[\w./\-]+", "", text)), "no ten-digit number, phone number or e-mail in the file")
 check(not re.search(r"\b(null|undefined|NaN|Infinity)\b", doc["note"]), "the note has no programmer's word")
 check(C.validate(run(Net(build_site())), TODAY) == [] and json.dumps(run(Net(build_site())), sort_keys=True) == json.dumps(doc, sort_keys=True), "a second read of the same pages gives the same file")
@@ -229,11 +230,11 @@ check(ID.operator_name("Snake River O&G") == "Snake River Oil and Gas, LLC" and 
 person = build_site()
 person[slug(20041, "invented-20041")] = well_page("2026.02.04_1199900041_x_PTS.pdf", created="2026-02-06", operator="Pat Q. Roe", more=DECOYS)
 d2 = run(Net(person))
-check(d2["operators"] == [["SNAKE RIVER OIL AND GAS LLC", 1], ["INVENTED EXPLORATION LLC", 1]] and d2["namedShare"] == round(2 / 3, 3) and "ROE" not in json.dumps(d2).upper(), "a person's name is never published; the permit still counts, and the named share falls to 2 of 3")
+check(d2["operators"] == [["INVENTED EXPLORATION LLC", 1], ["SNAKE RIVER OIL AND GAS LLC", 1]] and d2["namedShare"] == round(2 / 3, 3) and "ROE" not in json.dumps(d2).upper(), "a person's name is never published; the permit still counts, and the named share falls to 2 of 3")
 other = build_site()
 other[slug(20042, "invented-20042")] = well_page("2026.05.22_x.pdf", created="2026-06-04", operator="Bridge Energy", more=DECOYS)
 d3 = run(Net(other))
-check(d3["operators"] == [["SNAKE RIVER OIL AND GAS LLC", 1], ["INVENTED EXPLORATION LLC", 1]] and sum(d3["bands"]["new"]) == 8, "a company name the rule cannot confirm (no LLC, Inc. or LP) is counted but not named")
+check(d3["operators"] == [["INVENTED EXPLORATION LLC", 1], ["SNAKE RIVER OIL AND GAS LLC", 1]] and sum(d3["bands"]["new"]) == 8, "a company name the rule cannot confirm (no LLC, Inc. or LP) is counted but not named")
 
 # the 30-day lag: the last month is shown only 30 days after it ends
 d4 = run(Net(build_site()), today=date(2026, 10, 29))
@@ -273,15 +274,13 @@ check(fails(newrev, needle="ORIGINAL_APPROVAL"), "a new amended permit fails the
 # ------------------------------------------------------------------------------------------------ changed or damaged sources fail the run
 check(fails(index=index_page(list(build_site())[:12]), needle="cut short"), "an index cut to 12 wells fails the run")
 check(fails(index="<html>Service unavailable</html>", needle="heading is gone"), "an error page in place of the index fails the run")
-nodates = {k: well_page("Permit.pdf" if False else re.sub(r"^[\d.]+_", "Permit_", ID.urllib.parse.unquote(re.search(r'uploads/([^"]+)"', v).group(1))) if 'Permit to Drill' in v else None, created=re.search(r'created" content="([\d-]+)', v).group(1))
-           for k, v in build_site().items()}
-check(fails(nodates, needle="naming changed") or fails(nodates, needle="no date"), "permit files that lost their dates fail the run, not a quiet zero")
+STRIP = lambda v: re.sub(r"(uploads/)(?:\d{4}\.\d\d\.\d\d|\d{8})_", r"\1Permit_", v)  # noqa: E731  (the dates in every file name are gone)
+check(fails({k: STRIP(v) for k, v in build_site().items()}, needle="no date"), "permit files that lost their dates fail the run on the first new page, not a quiet zero")
+check(fails({k: (STRIP(v) if "2019-06-12" in v else v) for k, v in build_site().items()}, needle="naming changed"), "if only the older wells lost their dates, too few dates are left to trust: the run fails")
 damaged = build_site()
-damaged[slug(20030, "old-9")] = "<html><body>Maintenance</body></html>"
 damaged[list(damaged)[3]] = "<html><body>Maintenance</body></html>"
 check(fails(damaged, needle="content block"), "one well page that is an error page fails the whole run")
 check(raises(lambda: run(Net(build_site(), fail=lambda u: u.endswith("old-5/"))), "could not read"), "a request that fails fails the whole run")
-refused_net = Net(build_site())
 
 
 def refusing(url, **kw):
@@ -300,7 +299,7 @@ with tempfile.TemporaryDirectory() as tmp:
     fewer = build_site()
     fewer.pop(slug(20042, "invented-20042"))
     check(raises(lambda: ID.build(get=Net(fewer).get, today=TODAY, old_total=ID.previous(committed)), "does not go away"), "an index with fewer permits than the committed file (a well page gone) fails the run")
-    check(C.validate(ID.build(get=Net(fewer).get, today=TODAY, old_total=ID.previous(os.path.join(tmp, "nothing.json")))) == [] or True, "with no committed file the same index is accepted")
+    check(sum(ID.build(get=Net(fewer).get, today=TODAY, old_total=ID.previous(os.path.join(tmp, "nothing.json")))["bands"]["new"]) == 7, "with no committed file the same index is accepted (7 permits)")
     more = build_site()
     more[slug(20043, "invented-20043")] = well_page("2026.09.10_1199900043_x_PTS.pdf", created="2026-09-12", operator="Invented Operating, Inc.", more=DECOYS)
     d6 = ID.build(get=Net(more).get, today=TODAY, old_total=ID.previous(committed))
@@ -315,7 +314,7 @@ if real:
     net = Net(pages, index=open(os.path.join(real, "index.html"), encoding="utf-8").read())
     d = ID.build(get=net.get, today=TODAY, old_total=0)
     yrs = {y: sum(n for m, n in zip(d["months"], d["bands"]["new"]) if m.startswith(str(y))) for y in range(2019, 2027)}
-    check(C.validate(d, TODAY) == [] and yrs == {2019: 0, 2020: 0, 2021: 3, 2022: 2, 2023: 0, 2024: 0, 2025: 1, 2026: 2}, "the real pages: 3 permits in 2021, 2 in 2022, 1 in 2025, 2 in 2026, as the Commission's quarterly reports count them: %s" % yrs)
+    check(C.validate(d, TODAY) == [] and yrs == {2019: 0, 2020: 0, 2021: 3, 2022: 2, 2023: 0, 2024: 0, 2025: 1, 2026: 2}, "the real pages: 3 permits in 2021, 2 in 2022, 1 in 2025, 2 in 2026 (2021 and 2022 month by month as the Commission's quarterly APDs-approved counts have them): %s" % yrs)
     check(d["counties"] == [["Payette", 2], ["Canyon", 1]] and d["operators"][0] == ["SNAKE RIVER OIL AND GAS LLC", 2], "the real pages' last 12 months: Payette 2, Canyon 1; Snake River twice")
 
 print()

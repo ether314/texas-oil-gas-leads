@@ -271,7 +271,7 @@ def build(fetch=None, today=None, pause=PAUSE):
         t.add(e["day"], e["band"], county=e["county"], operator=e["operator"], fluid=e["fluid"])
     doc = t.document(
         agency="Montana Board of Oil and Gas Conservation (Department of Natural Resources and Conservation)", source_name="Dataminer, Well History (every event on every well, with the day it was approved)", source_url=PAGE,
-        basis="approval date (the day the Board approved the permit)", cadence="as the Board enters approvals (its weekly activity letter follows each Friday)", measure="permits", lag_days=LAG_DAYS,
+        basis="approval date (the day the Board approved the permit)", cadence="as the Board enters approvals (it also posts a weekly activity letter, dated each Friday)", measure="permits", lag_days=LAG_DAYS,
         note="Every permit the Board's well history shows, by the day it was approved: permits to drill (vertical and horizontal), injection, disposal and storage wells, re-entries and re-drills of existing wells, "
              "and, as amendments, re-issued permits (a lapsed permit approved again for the same location) and permit modifications. Workovers and recompletions are filed on notices, not permits, so those bands "
              "are not available. Checked against the Board's annual reviews: their counts of wells permitted (new vertical and horizontal wells and re-entries of abandoned wells) and of re-issued permits match this "
