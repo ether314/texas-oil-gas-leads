@@ -202,6 +202,8 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(Nt.change({ p12: 12, prev12: 10 }) === 0.2 && Nt.change({ p12: 5, prev12: 0 }) === null, 'national: the change is null, never infinity, when the 12 before are zero');
   const st = Nt.stack(doc, 'permits');
   check(st.series.map((s) => s.id).join() === 'TX,ND,other' && st.series.at(-1).count === 1 && st.totals.every((t) => t === 15) && st.months.length === 30, 'national: plotted states keep their color, the rest fold into Other states; the BLM is not stacked');
+  const lag = Nt.stack({ ...doc, states: [...doc.states, mk('IL', 'permits', [...flat(26, 2), null, null, null, null])] }, 'permits');
+  check(same(lag.lagging, ['IL']) && lag.series.at(-1).id === 'other' && lag.series.at(-1).values.at(-1) === 1 && same(st.lagging, []), 'national: a state that ends before the axis is named, and its missing months are left out of the Other bar, not drawn as zero');
   const sp = Nt.stack(doc, 'spuds');
   check(sp.series.length === 1 && sp.series[0].id === 'NM' && sp.months.length === 28 && sp.end === months[27], 'national: the spuds chart ends at the newest month its plotted state has (nulls are not zeros)');
   check(Nt.mix(doc.states[0]) === null && Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } }).length === 3 && Math.abs(Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } })[0].share - 0.6) < 1e-9, 'national: the mix needs two known bands, and shares add to one');

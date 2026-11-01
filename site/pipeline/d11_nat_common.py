@@ -225,6 +225,11 @@ def fluid_of(text):
 
 # ------------------------------------------------------------------------------------------------ the tally
 
+def place_title(name):
+    """A county or place name in title case that keeps the Scottish and Irish prefix right: MCKENZIE -> McKenzie, ST. CLAIR -> St. Clair, DE SOTO -> De Soto."""
+    return re.sub(r"\bMc([a-z])", lambda m: "Mc" + m.group(1).upper(), name.title())
+
+
 PLACE = re.compile(r"^[A-Za-z][A-Za-z .'\-/&()0-9]{0,45}$")
 
 
@@ -291,7 +296,7 @@ class Tally:
             "source": {"name": source_name, "url": source_url}, "asOf": asof.isoformat(), "through": month_end(through).isoformat(), "cadence": cadence,
             "months": months, "bands": bands,
             "fluid": ({f: fl.get(f, 0) for f in FLUIDS} if self.fluid else None),
-            "counties": [[c.title(), n] for c, n in sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
+            "counties": [[place_title(c), n] for c, n in sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
             "operators": [[o, n] for o, n in sorted(ops.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
             "namedShare": round(named / total12, 3) if total12 and (named or sum(self.unnamed.values())) else None,  # null for a source that names no operators at all
             "read": self.read, "note": note,
@@ -345,7 +350,8 @@ def validate(doc, today=None):
                 _fail(p, isinstance(v, list) and len(v) == len(months) and all(isinstance(x, int) and not isinstance(x, bool) and 0 <= x < 100000 for x in v), "band %s must be %d non-negative whole counts" % (b, len(months)))
             if isinstance(bands.get("new"), list) and len(bands["new"]) == len(months):
                 _fail(p, sum(bands["new"][-24:]) > 0 or doc.get("zeroOk") is True, "no new permit in the last 24 months: a producer that read nothing must not write a file")
-                _fail(p, max(bands["new"]) <= 20 * max(1, sorted(bands["new"])[len(months) // 2]) + 50, "one month is wildly larger than the typical month (a parse error?)")
+                # against the upper quartile, not the median: a real regime change (California: 8 new-drill permits in 2025, 464 in 2026) must pass, a month 20 times its neighbors must not
+                _fail(p, max(bands["new"]) <= 20 * max(1, sorted(bands["new"])[(3 * len(months)) // 4]) + 50, "one month is wildly larger than the typical month (a parse error?)")
     fl = doc.get("fluid")
     if fl is not None:
         _fail(p, isinstance(fl, dict) and set(fl) == set(FLUIDS) and all(isinstance(v, int) and v >= 0 for v in fl.values()), "fluid must hold %s as counts, or be null" % (FLUIDS,))
