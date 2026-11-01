@@ -16,6 +16,7 @@ const O = await imp('overview-data.js');
 const GEO = await imp('usgeo.js');
 const NW = await imp('newwells-data.js');
 const OD = await imp('oil-day-data.js');
+const CD = await imp('companies-data.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
 
 let fails = 0;
@@ -533,6 +534,49 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   const wk = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay(); let weekend = 0; let weekdays = 0;
   for (const [d, n] of real.per.OK) if (d >= real.first && d <= real.last) { if (wk(d) === 0 || wk(d) === 6) weekend += n; else weekdays += n; }
   check(weekdays > 20 && weekend <= weekdays / 10, 'oil days: Oklahoma approves on weekdays (' + weekdays + ' on weekdays and ' + weekend + ' on weekends in the covered days), so a weekend zero is a real zero and not a gap');
+}
+
+/* ---------- companies-data.js: the Companies page's national operator list ---------- */
+{
+  const nat = read('national');
+  const rows = CD.listedRows(nat);
+  const others = nat.states.filter((q) => !CD.FULL.includes(q.id) && Array.isArray(q.operators));
+  const want = others.reduce((t, q) => t + q.operators.length, 0);
+  check(CD.FULL.join() === 'TX,OK,NM,FO' && same(CD.FULL, S.STATES.map((q) => q.id)), 'companies: the four jurisdictions with a full operator file are the site\'s four states, and they are the ones left out of the listed rows');
+  check(rows.length === want && want > 150 && rows.every((r) => !CD.FULL.includes(r.st)) && new Set(rows.map((r) => r.st)).size === others.filter((q) => q.operators.length).length,
+    'companies: every operator the National report names for another state is a row (' + rows.length + ' of ' + want + ', ' + new Set(rows.map((r) => r.st)).size + ' states), and none for the four full files');
+  const byState = new Map(nat.states.map((q) => [q.id, q]));
+  check(rows.every((r) => r.measure === byState.get(r.st).measure && r.stName === byState.get(r.st).name && r.new12 > 0 && Number.isInteger(r.new12) && r.band === (r.new12 >= 10 ? 'A' : 'B') && r.listed === 1)
+    && same(rows.filter((r) => r.st === 'ND').map((r) => [r.name, r.new12]), byState.get('ND').operators) && rows.filter((r) => r.st === 'ND').every((r) => r.measure === 'spuds'),
+    'companies: a row keeps its state\'s own measure (North Dakota\'s are wells spudded), the busiest first as the report lists them, and its band is 10 or more (A) or 1 to 9 (B)');
+  check(rows.every((r) => r.m24 === null && r.all12 === null && r.all24 === null && r.prev12 === null && r.last === '' && r.city === '' && r.type === '' && r.newDrill === 0) && new Set(rows.map((r) => r.num)).size === rows.length,
+    'companies: what only a full file has (months, trend, address, type, permit counts, last date) is null or empty in a listed row, never zero, and every row has its own key');
+  check(CD.listedRows(null).length === 0 && CD.listedRows({}).length === 0 && CD.listedRows({ states: [{ id: 'ND', name: 'North Dakota', measure: 'spuds', operators: null }] }).length === 0
+    && CD.listedRows(nat, []).length > rows.length && CD.listedRows(nat, []).some((r) => r.st === 'TX'), 'companies: no file, an empty one, or a state with no operator list gives no rows (never a crash), and skipping nothing includes Texas');
+  check(CD.bandOf(0) === '' && CD.bandOf(1) === 'B' && CD.bandOf(9) === 'B' && CD.bandOf(10) === 'A' && CD.bandOf(641) === 'A'
+    && CD.whatOf('spuds') === 'wells spudded' && CD.whatOf('drilled') === 'wells drilled' && CD.whatOf('permits') === 'new-drill permits' && CD.whatOf('nope') === 'new-drill permits' && CD.isPermit('permits') && !CD.isPermit('spuds') && !CD.isPermit('drilled'),
+    'companies: bands (10 or more is A, 1 to 9 is B) and what each measure counts, in words');
+  // the State filter
+  const full = CD.FULL.map((id) => ({ st: id, stName: byState.get(id).name }));
+  const choices = CD.stateChoices(rows.concat(full), nat);
+  check(choices.length === new Set(rows.map((r) => r.st)).size + 4 && choices.every((c, i) => i === 0 || choices[i - 1][1].localeCompare(c[1]) <= 0) && choices.some((c) => c[0] === 'ND' && c[1] === 'North Dakota') && choices.some((c) => c[0] === 'FO' && c[1] === 'Federal offshore')
+    && !choices.some((c) => ['AZ', 'FL', 'NV', 'OR', 'SD', 'BL'].includes(c[0])), 'companies: the State filter lists each state that has rows once, by name, and none that names no operator (Arizona, Florida, Nevada, Oregon, South Dakota)');
+  const without = CD.withoutOperators(nat);
+  check(without.includes('Arizona') && without.includes('Florida') && without.includes('Nevada') && without.includes('Oregon') && without.includes('South Dakota') && !without.includes('Texas') && !without.includes('North Dakota')
+    && !without.some((n) => /federal|BLM|onshore/i.test(n)) && without.every((n, i) => i === 0 || without[i - 1].localeCompare(n) <= 0) && without.length === nat.states.filter((q) => q.id !== 'BL' && !q.operators.length).length, 'companies: the states that name no operator are named, by name, and the BLM (federal land, not a state) is not one of them: ' + without.join(', '));
+  const cov = CD.coverage(rows.concat(full));
+  check(cov.offshore === true && cov.states === new Set(rows.map((r) => r.st)).size + 3 && cov.listed === new Set(rows.map((r) => r.st)).size && cov.full === 3 && CD.coverage(rows).offshore === false && CD.coverage([]).states === 0, 'companies: the page counts the states it covers (the offshore apart: it is not a state), how many list only their busiest and how many are full: ' + JSON.stringify(cov));
+  const src = CD.sourceOf(nat, 'OK'); const nd = CD.sourceOf(nat, 'ND');
+  check(src.what === 'new-drill permits' && /Oklahoma Corporation Commission/.test(src.agency) && /^\d{4}-\d\d-\d\d$/.test(src.asOf) && nd.what === 'wells spudded' && nd.listed === 15 && CD.sourceOf(nat, 'XX') === null && CD.sourceOf(null, 'OK') === null, 'companies: a state\'s source line has its agency, what it counts and how far it runs');
+  // the address
+  const P = (q) => new URLSearchParams(q);
+  check(CD.kindOf(P('')) === 'operators' && CD.kindOf(P('q=pioneer&band=all&s=ND')) === 'operators' && CD.kindOf(P('kind=directory')) === 'directory' && CD.kindOf(P('kind=operators&county=001')) === 'operators' && CD.kindOf(P('kind=nonsense')) === 'operators'
+    && ['county=001', 'seg=Drilling', 'fit=likely', 'isNew=1', 'match=1', 'tx=1'].every((q) => CD.kindOf(P(q)) === 'directory'), 'companies: an address names the list (kind=), and an older one with a filter only the Texas directory has (county, segment, fit, new entity, RRC match, Texas addresses) opens the directory');
+  check(CD.fromOperators(P('st=ok&band=all')).toString() === 'band=all&s=OK' && CD.fromOperators(P('st=nm')).toString() === 's=NM' && CD.fromOperators(P('st=tx,ok')).toString() === '' && CD.fromOperators(P('st=tx,ok&q=x')).toString() === 'q=x'
+    && CD.fromOperators(P('st=ok&s=ND')).toString() === 's=ND' && CD.fromOperators(P('q=pioneer&band=ab')).toString() === 'q=pioneer&band=ab' && CD.fromOperators(P('st=fo')).toString() === 's=FO',
+    'companies: an old #operators address becomes the page\'s own (st=ok is s=OK, a list of states is all of them, the rest of the query is kept)');
+  check(CD.withTexasFilters(P('top=1')).toString() === 'top=1&s=TX' && CD.withTexasFilters(P('newP5=1&band=all')).toString() === 'newP5=1&band=all&s=TX' && CD.withTexasFilters(P('op=1&s=OK')).toString() === 'op=1&s=OK' && CD.withTexasFilters(P('newDrill=1')).toString() === 'newDrill=1'
+    && CD.withTexasFilters(P('top=0')).toString() === 'top=0' && CD.withTexasFilters(P('q=x')).toString() === 'q=x' && same(CD.TEXAS_ONLY, ['op', 'newP5', 'top']), 'companies: a link that names a filter only Texas can answer (top producers, a new P-5, oil or gas operators) and no state means Texas; one that names a state, or a filter every state has, is left as it is');
 }
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
