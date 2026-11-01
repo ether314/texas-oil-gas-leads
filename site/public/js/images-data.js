@@ -33,14 +33,14 @@ export const KIND_INFO = {
   Other: 'A document the name pattern does not place.',
 };
 
-const MB = 1e6;
+const MB = 1 << 20; // the Commission's "MB" and the Daily archive's: the share lists sizes in units of 2^20 bytes and the index stores bytes / 2^20, so the chart and the day panel must divide by the same number
 // one row a report day: the size of each pack in MB, null where no pack was listed that day (a weekend, or a pack that had not landed yet): never zero
 export function daySeries(index) {
   return (index.days || []).map((d) => ({ d: d.d, live: d.k === 'live', w1images: d.w1 ?? null, dirsurveys: d.ds ?? null, complimages: d.cm ?? null }));
 }
 export const dayTotal = (r) => PACKS.reduce((t, p) => t + (r[p.id] || 0), 0);
 export const havePacks = (r) => PACKS.some((p) => r[p.id] != null);
-export const sizeText = (mb) => (mb == null ? '—' : mb >= 1000 ? (mb / 1000).toFixed(2) + ' GB' : mb >= 10 ? Math.round(mb) + ' MB' : mb.toFixed(1) + ' MB');
+export const sizeText = (mb) => (mb == null ? '—' : mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb >= 10 ? Math.round(mb) + ' MB' : mb.toFixed(1) + ' MB');
 export const bytesText = (b) => sizeText(b / MB);
 
 // the busiest day and the average of the days that had any pack

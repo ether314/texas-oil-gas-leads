@@ -936,6 +936,23 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.selectOption('#images-root select.img-day', first);
       await page.waitForFunction((d) => location.hash.includes('d=' + d), first, { timeout: 10000 });
       check(/\d+(\.\d)? MB|GB/.test(await page.locator('#images-root .img-pack').first().innerText()) || /No pack listed/.test(await page.locator('#images-root .img-pack').first().innerText()), 'choosing a day shows its packs and puts the day in the address');
+      // one pack, one size: the chart's table and the day panel are the same number for the same day (the index stores bytes / 2^20 and the panel once divided by 10^6: 39.3 against 41)
+      const newest = await page.locator('#images-root select.img-day option').first().getAttribute('value');
+      await page.selectOption('#images-root select.img-day', newest);
+      await page.waitForFunction((d) => location.hash.includes('d=' + d), newest, { timeout: 10000 });
+      await page.waitForTimeout(600);
+      const pairs = await page.evaluate(() => {
+        const label = document.querySelector('#images-root select.img-day').selectedOptions[0].textContent.split(' (')[0];
+        const row = [...document.querySelectorAll('#images-root .nat-details tbody tr')].find((r) => r.querySelector('th').textContent === label);
+        const cells = [...row.querySelectorAll('td')].map((c) => c.textContent);
+        return [...document.querySelectorAll('#images-root .img-pack')].map((p, i) => [cells[i], (p.querySelector('h3 .badge') || {}).textContent || null]).filter((x) => x[1]);
+      });
+      check(pairs.length >= 1 && pairs.every(([cell, badge]) => /MB$/.test(badge) && Math.abs(parseFloat(badge) - parseFloat(cell)) <= 0.6), 'the day panel and the chart table give a pack the same size (' + JSON.stringify(pairs) + ')');
+      // an address naming a day the archive does not hold shows the newest day, says so, and the address says the same
+      await page.evaluate(() => { location.hash = '#images?d=2025-01-01'; });
+      await page.waitForFunction(() => /no pack for Jan 1, 2025/.test(document.querySelector('#view-images').innerText), null, { timeout: 10000 });
+      const addr = await page.evaluate(() => location.hash);
+      check(addr === '#images?d=' + newest, 'a day the archive does not hold is replaced in the address by the day shown (' + addr + ') and the page says so');
       const imgs = await page.evaluate(() => [...document.querySelectorAll('#images-root img')].map((i) => ({ ok: i.complete && i.naturalWidth > 0, src: i.getAttribute('src') })));
       check(imgs.every((i) => i.ok) && imgs.every((i) => /^data\/daily\/img\//.test(i.src)), 'any contact sheet on the page loaded, from the site itself (' + imgs.length + ')');
       const text = await page.locator('#view-images').innerText();

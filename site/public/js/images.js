@@ -59,12 +59,12 @@ export function createImagesView({ root }) {
 
   /* ---------- day by day ---------- */
   function chart() {
-    const W = 720; const H = 230; const L = 44; const R = 6; const T = 8; const B = 22;
+    const W = 720; const H = 230; const L = 52; const R = 6; const T = 8; const B = 22;
     const n = rows.length; const slot = (W - L - R) / Math.max(1, n); const bw = Math.max(2, slot * 0.78);
     const { top, ticks } = niceMax(Math.max(1, ...rows.map(I.dayTotal)));
     const y = (v) => T + (H - T - B) * (1 - v / top);
     const g = svg('svg', { class: 'nat-chart', viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'Size of the three image packs by report day, ' + short(rows[0].d) + ' to ' + short(rows[n - 1].d) + '; the day list below chooses a day' });
-    ticks.forEach((t) => g.append(svg('line', { class: t === 0 ? 'base' : 'grid', x1: L, x2: W - R, y1: y(t), y2: y(t) }), svg('text', { class: 'ax', x: L - 6, y: y(t) + 4, 'text-anchor': 'end', text: t >= 1000 ? t / 1000 + ' GB' : t + ' MB' })));
+    ticks.forEach((t) => g.append(svg('line', { class: t === 0 ? 'base' : 'grid', x1: L, x2: W - R, y1: y(t), y2: y(t) }), svg('text', { class: 'ax', x: L - 6, y: y(t) + 4, 'text-anchor': 'end', text: t + ' MB' })));
     rows.forEach((r, i) => {
       const x = L + slot * i + (slot - bw) / 2; let acc = 0;
       I.PACKS.forEach((p) => {
@@ -138,6 +138,9 @@ export function createImagesView({ root }) {
   async function choose(d, { fromHash = false } = {}) {
     const r = rows.find((x) => x.d === d && I.havePacks(x));
     day = r ? r.d : (rows.slice().reverse().find(I.havePacks) || {}).d || null;
+    // an address that names a day the archive does not hold (or has no pack for) shows the newest day: the address says so too, and so does a line on the page
+    const missed = !!d && day !== d;
+    slots.note.textContent = missed && day ? 'The archive has no pack for ' + (/^\d{4}-\d\d-\d\d$/.test(d) ? fmtDate(d) : 'that day') + ' (it holds the last ' + rows.length + ' days). This is the newest day with one.' : '';
     if (slots.select && day) slots.select.value = day;
     slots.chart.replaceChildren(...chart());
     if (!day) { slots.day.replaceChildren(el('p', { class: 'nd', text: 'No day with a pack yet.' })); return; }
@@ -147,7 +150,7 @@ export function createImagesView({ root }) {
     if (mine !== day) return; // another day was chosen meanwhile
     slots.dayHead.textContent = fmtDate(day);
     slots.day.replaceChildren(file ? dayPanel(file, day, wi) : el('p', { class: 'nd', text: 'The report for this day could not be loaded.' }));
-    if (!fromHash) writeHash();
+    if (!fromHash || missed) writeHash();
   }
 
   async function build() {
@@ -165,8 +168,8 @@ export function createImagesView({ root }) {
       const file = await loadOpt('daily/' + d);
       if (file) I.packsOf(file).filter((p) => p.kinds && !latest[p.id]).forEach((p) => { latest[p.id] = { day: d, p }; });
     }
-    slots.day = el('div', {}); slots.dayHead = el('h2', { text: '' });
-    const dayBox = el('section', { class: 'card nat-card reveal is-in', 'aria-live': 'polite' }, el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'One day'), slots.dayHead, el('p', { class: 'sub', text: 'What the three packs of this report day hold.' }))), slots.day);
+    slots.day = el('div', {}); slots.dayHead = el('h2', { text: '' }); slots.note = el('p', { class: 'fine' });
+    const dayBox = el('section', { class: 'card nat-card reveal is-in', 'aria-live': 'polite' }, el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'One day'), slots.dayHead, el('p', { class: 'sub', text: 'What the three packs of this report day hold.' }), slots.note)), slots.day);
     slots.rest.replaceChildren(figures(), lifeCard(), dayCard(), dayBox,
       el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; every document itself is published readable and unmodified under its well (Find a well, above), and can carry the names, phone numbers and addresses of individuals. A day’s permit letters, plats and surveys also show page one here and on their drill page in the Daily report.' }));
     return true;

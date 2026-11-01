@@ -246,7 +246,7 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   const sm = Im.summary(rows);
   check(sm.withPacks === 3 && sm.peak.d === '2026-10-31' && Math.abs(sm.avgMB - (457.5 + 364.2 + 486.1) / 3) < 1e-9, 'images: the summary averages only the days that had a pack and names the busiest');
   check(Im.summary([]).avgMB === null && Im.summary([]).peak === null, 'images: an empty archive has no average and no busiest day');
-  check(Im.sizeText(null) === '—' && Im.sizeText(5.25) === '5.3 MB' && Im.sizeText(54.1) === '54 MB' && Im.sizeText(1500) === '1.50 GB' && Im.bytesText(32673628) === '33 MB', 'images: sizes read as MB or GB, and a missing size as a dash');
+  check(Im.sizeText(null) === '—' && Im.sizeText(5.25) === '5.3 MB' && Im.sizeText(54.1) === '54 MB' && Im.sizeText(1536) === '1.50 GB' && Im.sizeText(1000) === '1000 MB' && Im.bytesText(32673628) === '31 MB' && Im.bytesText(41240494) === '39 MB' && Im.bytesText(468514243) === '447 MB', 'images: sizes read as MB (2^20 bytes, as the Commission lists them and the Daily archive stores them) or GB, and a missing size as a dash; 41,240,494 bytes are the same 39 MB the chart shows');
   const day = { images: { w1images: { day: '2026-10-29', bytes: 100, districts: [['08', 60], ['03', 40]], docs: { n: 168, types: [['Permit plat', 94], ['Approved W-1', 74]], packets: null }, sheet: { file: 'a.jpg' } }, dirsurveys: null, complimages: { bytes: 5, empty: true, docs: null } },
     permits: { rows: [['0919696', '301', '08', '1', 'X LLC', 100, 'H', null, null, null, ['W1.pdf', 'Plat_1.pdf']], ['0919697', '301', '08', '1', null, 100, 'H']] } };
   const pk = Im.packsOf(day);
@@ -333,8 +333,8 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(st.map((x) => x.stage).join() === 'p,d,c' && st[0].docs.length === 1 && st[1].docs.length === 0 && st[2].docs.length === 2 && st[2].docs[0].f === '28337830_c1', 'wells: the stages run permit, drilling, completion; a stage with nothing is an empty list, not missing; a day\'s documents are in a fixed order');
   const sm = Wd.summary(well);
   check(sm.docs === 3 && sm.n.p === 1 && sm.n.d === 0 && sm.n.c === 2 && sm.bytes === 4233000 && sm.newest === '2026-10-29', 'wells: a well\'s summary counts its documents by stage, its bytes and its newest day');
-  check(Wd.docMeta(docs[0]) === '3 pages · 24 KB' && Wd.docMeta({ pg: 2, b: 300 }) === '2 pages · 1 KB' && Wd.docMeta({ pg: 1, b: 4200000 }) === '1 page · 4.2 MB', 'wells: a document says its pages and size, in KB under a megabyte (never "0.0 MB")');
-  check(Wd.docMeta(docs[1]) === Wd.sizeText(4.2) && !/page/.test(Wd.docMeta(docs[1])) && !/ 0 /.test(Wd.docMeta(docs[1])), 'wells: a file whose pages could not be counted says no page count, never 0 pages');
+  check(Wd.docMeta(docs[0]) === '3 pages · 23 KB' && Wd.docMeta({ pg: 2, b: 300 }) === '2 pages · 1 KB' && Wd.docMeta({ pg: 1, b: 4404019 }) === '1 page · 4.2 MB', 'wells: a document says its pages and size, in KB under a megabyte (never "0.0 MB")');
+  check(Wd.docMeta(docs[1]) === Wd.sizeText(4200000 / 1048576) && !/page/.test(Wd.docMeta(docs[1])) && !/ 0 /.test(Wd.docMeta(docs[1])), 'wells: a file whose pages could not be counted says no page count, never 0 pages');
   check(Wd.docMeta({ pg: 1, b: 9000 }).startsWith('1 page · '), 'wells: one page is "1 page"');
   const names = (t) => Wd.matchWells(shard.wells, t).map((w) => w.a).join();
   check(names('') === '28337830,28300001,28300002' && names('283378') === '28337830' && names('37830') === '28337830' && names('283') === '28337830,28300001,28300002' && names('wolfcamp') === '28300002' && names('verdun') === '28337830,28300002' && names('999999') === '28300001' && names('district 08') === '28300002' && names('zzz') === '', 'wells: a search matches the start of an API number or of its own part, a field, an operator\'s name or number, or a district');
