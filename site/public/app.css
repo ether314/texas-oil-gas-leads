@@ -760,6 +760,15 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .dd-hbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--p) * 100%); border-radius: 5px; background: var(--s1); }
 .dd-htyp { position: absolute; left: -2px; right: -2px; bottom: calc(var(--t) * 100%); height: 2px; border-radius: 1px; background: var(--ink); }
 @media (max-width: 640px) { .dd-stat { padding: var(--sp-4); } }
+/* the strip of every month since 2011 above the chart: bars, the chart's days as a band, the chosen day as a line */
+.dd-yearsbox { margin-top: var(--sp-3); }
+.dd-ycap { margin: 0 0 var(--sp-1); }
+.dd-ychart { max-width: 100%; height: auto; margin-top: 0; }
+.dd-yseg { fill: var(--c); }
+.dd-yseg.is-late { opacity: 0.42; }
+.dd-years .nat-hit { cursor: pointer; }
+.dd-ywin { fill: color-mix(in srgb, var(--ring) 16%, transparent); stroke: var(--ring); stroke-width: 1; pointer-events: none; }
+.dd-yday { stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
 .dd-by .link, .dd-tbl .link { display: inline-flex; align-items: center; min-height: 24px; } /* a name that is a button is as tall as any other control: 24 px */
 @media (max-width: 640px) { .dd-mid { flex-basis: 100%; order: 3; } }
 

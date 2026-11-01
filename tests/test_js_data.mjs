@@ -443,6 +443,11 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(trg && !trg.clipped && trg.from === NW.windowOf(doc).first && trg.to === doc.settled && trg.d1 - trg.d0 === 364 && trgOld && trgOld.clipped && trgOld.d0 === 0 && trgGone === null, 'typicalRange: the newest days are set against the last 12 settled months in whole, a day near the start of the last two years against the months the points hold (clipped), and a day whose months are not in the points against none');
   const D0 = NW.dayOfIso(P, '2026-03-10'); const rk = NW.dayRank(P, D0, trg.d0, trg.d1); const rkNone = NW.dayRank(P, 3, 5, 3);
   check(rk && rk.days === 365 && rk.share >= 0 && rk.share <= 1 && rk.n === NW.perDay(P, D0, D0)[0] && P.states.includes('AL') && NW.dayRank(P, trg.d0, trg.d0, trg.d1, 'AL').share === 0 && rkNone === null, 'dayRank: the share of the days that had fewer wells (0 to 1) over the 365 days, null for an empty range, and a state with no wells never ranks above anyone');
+  // monthPos: where a day sits on the month axis of the Daily report's overview strip (Jan 1, 2011 is 0, each month is one step, a day is its share of its month)
+  const lastM = doc.months.length - 1;
+  check(NW.monthPos(doc, '2011-01-01') === 0 && NW.monthPos(doc, '2011-02-01') === 1 && Math.abs(NW.monthPos(doc, '2011-01-16') - 15 / 31) < 1e-9 && Math.abs(NW.monthPos(doc, '2012-03-01') - 14) < 1e-9 && NW.monthPos(doc, '2010-12-01') === -1
+    && NW.monthPos(doc, doc.months[lastM] + '-01') === lastM && Math.abs(NW.monthPos(doc, '2012-02-15') - (13 + 14 / 29)) < 1e-9 && NW.monthPos(doc, doc.asOf) > lastM - 1 && NW.monthPos(doc, doc.asOf) < lastM + 1,
+    'newwells: monthPos puts a day on the strip\'s month axis (Jan 1, 2011 at 0, a month a step, leap February by its 29 days, the newest well inside the last month)');
   // the history: every well with a point since 2011, joined to the last two years' points
   const hist = read('newwells/points-history');
   const mp = NW.mergePoints(pts, hist); const PH = NW.decode(mp);

@@ -268,6 +268,12 @@ export function dayRank(P, d, d0, d1, state = null) {
   return { share: per.filter((v) => v < n).length / per.length, days: per.length, n };
 }
 
+// where a day sits on the series' month axis, in months from the first month's first day: Jan 1, 2011 is 0, Feb 1, 2011 is 1, Jan 16, 2011 is about 0.5. The Daily report's overview strip
+// uses it to mark the days of its chart on a bar a month. The day is an ISO date; a day before the series gives a negative number and one after it a number past the last month.
+export function monthPos(doc, iso) {
+  const [y0, m0] = doc.months[0].split('-').map(Number); const [y, m, d] = iso.split('-').map(Number);
+  return (y - y0) * 12 + (m - m0) + (d - 1) / new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
 // a state that has had a well since the series began, even if none in the last year (the Daily report can show it for an older day)
 export const drilled = (s) => s.new.some((v) => v > 0);
 // "Texas", "Texas and Ohio", "Texas, Ohio and Utah": the names behind a figure
