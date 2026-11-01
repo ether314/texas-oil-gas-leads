@@ -7,6 +7,9 @@ committed files in a few seconds, never fetched, so it holds exactly what the si
 
   python3 -I site/pipeline/build_db.py [--out FILE] [--data DIR]       build (default: db/oil-tracker.sqlite)
   python3 -I site/pipeline/build_db.py --check [--out FILE]            open an existing file and verify it (integrity, row counts against its own documents)
+  python3 -I site/pipeline/build_db.py --fracfocus [--chemicals]        also load the whole FracFocus registry (ff_disclosures, ff_water_sources and, with --chemicals, ff_ingredients), see ff_db.py
+      --fracfocus-zip PATH       from a local copy of FracFocusCSV.zip (443 MB) instead of range requests to fracfocus.org (about 19 MB)
+      --fracfocus-download DIR   fetch that zip once into a new folder DIR first (--chemicals needs a local zip: the ingredients are 3.5 GB of CSV)
 
 Two layers, so nothing is lost and common questions are easy:
   documents                 every data file, verbatim (path, size, SHA-256 and the JSON text): the complete record, and what the relational tables are built from
@@ -28,6 +31,9 @@ Two layers, so nothing is lost and common questions are easy:
     metrics, field_states, field_cells, field_sources     the matrix of what each agency's permit captures (when permit-fields.json exists)
   views                     v_permits_by_month (permits and spuds kept apart), v_latest_12_months
 
+The FracFocus tables are optional and local: they hold what the registry publishes and the site does not (API numbers, well names, operators that are people), so they are only ever written to a
+file git ignores (`ff_db.ensure_local_only`). Without --fracfocus the database holds only what the site publishes.
+
 Counts of different measures (permits approved, wells spudded) are different columns of meaning: `jurisdictions.measure` says which, and nothing here adds them.
 """
 import argparse
@@ -41,6 +47,7 @@ import sqlite3
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)  # python -I drops the script folder from sys.path (ff_db is imported only when FracFocus is asked for)
 SITE = os.path.dirname(HERE)
 REPO = os.path.dirname(SITE)
 DATA = os.path.join(SITE, "public", "data")
@@ -300,8 +307,13 @@ def load_fields(db, data):
     return len(d["states"])
 
 
-def build(out=DEFAULT_OUT, data=DATA, now=None):
-    """Builds the database at `out` (written to a temporary name and moved into place, so a failed build leaves the old file alone). Returns the table row counts."""
+def build(out=DEFAULT_OUT, data=DATA, now=None, fracfocus=False, ff_zip=None, chemicals=False):
+    """Builds the database at `out` (written to a temporary name and moved into place, so a failed build leaves the old file alone). Returns the table row counts.
+    `fracfocus` (or `ff_zip`, a local FracFocusCSV.zip) adds the whole FracFocus registry, `chemicals` its ingredients too (ff_db.py)."""
+    with_ff = bool(fracfocus or ff_zip or chemicals)
+    if with_ff:
+        import ff_db
+        ff_db.ensure_local_only(out)
     if os.path.exists(out):
         with open(out, "rb") as f:
             if f.read(16) != b"SQLite format 3\x00":
@@ -324,6 +336,8 @@ def build(out=DEFAULT_OUT, data=DATA, now=None):
         nrep, nrows = load_daily(db, data)
         nwells, nwdocs = load_wells(db, data)
         nfields = load_fields(db, data)
+        if with_ff:
+            ff_db.load(db, ff_zip, chemicals, log=log)
         stamp = (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
         db.executemany("INSERT INTO meta VALUES (?,?)", [("built", stamp), ("source", "site/public/data (committed files)"), ("documents", str(ndocs)), ("series_rows", str(nseries)),
                                                           ("new_wells", str(nnew)), ("daily_reports", str(nrep)), ("daily_permit_rows", str(nrows)), ("wells", str(nwells)), ("well_documents", str(nwdocs)), ("field_states", str(nfields)),
@@ -378,6 +392,9 @@ def check(out):
         ndaily = db.execute("SELECT COUNT(*) FROM documents WHERE path GLOB 'daily*/????-??-??.json'").fetchone()[0]
         if db.execute("SELECT COUNT(*) FROM daily_reports").fetchone()[0] != ndaily:
             p.append("daily_reports does not match the day files")
+        if db.execute("SELECT 1 FROM sqlite_master WHERE name = 'ff_disclosures'").fetchone():
+            import ff_db
+            p += ff_db.check(db)
     finally:
         db.close()
     return p
@@ -388,6 +405,10 @@ def main(argv):
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--data", default=DATA)
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--fracfocus", action="store_true", help="also load the whole FracFocus registry (local only)")
+    ap.add_argument("--fracfocus-zip", metavar="PATH", help="a local copy of FracFocusCSV.zip")
+    ap.add_argument("--fracfocus-download", metavar="DIR", help="fetch FracFocusCSV.zip once into a new folder first")
+    ap.add_argument("--chemicals", action="store_true", help="with FracFocus: the ingredients too (about 7 million rows; needs the whole zip)")
     a = ap.parse_args(argv)
     if a.check:
         bad = check(a.out)
@@ -395,7 +416,13 @@ def main(argv):
             log(x)
         log("check: " + ("FAILED" if bad else "clean"))
         return 1 if bad else 0
-    counts = build(a.out, a.data)
+    zip_path = a.fracfocus_zip
+    if a.fracfocus_download:
+        import ff_db
+        ff_db.ensure_local_only(a.out)
+        zip_path = ff_db.download_zip(a.fracfocus_download)
+        log("downloaded " + zip_path)
+    counts = build(a.out, a.data, fracfocus=a.fracfocus, ff_zip=zip_path, chemicals=a.chemicals)
     log("wrote %s (%d bytes)" % (os.path.relpath(a.out, REPO) if a.out.startswith(REPO) else a.out, os.path.getsize(a.out)))
     for name, n in counts.items():
         log("  %-22s %8d" % (name, n))
