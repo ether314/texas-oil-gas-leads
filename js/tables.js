@@ -297,7 +297,7 @@ function operatorsConfig(ctx) {
     filters: [
       {
         id: 'band', type: 'select', label: 'Band', initial: 'abc',
-        options: [['abc', 'Bands A to C'], ['ab', 'Bands A and B'], ['A', 'Band A'], ['B', 'Band B'], ['C', 'Band C'], ['all', 'All registrants']],
+        options: [['abc', 'Bands A to C'], ['ab', 'Bands A and B'], ['A', 'Band A'], ['B', 'Band B'], ['C', 'Band C'], ['all', 'All operators']],
         test: (r, v) => (v === 'all' ? true : v === 'abc' ? r.band !== '' : v === 'ab' ? r.band === 'A' || r.band === 'B' : r.band === v),
       },
       { id: 'op', type: 'check', label: 'Oil or gas operators only', initial: false, test: (r, v) => !v || r.st !== 'TX' || r.roles.includes('OPRS') },

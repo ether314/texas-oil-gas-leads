@@ -64,10 +64,31 @@ export function packsOf(day) {
     };
   });
 }
-// the permits of a day whose filings are published (the day's rows carry the suffixes of their files)
+// The files of a day are on one GitHub release, which the day file names ({ repo, tag, files, ... }); names come from a data file, so an address is made only from
+// names that are plain file names. A readable preview of a document (<document>.jpg, page one) exists only when the release says so: `previews` is how many the
+// release's listing confirmed (absent when none), and `noPreview` the documents that have none. The page links a preview only then.
+export const releaseOk = (r) => !!r && typeof r.repo === 'string' && /^[\w.-]+\/[\w.-]+$/.test(r.repo) && typeof r.tag === 'string' && /^daily-\d{4}-\d\d-\d\d$/.test(r.tag);
+export const fileUrl = (rel, name) => (releaseOk(rel) && typeof name === 'string' && /^[\w.-]+$/.test(name) ? 'https://github.com/' + rel.repo + '/releases/download/' + rel.tag + '/' + name : null);
+export const hasPreview = (rel, name) => releaseOk(rel) && Number.isInteger(rel.previews) && rel.previews > 0 && !(Array.isArray(rel.noPreview) && rel.noPreview.includes(name));
+export const previewUrl = (rel, name) => (hasPreview(rel, name) ? fileUrl(rel, name + '.jpg') : null);
+// 'W1.pdf' is the approved W-1 permit, 'Plat_2.pdf' the second permit plat; type is the file's own (PDF, or TIF for a scan the Commission sent as one)
+export function docLabel(suffix) {
+  const m = /^(W1|Plat)(?:_(\d+))?\.(\w+)$/.exec(suffix);
+  if (!m) return { label: 'Document', type: '' };
+  return { label: (m[1] === 'W1' ? 'Approved W-1 permit' : 'Permit plat') + (m[2] ? ' ' + m[2] : ''), type: m[3].toUpperCase() };
+}
+const docOf = (rel, name, label) => ({ name, ...label, original: fileUrl(rel, name), preview: previewUrl(rel, name) });
+// the permits of a day whose filings are published (the day's rows carry the suffixes of their files); each file with its label, its address and its preview's address (or null)
 export function filedPermits(day) {
   const rows = (day && day.permits && day.permits.rows) || [];
-  return rows.filter((r) => Array.isArray(r[10]) && r[10].length).map((r) => ({ permit: r[0], county: r[1], district: r[2], files: r[10] }));
+  const rel = day && day.release;
+  return rows.filter((r) => Array.isArray(r[10]) && r[10].length).map((r) => ({ permit: r[0], county: r[1], district: r[2], files: r[10], docs: r[10].map((s) => docOf(rel, r[0] + '_' + s, docLabel(s))) }));
+}
+// the directional surveys of a day whose files are published, each with the address of its file and of its preview (or null)
+export function filedSurveys(day) {
+  const rows = (day && day.surveys && day.surveys.rows) || [];
+  const rel = day && day.release;
+  return rows.filter((r) => /^\d+$/.test(String(r[8])) && fileUrl(rel, 'dir_survey_' + r[8] + '.pdf')).map((r) => ({ id: String(r[8]), county: r[1], doc: docOf(rel, 'dir_survey_' + r[8] + '.pdf', { label: 'Directional survey ' + r[8], type: 'PDF' }) }));
 }
 export const fileKind = (suffix) => (/^W1/i.test(suffix) ? 'W-1 letter' : /^Plat/i.test(suffix) ? 'plat' : /^dir|survey/i.test(suffix) ? 'survey' : 'file');
 
