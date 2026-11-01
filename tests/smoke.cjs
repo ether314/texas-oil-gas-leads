@@ -1681,8 +1681,14 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check((await dots()) === 0 && (await page.locator('#daily-root .dd-approved').count()) === 0, label + ': a state that publishes no daily list has no line and no count, said in the key, never zeros');
       await page.selectOption('#daily-root select.nw-pick', '');
       await page.fill('#daily-root input[type=date]', '2026-03-10'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
-      await page.waitForFunction(() => /starts on Aug 1, 2026/.test((document.querySelector('#daily-root .dd-approved') || {}).textContent || ''), null, { timeout: 8000 });
-      check((await dots()) === 0 && /none by day for these days/.test(await page.locator('#daily-root .dd-oilkey').innerText()), label + ': a day before the daily lists were read says the count of every permit starts on Aug 1, 2026 and draws no line there, not zeros');
+      // the first day every permit approved is counted is the first day the nightly archives of the three states all hold (the Texas and New Mexico series keep a rolling 92 days, so it moves a day each night):
+      // the test reads it from the same committed files and says it the way the page does, instead of hard-coding the date of the night it was written
+      const oilMod = await import(require('url').pathToFileURL(path.join(ROOT, 'js', 'oil-day-data.js')).href);
+      const oilRead = (n) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', n + '.json'), 'utf8'));
+      const oilFirst = oilMod.counts({ tx: oilRead('daily/permits-series'), nm: oilRead('daily-nm/permits-series'), okPoints: oilRead('permits-ok') }).first;
+      const OIL_START = new Date(oilFirst + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      await page.waitForFunction((d) => ((document.querySelector('#daily-root .dd-approved') || {}).textContent || '').includes('starts on ' + d + '.'), OIL_START, { timeout: 8000 });
+      check((await dots()) === 0 && /none by day for these days/.test(await page.locator('#daily-root .dd-oilkey').innerText()), label + ': a day before the daily lists were read says the count of every permit starts on ' + OIL_START + ' (the first day all three archives hold) and draws no line there, not zeros');
       await page.goto(base + '?debug&again=1#daily', { waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
       await page.waitForTimeout(900);

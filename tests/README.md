@@ -5,7 +5,7 @@ Everything here runs without network access, on synthetic data and the committed
 ```
 python3 -I tests/run_all.py            # every Python test, one process each (add a name fragment to run some: ... run_all.py d8)
                                        # a failing test's FAIL lines are printed in full, then the last lines of its output (a long test prints its failing check well before the end)
-node tests/test_js_data.mjs            # the pure JavaScript data code: which states are shown, what the Overview merges, the permit points merge, the Companies page's national operator list, the Overview's two sources together (combined-data.js)
+node tests/test_js_data.mjs            # the pure JavaScript data code: the four states and their counts, the other states' operators, the Companies page's national operator list, the Overview's two sources together (combined-data.js)
 node tests/smoke.cjs                   # browser smoke test: every JS module imports, every view loads clean, no sideways scroll on a phone, the Companies page's State filter (no view has a states bar any more), the Overview's two layers (oil permits as rings, fractured wells as dots, never added)
 node tests/a11y.cjs                    # browser accessibility test: text contrast in both themes at both widths, nothing cut off and no control under 24 px at 360 px, keyboard focus, page language and titles
 ```
