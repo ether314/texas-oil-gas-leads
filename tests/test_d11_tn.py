@@ -144,14 +144,14 @@ check(fails(TN.parse, base[:190] + [attrs(i, "x%d" % i, ms(2026, 4, 3)) for i in
 rowsx = synthetic()
 net = Layer(rowsx)
 saved = TN.PAGE
-TN.PAGE = 50
+TN.PAGE = 100
 got = TN.fetch(net.get, pause=0)
 TN.PAGE = saved
-check(len(got) == len(rowsx) and len(net.urls) == -(-len(rowsx) // 50) and len({r["OBJECTID"] for r in got}) == len(rowsx), "every row comes back once, %d rows in %d requests of 50, paged by OBJECTID" % (len(got), len(net.urls)))
+check(len(got) == len(rowsx) and len(net.urls) == -(-len(rowsx) // 100) and len({r["OBJECTID"] for r in got}) == len(rowsx), "every row comes back once, %d rows in %d requests of 100, paged by OBJECTID" % (len(got), len(net.urls)))
 q = parse_qs(urlparse(net.urls[0]).query)
 check(q["returnGeometry"] == ["false"] and set(q["outFields"][0].split(",")) == {"OBJECTID", "PERMIT_DATE", "PERMIT_NO", "COUNTY", "OPERATOR_NAME", "PURPOSE_OF_WELL"} and q["orderByFields"] == ["OBJECTID"], "the request asks for five columns and the row id, no geometry, in OBJECTID order")
 check(not any(w in q["outFields"][0] for w in ("API", "WELL_NAME", "LATITUDE", "LONGITUDE", "ELEVATION", "FORMATION")), "no API number, well name, location, elevation or formation is asked for")
-check("2019-01-01" in q["where"][0] and "NOT LIKE '%-%'" in q["where"][0] and q["where"][0].startswith("OBJECTID > 0 AND ("), "only permits dated from 2019 on, and undated rows with a plain number, are asked for (the 3,190 old ones are not)")
+check("2019-01-01" in q["where"][0] and "OR (PERMIT_DATE IS NULL AND PERMIT_NO NOT LIKE '%-%')" in q["where"][0] and q["where"][0].startswith("OBJECTID > 0 AND ("), "only permits dated from 2019 on, and undated rows with a plain number, are asked for (the 3,190 old ones are not)")
 check(all(u.startswith("https://tdeconline.tn.gov/arcgis/") for u in net.urls), "it asks TDEC's map server only")
 net2 = Layer(rowsx)
 doc = TN.build(get=net2.get, today=TODAY, pause=0)
@@ -200,6 +200,9 @@ check("Rader" not in text and "RADER" not in text, "the person-named operator is
 check(not any("%07d" % n in text or str(n) in text for n in (12001, 12100, 12300)), "no permit number is in the file")
 check("monthly" in doc["cadence"] and "permit date" in doc["basis"] and doc["source"]["url"].startswith("https://tdeconline.tn.gov/") and "Division" in doc["agency"], "the source, the cadence and the basis are named")
 check("August 6, 2026" in doc["note"] and "60 days" in doc["note"] and "monthly" in doc["note"] and "without a gap" in doc["note"] and "percent" in doc["note"], "the note says the newest permit's day, the 60-day lag, that the Division updates monthly, the numbering and the dry-hole share")
+check("No permit number appears twice" in doc["note"] and "twice and" not in doc["note"], "the note says no permit number appears twice when none does")
+d_r = build(rowsx + [dict(rowsx[10], OBJECTID=9999)])
+check("1 permit number appears twice and is counted once" in d_r["note"] and "No permit number appears twice" not in d_r["note"] and sum(d_r["bands"]["new"]) == sum(doc["bands"]["new"]), "a permit number that comes twice is told in the note and counted once")
 check("disposal" not in doc["note"] and "No permit has been recorded" not in doc["note"], "and says nothing about service wells or a quiet spell when there is none to tell")
 
 # a column that was not asked for cannot reach the file, even if the layer sends it
@@ -207,6 +210,12 @@ leaky = [dict(r, API_NO="12345678900", WELL_NAME_AND_NO="Invented Lease 12", LAT
 doc_l = build(leaky)
 tl = json.dumps(doc_l)
 check(not any(s in tl for s in ("12345678900", "Invented", "36.4", "85.2", "890.5", "Knox")) and doc_l == doc, "an API number, a well name, a location, an elevation or a formation the layer sends anyway never reaches the file")
+
+# a permit with a blank operator is one whose operator may not be named, not one with no operators at all
+blank = build([dict(r, OPERATOR_NAME="" if r["OBJECTID"] % 2 else None) for r in rowsx])
+check(blank["namedShare"] == 0.0 and blank["operators"] == [] and C.validate(blank, date(2026, 11, 2)) == [], "permits with a blank or missing operator are counted as unnamed (a share of 0), not as a source that names no operators")
+check(build(synthetic(extra=[{"PERMIT_DATE": ms(2026, 6, 9), "PURPOSE_OF_WELL": "Oil", "COUNTY": "Overton", "OPERATOR_NAME": ""}, {"PERMIT_DATE": ms(2026, 6, 9), "PURPOSE_OF_WELL": "Oil", "COUNTY": "Overton", "OPERATOR_NAME": None}]))["namedShare"] == 0.72,
+      "and a blank operator among named ones stays in the denominator (36 of 50)")
 
 # service wells, a quiet spell, a hole in the numbering, an undated numbered row: each is told in the note
 with_service = synthetic(extra=[{"PERMIT_DATE": ms(2026, 7, 20), "PURPOSE_OF_WELL": "Disposal", "COUNTY": "Overton", "OPERATOR_NAME": "Delta SWD LLC"}])

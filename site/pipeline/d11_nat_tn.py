@@ -171,7 +171,8 @@ def parse(rows, today=None):
     holes = above = 0
     if seen:
         lo, hi = min(seen), max(seen)
-        holes = sum(1 for n in range(lo, hi + 1) if n not in seen)
+        present = seen | {n for n in undated if n is not None}  # a number with no date is in the table: it is told as undated, not as a hole
+        holes = sum(1 for n in range(lo, hi + 1) if n not in present)
         if holes > HOLE_SHARE * (hi - lo + 1):
             raise RuntimeError("%d permit numbers between the first and the last are missing from the layer: it is cut short" % holes)
         above = sum(1 for n in undated if n is not None and n >= lo)  # a row with no date whose number is inside the series could be a permit of it
@@ -190,10 +191,10 @@ def build(get=C.polite_get, today=None, pause=PAUSE):
     if total < MIN_TOTAL:
         raise RuntimeError("the layer holds %d permits in all (expected 16,000 or more)" % total)
     if len(rows) < MIN_ROWS:
-        raise RuntimeError("the layer gave %d permits from 2019 on (expected 400 or more)" % len(rows))
+        raise RuntimeError("the layer gave %d permits from 2019 on (expected about 400)" % len(rows))
     permits, facts = parse(rows, today)
     if len(permits) < MIN_ROWS:
-        raise RuntimeError("only %d permits from 2019 on could be read (expected 400 or more)" % len(permits))
+        raise RuntimeError("only %d permits from 2019 on could be read (expected about 400)" % len(permits))
     newest = permits[-1]["day"]
     if newest < today - timedelta(days=STALE_DAYS):
         raise RuntimeError("the newest permit is dated %s: the layer looks stale" % newest.isoformat())
@@ -203,7 +204,9 @@ def build(get=C.polite_get, today=None, pause=PAUSE):
     quiet = (today - newest).days
     dry_share = facts["dry"] / len(permits)
     note = ("Permits to drill an oil or gas well, by the permit date in the Division's table of every oil and gas well permit it has issued (its Oil and Gas Data Viewer and Map Viewer show the same table). "
-            "The table has no type of permit and no permit number or well appears twice, so it reads as one row per permit to drill: amendments and transfers do not appear as rows, and only new wells are told. "
+            "The table has no type of permit, so only new wells are told. "
+            + ("No permit number appears twice, so it reads as one row per permit to drill and amendments and transfers do not appear as rows. " if not facts["repeats"]
+               else "%d permit number%s appear%s twice and %s counted once. " % (facts["repeats"], "" if facts["repeats"] == 1 else "s", "s" if facts["repeats"] == 1 else "", "is" if facts["repeats"] == 1 else "are"))
             + ("Permit numbers run in order without a gap. " if not facts["holes"] else "")
             + "%d percent of the permits since 2019 are for wells recorded as drilled and plugged dry. The fluid is the well's recorded purpose, which changes as it is drilled: a dry hole, a location not yet "
               "drilled and one abandoned have no fluid (unknown), so the newest months show more unknown than they will. Tennessee issues a few dozen permits a year, so a month with none is a real zero. "
