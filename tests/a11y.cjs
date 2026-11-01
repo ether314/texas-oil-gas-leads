@@ -8,7 +8,7 @@
 // 2. Keyboard: Tab through each view; every stop has a name and shows a focus ring, and focus never sticks on one element. Each page has a
 //    language, one main landmark and a title that follows the view.
 // 3. Reflow: at 360 px wide (the narrowest phone) no content is cut off by an overflow:hidden box (without an ellipsis) and no box sticks out
-//    past the right edge outside a scroller, on every view and every set of states. It found a note and a sparkline cut off in the Daily report's
+//    past the right edge outside a scroller, on every view and every set of states. It found a note and a sparkline cut off in the old Daily report's
 //    half-width cards (the card's one column had grown to the sparkline's fixed 160 px).
 // 5. Previews (2026-11-01): the Texas images view with readable previews of a day's filings (a stubbed day, tests/preview-stub.cjs, with GitHub answered by the test) and a page enlarged in
 //    its dialog, in both themes and at both widths, for contrast, at 360 px for reflow and target size, and the view's Tab stops for names and focus rings.
@@ -57,10 +57,8 @@ const VIEWS = [
   ['operators', '#operators', '#ops-root table.grid tbody tr'],
   ['operators, three states', '#operators?st=tx,ok,nm', '#ops-root table.grid tbody tr'],
   ['companies', '#companies', '#co-root table.grid tbody tr'],
-  ['daily', '#daily', '#daily-root .dr-hero'],
-  ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'],
-  ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'],
-  ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
+  ['daily', '#daily', '#daily-root .dd-nav'],
+  ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
   // the federal offshore last: the bar keeps its choice from one view to the next, and the views above are meant for the states they name
   ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'],
   ['map, federal offshore', '#map?st=fo', '#map-root canvas'],
@@ -261,8 +259,7 @@ function targets() {
       ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
       ['map', '#map', '#map-root canvas'], ['operators', '#operators', '#ops-root table.grid tbody tr'], ['operators, New Mexico', '#operators?st=nm', '#ops-root table.grid tbody tr'],
       ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
-      ['daily', '#daily', '#daily-root .dr-hero'], ['daily, Texas', '#daily?st=tx', '#daily-root .dr-hero'], ['daily, Oklahoma', '#daily?st=ok', '#daily-root .dr-hero'], ['daily, New Mexico', '#daily?st=nm', '#daily-root .dr-hero'],
-      ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'], ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'], ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
+      ['daily', '#daily', '#daily-root .dd-nav'], ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
       ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
       ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
@@ -306,10 +303,11 @@ function targets() {
     window.__kbSeen = window.__kbSeen || new WeakMap();
     const times = (window.__kbSeen.get(e) || 0) + 1;
     window.__kbSeen.set(e, times);
-    const same = window.__kbPrev === e;
+    const parts = e.matches('input[type="date"]'); // a native date field is stepped through part by part (month, day, year) with Tab: the same element three times, then out
+    const same = window.__kbPrev === e && !parts;
     window.__kbPrev = e;
     const cls = typeof e.className === 'string' && e.className.trim() ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
-    return { id: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + cls, name: name.slice(0, 40), shown, times, same };
+    return { id: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + cls, name: name.slice(0, 40), shown, times, same, parts };
   };
   const KB_VIEWS = [VIEWS[0], VIEWS[2], VIEWS[3], VIEWS[5], VIEWS[6], VIEWS[10], VIEWS.find((v) => v[0] === 'texas images, previews')];
   {
@@ -329,6 +327,7 @@ function targets() {
           await page.keyboard.press('Tab');
           const s2 = await page.evaluate(stopInfo);
           if (!s2) { if (stops.length > 3) break; continue; }
+          if (s2.parts && s2.times > 1) continue; // the date field's own parts are one stop
           if (s2.times > 1 && !s2.same) break; // went all the way round
           stops.push(s2);
           if (s2.same) break;
