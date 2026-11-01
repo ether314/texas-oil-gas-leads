@@ -184,6 +184,18 @@ h1[tabindex="-1"]:focus-visible { outline: none; }
 .theme button { display: grid; place-items: center; width: 30px; height: 28px; border: 0; border-radius: var(--r-pill); background: none; color: var(--ink-2); cursor: pointer; transition: background var(--dur-2), color var(--dur-2); }
 .theme button:hover { color: var(--ink); }
 .theme button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+/* the header's layout is chosen by ui.js (headerLayout) from what fits: full (one row, with the tagline), row (one row), stack (the tabs on a row of their own, scrolling when they must).
+   While it measures, each part sits at its natural width */
+.top-row[data-fit^="measure"] { grid-template-columns: max-content max-content max-content; }
+.top-row[data-fit^="measure"] .nav { grid-column: auto; grid-row: auto; justify-self: start; margin-inline: 0; overflow: visible; }
+.top-row[data-fit="measure-row"] .brand-sub, .top-row[data-fit="row"] .brand-sub, .top-row[data-fit="stack"] .brand-sub { display: none; }
+.top-row[data-fit="stack"] { grid-template-columns: 1fr auto; padding-top: 6px; gap: 2px var(--sp-3); }
+.top-row[data-fit="stack"] .nav { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; justify-content: flex-start; justify-content: safe center; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding-bottom: 6px; }
+.top-row[data-fit="stack"] .nav::-webkit-scrollbar { display: none; }
+.top-row[data-fit="stack"] .nav[data-more="end"] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); }
+.top-row[data-fit="stack"] .nav[data-more="start"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 26px); mask-image: linear-gradient(90deg, transparent, #000 26px); }
+.top-row[data-fit="stack"] .nav[data-more="both"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 26px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, transparent, #000 26px, #000 calc(100% - 26px), transparent); }
+.top-row[data-fit="stack"] .nav-ind { bottom: 9px; }
 
 /* ---------- controls ---------- */
 .btn, .input { font: inherit; font-size: var(--fs-md); height: 38px; padding: 0 14px; border: 1px solid var(--border-2); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }

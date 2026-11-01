@@ -119,8 +119,31 @@ export function initReveal() {
   setTimeout(() => { if (!fired) nodes.forEach((n) => n.classList.add('is-in')); }, 3000);
 }
 
+/* the header is one row (brand, tabs, theme toggle) while the three fit side by side at their natural widths, with the brand's tagline too when there is room for it, and two rows
+   (brand and theme toggle, then the tabs, which scroll) when they do not. It measures instead of using a breakpoint: every view added makes the tabs wider, and the same tabs are wider
+   in some fonts, so a width that fitted eight tabs pushed the theme toggle off the page with ten (data-fit on the row: full, row or stack; the measure-* values are the moment of measuring) */
+function headerLayout(nav) {
+  const row = nav.closest('.top-row');
+  if (!row) return;
+  const brand = row.querySelector('.brand'); const theme = row.querySelector('.theme');
+  const fits = () => {
+    const cs = getComputedStyle(row);
+    const room = row.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    return brand.offsetWidth + nav.offsetWidth + theme.offsetWidth + 2 * (parseFloat(cs.columnGap) || 0) <= room + 0.5;
+  };
+  const layout = () => {
+    let mode = 'full';
+    row.dataset.fit = 'measure-full';
+    if (!fits()) { row.dataset.fit = 'measure-row'; mode = fits() ? 'row' : 'stack'; }
+    row.dataset.fit = mode;
+  };
+  layout();
+  if ('ResizeObserver' in window) new ResizeObserver(layout).observe(row);
+}
+
 /* nav: a pill that slides to the current link */
 export function navIndicator(nav) {
+  headerLayout(nav);
   const ind = el('span', { class: 'nav-ind snap', 'aria-hidden': 'true' });
   nav.prepend(ind);
   const place = () => {
