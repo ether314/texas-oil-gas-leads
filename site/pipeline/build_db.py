@@ -17,6 +17,8 @@ Two layers, so nothing is lost and common questions are easy:
     jurisdictions           each state, the federal offshore and the BLM: measure, agency, source, dates, and, for those not read yet, the research's grade and reason
     national_months         permits (or spuds) by jurisdiction, month and kind of permit (a kind a source cannot tell has no row: never zero)
     national_operators, national_counties     each jurisdiction's top operators and places, last 12 months
+    national_operators_all  every operator a state (not Texas, Oklahoma, New Mexico or the offshore: their operators are in `operators`) named in the last 12 months, with its new wells, from the state's file under nat/
+                            (a state whose file has no full list yet has no rows here: unknown, never a copy of the top 15 presented as everyone)
     series                  every monthly or weekly series file, one row per (file, key, time): prices, crude production, rigs, jobs, tax, the EIA outlook, permit series
     county_permits, county_permit_months      per state and county: last 12 months, the 12 before, mean depth, and the 36 monthly counts
     operators               every state's published operator table (Texas's joined with its extras); the full row of each in `extra`
@@ -64,6 +66,7 @@ CREATE TABLE jurisdictions(id TEXT PRIMARY KEY, name TEXT, status TEXT, measure 
   cadence TEXT, grade TEXT, note TEXT, gap_reason TEXT);
 CREATE TABLE national_months(jurisdiction TEXT, month TEXT, band TEXT, count INTEGER, PRIMARY KEY(jurisdiction, month, band));
 CREATE TABLE national_operators(jurisdiction TEXT, rank INTEGER, operator TEXT, new12 INTEGER, PRIMARY KEY(jurisdiction, rank));
+CREATE TABLE national_operators_all(jurisdiction TEXT, rank INTEGER, operator TEXT, new12 INTEGER, PRIMARY KEY(jurisdiction, rank));
 CREATE TABLE national_counties(jurisdiction TEXT, rank INTEGER, place TEXT, new12 INTEGER, PRIMARY KEY(jurisdiction, rank));
 CREATE TABLE series(file TEXT, key TEXT, t TEXT, value REAL, PRIMARY KEY(file, key, t));
 CREATE TABLE county_permits(state TEXT, county TEXT, county_name TEXT, p12 INTEGER, p12_prev INTEGER, mean_depth_ft REAL, PRIMARY KEY(state, county));
@@ -146,6 +149,11 @@ def load_national(db, data):
             db.executemany("INSERT INTO national_months VALUES (?,?,?,?)", [(s["id"], m, band, v) for m, v in zip(months, vals) if v is not None])
         db.executemany("INSERT INTO national_operators VALUES (?,?,?,?)", [(s["id"], i + 1, name, n) for i, (name, n) in enumerate(s["operators"])])
         db.executemany("INSERT INTO national_counties VALUES (?,?,?,?)", [(s["id"], i + 1, name, n) for i, (name, n) in enumerate(s["counties"])])
+        sp = os.path.join(data, "nat", s["id"] + ".json")  # the state's own file: the full operator list, once its producer has written it
+        if os.path.exists(sp):
+            full = jload(sp).get("operatorsAll")
+            if full:
+                db.executemany("INSERT INTO national_operators_all VALUES (?,?,?,?)", [(s["id"], i + 1, name, n) for i, (name, n) in enumerate(full)])
     for g in d["gaps"]:
         db.execute("INSERT INTO jurisdictions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (g["id"], g["name"], "gap", None, None, g.get("agency"), None, None, None, None, None, g.get("grade"), None, g.get("why")))
 
@@ -409,6 +417,10 @@ def check(out):
             want = sum(1 for s in d["states"] for v in s["bands"].values() if v is not None for x in v if x is not None)
             if db.execute("SELECT COUNT(*) FROM national_months").fetchone()[0] != want:
                 p.append("national_months does not match national.json")
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'national_operators_all'").fetchone():  # absent in a file made before the full lists existed
+            want = sum(len((json.loads(t).get("operatorsAll") or [])) for (pth, t) in db.execute("SELECT path, json FROM documents WHERE path LIKE 'nat/%'") if json.loads(t).get("state") not in ("TX", "OK", "NM", "FO"))
+            if db.execute("SELECT COUNT(*) FROM national_operators_all").fetchone()[0] != want:
+                p.append("national_operators_all does not match the state files' operatorsAll")
         nw = db.execute("SELECT json FROM documents WHERE path = 'newwells/points.json'").fetchone()
         nh = db.execute("SELECT json FROM documents WHERE path = 'newwells/points-history.json'").fetchone()  # absent in a file made before the history existed
         if nw:

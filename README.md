@@ -30,7 +30,7 @@ address keep their first name, `texas-oil-gas-leads`.)
   the pure data code in `companies-data.js`). **Operators** is every operator the state agencies name, ranked as one list (by activity band, then new wells in the last 12 months),
   each row tagged with its state, with a State filter inside the table (`#companies?s=ND`) instead of the states bar. Texas, Oklahoma, New Mexico and the federal offshore list every
   operator with a recent permit or spud, with the columns only a full file can fill (trend, 24 months, depth, top county, and for Texas RRC districts, registrations and production); for
-  the other states it is the 15 busiest operators the agencies' files name (`national.json`), with those columns blank, never zero. A state that counts wells spudded (New Mexico,
+  the other states it is every operator the state's file names for the last 12 months (`nat/<ST>.json`, `operatorsAll`, written by `d11_nat_common.py`; a state whose file has not been rewritten since 2026-11-01 shows the 15 busiest from `national.json`), with those columns blank, never zero. A state that counts wells spudded (New Mexico,
   North Dakota, Colorado, the federal offshore) or drilled (Virginia) says so beside the number and is never added to the permit counts; a state that names no operator (Arizona, Florida,
   Nevada, Oregon, South Dakota) is named in the page's note. **Texas directory** is the Comptroller's oil and gas companies with RRC activity where a name matched: Texas only, and says
   so, because no other state publishes a bulk list like it. The address is `#companies` or `#companies?kind=directory`; the old `#operators` and `#companies` addresses are translated

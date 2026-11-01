@@ -160,6 +160,7 @@ export function createOverview(meta) {
     const links = el('p', { class: 'nat-links' });
     const f = fields && fields.states && fields.states[id];
     if (p) { const h = N.sourceHref(p, fields); if (h) links.append(el('a', { class: 'more-link', href: h.href, target: '_blank', rel: 'noopener noreferrer' }, 'Source: ' + p.source.name + (h.viaAgency ? ' (on the agency’s site)' : ''), icon('arrow', 16))); }
+    if (p && p.operators && p.operators.length) links.append(el('a', { class: 'more-link', href: '#companies?s=' + id }, 'Its operators in Companies', icon('arrow', 16)));
     if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
     if (wf) links.append(el('a', { class: 'more-link', href: SOURCE, target: '_blank', rel: 'noopener noreferrer' }, 'Source: FracFocus', icon('arrow', 16)));
     put(box, links.childNodes.length ? links : null);

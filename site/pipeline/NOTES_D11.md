@@ -17,7 +17,9 @@ all permit activity (not only new drills); onshore federal land (BLM) too.
   first, so an amendment of a new-drill permit is an amendment).
 - `fluid`: the last 12 months of new wells by recorded fluid (oil, gas, both, other, unknown), or `null` where the state records none. This is how "oil wells" is answered
   without pretending every agency knows the fluid at approval time.
-- `counties` (top 15 places) and `operators` (top 15, **only corporations, LLCs and partnerships**: the one naming rule, `d8_ok_daily.nameable`, never a person's dba),
+- `counties` (top 15 places), `operators` (top 15, **only corporations, LLCs and partnerships**: the one naming rule, `d8_ok_daily.nameable`, never a person's dba) and `operatorsAll` (added 2026-11-01:
+  every such operator with a `new` permit in the last 12 months, same ranking, the first 15 being `operators`, at most `MAX_OPERATORS` = 1,000; the Companies page lists it, and `national.json` keeps only the 15 so the Overview and the National page stay light;
+  `validate()` checks it is ranked, nameable, without repeats, begins with `operators`, holds no more permits than the year had and, when nothing is cut off, exactly `namedShare` of them; a file written before it existed has none and is still good),
   with `namedShare`, the share of the year's new wells whose operator may be named. No API number, lease or well name leaves a producer.
 - `months` run from 2019-01 to the last **complete** month (a spud-counting state ends by its lag, 60 days by default), `through` is that month's last day, `asOf` the newest record.
 

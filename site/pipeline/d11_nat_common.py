@@ -20,6 +20,8 @@ The shape of nat/<ST>.json (v1):
   fluid                          the last 12 months of `new` by the well's recorded fluid {oil, gas, both, other, unknown}, or null where the state does not record it
   counties                       [[name, count]]: the top 15 places by `new` in the last 12 months
   operators                      [[name, count]]: the top 15 operators by `new` in the last 12 months, corporations, LLCs and partnerships only (the naming rule)
+  operatorsAll                   [[name, count]]: every such operator with a `new` permit in the last 12 months, in the same ranking (at most MAX_OPERATORS), whose first 15 are `operators`.
+                                 What the Companies page lists; absent from a file written before 2026-11-01 (the page then has the 15)
   namedShare                     the share of the last 12 months' `new` permits whose operator may be named
   read                           how many records the source gave (a sanity figure)
   note                           anything a reader should know (a lag, a revision, a limit)
@@ -232,6 +234,7 @@ def place_title(name):
     return re.sub(r"\bMc([a-z])", lambda m: "Mc" + m.group(1).upper(), name.title())
 
 
+MAX_OPERATORS = 1000  # the most operators a state's file lists in operatorsAll (no state has a tenth of that many)
 PLACE = re.compile(r"^[A-Za-z][A-Za-z .'\-/&()0-9]{0,45}$")
 
 
@@ -293,13 +296,15 @@ class Tally:
             fl.update(self.fl.get(ym, {}))
         named = sum(ops.values())
         total12 = sum(bands["new"][-12:])
+        ranked = sorted(ops.items(), key=lambda kv: (-kv[1], kv[0]))
         doc = {
             "v": 1, "state": self.state, "name": name or NAME_OF[self.state], "agency": agency, "measure": measure, "basis": basis,
             "source": {"name": source_name, "url": source_url}, "asOf": asof.isoformat(), "through": month_end(through).isoformat(), "cadence": cadence,
             "months": months, "bands": bands,
             "fluid": ({f: fl.get(f, 0) for f in FLUIDS} if self.fluid else None),
             "counties": [[place_title(c), n] for c, n in sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
-            "operators": [[o, n] for o, n in sorted(ops.items(), key=lambda kv: (-kv[1], kv[0]))[:15]],
+            "operators": [[o, n] for o, n in ranked[:15]],
+            "operatorsAll": [[o, n] for o, n in ranked[:MAX_OPERATORS]],
             "namedShare": round(named / total12, 3) if total12 and (named or sum(self.unnamed.values())) else None,  # null for a source that names no operators at all
             "read": self.read, "note": note,
         }
@@ -371,6 +376,25 @@ def validate(doc, today=None):
                 _fail(p, nameable(r[0]), "operator name the rule refuses: " + privacy_check.mask(r[0]))
         _fail(p, [r[1] for r in os_] == sorted((r[1] for r in os_), reverse=True), "operators must be ranked")
     ns = doc.get("namedShare")
+    oa = doc.get("operatorsAll")  # the full list: a file written before it existed has none, and is still good
+    if oa is not None and _fail(p, isinstance(oa, list) and len(oa) <= MAX_OPERATORS, "operatorsAll: at most %d [name, count]" % MAX_OPERATORS):
+        rows_ok = True
+        for r in oa:
+            if _fail(p, isinstance(r, list) and len(r) == 2 and isinstance(r[0], str) and isinstance(r[1], int) and not isinstance(r[1], bool) and r[1] > 0, "operatorsAll row %r" % (r,)):
+                _fail(p, nameable(r[0]), "operatorsAll name the rule refuses: " + privacy_check.mask(r[0]))
+            else:
+                rows_ok = False
+        if rows_ok:
+            _fail(p, [r[1] for r in oa] == sorted((r[1] for r in oa), reverse=True), "operatorsAll must be ranked")
+            _fail(p, len({r[0] for r in oa}) == len(oa), "operatorsAll names an operator twice")
+            _fail(p, isinstance(os_, list) and oa[:15] == os_, "operatorsAll must begin with the 15 operators")
+            # the list is the named operators' share of the year: it cannot hold more permits than the state had, and (when nothing is cut off) it is exactly namedShare of them
+            new12 = sum(doc["bands"]["new"][-12:]) if isinstance(doc.get("bands"), dict) and isinstance(doc["bands"].get("new"), list) else None
+            if new12 is not None:
+                held = sum(r[1] for r in oa)
+                _fail(p, held <= new12, "operatorsAll holds %d permits of the year's %d" % (held, new12))
+                if len(oa) < MAX_OPERATORS and ns is not None and new12:
+                    _fail(p, abs(held / new12 - ns) <= 0.001 + 1e-9, "operatorsAll holds %.3f of the year's permits, but namedShare says %s" % (held / new12, ns))
     _fail(p, ns is None or (isinstance(ns, (int, float)) and 0 <= ns <= 1), "namedShare must be 0 to 1")
     _fail(p, isinstance(doc.get("read"), int) and doc["read"] > 0, "read must count the records")
     for k in ("unit", "place"):

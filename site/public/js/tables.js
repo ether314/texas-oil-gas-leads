@@ -6,7 +6,7 @@ import { getGeo, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
 import { STATES, stateOf, measureOf, listAnd, ucFirst } from './states.js';
 import { stateOperatorRows, operatorExtras } from './overview-data.js';
-import { FULL, TEXAS_ONLY, listedRows, stateChoices, whatOf, isPermit, sourceOf, coverage, withoutOperators } from './companies-data.js';
+import { FULL, TEXAS_ONLY, listedRows, deepList, stateChoices, whatOf, isPermit, sourceOf, coverage, withoutOperators } from './companies-data.js';
 
 const BAND_ORDER = { A: 0, B: 1, C: 2, D: 3, '': 4 };
 // what a band means in the row's own measure: Texas and Oklahoma count new-well permits, New Mexico, North Dakota, Colorado and the federal offshore count wells spudded, Virginia
@@ -441,8 +441,9 @@ export function createTables(meta) {
   return {
     operators: {
       ex: operators,
-      // every state's operators: Texas's table (with its extras and production), the other three full files (Oklahoma, New Mexico, the federal offshore), and the 15 busiest of
-      // each other state in the National report, each row tagged with its state. Resolves with what the page says about them (the notes of companies.js).
+      // every state's operators: Texas's table (with its extras and production), the other three full files (Oklahoma, New Mexico, the federal offshore), and every operator the
+      // other states named in the last 12 months (their state files; the 15 busiest in the National report for a state whose file has no full list yet), each row tagged with its
+      // state. Resolves with what the page says about them (the notes of companies.js).
       async load() {
         const others = ids.filter((id) => id !== 'TX');
         const [t, extras, G, prod, nat, ...docs] = await Promise.all([load('operators'), loadOpt('operator-extras'), getGeo(ids).catch(() => null),
@@ -465,8 +466,11 @@ export function createTables(meta) {
             rows.push(r);
           }
         });
-        // the other states: the National report's busiest operators, with the cells only a full file can fill left empty
-        const listed = listedRows(nat);
+        // the other states: every operator their files name for the year (the National report's 15 busiest where a file has no full list), with the cells only a full file can fill left empty
+        const listedIds = ((nat && nat.states) || []).filter((q) => !FULL.includes(q.id) && Array.isArray(q.operators) && q.operators.length).map((q) => q.id);
+        const files = await Promise.all(listedIds.map((id) => loadOpt('nat/' + id)));
+        const deep = {}; listedIds.forEach((id, i) => { const l = deepList(files[i], id); if (l) deep[id] = l; });
+        const listed = listedRows(nat, FULL, deep);
         rows.push(...listed);
         rows.forEach((r, i) => { r._i = i; });
         // one ranking (by band, then by new wells) so the busiest operators of every state are at the top, not Texas's whole list first
@@ -485,8 +489,11 @@ export function createTables(meta) {
         others.forEach((id, i) => { if (docs[i] && docs[i].asOf) asOf[id] = docs[i].asOf; });
         for (const q of (nat && nat.states) || []) {
           const src = sourceOf(nat, q.id); const end = asOf[q.id] || src.asOf;
+          const mine = listed.filter((r) => r.st === q.id);
+          // what is listed, and how much of the year it holds (the operators that may be named: a person trading under a name is never one of them)
+          const share = q.namedShare == null ? '' : ' (they hold ' + (q.namedShare >= 0.995 ? 'all' : Math.round(q.namedShare * 100) + '%') + ' of its ' + fmt.format(q.p12) + ' ' + src.what + ' in the last 12 months)';
           ctx.sources[q.id] = src.agency + ', counted by ' + src.what + (end ? '; data runs through ' + fmtDate(end) : '')
-            + (!FULL.includes(q.id) && src.listed ? '; its ' + src.listed + ' busiest operators are listed' : '');
+            + (!FULL.includes(q.id) && mine.length ? (mine[0].complete ? '; all ' + fmt.format(mine.length) + ' operators it named in the last 12 months are listed' + share : '; its ' + mine.length + ' busiest operators are listed') : '');
         }
         for (const id of ids) if (!ctx.sources[id]) ctx.sources[id] = stateOf(id).agency + (asOf[id] ? ', data runs through ' + fmtDate(asOf[id]) : '');
         // what a state's count leaves out, where it says (a sidetrack is not a new well offshore, so an operator that sidetracked ten times ranks with none)
@@ -497,10 +504,10 @@ export function createTables(meta) {
         const odd = [sp.length ? 'wells spudded in ' + listAnd(sp) : '', dr.length ? 'wells drilled in ' + listAnd(dr) : ''].filter(Boolean);
         const parenthetical = odd.length ? ' (' + odd.join('; ') + ', which ' + (sp.length + dr.length > 1 ? 'they count' : 'it counts') + ' instead because the regulator publishes no approval dates by well)' : '';
         ctx.hints.new12 = 'New-drill permits in the last 12 months' + parenthetical + '. A count of wells says spuds or drilled beside it; the two are never added.';
-        operators.relabel('trend', 'Trend', 'Permits in the last 12 full calendar months against the 12 before' + (odd.length ? ' (' + odd.join('; ') + ')' : '') + '. "new" means none in the prior 12. Blank where only the 15 busiest operators are listed.');
+        operators.relabel('trend', 'Trend', 'Permits in the last 12 full calendar months against the 12 before' + (odd.length ? ' (' + odd.join('; ') + ')' : '') + '. "new" means none in the prior 12. Blank for the states listed from the National report, which give the count of the last 12 months only.');
         operators.setOptions('s', [['all', 'All states']].concat(stateChoices(rows, nat)));
         operators.setRows(rows);
-        return { prodEnd, coverage: coverage(rows), without: withoutOperators(nat), listedMax: Math.max(0, ...((nat && nat.states) || []).filter((q) => !FULL.includes(q.id)).map((q) => (q.operators || []).length)) };
+        return { prodEnd, coverage: coverage(rows), without: withoutOperators(nat) };
       },
     },
     directory: {
