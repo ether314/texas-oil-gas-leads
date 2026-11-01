@@ -93,7 +93,7 @@
   "elevation": {
    "s": "data",
    "e": "file",
-   "n": "Ground and KB elevation in the NE_WELLS shapefile and the Access well database"
+   "n": "Elevation fields (ground, KB) in the NE_WELLS shapefile; the Access well database has an elevation column"
   },
   "surface_owner": {
    "s": "unknown",
