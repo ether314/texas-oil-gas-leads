@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     # the three captures have limits of their own (below, 25 + 12 + 6 minutes): a download that trickles must fail its own step, not use up the job and
     # leave nothing committed for any state
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -154,6 +154,30 @@ jobs:
           git checkout -- site/public/data/daily
           git clean -fdq -- site/public/data/daily
 
+      # Readable page-one previews of every document in the day's completion images (the owner's decision of 2026-10-31, README, Privacy): a step of
+      # its own, so a slow or failing one cannot hold up or break the Texas report. d7_completions.py downloads that pack again (about 20 seconds), draws
+      # about 1,000 pages four at a time (about a minute), uploads them to two GitHub releases (daily-YYYY-MM-DD-cm1, -cm2) and writes
+      # site/public/data/daily-cm/<day>.json and its index. It writes nothing unless at least half the previews are confirmed on the releases, and
+      # --check runs before anything is committed. It runs only when the Texas capture and its check passed (the day it previews is the one just committed),
+      # and again in the 04:20 backup run if the first failed, because the day then still has no file.
+      - name: Publish previews of the completion images
+        id: cm_previews
+        if: ${{ steps.tx_capture.outcome == 'success' && steps.tx_check.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 18
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -I site/pipeline/d7_completions.py
+          python3 -I site/pipeline/d7_completions.py --check
+
+      - name: Drop the completion previews' data if their step failed
+        if: ${{ steps.cm_previews.outcome == 'failure' }}
+        run: |
+          echo "::warning title=Completion previews::the completion previews step or its check failed; its files are not committed. The day is tried again by the next run."
+          git checkout -- site/public/data/daily-cm
+          git clean -fdq -- site/public/data/daily-cm
+
       # A failed capture or a failed check must not put Oklahoma data on main: put the folder back as it was committed.
       - name: Check the Oklahoma archive
         id: ok_check
@@ -184,7 +208,7 @@ jobs:
         run: |
           git config user.name "daily-rrc-report"
           git config user.email "actions@users.noreply.github.com"
-          git add site/public/data/daily site/public/data/daily-ok site/public/data/daily-nm
+          git add site/public/data/daily site/public/data/daily-ok site/public/data/daily-nm site/public/data/daily-cm
           if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
           # title it with the day the report is for (Central time), which is the newest day file of any state; the run's own
           # UTC date is already tomorrow when the 03:15 UTC job captures the previous evening
@@ -203,7 +227,7 @@ jobs:
       # The captures above carry on after an error so that what worked is committed and published; this is where the run still
       # fails, so a night on which the RRC or the OCC could not be read shows red in the Actions list and in GitHub's e-mail.
       - name: Fail the run if a capture or a check failed
-        if: ${{ !cancelled() && (steps.tx_capture.outcome == 'failure' || steps.tx_check.outcome == 'failure' || steps.ok_capture.outcome == 'failure' || steps.ok_check.outcome == 'failure' || steps.nm_capture.outcome == 'failure' || steps.nm_check.outcome == 'failure') }}
+        if: ${{ !cancelled() && (steps.tx_capture.outcome == 'failure' || steps.tx_check.outcome == 'failure' || steps.ok_capture.outcome == 'failure' || steps.ok_check.outcome == 'failure' || steps.nm_capture.outcome == 'failure' || steps.nm_check.outcome == 'failure' || steps.cm_previews.outcome == 'failure') }}
         run: |
-          echo "::error title=Daily reports::Texas capture ${{ steps.tx_capture.outcome }}, Texas check ${{ steps.tx_check.outcome }}, Oklahoma capture ${{ steps.ok_capture.outcome }}, Oklahoma check ${{ steps.ok_check.outcome }}, New Mexico capture ${{ steps.nm_capture.outcome }}, New Mexico check ${{ steps.nm_check.outcome }}. What succeeded was committed and published; what failed was left as committed."
+          echo "::error title=Daily reports::Texas capture ${{ steps.tx_capture.outcome }}, Texas check ${{ steps.tx_check.outcome }}, Oklahoma capture ${{ steps.ok_capture.outcome }}, Oklahoma check ${{ steps.ok_check.outcome }}, New Mexico capture ${{ steps.nm_capture.outcome }}, New Mexico check ${{ steps.nm_check.outcome }}, completion previews ${{ steps.cm_previews.outcome }}. What succeeded was committed and published; what failed was left as committed."
           exit 1

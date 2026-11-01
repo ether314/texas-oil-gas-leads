@@ -1213,3 +1213,11 @@ body:has(.pv-dialog[open]) { overflow: hidden; }
   .lchip input:checked + .lchip-body, .theme button[aria-pressed="true"], .seg button[aria-selected="true"] { outline: 2px solid Highlight; }
   .card, .tchip { border-color: CanvasText; background: Canvas; }
 }
+
+/* completion filings in the Images view (2026-11-01): a district and a kind to choose, then packets of page-one previews, a few at a time */
+.cm-tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0; }
+.cm-tools .input { min-height: 32px; max-width: 100%; }
+.cm-packet { margin: var(--sp-3) 0; }
+.cm-packet h5 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); }
+.cm-packet h5 small { font-weight: 500; color: var(--ink-2); }
+.cm-more { margin: var(--sp-2) 0; }

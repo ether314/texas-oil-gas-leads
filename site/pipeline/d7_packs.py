@@ -13,8 +13,10 @@ draw the sheet; without either the counts are still produced and the sheet is sk
 
 The one exception, decided on 2026-10-31 and recorded in the README: with --publish-docs the W-1 and survey packs are also
 staged readable (stage_pack, below) so d7_release.py can attach them to a GitHub release and each drill's page can link
-to its own filings. Completion images are never staged. Widened on 2026-11-01 (README, Privacy): each staged document also gets
+to its own filings. Widened on 2026-11-01 (README, Privacy): each staged document also gets
 a readable JPEG of its page one (render_preview, below), a file of the same release that the Texas images view shows inline.
+Widened again on 2026-11-01 for the completion images (stage_completions, below): a readable page-one JPEG of every document in a day's
+completion pack, and only that (the originals, which run to 560 MB a day, stay at the Commission). stage_pack never stages them.
 
 The pack is untrusted data. Members are read one at a time, capped in size, rendered under a timeout and never run.
 Python standard library, plus Pillow and pdftoppm when a sheet is wanted.
@@ -221,7 +223,7 @@ def inspect_pack(zip_path, ds, sheet_path, log=print):
 # Decided 2026-10-31 (README, Privacy): the approved W-1 letters, permit plats and directional surveys are republished
 # readable, unmodified, as files of one GitHub release a day (d7_release.py), and each drill's page links to its own. They are the
 # RRC's public records but can carry the names, phone numbers and addresses of individuals, and nothing here redacts them.
-# Completion images are not published (the contact sheet above stays blurred). Only run when asked (--publish-docs).
+# The completion pack is not staged here: see stage_completions below (readable page-one previews only). Only run when asked (--publish-docs).
 #
 # Decided 2026-11-01 (README, Privacy): page one of each of those documents is also published as a readable JPEG, <document>.jpg
 # (render_preview, Previewer below), so the Texas images view can show it inline. It is the same page the Commission publishes,
@@ -244,11 +246,13 @@ W1_KINDS = {"w1": "W1", "plat": "Plat"}
 ISO_DAY = re.compile(r"\d{4}-\d\d-\d\d")
 
 
-def copy_member(zf, info, dest):
-    """Write one member to dest and return its size, or None (and no file) when it is too big or is not what its extension says.
+def copy_member(zf, info, dest, magic=None):
+    """Write one member to dest and return its size, or None (and no file) when it is too big or is not what its extension says
+    (`magic` maps an extension to the first bytes a file of that name may start with; MAGIC when None).
     Names are made up by the caller, never taken from the pack, so nothing in the pack can pick a path."""
+    magic = MAGIC if magic is None else magic
     ext = os.path.splitext(info.filename)[1].lower()
-    if info.file_size > MAX_ASSET or ext not in MAGIC:
+    if info.file_size > MAX_ASSET or ext not in magic:
         return None
     written, head = 0, b""
     try:
@@ -263,7 +267,7 @@ def copy_member(zf, info, dest):
                 if written > MAX_ASSET:
                     raise ValueError("unpacks past the limit")
                 dst.write(chunk)
-        if head not in MAGIC[ext]:
+        if head not in magic[ext]:
             raise ValueError("not a %s file" % ext)
     except (OSError, ValueError, zipfile.BadZipFile, zlib.error):
         if os.path.exists(dest):
@@ -292,9 +296,9 @@ def _is_gray(im):
     return sum(chroma[25:]) <= 0.001 * im.width * im.height
 
 
-def render_preview(src, dest):
+def render_preview(src, dest, max_bytes=None):
     """Draw page one of the staged document at src (a PDF or a TIFF: copy_member has already capped its size and checked its first
-    bytes) as a JPEG about PREVIEW_W px wide at dest: grayscale when the page is, no metadata, at most PREVIEW_BYTES. The page is
+    bytes) as a JPEG about PREVIEW_W px wide at dest: grayscale when the page is, no metadata, at most max_bytes (PREVIEW_BYTES when None). The page is
     drawn as it is: nothing is cropped, hidden or blurred. pdftoppm runs under a timeout with the repository tokens scrubbed from
     its environment, Pillow refuses an image past PREVIEW_PIXELS, and only the first page is ever read. Returns the JPEG's size.
     Raises ToolsMissing, or whatever went wrong (a damaged file, a timeout, a page that will not fit the size): the caller skips
@@ -302,6 +306,7 @@ def render_preview(src, dest):
     why = preview_tools()
     if why:
         raise ToolsMissing(why)
+    max_bytes = PREVIEW_BYTES if max_bytes is None else max_bytes  # read here, not as a default, so a changed PREVIEW_BYTES takes effect
     from PIL import Image
     Image.MAX_IMAGE_PIXELS = PREVIEW_PIXELS
     try:
@@ -327,9 +332,9 @@ def render_preview(src, dest):
                     cur = im if im.width <= width else im.resize((width, max(1, round(im.height * width / im.width))), Image.LANCZOS)
                     for quality in PREVIEW_QUALITIES:
                         cur.save(dest, "JPEG", quality=quality, optimize=True, progressive=True)  # no EXIF: nothing is copied from the scan
-                        if os.path.getsize(dest) <= PREVIEW_BYTES:
+                        if os.path.getsize(dest) <= max_bytes:
                             return os.path.getsize(dest)
-        raise ValueError("the page does not fit in %d bytes" % PREVIEW_BYTES)
+        raise ValueError("the page does not fit in %d bytes" % max_bytes)
     except BaseException:
         if os.path.exists(dest):
             os.remove(dest)
@@ -448,9 +453,128 @@ def stage_surveys(zf, docs, out_dir, log=print, previewer=None):
     return out
 
 
+# ------------------------------------------------------------------------------------------------ completion images
+#
+# Decided 2026-10-31 and 2026-11-01 (README, Privacy): every document in the Texas packs may be published readable. For the completion
+# pack that is a readable JPEG of page one of each document and nothing else: a day's pack holds about 1,000 documents (560 MB), more
+# than a release's 1,000 files and far more than the repository should carry, and the Commission keeps the originals. A document is
+# published under a name made up here from the folder it sat in (never one taken from the pack: operators type those, with lease
+# names, well numbers and sometimes people in them), `cm_<district>_<tracking>_<n>.jpg`; its kind is told by name pattern and goes into
+# the data, not the name. Run by d7_completions.py as a step of its own, so the Texas capture is not touched.
+
+CM_KINDS = ["W-2 form", "G-1 form", "L-1 form", "P-4 form", "Other form", "Plat", "Well log", "Cementing report (W-15)",
+            "Acreage designation (P-16)", "Directional survey", "Inclination report (W-12)", "Other attachment"]  # every label kind_comp can return
+# the completion pack has scans saved as .tif that are PNG files (3 of 1,060 on the day it was measured): Pillow reads either by content
+CM_MAGIC = {".pdf": MAGIC[".pdf"], ".tif": MAGIC[".tif"] + (b"\x89PNG",), ".tiff": MAGIC[".tiff"] + (b"\x89PNG",)}
+CM_FOLDER = re.compile(r"trackingNo_(\d{1,12})(_Images_Submitted)?")
+CM_DISTRICT = re.compile(r"[0-9A-Za-z]{1,3}")
+CM_PREVIEW_BYTES = 150_000  # a day's ~1,060 previews then weigh about 100 MB, which a release can keep for a month
+CM_BUDGET_SECONDS = 600  # for all the previews of one pack: a render is about 0.17 s, so a full pack takes 3 minutes in one thread, one in four
+CM_WORKERS = 4
+
+
+def completion_name(district, tracking, n):
+    return "cm_%s_%s_%d.jpg" % (district, tracking, n)
+
+
+def completion_layout(docs):
+    """The documents of a completion pack in the order they are numbered and published: [(district, tracking, [(state, info, ext), ...])],
+    sorted by district and tracking number, each packet's documents by (folder kind, member name) so numbering never depends on the zip's
+    order. state 0 is a document of the plain `trackingNo_<n>` folder, 1 of `trackingNo_<n>_Images_Submitted`. Also returns the number of
+    documents that sat in no folder this reads (they are counted, never published)."""
+    groups, unplaced = collections.defaultdict(list), 0
+    for info, base in docs:
+        parts = info.filename.replace("\\", "/").split("/")
+        m = CM_FOLDER.fullmatch(parts[1]) if len(parts) >= 3 else None
+        if not m or not CM_DISTRICT.fullmatch(parts[0]):
+            unplaced += 1
+            continue
+        groups[(parts[0], str(int(m.group(1))))].append((1 if m.group(2) else 0, info, os.path.splitext(base)[1].lower()))
+    layout = []
+    for (district, tracking), items in sorted(groups.items(), key=lambda kv: (kv[0][0], int(kv[0][1]))):
+        items.sort(key=lambda t: (t[0], t[1].filename))
+        layout.append((district, tracking, items))
+    return layout, unplaced
+
+
+def stage_completions(zf, docs, out_dir, log=print, deadline=None, seconds=CM_BUDGET_SECONDS, workers=CM_WORKERS):
+    """Draw page one of every document of a completion pack into out_dir as cm_<district>_<tracking>_<n>.jpg (see above), with `workers`
+    pages drawn at once. Never raises for a document: one that is too large, is not what its extension says or will not draw has no
+    preview and is counted. It stops drawing when its budget (or the capture's `deadline`, a time.time() value) is spent, or after
+    PREVIEW_GIVE_UP failures in a row (the tool is broken, not the files), and says in one log line what it did. Names stay out of
+    the log. Returns {'packets': [[district, tracking, [[kind index in CM_KINDS, state, 1 if drawn else 0], ...]], ...],
+    'drawn': [names], 'docs': n, 'unplaced': n, 'failed': n, 'left_out': n, 'stopped': reason or None}."""
+    why = preview_tools()
+    if why:
+        raise ToolsMissing(why)
+    import concurrent.futures
+    os.makedirs(out_dir, exist_ok=True)
+    layout, unplaced = completion_layout(docs)
+    until = time.time() + seconds if deadline is None else min(time.time() + seconds, deadline)
+    state = {"streak": 0, "failed": 0, "stopped": None}
+    errors = collections.Counter()
+    packets, drawn, left_out = [], [], 0
+
+    def draw(src, dest):
+        try:
+            render_preview(src, dest, CM_PREVIEW_BYTES)
+            return None
+        except Exception as e:  # noqa: BLE001 - a bad scan, a timeout, a full disk: the document has no preview
+            return type(e).__name__
+        finally:
+            if os.path.exists(src):
+                os.remove(src)
+
+    def settle(job):
+        name, row, fut = job
+        err = fut.result()
+        if err:
+            state["failed"] += 1
+            state["streak"] += 1
+            errors[err] += 1
+            if os.path.exists(os.path.join(out_dir, name)):
+                os.remove(os.path.join(out_dir, name))
+        else:
+            state["streak"] = 0
+            row[2] = 1
+            drawn.append(name)
+
+    with tempfile.TemporaryDirectory() as tmp, concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        pending = collections.deque()
+        for district, tracking, items in layout:
+            rows = []
+            for n, (st, info, ext) in enumerate(items, 1):
+                row = [CM_KINDS.index(kind_comp(os.path.basename(info.filename.replace("\\", "/")))), st, 0]
+                rows.append(row)
+                while len(pending) >= workers * 4:  # stage no further ahead than a few pages: each is a file on disk until it is drawn
+                    settle(pending.popleft())
+                if not state["stopped"] and time.time() > until:
+                    state["stopped"] = "the time budget ran out"
+                elif not state["stopped"] and state["streak"] >= PREVIEW_GIVE_UP:
+                    state["stopped"] = "%d previews in a row failed" % PREVIEW_GIVE_UP
+                if state["stopped"]:
+                    left_out += 1
+                    continue
+                name = completion_name(district, tracking, n)
+                src = os.path.join(tmp, name[:-4] + ext)  # the name is made up here, so nothing in the pack picks a path
+                if copy_member(zf, info, src, CM_MAGIC) is None:
+                    state["failed"] += 1
+                    errors["NotADocument"] += 1
+                    continue
+                pending.append((name, row, pool.submit(draw, src, os.path.join(out_dir, name))))
+            packets.append([district, tracking, rows])
+        while pending:
+            settle(pending.popleft())
+    total = sum(len(p[2]) for p in packets)
+    log("completion previews: %d of %d documents drawn%s%s%s" % (
+        len(drawn), total, ", %d failed (%s)" % (state["failed"], ", ".join("%s x%d" % kv for kv in sorted(errors.items()))) if state["failed"] else "",
+        ", %d left out (%s)" % (left_out, state["stopped"]) if left_out else "", ", %d in no folder this reads" % unplaced if unplaced else ""))
+    return {"packets": packets, "drawn": sorted(drawn), "docs": total, "unplaced": unplaced, "failed": state["failed"], "left_out": left_out, "stopped": state["stopped"]}
+
+
 def stage_pack(zip_path, ds, out_dir, log=print, previews=False, deadline=None):
     """Copy the publishable documents of a pack into out_dir. {'permits': ...} for the W-1 pack, {'surveys': ...} for the survey
-    pack, None for any other (completion images are never published). With previews=True each document also gets a readable JPEG of
+    pack, None for any other (the completion pack goes through stage_completions, as previews only). With previews=True each document also gets a readable JPEG of
     its page one beside it (<document>.jpg, see Previewer) and the result adds 'previews': the names drawn, sorted ([] when the tools
     are missing or none could be drawn); `deadline` is a time.time() value after which no preview is started."""
     if ds not in ("w1images", "dirsurveys"):

@@ -257,6 +257,19 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   const sv = Im.filedSurveys({ ...dayP, release: { ...relP, noPreview: [] } });
   check(sv.length === 1 && sv[0].id === '9936440' && sv[0].doc.preview.endsWith('/dir_survey_9936440.pdf.jpg') && sv[0].doc.original.endsWith('/dir_survey_9936440.pdf') && sv[0].doc.label === 'Directional survey 9936440', 'images: a survey with an odd id is left out, the others get an address and a preview');
   check(Im.filedSurveys(day).length === 0 && Im.filedSurveys(null).length === 0 && Im.filedSurveys({ surveys: dayP.surveys }).length === 0, 'images: surveys are listed only for a day whose release is named');
+  // the completion filings' previews (2026-11-01): a day's file of packets, the releases it spreads over, and what the page may build from it
+  const cm = { v: 1, day: '2026-10-30', packDay: '2026-10-29', repo: 'o/r', per: 3, parts: 2, kinds: ['W-2 form', 'Well log'], docs: 5, previews: 4, builtAt: '2026-10-31T03:30Z',
+    packets: [['08', '111', [[0, 0, 1], [1, 1, 1]]], ['08', '222', [[0, 0, 1], [1, 0, 0]]], ['7C', '333', [[1, 1, 1]]]] };
+  const cd = Im.cmDocs(cm);
+  check(Im.cmOk(cm) && !Im.cmOk(null) && !Im.cmOk({ ...cm, v: 2 }) && !Im.cmOk({ ...cm, per: 0 }) && !Im.cmOk({ ...cm, repo: 'o r' }) && !Im.cmOk({ ...cm, day: 'today' }) && !Im.cmOk({ ...cm, packets: null }), 'images: a completion file is used only when it has its shape');
+  check(cd.length === 5 && cd[0].preview === 'https://github.com/o/r/releases/download/daily-2026-10-30-cm1/cm_08_111_1.jpg' && cd[2].preview === 'https://github.com/o/r/releases/download/daily-2026-10-30-cm1/cm_08_222_1.jpg'
+    && cd[3].preview === null && cd[4].preview === 'https://github.com/o/r/releases/download/daily-2026-10-30-cm2/cm_7C_333_1.jpg', 'images: a document\'s release is by its place in the whole list (a document with no preview keeps its place), and one with no preview has no address');
+  check(cd[0].kind === 'W-2 form' && cd[1].kind === 'Well log' && cd[1].submitted === true && cd[0].submitted === false, 'images: each document has its kind and its folder');
+  check(JSON.stringify(Im.cmSummary(cm)) === '{"docs":5,"previews":4,"packets":3}', 'images: the summary counts documents, previews and packets');
+  check(JSON.stringify(Im.cmDistricts(cm)) === '[{"d":"08","docs":4,"packets":2},{"d":"7C","docs":1,"packets":1}]' && JSON.stringify(Im.cmKinds(cm)) === '[{"k":"Well log","n":3},{"k":"W-2 form","n":2}]', 'images: districts and kinds, most first');
+  check(Im.cmPackets(cm).length === 3 && Im.cmPackets(cm, { district: '7C' }).length === 1 && Im.cmPackets(cm, { kind: 'W-2 form' }).length === 2 && Im.cmPackets(cm, { kind: 'W-2 form' })[0].docs.length === 1 && Im.cmPackets(cm, { kind: 'W-2 form' })[0].total === 2
+    && Im.cmPackets(cm, { district: '08', kind: 'Well log' }).length === 2 && Im.cmPackets(cm, { district: '9' }).length === 0, 'images: packets by district and by kind (a kind keeps only its documents, and says how many the packet has)');
+  check(Im.cmDocs({ ...cm, packets: [['../x', '1', [[0, 0, 1]]], ['08', 'abc', [[0, 0, 1]]], ['08', '1234567890123', [[0, 0, 1]]], ['08', '5', [[9, 0, 1]]]] }).map((x) => x.tracking + ':' + x.kind).join() === '5:Other attachment', 'images: a packet whose district or tracking number is not plain digits and letters is dropped, and an unknown kind reads Other attachment');
   const lc = Im.lifecycle(pk);
   check(lc.map((s) => s.id).join() === 'permit,drilling,completion' && lc[0].n === 168 && lc[1].present === false && lc[1].kinds === null, 'images: the lifecycle has three stages, in order, and a stage with no pack has no kinds');
   check(Im.liveCandidates(rows).join() === '2026-11-01,2026-10-31,2026-10-30', 'images: live days are tried newest first');

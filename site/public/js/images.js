@@ -14,6 +14,7 @@ const short = (iso) => MONTH[+iso.slice(5, 7) - 1] + ' ' + +iso.slice(8);
 
 export function createImagesView({ root }) {
   let rows = []; let started = false; let day = null; let latest = {}; // latest: the newest day each pack was counted by kind, {pack: {day, p}}
+  let cmDays = new Set(); // the days that have readable previews of their completion documents (data/daily-cm/index.json); only those have a file to ask for
   const slots = {};
 
   function writeHash() {
@@ -88,8 +89,41 @@ export function createImagesView({ root }) {
           el('tbody', {}, rows.slice().reverse().map((r) => el('tr', {}, el('th', { scope: 'row', text: fmtDate(r.d) }), I.PACKS.map((p) => el('td', { class: 'num', text: r[p.id] == null ? '—' : String(r[p.id]) })))))))));
   }
 
+  /* ---------- the completion filings of one day: every packet's documents, page one of each ---------- */
+  function completionBlock(cm) {
+    const sum = I.cmSummary(cm);
+    const districts = I.cmDistricts(cm); const kinds = I.cmKinds(cm);
+    const st = { district: '', kind: '', shown: I.CM_PAGE };
+    const dSel = el('select', { class: 'input', 'aria-label': 'Choose a district' }, el('option', { value: '', text: 'All districts' }), districts.map((x) => el('option', { value: x.d, text: 'District ' + x.d + ' (' + fmt.format(x.docs) + ')' })));
+    const kSel = el('select', { class: 'input', 'aria-label': 'Choose a kind of document' }, el('option', { value: '', text: 'All kinds' }), kinds.map((x) => el('option', { value: x.k, text: x.k + ' (' + fmt.format(x.n) + ')' })));
+    const list = el('div', { class: 'cm-list' });
+    const count = el('p', { class: 'fine', 'aria-live': 'polite' });
+    const more = el('button', { type: 'button', class: 'btn sm cm-more' });
+    function draw() {
+      const packets = I.cmPackets(cm, { district: st.district || null, kind: st.kind || null });
+      list.replaceChildren(...packets.slice(0, st.shown).map((pk) => {
+        const shown = pk.docs.filter((x) => x.preview);
+        const bare = pk.docs.length - shown.length;
+        return el('div', { class: 'cm-packet' },
+          el('h5', {}, 'Packet ' + pk.tracking, el('small', { text: ' district ' + pk.district + ' · ' + pk.total + ' document' + (pk.total === 1 ? '' : 's') + (st.kind ? ', ' + pk.docs.length + ' of this kind' : '') })),
+          shown.length ? previewGrid(shown.map((x) => ({ title: 'Completion packet ' + pk.tracking, label: x.kind, preview: x.preview, original: null }))) : null,
+          bare ? el('p', { class: 'fine', text: bare + ' document' + (bare === 1 ? ' has' : 's have') + ' no preview.' }) : null);
+      }));
+      count.textContent = packets.length ? 'Showing ' + Math.min(st.shown, packets.length) + ' of ' + fmt.format(packets.length) + ' packets.' : 'No packet matches.';
+      more.hidden = packets.length <= st.shown;
+      more.textContent = 'Show ' + Math.min(I.CM_PAGE, packets.length - st.shown) + ' more packets';
+    }
+    dSel.addEventListener('change', () => { st.district = dSel.value; st.shown = I.CM_PAGE; draw(); });
+    kSel.addEventListener('change', () => { st.kind = kSel.value; st.shown = I.CM_PAGE; draw(); });
+    more.addEventListener('click', () => { st.shown += I.CM_PAGE; draw(); });
+    draw();
+    return el('div', { class: 'nat-sub cm-block' }, el('h4', { text: 'Completion filings, page one of each document (' + fmt.format(sum.previews) + ' of ' + fmt.format(sum.docs) + ' in ' + fmt.format(sum.packets) + ' packets)' }),
+      el('p', { class: 'fine', text: 'What operators filed when their wells were completed: the forms, plats, logs and reports. Only page one is published, as a picture; the whole documents are at the Commission. Previews are kept for ' + I.CM_KEEP + ' days.' }),
+      el('div', { class: 'cm-tools' }, dSel, kSel), count, list, more);
+  }
+
   /* ---------- one day ---------- */
-  function dayPanel(file, d) {
+  function dayPanel(file, d, cm) {
     const packs = I.packsOf(file);
     const filed = I.filedPermits(file);
     const rel = file && file.release;
@@ -118,8 +152,9 @@ export function createImagesView({ root }) {
     const surveyBlock = surveys.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Directional surveys with a preview (' + surveys.length + ')' }),
       previewGrid(surveys.slice(0, 12).map((x) => ({ title: 'Survey ' + x.id, label: x.doc.label, type: x.doc.type, preview: x.doc.preview, original: x.doc.original }))),
       surveys.length > 12 ? el('p', { class: 'fine', text: 'The first 12 of ' + surveys.length + '; each survey has a page of its own in the Daily report.' }) : null) : null;
-    const privacy = seen ? el('p', { class: 'fine', text: 'Each preview is page one of a document the Commission publishes, drawn as a picture: readable, nothing blurred, cropped or hidden. They are public records and can carry the names, phone numbers and addresses of individuals. Click a page to enlarge it.' }) : null;
-    return el('div', {}, body, files, surveyBlock, privacy, el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#daily?st=tx&d=' + d }, 'The Daily report for ' + fmtDate(d), icon('arrow', 16))));
+    const completion = cm ? completionBlock(cm) : (file && file.kind === 'live' && packs[2].present && packs[2].kinds ? el('p', { class: 'fine', text: 'Readable previews of the completion documents are published for the newest ' + I.CM_KEEP + ' days, and not for this one.' }) : null);
+    const privacy = seen || cm ? el('p', { class: 'fine', text: 'Each preview is page one of a document the Commission publishes, drawn as a picture: readable, nothing blurred, cropped or hidden. They are public records and can carry the names, phone numbers and addresses of individuals. Click a page to enlarge it.' }) : null;
+    return el('div', {}, body, files, surveyBlock, completion, privacy, el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#daily?st=tx&d=' + d }, 'The Daily report for ' + fmtDate(d), icon('arrow', 16))));
   }
   async function choose(d, { fromHash = false } = {}) {
     const r = rows.find((x) => x.d === d && I.havePacks(x));
@@ -129,10 +164,11 @@ export function createImagesView({ root }) {
     if (!day) { slots.day.replaceChildren(el('p', { class: 'nd', text: 'No day with a pack yet.' })); return; }
     slots.day.replaceChildren(el('p', { class: 'status', text: 'Loading ' + fmtDate(day) + '…' }));
     const mine = day;
-    const file = await loadOpt('daily/' + day);
+    const [file, cmFile] = await Promise.all([loadOpt('daily/' + day), cmDays.has(day) ? loadOpt('daily-cm/' + day) : null]);
+    const cm = I.cmOk(cmFile) && cmFile.day === day ? cmFile : null;
     if (mine !== day) return; // another day was chosen meanwhile
     slots.dayHead.textContent = fmtDate(day);
-    slots.day.replaceChildren(file ? dayPanel(file, day) : el('p', { class: 'nd', text: 'The report for this day could not be loaded.' }));
+    slots.day.replaceChildren(file ? dayPanel(file, day, cm) : el('p', { class: 'nd', text: 'The report for this day could not be loaded.' }));
     if (!fromHash) writeHash();
   }
 
@@ -143,6 +179,7 @@ export function createImagesView({ root }) {
       root.replaceChildren(el('div', { class: 'fail' }, el('p', { text: 'Could not load the archive. Reload the page to try again.' })));
       return false;
     }
+    cmDays = new Set(((await loadOpt('daily-cm/index')) || {}).days || []);
     rows = I.daySeries(index);
     // for each pack, the newest day captured live whose file counted its documents (the W-1 pack lands the morning after, so it is often a day behind the others)
     for (const d of I.liveCandidates(rows).slice(0, 6)) {
@@ -153,7 +190,7 @@ export function createImagesView({ root }) {
     slots.day = el('div', {}); slots.dayHead = el('h2', { text: '' });
     const dayBox = el('section', { class: 'card nat-card reveal is-in', 'aria-live': 'polite' }, el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon('calendar', 15), 'One day'), slots.dayHead, el('p', { class: 'sub', text: 'What the three packs of this report day hold.' }))), slots.day);
     root.replaceChildren(el('div', { class: 'stack' }, figures(), lifeCard(), dayCard(), dayBox,
-      el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; the permit letters, plats and surveys themselves are published readable: page one of each shows here and on its drill page in the Daily report, and the whole document is linked.' })));
+      el('p', { class: 'fine', text: 'The Railroad Commission’s filings are public records. The sheets here are shrunk and blurred; the permit letters, plats and surveys themselves are published readable: page one of each shows here and on its drill page in the Daily report, and the whole document is linked. For the completion filings only page one of each document is published, as a picture.' })));
     return true;
   }
   return {
