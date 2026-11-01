@@ -300,7 +300,22 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(same(Fd.byStatus(doc, 'a'), { data: ['KS', 'ND'], query: [], form: ['CO'], none: [], unknown: [] }), 'fields: the agencies of each status for a metric, by name');
   check(Fd.cellOf(doc, 'ND', 'a').s === 'data' && Fd.cellOf(doc, 'ZZ', 'a') === null && Fd.shortCode('FO') === 'Gulf' && Fd.shortCode('BL') === 'BLM' && Fd.shortCode('ND') === 'ND', 'fields: a cell, no cell, and the short codes');
   check(Fd.CODES.map((c) => c.id).join() === 'data,query,form,none,unknown' && Object.keys(Fd.GRADES).join() === 'A,B,C,D', 'fields: five statuses and four grades');
+  // a registry (FracFocus): the first column, never counted as an agency, with its list of fields tied to the permit metrics
+  const reg = { ...doc, registries: ['FF'], states: { ...doc.states, FF: { name: 'FracFocus', kind: 'registry', cells: cells('data', 'none', 'data'), fields: [
+    { column: 'Lat', label: 'Latitude', group: 'where', plain: 'p', metric: 'a' }, { column: 'Cas', label: 'CAS number', group: 'chem', plain: 'p', metric: '' },
+    { column: 'Id', label: 'ID', group: 'well', plain: 'p', metric: '' }, { column: 'Gal', label: 'Water used', group: 'water', plain: 'p', metric: 'c' }] } } };
+  check(Fd.registries(reg).join() === 'FF' && Fd.registries(doc).length === 0 && Fd.registries({ ...doc, registries: ['FF'] }).length === 0, 'fields: the registries are those the file names and really holds');
+  check(Fd.columns(reg).join() === 'FF,ND,KS,CO' && Fd.columns(reg, 'name').join() === 'FF,CO,KS,ND' && Fd.columns(doc).join() === 'ND,KS,CO', 'fields: the registry is the first column however the agencies are ordered, and a file without one is unchanged');
+  check(Fd.metricScore(reg, 'a').total === 3 && Fd.metricScore(reg, 'a').data === 2 && Fd.headline(reg).agencies === 3 && same(Fd.byStatus(reg, 'a'), Fd.byStatus(doc, 'a')) && Fd.headline(reg).unknownShare === h.unknownShare, 'fields: a registry is not counted as an agency (the counts, the headline and the lists are the agencies\')');
+  check(Fd.stateScore(reg, 'FF').data === 2 && Fd.cellOf(reg, 'FF', 'a').s === 'data', 'fields: a registry has a score and cells like any column');
+  const grp = Fd.registryGroups(reg, 'FF');
+  check(grp.map((g) => g.id).join() === 'well,where,water,chem' && grp[1].fields[0].matches.key === 'a' && grp[1].fields[0].matches.data === 2 && grp[1].fields[0].matches.total === 3 && grp[3].fields[0].matches === null && Fd.registryGroups(doc, 'ND').length === 0,
+    'fields: the registry\'s fields come in the page\'s order of groups, empty groups left out, each with how many agencies publish its metric as data (none when it matches no metric)');
+  check(Fd.registryAdds(reg, 'FF').map((x) => x.m.key + x.n).join() === 'c0,a2' && Fd.registryAdds(reg, 'FF', 1).length === 1 && Fd.registryAdds(doc, 'ND').map((x) => x.m.key).join() === 'b,a' && Fd.registryAdds(reg, 'ZZ').length === 0, 'fields: what a registry adds are its data metrics that fewest agencies publish as data, fewest first');
+  check(Object.keys(Fd.FIELD_GROUPS).join() === 'well,where,job,water,chem' && Fd.GRAIN.disclosure === 'one row a disclosure', 'fields: the groups of a registry\'s fields and a disclosure as a grain');
   const real = read('permit-fields');
+  check(real.registries.join() === 'FF' && Fd.columns(real)[0] === 'FF' && Fd.columns(real).length === real.order.length + 1 && !real.order.includes('FF') && Fd.headline(real).agencies === 35, 'fields: in the real file FracFocus is the first column and not one of the 35 agencies');
+  check(Fd.registryGroups(real, 'FF').reduce((n, g) => n + g.fields.length, 0) === real.states.FF.fields.length && Fd.registryAdds(real, 'FF')[0].m.key === 'fracture_plan' && Fd.registryAdds(real, 'FF').every((x) => x.n <= 4), 'fields: every field of the registry is in a group, and what it adds starts with the fracturing chemicals no agency publishes as data');
   check(real.order.every((id) => Fd.stateScore(real, id).total === real.metrics.length) && real.order.every((id) => Fd.stateScore(real, id).data + Fd.stateScore(real, id).query + Fd.stateScore(real, id).form + Fd.stateScore(real, id).none + Fd.stateScore(real, id).unknown === 48), 'fields: every committed state answers all 48 metrics');
 }
 

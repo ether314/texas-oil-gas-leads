@@ -835,6 +835,30 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const text = await page.locator('#view-fields').innerText();
       check(!/NaN|undefined|Infinity|\bnull\b/.test(text), 'the matrix shows no NaN, undefined, null or Infinity');
       check(/Not verified/.test(text), 'the page says what it could not verify');
+      // FracFocus, the registry of fracturing jobs: the first column, counted apart from the 35 agencies, with a card listing every field in its download
+      await page.goto(base + '#fields', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root button.fx-c', { timeout: 25000 });
+      const ffm = await page.evaluate(() => ({
+        heads: [...document.querySelectorAll('#fields-root th.fx-col button.fx-h')].map((b) => b.textContent), reg: document.querySelectorAll('#fields-root th.fx-col.is-reg').length,
+        regCells: document.querySelectorAll('#fields-root td.fx-cell.is-reg').length, rows: document.querySelectorAll('#fields-root tr[data-m]').length,
+        total: document.querySelector('#fields-root tr[data-m="api_number"] td.fx-n:last-child').textContent, score: document.querySelector('#fields-root tr.fx-score td.fx-n.is-reg').textContent,
+        label: document.querySelector('#fields-root tr[data-m="water"] td.fx-cell.is-reg button').getAttribute('aria-label'), kpis: document.querySelector('#fields-root .nat-kpis').innerText.replace(/\s+/g, ' ') }));
+      check(ffm.heads.length === 36 && ffm.heads[0] === 'FracFocus' && ffm.reg === 1 && ffm.regCells === ffm.rows && ffm.rows === 48, 'the matrix has FracFocus as its first column, a cell on each of the 48 rows, and 35 agencies after it: ' + ffm.heads.slice(0, 3).join(','));
+      check(/^\d+ of 35$/.test(ffm.total) && ffm.score === '9' && /published as data/.test(ffm.label) && /Agencies compared 35/.test(ffm.kpis) && /What FracFocus adds 3 metrics/.test(ffm.kpis) && /Hydraulic fracturing plan 0 of 35/.test(ffm.kpis),
+        'FracFocus is not counted as an agency (a row still totals "of 35"), its score is 9 metrics as data and the figures say what it adds: ' + ffm.total + ' / ' + ffm.score + ' / ' + ffm.kpis.slice(0, 200));
+      await page.goto(base + '#fields?s=FF', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root .nat-panel', { timeout: 25000 });
+      const ffp = await page.locator('#fields-root .fx-panel-slot').innerText();
+      const ffHref = await page.locator('#fields-root .fx-panel-slot a.more-link:not([target])').first().getAttribute('href');
+      check(/What a disclosure captures/i.test(ffp) && /The disclosure/i.test(ffp) && !/The permit form/i.test(ffp) && /one row a disclosure/.test(ffp) && /one well at a time/.test(ffp) && ffHref === '#overview', 'FracFocus\'s panel speaks of a disclosure, not a permit, says what each file holds and links to the map: ' + ffHref);
+      const card = await page.evaluate(() => ({ groups: document.querySelectorAll('#fx-registry .fx-rg').length, rows: document.querySelectorAll('#fx-registry li.fx-rf').length, text: document.querySelector('#fx-registry').innerText,
+        links: [...document.querySelectorAll('#fx-registry .fx-rf-link button')].length, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
+      check(card.groups === 5 && card.rows === 34 && /CASNumber/.test(card.text) && /TotalBaseWaterVolume/.test(card.text) && /JobStartDate/.test(card.text) && /1 of 35 agencies publish it as data/.test(card.text) && /Not one of the permit metrics/.test(card.text) && card.links >= 15 && !card.sideways,
+        'the card lists the registry\'s 34 fields in five groups, the permit metric each matches with how many agencies publish it, and the page does not scroll sideways: ' + card.rows + ' rows');
+      await page.click('#fx-registry .fx-rf-link button >> nth=0');
+      await page.waitForTimeout(200);
+      const mp = await page.locator('#fields-root .fx-panel-slot').innerText();
+      check(/API well number/.test(mp) && /a registry counted apart/i.test(mp) && /FracFocus on/.test(mp) && /of 35 as data/.test(mp), 'a field\'s metric opens its panel, which counts the agencies and names FracFocus apart: ' + mp.replace(/\s+/g, ' ').slice(0, 160));
     } catch (e) {
       check(false, 'the permit-data matrix: ' + e.message.split('\n')[0].slice(0, 200));
     }
