@@ -4,7 +4,7 @@
 Virginia drills a few dozen wells a year, almost all coalbed methane in Buchanan and Dickenson counties (a little oil and conventional gas). Virginia Energy publishes NO permit issue date by well in
 any open file: the permit reports of its Gas and Oil Data Information System ("DGO Inquiry") are ASP.NET form postbacks, not files, and the status date on its map layers is the date of the well's
 latest status, not of its permit. What the public map service (ArcGIS, no login) does give for every well is the date its drilling was completed (`FiDrComp`), so this counts WELLS DRILLED by that
-date, and says so: `measure` is `spuds` (the National report's name for counts of drilled wells, never added to permits), `basis` is "date drilling was completed", and the months end 60 days
+date, and says so: `measure` is `drilled` (wells counted by the day drilling was completed: not permits and not spuds, so never added to either), `basis` is "date drilling was completed", and the months end 60 days
 before the read, because a well's date arrives after the work. Permits issued and not yet drilled, and permits that were never drilled, are not in this count.
 
 Three layers of https://energy.virginia.gov/gis/rest/services/DGO/DGO_wells/MapServer are read, each one request (a page of up to 2,000 wells since 2019, no geometry, five fields):
@@ -123,7 +123,7 @@ def build(get=C.polite_get, today=None, pause=PAUSE):
     for day, band, county, operator, fluid in got:
         t.add(day, band, county=county, operator=operator, fluid=fluid)
     doc = t.document(agency="Virginia Department of Energy (Virginia Energy), Division of Gas and Oil", source_name="DGO wells map service: Active, Plugged and Waste Disposal Wells (drilling completed date)", source_url=SERVICE,
-                     basis="date drilling was completed (wells drilled; Virginia publishes no permit date)", cadence="live map layer (no update time published)", measure="spuds", lag_days=LAG_DAYS, asof=today, unit="wells drilled",
+                     basis="date drilling was completed (wells drilled; Virginia publishes no permit date)", cadence="live map layer (no update time published)", measure="drilled", lag_days=LAG_DAYS, asof=today, unit="wells drilled",
                      note="Virginia Energy publishes no permit issue date by well, so this counts wells drilled, by the date their drilling was completed, never added to permits. Most are coalbed methane "
                           "wells, most of them in Buchanan County. Wells drilled and since plugged are included; permits issued and not yet drilled are not. The newest well drilled in the layers is dated %s; months run to 60 days "
                           "before the read because a well's date arrives after the work. Operators are named only where they are companies." % newest.isoformat())

@@ -1,6 +1,6 @@
 """Tests for site/pipeline/d11_nat_va.py: Virginia's wells drilled (Virginia Energy's DGO wells map service, by the date drilling was completed).
 
-Virginia publishes no permit date by well in open data, so the producer counts wells by `FiDrComp` from three ArcGIS layers (Active, Plugged, Waste Disposal) and says so (`measure` spuds, a basis in words, the months
+Virginia publishes no permit date by well in open data, so the producer counts wells by `FiDrComp` from three ArcGIS layers (Active, Plugged, Waste Disposal) and says so (`measure` drilled, a basis in words, the months
 ending 60 days before the read). The service is faked here with invented wells (file numbers T-0001..., made-up companies and a made-up person). The tests pin the query (since 2019, no geometry, no farm or well-name field),
 the bands and fluid from the well type, a well in two layers counted once, paging, the privacy rule on a person-named operator, the document's honest labels, and the failures that must stop the run (an error answer,
 a page that is not JSON, too few wells, unreadable dates, a stale layer, paging that never ends, a server that refuses this machine).
@@ -86,7 +86,7 @@ check(len(svc.asked) == 3 and [int(re.search(r"MapServer/(\d+)/", u).group(1)) f
 q = urllib.parse.parse_qs(urllib.parse.urlparse(svc.asked[0]).query)
 check("2019-01-01" in q["where"][0] and q["returnGeometry"] == ["false"] and set(q["outFields"][0].split(",")) == {"FiNo", "CoName", "TblCnName", "TblOpDesc", "FiDrComp"}, "the query asks for wells drilled since 2019, with no geometry and five fields")
 check(not any(f in u for u in svc.asked for f in ("FiFarm", "FiOperation", "FiStPlane", "FiElev")), "no farm, well-name or location field is ever requested")
-check(doc["state"] == "VA" and doc["measure"] == "spuds" and doc["basis"].startswith("date drilling was completed") and doc["unit"] == "wells drilled", "it says what it counts: wells drilled by the date drilling was completed, measure spuds")
+check(doc["state"] == "VA" and doc["measure"] == "drilled" and doc["basis"].startswith("date drilling was completed") and doc["unit"] == "wells drilled", "it says what it counts: wells drilled by the date drilling was completed, measure spuds")
 check(doc["months"][0] == "2019-01" and doc["months"][-1] == "2026-08" and doc["through"] == "2026-08-31" and doc["asOf"] == "2026-11-01", "months run to 60 days before the read (August for a November 1 read); asOf is the read")
 m = {ym: i for i, ym in enumerate(doc["months"])}
 new, inj, other = doc["bands"]["new"], doc["bands"]["inj"], doc["bands"]["other"]
