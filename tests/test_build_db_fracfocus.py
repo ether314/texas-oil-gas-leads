@@ -195,7 +195,7 @@ B.build(plain, B.DATA)
 names = [x[0] for x in sqlite3.connect(plain).execute("SELECT name FROM sqlite_master")]
 check(not any(n.startswith(("ff_", "v_ff_")) for n in names) and "new_wells" in names, "a database built without --fracfocus holds none of the FracFocus tables, only what the site publishes")
 text = "".join(open(p, encoding="utf-8").read() for p in (os.path.join(B.DATA, "newwells", "summary.json"), os.path.join(B.DATA, "newwells", "points.json")))
-check(not re.search(r"\d{10}", text), "and the site's own FracFocus files still hold no API number")
+check(not re.search(r"\d{10}", text), "and the site's own FracFocus files (the summary and the points) still hold no API number: only the two detail files do, by the owner's decision of 2026-11-02")
 
 # ------------------------------------------------------------------------------------------------ through build_db, and its own check
 full = os.path.join(tmp, "full.sqlite")
@@ -232,9 +232,9 @@ if os.path.isfile(snap_path):
     pub = ""
     for root, _, files in os.walk(os.path.join(REPO, "site", "public", "data")):
         for f in files:
-            if f.endswith(".json") and ("newwells" in root or f in ("summary.json", "points.json")):
+            if f.endswith(".json") and not f.startswith("detail") and ("newwells" in root or f in ("summary.json", "points.json")):  # the two detail files carry API numbers on purpose (exception (d))
                 pub += open(os.path.join(root, f), encoding="utf-8").read()
-    check(pub and not re.search(r"\d{10}", pub), "and the site's own FracFocus files, which are what the live site serves, still hold no API number")
+    check(pub and not re.search(r"\d{10}", pub), "and the site's own FracFocus files other than the two detail files, which are what the live site serves, still hold no API number")
 
 # ------------------------------------------------------------------------------------------------ the download: a new folder, resumed once, a refusal is an answer
 blob = open(zpath, "rb").read()
