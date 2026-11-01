@@ -12,6 +12,20 @@ const { chromium } = require('playwright');
 const previewStub = require('./preview-stub.cjs');
 
 const ROOT = path.join(__dirname, '..', 'site', 'public');
+// a small reader for a CSV with quoted fields (a name can hold a comma), as rows of strings
+function parseCsv(text) {
+  const table = []; let row = []; let cell = ''; let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell.replace(/\r$/, '')); table.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); table.push(row); }
+  return table;
+}
 const permitFields = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'permit-fields.json'), 'utf8')); // the matrix's own data: its counts are read from it, not written here
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 
@@ -1683,7 +1697,22 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const text = await page.locator('#view-daily').innerText();
       check(!/\b(NaN|undefined|null|Infinity)\b/.test(text), label + ': no NaN, undefined, null or Infinity anywhere on the Daily report');
       check((await page.locator('#daily-root .dr-tile').count()) === 4 && !(await page.locator('#statebar').isVisible()) && !(await page.locator('#ticker, #insights, #pulse-card, #seg-chart').count()), label + ': four figures, no states bar, none of the Texas-only cards');
-      check(!/\d{10}/.test(text) && !/API/.test(text.replace(/No API number/, '').replace(/(matched by|without) API numbers?/g, '')), label + ': no API number, well name or lease anywhere on the page');
+      check(!/\d{10}/.test(text) && /No well name or lease is published/.test(text) && /no source the report reads has a well’s street address or a parcel number/.test(text), label + ': an API number is written state-county-well (never as a run of ten digits), and the page says no well name, lease, street address or parcel number is published');
+      // the records of the day: an API number and a GPS position for every fractured well, and the same records as a CSV with every column
+      const tbl = await page.evaluate(() => { const t = document.querySelector('section[aria-labelledby="dd-table-h"] table'); return t ? { heads: [...t.querySelectorAll('thead th')].map((x) => x.textContent), rows: [...t.querySelectorAll('tbody tr')].map((r) => [...r.children].map((c) => c.textContent)) } : null; });
+      const ai = tbl ? tbl.heads.indexOf('API number') : -1; const pi = tbl ? tbl.heads.indexOf('Position') : -1; const ji = tbl ? tbl.heads.indexOf('Job') : -1;
+      const wellRows = tbl ? tbl.rows.filter((r) => r[0] === 'Fracked well') : [];
+      check(tbl && ai >= 0 && pi >= 0 && ji >= 0 && tbl.heads.includes('Depth') && tbl.heads.includes('Water') && wellRows.length > 0 && wellRows.every((r) => /^\d\d-\d{3}-\d{5}$/.test(r[ai]) && /^\d{2}\.\d{4}, -\d{2,3}\.\d{4}$/.test(r[pi]) && r[ji] !== '—'),
+        label + ': the table has an API number, a GPS position and the job days for every fractured well of the day (' + wellRows.length + ' wells: ' + (wellRows[0] || []).slice(ai, ji + 1).join(' | ') + ')');
+      const csvBtn = page.locator('section[aria-labelledby="dd-table-h"] button.btn');
+      const nCsv = +(await csvBtn.innerText()).match(/\(([\d,]+) rows?,/)[1].replace(/,/g, '');
+      const [dl] = await Promise.all([page.waitForEvent('download'), csvBtn.click()]);
+      const csv = parseCsv(fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim());
+      const ci = (c) => csv[0].indexOf(c); const cw = csv.slice(1).filter((r) => r[0] === 'Fracked well');
+      check(csv[0].join() === 'kind,date,state,county,operator,api_number,latitude,longitude,datum,job_start,job_end,depth_ft,base_water_gal,non_water_gal,land' && csv.length - 1 === nCsv && /^oil-tracker-\d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename()),
+        label + ': "Download this day" saves a CSV of the day\'s ' + nCsv + ' records with all fifteen columns (' + dl.suggestedFilename() + ')');
+      check(cw.length >= wellRows.length && cw.every((r) => /^\d\d-\d{3}-\d{5}$/.test(r[ci('api_number')]) && +r[ci('latitude')] > 15 && +r[ci('longitude')] < -60 && !/^'/.test(r[ci('longitude')]) && /^\d{4}-\d\d-\d\d$/.test(r[ci('job_start')]) && (r[ci('job_end')] === '' || r[ci('job_end')] >= r[ci('job_start')]) && ['NAD27', 'NAD83', 'WGS84', ''].includes(r[ci('datum')]) && r[ci('depth_ft')] !== '0'),
+        label + ': every fractured well in the CSV has its API number, a GPS point (a negative longitude stays a number, with no formula-proofing apostrophe), job days that do not run backwards and a datum');
       const ink = await page.evaluate(() => { const c = document.querySelector('#daily-root .nw-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 40) n++; return n; });
       check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
       const first = await page.locator('#daily-root .dd-date').innerText();
@@ -1740,7 +1769,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       // a state: the table, the chart and the summary agree
       await page.selectOption('#daily-root select.nw-pick', 'TX');
       await page.waitForFunction(() => /in Texas$/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
-      const states = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap.tall tbody tr td:nth-child(2)')].map((t) => t.textContent));
+      const states = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap.tall tbody tr td:nth-child(2)')].map((t) => t.title || t.textContent)); // the cell shows the state's code and its name on hover
       check(/s=TX/.test(await hash()) && states.length > 0 && states.every((x) => x === 'Texas') && (await page.locator('#daily-root .dd-chartbox .nat-keys:not(.dd-oilkey) li').count()) === 1, label + ': choosing Texas keeps only Texas in the table and the chart (' + states.length + ' wells), and writes s=TX');
       check(!(await statsAgree(label + ' (Texas)')) && /in Texas/.test(await page.locator('#daily-root .dd-where').innerText()), (await statsAgree(label + ' (Texas)')) || label + ': choosing Texas makes the numbers Texas\'s own');
       // a day with no well says none, rather than a figure the registry lacks

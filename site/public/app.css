@@ -349,6 +349,10 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); white-space: nowrap; font-size: var(--fs-sm); font-weight: 620; color: var(--ink-2); box-shadow: 0 1px 0 var(--axis); border-bottom: 0; }
 .grid th.num, .grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid td.num.on { font-weight: 650; }
+.grid td.nw { white-space: nowrap; }
+.dd-grid { font-size: var(--fs-sm); }
+.dd-grid th, .dd-grid td { padding: 8px 10px; }
+.dd-grid td:nth-child(4), .dd-grid th:nth-child(4) { min-width: 150px; }
 .grid .cnt .unit { color: var(--ink-2); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.02em; } /* a count of wells (spuds, drilled) says what it is beside the number */
 .grid tbody th { font-weight: 560; }
 .grid td.name { min-width: 260px; font-weight: 560; }

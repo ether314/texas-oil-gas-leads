@@ -177,6 +177,16 @@ for f in files:
 check(not phone and not mail and not digits, "no e-mail address, phone number or API-like number in any of the %d published data files (%s)" % (len(files), (phone + mail + digits)[:3]))
 check(not urls, "no web address in any Daily day file or index (%s)" % urls[:3])
 
+# the FracFocus wells' files (CLAUDE.md, Privacy, exception (d), the owner's decision of 2026-11-02): an API number is allowed in the two detail files and in no other file of the folder
+nw_dir = os.path.join(DATA, "newwells")
+loose = [n for n in sorted(os.listdir(nw_dir)) if n.endswith(".json") and not n.startswith("detail") and [h for h in P.scan(open(os.path.join(nw_dir, n), encoding="utf-8").read(), digits=True) if "web" not in h]]  # summary.json links its source
+check(not loose, "no file of newwells/ but the two detail files holds an API-like number, an e-mail address or a phone number (%s)" % loose)
+for n in ("detail.json", "detail-history.json"):
+    d = json.load(open(os.path.join(nw_dir, n), encoding="utf-8"))
+    cols = ("api", "end", "tvd", "wg", "nw", "dat")
+    check(P.scan(json.dumps(d), digits=False) == [] and all(isinstance(x, int) and not isinstance(x, bool) for c in cols for x in d[c]) and set(d) == {"v", "t0", "n", "asOf" if n == "detail.json" else "until", *cols},
+          "newwells/%s holds only whole numbers in its six columns: an API number, a day count, depth, water, other fluid and a datum code, and no name, lease or text" % n)
+
 import build_data  # noqa: E402
 
 odd = []
