@@ -201,6 +201,7 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
     && Nt.sourceHref({ id: 'KS', source: { url: 'https://x.gov/a.zip' } }, null).href === 'https://x.gov/a.zip' && Nt.sourceHref({ id: 'KS' }, fl) === null, 'national: a source that is a raw download or a map-service root sends a visitor to the agency\'s own page; a page is linked as it is; nothing to link is null');
   check(Nt.noneRecorded({ p12: 0, prev12: 0 }) && !Nt.noneRecorded({ p12: 0, prev12: 3 }) && !Nt.noneRecorded({ p12: 2, prev12: 0 }), 'national: nothing in 24 months reads "none recorded"; a year with none after a year with some is a real zero');
   check(Nt.change({ p12: 12, prev12: 10 }) === 0.2 && Nt.change({ p12: 5, prev12: 0 }) === null, 'national: the change is null, never infinity, when the 12 before are zero');
+  check(Nt.shownChange({ p12: 372, prev12: 2 }) === null && Nt.shownChange({ p12: 30, prev12: 20 }) === 0.5 && Nt.shownChange({ p12: 5, prev12: 0 }) === null, 'national: a change is shown only from a base of 20 (2 permits to 372 is not +18,500%)');
   const st = Nt.stack(doc, 'permits');
   check(st.series.map((s) => s.id).join() === 'TX,ND,other' && st.series.at(-1).count === 1 && st.totals.every((t) => t === 15) && st.months.length === 30, 'national: plotted states keep their color, the rest fold into Other states; the BLM is not stacked');
   const lag = Nt.stack({ ...doc, states: [...doc.states, mk('IL', 'permits', [...flat(26, 2), null, null, null, null])] }, 'permits');

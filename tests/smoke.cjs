@@ -1187,6 +1187,27 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 23. a change from a small base is not a percent (2026-11-01): California went from 2 permits to 372, which read "+18500%" in its panel; the panel says the base in words, and no tile or row shows the percent
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    try {
+      await page.goto(base + '#national?s=CA', { waitUntil: 'load' });
+      await page.waitForSelector('#national-root .nat-panel .nat-big', { timeout: 25000 });
+      const big = await page.locator('#national-root .nat-panel .nat-big').innerText();
+      check(!/\+\s?\d{3,}\s?%/.test(big) && /\(\d[\d,]* the 12 months before\)/.test(big), 'California\'s panel gives its base in words and no percent from a base under 20: ' + big.replace(/\s+/g, ' ').slice(0, 120));
+      const rows = await page.evaluate(() => [...document.querySelectorAll('#national-root .nat-row')].map((r) => r.innerText).filter((t) => /\+\d{4,}%/.test(t)));
+      check(rows.length === 0, 'no ranking row shows a percent over a thousand: ' + rows.join(' | ').slice(0, 120));
+    } catch (e) {
+      check(false, 'a change from a small base: ' + e.message.split('\n')[0].slice(0, 220));
+    }
+    check(!errs.length, 'the California panel loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
   // 22. the Companies table's Segment cell is a table cell (its class once collided with the segmented control's, which made each one a pill)
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });

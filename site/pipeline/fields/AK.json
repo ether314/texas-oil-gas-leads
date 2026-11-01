@@ -15,34 +15,34 @@
  },
  "cells": {
   "api_number": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Commission assigns it (25.005(f)); whether Data Miner shows it was not seen"
+   "s": "data",
+   "e": "file",
+   "n": "Api in wells.xlsx and wellhistory.xlsx (14 digits; the 11th and 12th give the sidetrack code)"
   },
   "permit_number": {
-   "s": "query",
-   "e": "doc",
-   "n": "Permit to Drill (PTD) number keys the scanned well files (AOGCC flyer); data columns not seen"
+   "s": "data",
+   "e": "file",
+   "n": "Permit in both files; each sidetrack and lateral leg has a Permit to Drill of its own"
   },
   "well_name": {
-   "s": "form",
-   "e": "doc",
-   "n": "Unique name designated by the operator (20 AAC 25.005(f)); form itself not read"
+   "s": "data",
+   "e": "file",
+   "n": "WellName in both files; the operator designates the name (20 AAC 25.005(f))"
   },
   "lease_name": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Plat must identify the property and owners (25.005(c)(2)); no lease name item verified"
+   "s": "data",
+   "e": "file",
+   "n": "Leases in wells.xlsx (filled on 10,104 of 12,063 wells); the plat identifies the property (25.005(c)(2))"
   },
   "operator_name": {
-   "s": "form",
-   "e": "doc",
-   "n": "Applicant is the operator (implied by 20 AAC 25.005 and 25.025); form not read"
+   "s": "data",
+   "e": "file",
+   "n": "OperatorName in wells.xlsx and wellhistory.xlsx; the applicant is the operator"
   },
   "operator_id": {
    "s": "unknown",
    "e": "none",
-   "n": "Not verified"
+   "n": "No operator number column in either file; not verified on the application"
   },
   "operator_type": {
    "s": "unknown",
@@ -57,7 +57,7 @@
   "county": {
    "s": "unknown",
    "e": "none",
-   "n": "Rule locates wells by section lines and coordinates; borough/area item not verified"
+   "n": "No borough column: AreaName names the Commission's area (Arctic Slope, Cook Inlet Basin...); form not read"
   },
   "district": {
    "s": "unknown",
@@ -65,24 +65,24 @@
    "n": "Not verified"
   },
   "field_pool": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Not verified on the application; pool rules exist (20 AAC 25.520)"
+   "s": "data",
+   "e": "file",
+   "n": "FieldName and PoolNames in wells.xlsx; pool rules exist (20 AAC 25.520)"
   },
   "surface_latlon": {
-   "s": "query",
-   "e": "doc",
-   "n": "Data Miner Wells lists wellhead coordinates (AOGCC flyer); application needs surface coordinates (25.005(c)(2))"
+   "s": "data",
+   "e": "file",
+   "n": "Wh_ReportedLatitude/Longitude and Wh_Calculated... (each also with an '83' version) in wells.xlsx"
   },
   "surface_plss": {
-   "s": "form",
-   "e": "doc",
-   "n": "Plat coordinates referenced to governmental section lines (20 AAC 25.005(c)(2)(A))"
+   "s": "data",
+   "e": "file",
+   "n": "Wh_Section, township, range, meridian and footages (Wh_FeetNorthSouth/EastWest) in wells.xlsx"
   },
   "bottom_hole_loc": {
-   "s": "query",
-   "e": "doc",
-   "n": "Data Miner Wells lists bottom hole coordinates (AOGCC flyer); plat gives top of objective and TD (c)(2)(A)"
+   "s": "data",
+   "e": "file",
+   "n": "Bh_Reported and Bh_Calculated latitude/longitude (10,012 wells calculated) in wells.xlsx; PBh_ columns too"
   },
   "lateral_path": {
    "s": "form",
@@ -90,9 +90,9 @@
    "n": "Deviated wells: plat of proposed path and nearby wells (25.050(b)); surveys sent by request only (flyer)"
   },
   "elevation": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Not in the rule text; form not read"
+   "s": "data",
+   "e": "file",
+   "n": "GroundElevation (5,576 wells), KellyBushingElevation (11,415) and CasingFlangeElevation in wells.xlsx"
   },
   "surface_owner": {
    "s": "unknown",
@@ -100,14 +100,14 @@
    "n": "Plat shows property owners (25.005(c)(2)); surface vs mineral split not verified"
   },
   "well_type": {
-   "s": "form",
-   "e": "doc",
-   "n": "Commission classes the well: exploratory, development oil/gas, service, strat test (25.005(b))"
+   "s": "data",
+   "e": "file",
+   "n": "PermittedClass (Development, Exploratory, Service, Stratigraphic Test) and PermittedStatus in wells.xlsx"
   },
   "work_type": {
-   "s": "form",
-   "e": "doc",
-   "n": "Drill, redrill or re-enter an abandoned well (25.005(a)); completion re-entry goes on sundry 10-403 (25.010)"
+   "s": "data",
+   "e": "file",
+   "n": "No column: the sidetrack digits of the Api (00 original, 01-05 sidetracks, 60-65 laterals) tell a redrill"
   },
   "well_direction": {
    "s": "form",
@@ -117,12 +117,12 @@
   "proposed_depth_md": {
    "s": "form",
    "e": "doc",
-   "n": "Proposed depth at top of each objective and at TD (25.005(c)(2)(C)); MD/TVD split not stated"
+   "n": "Depth at top of each objective and at TD (25.005(c)(2)(C)); the files hold only DrillerTotalDepth, as drilled"
   },
   "proposed_depth_tvd": {
    "s": "form",
    "e": "doc",
-   "n": "Same item as the depth above; rule uses true vertical depth only for pressure gradient (c)(4)(A)"
+   "n": "Rule uses true vertical depth for pressure gradient (c)(4)(A); TrueVerticalDepth in wells.xlsx is as drilled"
   },
   "lateral_length": {
    "s": "unknown",
@@ -132,7 +132,7 @@
   "target_formation": {
    "s": "form",
    "e": "doc",
-   "n": "Plat gives location and depth at the top of each objective formation (25.005(c)(2))"
+   "n": "Plat gives depth at the top of each objective (25.005(c)(2)); PoolNames in wells.xlsx is not shown to be the target"
   },
   "formation_tops": {
    "s": "form",
@@ -200,34 +200,34 @@
    "n": "Deviated wells: list operators within 200 ft, certified-mail copy or state sole owner (25.050(b)(2))"
   },
   "date_received": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Not seen"
+   "s": "data",
+   "e": "file",
+   "n": "'Dt Application Received (10-401)' events in wellhistory.xlsx (4,419 events)"
   },
   "date_approved": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Approval date drives 24-month expiry (25.005(g)); no data column or lookup seen"
+   "s": "data",
+   "e": "file",
+   "n": "'Dt Well Permit Approved' event in wellhistory.xlsx on every permit; 'Issued' is the same day for 98%"
   },
   "date_expires": {
    "s": "unknown",
    "e": "none",
-   "n": "Expires 24 months after approval if not spudded (25.005(g)); no expiry column seen"
+   "n": "Expires 24 months after approval if not spudded (25.005(g)); the history has only 29 'Permit Expired' events"
   },
   "spud_date": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Not seen; Data Miner Wells reportedly lists status and completion dates"
+   "s": "data",
+   "e": "file",
+   "n": "SpudDate in wells.xlsx (9,605 wells) and 'Dt Well Spudded' events in wellhistory.xlsx"
   },
   "completion_date": {
-   "s": "query",
-   "e": "doc",
-   "n": "Data Miner Wells lists completion dates (AOGCC flyer); export format not seen"
+   "s": "data",
+   "e": "file",
+   "n": "CompletionDate in wells.xlsx (9,664 wells) and 'Dt Well Completed' events in wellhistory.xlsx"
   },
   "status": {
-   "s": "query",
-   "e": "doc",
-   "n": "Data Miner Wells lists well status (AOGCC flyer)"
+   "s": "data",
+   "e": "file",
+   "n": "CurrentStatus and LastStatusChange in wells.xlsx (Plugged & Abandoned, Oil well, Permit expired...)"
   },
   "plat_image": {
    "s": "query",
@@ -257,38 +257,160 @@
  },
  "sources": [
   {
+   "id": "ak-wellhistory-zip",
+   "name": "AOGCC Data Miner 'Well Work Dates' export, wellhistory.zip (one wellhistory.xlsx, 85,769 rows: one row per dated event of each Permit to Drill)",
+   "url": "https://aogcccdnstorage.blob.core.windows.net/dataminerzip/wellhistory.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "1902 (the oldest approval event in the file)",
+   "size_mb": 0.9,
+   "free": true,
+   "login": false,
+   "license": "No license stated; state public records",
+   "columns": [
+    "Api",
+    "Permit",
+    "ActivityDate",
+    "WellName",
+    "WellConfidential",
+    "OperatorName",
+    "TypeWork (the event: Dt Application Received (10-401), Dt Well Permit Approved, Dt Well Permit Issued, Dt Well Permit Re-Issued, Dt Well Spudded, Dt Well Completed, Report: ...)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permit to drill events (application received, approved, issued, re-issued, expired, canceled)",
+    "spud, completion and plugging dates",
+    "work reports after drilling (repair, stimulate, convert to injection...)"
+   ],
+   "reachable": "ok",
+   "tested": "Opened 2026-11-01: header of 7 columns, 85,769 rows. 10,396 'Dt Well Permit Approved' events (every permit has one; 10,394 permits), 9,909 'Issued', 252 'Re-Issued', 4,419 'Application Received', 9,621 'Spudded', 9,693 'Completed', 29 'Permit Expired'. Answers 200 to a plain automated request with no cookie, session or view state; Last-Modified 2026-10-30 14:00 UTC (the workbook inside is dated 2026-10-30 06:00 Alaska time). The workbook is written with prefixed XML tags that the repository's usual reader cannot open, so the producer has a small reader of its own."
+  },
+  {
+   "id": "ak-wells-zip",
+   "name": "AOGCC Data Miner 'Wells' export, wells.zip (one wells.xlsx, 12,063 rows, 55 columns: one row per permit, plus a row for each plug-back or pilot hole that shares it)",
+   "url": "https://aogcccdnstorage.blob.core.windows.net/dataminerzip/wells.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 1.9,
+   "free": true,
+   "login": false,
+   "license": "No license stated; state public records",
+   "columns": [
+    "Api",
+    "Permit",
+    "WellName",
+    "WellConfidential",
+    "OperatorName",
+    "AreaName",
+    "FieldName",
+    "PoolNames",
+    "CurrentClass",
+    "CurrentStatus",
+    "SpudDate",
+    "CompletionDate",
+    "ReleaseDate",
+    "Offshore",
+    "PermittedClass",
+    "PermittedStatus",
+    "LastStatusChange",
+    "DrillerTotalDepth",
+    "TrueVerticalDepth",
+    "Leases",
+    "Pad",
+    "Wh_Location",
+    "Wh_PrincipalMeridian",
+    "Wh_TownshipNumber",
+    "Wh_TownshipDirection",
+    "Wh_RangeNumber",
+    "Wh_RangeDirection",
+    "Wh_Section",
+    "Wh_FeetNorthSouth",
+    "Wh_NorthSouth",
+    "Wh_FeetEastWest",
+    "Wh_EastWest",
+    "Wh_ReportedLatitude",
+    "Wh_ReportedLongitude",
+    "Wh_ReportedLatitude83",
+    "Wh_ReportedLongitude83",
+    "Wh_CalculatedLatitude",
+    "Wh_CalculatedLongitude",
+    "Wh_CalculatedLatitude83",
+    "Wh_CalculatedLongitude83",
+    "GroundElevation",
+    "KellyBushingElevation",
+    "CasingFlangeElevation",
+    "Bh_ReportedLatitude",
+    "Bh_ReportedLongitude",
+    "Bh_ReportedLatitude83",
+    "Bh_ReportedLongitude83",
+    "Bh_CalculatedLatitude",
+    "Bh_CalculatedLongitude",
+    "Bh_CalculatedLatitude83",
+    "Bh_CalculatedLongitude83",
+    "PBh_CalculatedLatitude",
+    "PBh_CalculatedLongitude",
+    "PBh_CalculatedLatitude83",
+    "PBh_CalculatedLongitude83"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells of every permitted class (development, exploratory, service, stratigraphic test)",
+    "offshore and onshore wells"
+   ],
+   "reachable": "ok",
+   "tested": "Opened 2026-11-01: header of 55 columns, 12,063 rows; no date of permit approval (that is in the history file). Filled: SpudDate 9,605, CompletionDate 9,664, PermittedClass 10,375, PermittedStatus 10,123, Leases 10,104, GroundElevation 5,576, Wh_ReportedLatitude 9,991. The permit's class is blank on the plug-back and pilot-hole rows, so the producer takes the row that has a class. Same download address and answer as the history file (200 to a plain automated request, same Last-Modified)."
+  },
+  {
    "id": "ak-dataminer",
-   "name": "AOGCC Data Miner (Wells, Well History, Production pages)",
+   "name": "AOGCC Data Miner pages (Wells, Well Work Dates, Production; each page has an 'Export As' button, including 'ZIP (All Data)')",
    "url": "https://aogweb.state.ak.us/DataMiner4/Forms/Wells.aspx",
    "kind": "query",
    "format": "html",
    "grain": "well",
-   "cadence": "unknown",
+   "cadence": "daily",
    "history_from": "unknown",
    "size_mb": 0,
    "free": true,
    "login": false,
    "license": "unknown",
    "columns": [
-    "(not seen) AOGCC flyer says Wells lists wellhead and bottom hole coordinates, status, completion dates; Production lists production, injection, storage and NGL volumes"
+    "Wells and Well Work Dates: the columns of the two exports above",
+    "Production: production, injection, storage and NGL volumes (per the AOGCC flyer; not opened)"
    ],
-   "has_approval_date": null,
-   "has_spud_date": null,
-   "has_well_type": null,
-   "has_work_type": null,
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
    "has_location": true,
-   "activity_types": [],
-   "reachable": "blocked-proxy",
-   "tested": "One HEAD to https://aogweb.state.ak.us/DataMiner4/Forms/Home.aspx from this machine: TLS connection reset by peer right after the proxy CONNECT (curl error 35), no HTTP status. The agency writes its addresses as http://, which I did not try; not retried. Pages and columns known only from the AOGCC one-page flyer https://dog.dnr.alaska.gov/Documents/Programs/2024-02-07_AOGCC_Information.pdf (the fetch tool saved the PDF, I read its text with pdftotext; internal file name 2023-11-30_Flyer_AOGCC.pdf). Web-search summaries of the AOGCC help page (not read by me) say the Well History page filters by permit number, well name, operator and date range and has an Export As button for spreadsheet or comma-delimited files, and that the Data Miner updates daily."
+   "activity_types": [
+    "wells",
+    "dated events of each permit",
+    "production"
+   ],
+   "reachable": "ok",
+   "tested": "Plain http (http://aogweb.state.ak.us/DataMiner4/) answers; the secure address was reset by the connection when tried (a TLS error), and there was one 503 on the first try and a 200 twenty seconds later. The home page says the Data Miner is refreshed Monday through Friday at 7:00 pm Alaska time. The 'ZIP (All Data)' button (JavaScript/exportAs.min.js) downloads from the agency's storage address above. The tables are DataTables over a JSON service (WebServices/WellWorkDates.asmx), which the producer does not use. Five page and script fetches, 3 s apart."
   },
   {
    "id": "ak-data-extract",
-   "name": "AOGCC Data Extract (public database extract, Microsoft Access)",
-   "url": "https://www.commerce.alaska.gov/web/aogcc/Data",
+   "name": "AOGCC Data Extract (public database extract in Microsoft Access format, a zip on the agency's storage address)",
+   "url": "https://aogcccdnstorage.blob.core.windows.net/webextract/AOGCC_DataExtract.zip",
    "kind": "bulk",
    "format": "other",
    "grain": "well",
-   "cadence": "unknown",
+   "cadence": "daily",
    "history_from": "unknown",
    "size_mb": 0,
    "free": true,
@@ -301,8 +423,8 @@
    "has_work_type": null,
    "has_location": null,
    "activity_types": [],
-   "reachable": "blocked-403",
-   "tested": "commerce.alaska.gov answered 403 to a HEAD request from this machine (recorded by the coordinator; not repeated by me). The fetch tool also got HTTP 403 on /web/aogcc/Data and /web/aogcc/Forms (one try each, not repeated). Existence of the extract (Access format, updated daily, plugbacks and pilot holes added 2024-06-10) is from web-search summaries of the Data page, not from a page I read; its tables are unknown."
+   "reachable": "not-tested",
+   "tested": "Found in the Data Miner's page scripts and not requested, because the two Data Miner exports hold what the producer needs. The Data page on commerce.alaska.gov (which links the extract, said to be updated daily with plug-backs and pilot holes added 2024-06-10) answered 403 to automated requests when this was first researched. Tables unknown."
   },
   {
    "id": "ak-maps-wells",
@@ -351,22 +473,24 @@
    "tested": "Not requested (commerce.alaska.gov family answered 403). Described in the AOGCC flyer as the complete well history file scans filed by Permit to Drill number. Scanned PTDs may hold personal data; none seen."
   }
  ],
- "grade": "D",
- "grade_reason": "Provisional. The agency does publish bulk and query data (a daily Access Data Extract and the Data Miner, per its own flyer and search summaries), but every host I tried is blocked from this machine: commerce.alaska.gov answered 403 (HEAD, and the fetch tool) and aogweb.state.ak.us reset the TLS connection. No file, column or approval date was seen, so the brief's 'blocked from here' rule gives D. It would become A or B if one request from the GitHub runner reaches the Data Miner and the Well History export has an approval date.",
- "producer_plan": "Nothing could be built or tested from here, so this is a plan to test, not a verified one. Best candidate: the AOGCC Data Extract (a daily Microsoft Access .mdb in a zip, per search summaries of the Data page) or, failing that, the Data Miner Well History page exported as CSV in date-range slices (per the help page summary: large sets must be exported in smaller pieces). Step 1 is one polite request, from the GitHub runner that the nightly already uses, to the Data page and to http://aogweb.state.ak.us/DataMiner4/Forms/Home.aspx (the agency writes http://; this machine's https attempt was reset). If both answer: find the table or column that holds the permit approval date, the well class and the work type; count approved Permits to Drill by month of approval, with new wells (drill) apart from redrills and re-entries (20 AAC 25.005(a): drilling, redrilling and re-entering an abandoned well all need a Permit to Drill, and each well branch has its own PTD, so sidetracks count separately). Completion-only work (re-entry of a suspended well to complete it) is a sundry (Form 10-403, 20 AAC 25.010) and would not be in a permit count. A .mdb needs mdbtools or a reader; the tracker's Python producers use only the standard library, so the CSV export is the simpler route. If both are refused from the runner too, Alaska stays grade D (use the annual permit chart PDFs only as a total). Caveat: the approval date, spud date and permit status columns are all unverified.",
+ "grade": "A",
+ "grade_reason": "The Data Miner's two 'ZIP (All Data)' exports are free, need no login and answer a plain automated request. The Well Work Dates file holds every dated event of every Permit to Drill (application received, approved, issued, spudded, completed), and the Wells file holds the class, status, area, field, depths, locations and elevations, so monthly approvals can be counted from 2019. Limits: the Commission gives every sidetrack and lateral leg its own permit (90 to 190 permits a year, about half for new holes), no recompletion or plug-back permit is dated, and no proposed depth is published. Updated 2026-11-01: both files were opened and a producer reads them weekly; its 2020 count (89 permits, 36 Arctic Slope oil wells) equals the Commission's own chart exactly, and 2018 is 3 percent above its count.",
+ "producer_plan": "Built: d11_nat_ak.py. Two requests 3 s apart to the Data Miner's own export files (wellhistory.zip, wells.zip), read whole each run (about 9 s; the workbook uses prefixed XML tags, so the producer has its own small reader). Counts Permits to Drill by the 'Dt Well Permit Approved' event, one per permit, from 2019. Bands from the sidetrack digits of the well number and the class the permit was issued for: new = original hole of a Development or Exploratory permit; inj = original hole of a Service well; redrill = any sidetrack or lateral code; other = Stratigraphic Test; rework and amend are null (recompletions are sundry notices; 'Re-Issued' is not read as an amendment). Fluid from PermittedStatus; places are the Commission's areas. Refuses: a stale export (over 45 days), no approval in 45 days, a changed header, over 2% of approvals with no class, approvals and issues over 40% apart, a history over 10% smaller than the committed one. A 401, 403, 407 or 429 exits 2 and keeps the file.",
  "activity_bands_possible": [
   "new",
-  "reentry"
+  "reentry",
+  "injection",
+  "other"
  ],
- "privacy_notes": "No data file was seen. Operators are companies in the rule text; the scanned permits to drill (document browser) are applications with attachments and may hold personal details, so link nothing from them. Plats must identify the property's owners (20 AAC 25.005(c)(2)), so scanned plats can name landowners.",
+ "privacy_notes": "The files name operators (companies and a few agencies; the producer names only corporations, LLCs and partnerships) and carry a Leases column that can hold a landowner's name (never published). Scanned permits to drill and plats can name landowners and staff contacts: link nothing from them.",
  "unknowns": [
-  "Any column name of the Data Extract, Data Miner Wells or Well History (blocked)",
-  "Whether a permit approval date, spud date, work type and well class are published as data (the critical question for grade A)",
   "Current Form 10-401 contents (the form was updated; required from 2026-04-01 per a search summary)",
   "Whether the rules changed after the 2019-posted copy (fee, items in 25.005(c))",
-  "Whether aogweb.state.ak.us answers over plain http from this machine (agency links use http://; not tried)",
+  "What the Commission means by 'Dt Well Permit Re-Issued' (252 events); it is not read as an amendment",
+  "Whether the Access Data Extract holds more than the two Data Miner exports (not requested)",
+  "Operator number and type, borough, bond amount and fee: not in the files, and the blank form was not read",
   "Whether the AOGCC_SQL_Test ArcGIS service is a supported public layer",
-  "Number of permits per year (a 2020 statewide permits chart PDF exists per search results; not read)"
+  "Whether a GitHub runner is answered by the agency's storage address (likely; not tried)"
  ],
  "researched": "2026-10-31"
 }
