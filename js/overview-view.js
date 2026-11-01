@@ -1,9 +1,10 @@
 // The Overview: the country's new wells, the same for every state. A hero with the map as its backdrop and four figures, the explorer (every well of the last two years as a
-// dot: hover one for its well, click a state to zoom in, replay the two years), the states ranked, the months stacked by state, the top counties and operators, and when
-// each source was current. Everything here is drawn from data/newwells/ (FracFocus: one GPS point per fractured well), the one source that has the same facts for every
+// dot, or every well since 2011 once asked for: hover one for its well, click a state to zoom in, replay the years), the states ranked, every month since 2011 stacked by state,
+// the top counties and operators, and when each source was current. Everything here is drawn from data/newwells/ (FracFocus: one GPS point per fractured well), the one source that has the same facts for every
 // state that reports to it; nothing is shown that only some states can give. The permits themselves, by each agency's own count, are the National page.
 import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, countUp, reduced } from './util.js';
 import { icon } from './icons.js';
+import { segmented } from './ui.js';
 import { spark, delta } from './charts.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import { createTimelapse } from './timelapse.js';
@@ -18,8 +19,8 @@ const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }
 const OWN_MAP = { TX: 'tx', OK: 'ok', NM: 'nm' }; // the states the Map and Operators tabs also cover
 
 export function createOverview(meta) {
-  let loaded = null; let started = false; let sel = null; let seq = 0;
-  const S = { map: null, hero: null, tl: null, rows: new Map(), chips: new Map(), panel: null, pick: null };
+  let loaded = null; let started = false; let sel = null; let seq = 0; let wantAll = false;
+  const S = { map: null, hero: null, tl: null, rows: new Map(), chips: new Map(), panel: null, pick: null, all: false, years: null, status: null };
 
   /* ---------- the data: one summary, one set of points, the outlines, and the national file for the list of producing states ---------- */
   async function data() {
@@ -28,9 +29,18 @@ export function createOverview(meta) {
     const P = D.decode(pts); const outlines = G.buildOutlines(out);
     const producing = nat ? [...nat.states, ...nat.gaps].filter((s) => !['FO', 'BL'].includes(s.id)).map((s) => ({ id: s.id, name: s.name })) : [];
     const win = D.windowOf(doc); const range = D.settledRange(P, doc);
-    loaded = { doc, P, outlines, nat, producing, win, range, T: D.totals(doc) };
+    loaded = { doc, P, pts, outlines, nat, producing, win, range, T: D.totals(doc), full: null };
     return loaded;
   }
+  // the earlier wells (every well with a point since 2011: about 2 MB), loaded when the explorer is asked for all the years and merged with the last two years' points
+  async function loadHistory() {
+    if (loaded.full) return loaded.full;
+    const P = D.decode(D.mergePoints(loaded.pts, await load('newwells/points-history')));
+    loaded.full = { P, range: D.settledRange(P, loaded.doc) };
+    return loaded.full;
+  }
+  // the points and the 12 settled months' days the explorer and its panel work on: the last two years, or all the years once they are loaded
+  const scope = (dt) => (S.all && dt.full ? dt.full : dt);
 
   /* ---------- the hero: eyebrow, lede, four figures, the note, and the map behind them ---------- */
   function hero(dt) {
@@ -75,7 +85,7 @@ export function createOverview(meta) {
     })));
   };
   function panel(dt, id) {
-    const { doc, P, range, win, T } = dt; const box = el('div', { class: 'nat-panel', 'aria-live': 'polite' });
+    const { doc, T } = dt; const { P, range } = scope(dt); const box = el('div', { class: 'nat-panel', 'aria-live': 'polite' });
     if (!id) {
       const land = D.landShare(P, range[0], range[1]);
       put(box, el('div', { class: 'nat-ph' }, el('h3', { text: 'All states' }), el('span', { class: 'badge', text: 'Fractured wells' })),
@@ -86,13 +96,13 @@ export function createOverview(meta) {
       return box;
     }
     const s = D.byId(doc, id); const c = D.shownChange(s);
-    const i = D.settledIndex(doc); const vals = s.new.slice(Math.max(0, i - 35), i + 1);
+    const i = D.settledIndex(doc); const vals = s.new.slice(S.all ? 0 : Math.max(0, i - 35), i + 1);
     const co = D.leaders(P, range[0], range[1], { state: id, by: 'c', limit: 6 }); const op = D.leaders(P, range[0], range[1], { state: id, by: 'o', limit: 6 });
     const land = D.landShare(P, range[0], range[1], id);
     put(box, el('div', { class: 'nat-ph' }, el('h3', { text: s.name }), el('span', { class: 'badge', text: 'Fractured wells' })),
       el('p', { class: 'nat-agency', text: 'Newest job ' + fmtDate(s.latest) + ' · counted by the day of the first job' }),
       el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' new wells in the 12 months to ' + monthLabel(doc.settled.slice(0, 7)) }), c != null ? delta(c) : null),
-      vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: D.colorOf(id), label: s.name + ', new wells by month, last ' + vals.length + ' settled months' })) : null,
+      vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: D.colorOf(id), label: s.name + ', new wells by month, ' + (S.all ? 'since ' + monthLabel(doc.months[0]) : 'last ' + vals.length + ' settled months') })) : null,
       el('div', { class: 'nat-lists' }, listBlock('Top counties', co.rows, 'wells'), listBlock('Top operators', op.rows, 'wells')),
       op.total ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round((1 - op.unnamed / op.total) * 100) + '% of the year’s wells.' }) : null,
       el('p', { class: 'fine', text: [s.tvd ? 'Median depth ' + fmt.format(s.tvd) + ' ft' : null, s.water ? 'median ' + s.water.toFixed(1) + ' million gallons of water' : null, land.of ? Math.round((land.n / land.of) * 100) + '% on federal or tribal land' : null].filter(Boolean).join(' · ') + '.' }));
@@ -103,6 +113,8 @@ export function createOverview(meta) {
     put(box, links);
     return box;
   }
+  // the address: #overview?s=TX&y=all (the state the map is zoomed to, and every year since 2011 instead of the last two)
+  const addr = () => '#overview' + [sel ? 's=' + sel : null, S.all ? 'y=all' : null].filter(Boolean).map((x, i) => (i ? '&' : '?') + x).join('');
   function select(id, { fromHash = false } = {}) {
     const dt = loaded; if (!dt) return;
     sel = id && D.byId(dt.doc, id) && D.byId(dt.doc, id).p12 > 0 ? id : null;
@@ -112,24 +124,29 @@ export function createOverview(meta) {
     S.chips.forEach((n, cid) => n.setAttribute('aria-pressed', String(cid === sel)));
     if (S.pick) S.pick.value = sel || '';
     if (!fromHash) {
-      const next = '#overview' + (sel ? '?s=' + sel : '');
+      const next = addr();
       if (location.hash !== next) history.replaceState(null, '', next);
     }
   }
   function explorer(dt) {
-    const { doc, P, outlines } = dt;
-    const canvas = el('canvas', { class: 'nw-canvas', role: 'img', 'aria-label': 'Map of the ' + fmt.format(P.n) + ' new wells of the last 24 months, one dot each, in ' + D.active(doc).length + ' states. The ranking below lists the states in text; choose a state with the selector to zoom to it.' });
+    const { doc, outlines } = dt; const { P } = scope(dt); const all = S.all; const first = doc.months[0].slice(0, 4);
+    const watchLabel = all ? 'Watch ' + D.yearsOf(P) + ' years' : 'Watch 24 months';
+    const canvas = el('canvas', { class: 'nw-canvas', role: 'img', 'aria-label': 'Map of the ' + fmt.format(P.n) + (all ? ' wells with a GPS point since ' + first : ' new wells of the last 24 months') + ', one dot each, in ' + D.active(doc).length + ' states. The ranking below lists the states in text; choose a state with the selector to zoom to it.' });
     const stage = el('div', { class: 'nw-stage' }, canvas);
     S.map = createUSMap({ canvas, host: stage, outlines, P, doc, interactive: true, onSelect: (id) => select(id) });
-    S.tl = createTimelapse({ engine: S.map, t0: P.t0, label: 'Watch the new wells', thing: { one: 'well', many: 'wells' }, lead: 'Two years of new wells.', note: ' Each dot appears on the day of its first job and glows for a month. The newest weeks are still being disclosed.' });
-    const watch = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false' }, icon('play', 16), 'Watch 24 months');
+    S.tl = createTimelapse({ engine: S.map, t0: P.t0, label: all ? 'Watch every new well since ' + first : 'Watch the new wells', thing: { one: 'well', many: 'wells' }, seconds: all ? 28 : 12,
+      lead: all ? D.yearsOf(P) + ' years of new wells.' : 'Two years of new wells.',
+      note: all ? ' Each dot appears on the day of its first job and glows for a month. Watch for the slowdowns of 2015 and 2016 and of 2020. The newest weeks are still being disclosed.' : ' Each dot appears on the day of its first job and glows for a month. The newest weeks are still being disclosed.' });
+    const watch = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false' }, icon('play', 16), watchLabel);
     S.watch = watch;
     watch.addEventListener('click', () => {
       const on = !S.tl.open; if (on) S.tl.show(); else S.tl.hide();
-      watch.setAttribute('aria-pressed', String(on)); watch.replaceChildren(icon(on ? 'close' : 'play', 16), on ? 'Close the replay' : 'Watch 24 months');
+      watch.setAttribute('aria-pressed', String(on)); watch.replaceChildren(icon(on ? 'close' : 'play', 16), on ? 'Close the replay' : watchLabel);
     });
     S.pick = el('select', { class: 'nw-pick', 'aria-label': 'Zoom to a state' }, el('option', { value: '', text: 'All states' }), D.active(doc).map((s) => el('option', { value: s.id, text: s.name })));
     S.pick.addEventListener('change', () => select(S.pick.value || null));
+    S.years = segmented({ label: 'Years shown on the map', tabs: false, prefix: 'nwy', value: all ? 'all' : 'recent', options: [{ id: 'recent', label: 'Last 2 years' }, { id: 'all', label: 'Since ' + first }], onChange: (id) => switchYears(id === 'all') });
+    S.status = el('p', { class: 'fine nw-status', role: 'status' });
     const keys = el('ul', { class: 'nw-keys', 'aria-label': 'States on the map: choose one to zoom to it' }, D.stack(doc).series.filter((x) => x.id !== 'other').map((x) => {
       const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', x.color);
       const b = el('button', { type: 'button', class: 'nw-chip', 'aria-pressed': 'false', onclick: () => select(sel === x.id ? null : x.id) }, sw, x.name);
@@ -137,10 +154,39 @@ export function createOverview(meta) {
     }).concat([(() => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', D.OTHER_COLOR); return el('li', { class: 'nw-other' }, sw, el('span', { text: 'every other state' })); })()]));
     S.panel = el('div', { class: 'nat-panel-slot' });
     const card = el('section', { class: 'card nw-explore reveal is-in', id: 'explore', 'aria-labelledby': 'explore-h' });
-    const head = hdr('The map', 'pin', 'Every new well, where it sits', 'Each dot is a well whose first fracturing job was in the last 24 months, in every state that reports to the registry.', el('div', { class: 'card-tools' }, S.pick, watch));
+    const head = hdr('The map', 'pin', 'Every new well, where it sits',
+      all ? 'Each dot is a well, every one in the registry with a GPS point: ' + fmt.format(P.n) + ' first fracturing jobs from ' + monthLabel(doc.months[0]) + ' to ' + fmtDate(doc.asOf) + ', in every state that reports to it.'
+        : 'Each dot is a well whose first fracturing job was in the last 24 months, in every state that reports to the registry.', el('div', { class: 'card-tools' }, S.pick, S.years.el, watch));
     head.querySelector('h2').id = 'explore-h';
-    put(card, head, el('div', { class: 'nw-grid' }, el('div', { class: 'nw-mapcol' }, stage, S.tl.bar, keys), S.panel));
+    put(card, head, S.status, el('div', { class: 'nw-grid' }, el('div', { class: 'nw-mapcol' }, stage, S.tl.bar, keys), S.panel));
     return card;
+  }
+  // the explorer shows the last two years or every year since 2011: the earlier wells are fetched the first time they are asked for, then the map is built again over them
+  let switching = false;
+  async function switchYears(all) {
+    const dt = loaded; if (!dt || all === S.all || switching) return;
+    switching = true;
+    const hadFocus = !!$('#explore') && $('#explore').contains(document.activeElement); // asked before the buttons are disabled for the load: a disabled button drops the keyboard
+    try {
+      if (all && !dt.full) {
+        S.years.buttons.forEach((b) => { b.disabled = true; });
+        S.status.textContent = 'Loading the earlier wells (about 2 MB)…';
+        try { await loadHistory(); } catch (e) {
+          S.years.buttons.forEach((b) => { b.disabled = false; }); S.years.set('recent', false);
+          S.status.textContent = 'Could not load the earlier wells. Check the connection and choose “Since ' + dt.doc.months[0].slice(0, 4) + '” again.';
+          return;
+        }
+      }
+      S.all = all;
+      const old = $('#explore');
+      if (S.tl) S.tl.destroy();
+      if (S.map) S.map.destroy();
+      S.chips.clear();
+      const next = explorer(dt); old.replaceWith(next);
+      select(sel, { fromHash: true });
+      if (location.hash !== addr()) history.replaceState(null, '', addr());
+      if (hadFocus) { const b = S.years.buttons.find((x) => x.dataset.id === (all ? 'all' : 'recent')); if (b) b.focus({ preventScroll: true }); }
+    } finally { switching = false; }
   }
 
   /* ---------- the ranking ---------- */
@@ -164,9 +210,9 @@ export function createOverview(meta) {
 
   /* ---------- the months, stacked by state; the newest months are drawn lighter: still filling in ---------- */
   function months(dt) {
-    const { doc } = dt; const st = D.stack(doc);
+    const { doc } = dt; const st = D.stack(doc, doc.months.length); // every month since 2011
     const W = 720; const H = 260; const L = 42; const R = 6; const T = 12; const B = 24;
-    const n = st.months.length; const slot = (W - L - R) / n; const bw = Math.max(3, slot * 0.74);
+    const n = st.months.length; const slot = (W - L - R) / n; const bw = Math.max(1.2, slot * 0.78);
     const { top, ticks } = D.niceTop(Math.max(...st.totals, 1));
     const y = (v) => T + (H - T - B) * (1 - v / top);
     const g = svg('svg', { class: 'nat-chart', viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img',
@@ -174,7 +220,7 @@ export function createOverview(meta) {
     ticks.forEach((t) => g.append(svg('line', { class: t === 0 ? 'base' : 'grid', x1: L, x2: W - R, y1: y(t), y2: y(t) }), svg('text', { class: 'ax', x: L - 6, y: y(t) + 4, 'text-anchor': 'end', text: stat(t) })));
     if (st.settledAt < n - 1) {
       const x0 = L + slot * (st.settledAt + 1);
-      g.append(svg('rect', { class: 'nw-late', x: x0.toFixed(1), y: T, width: (W - R - x0).toFixed(1), height: H - T - B }), svg('text', { class: 'ax nw-late-t', x: (x0 + 6).toFixed(1), y: T + 12, text: 'still filling in' }));
+      g.append(svg('rect', { class: 'nw-late', x: x0.toFixed(1), y: T, width: (W - R - x0).toFixed(1), height: H - T - B }), svg('text', { class: 'ax nw-late-t', x: (x0 - 6).toFixed(1), y: T + 12, 'text-anchor': 'end', text: 'still filling in' })); // ends at the band: at every width it fits inside the chart
     }
     st.months.forEach((ym, i) => {
       const x = L + slot * i + (slot - bw) / 2; let acc = 0; const late = i > st.settledAt;
@@ -183,7 +229,7 @@ export function createOverview(meta) {
         const seg = svg('rect', { class: 'nat-bar-seg' + (late ? ' is-late' : ''), x: x.toFixed(1), width: bw.toFixed(1), y: y(acc + v).toFixed(1), height: Math.max(0.5, y(acc) - y(acc + v)).toFixed(1), rx: 1.5 });
         seg.style.setProperty('--c', s.color); g.append(seg); acc += v;
       });
-      if (ym.slice(5) === '01' || ym.slice(5) === '07') g.append(svg('text', { class: 'ax', x: x + bw / 2, y: H - 6, 'text-anchor': 'middle', text: monthLabel(ym).replace(/(\w+) (\d{4})/, (a, mo, yr) => mo + ' ’' + yr.slice(2)) }));
+      if (ym.slice(5) === '01' && (+ym.slice(0, 4)) % (n > 120 ? 2 : 1) === 1) g.append(svg('text', { class: 'ax', x: x + bw / 2, y: H - 6, 'text-anchor': 'middle', text: monthLabel(ym).replace(/(\w+) (\d{4})/, (a, mo, yr) => mo + ' ’' + yr.slice(2)) }));
       const hit = svg('rect', { class: 'nat-hit', x: (L + slot * i).toFixed(1), y: T, width: slot.toFixed(1), height: H - T - B });
       hit.addEventListener('pointermove', (e) => showTip([el('div', { class: 'tip-head', text: monthLabel(ym) }), ...st.series.filter((s) => s.values[i]).slice().reverse().map((s) => tipRow(fmt.format(s.values[i]), s.name)), tipRow(fmt.format(st.totals[i]), 'in all'), late ? tipRow('Still filling in', 'disclosures arrive late') : null], e.clientX, e.clientY));
       hit.addEventListener('pointerleave', hideTip);
@@ -194,7 +240,7 @@ export function createOverview(meta) {
       el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': 'Monthly new wells by state' }, el('table', { class: 'grid' },
         el('thead', {}, el('tr', {}, el('th', { scope: 'col', text: 'Month' }), st.series.map((s) => el('th', { scope: 'col', class: 'num', text: s.name })), el('th', { scope: 'col', class: 'num', text: 'All' }))),
         el('tbody', {}, st.months.map((ym, i) => el('tr', {}, el('th', { scope: 'row', text: monthLabel(ym) + (i > st.settledAt ? ' (filling in)' : '') }), st.series.map((s) => el('td', { class: 'num', text: fmt.format(s.values[i]) })), el('td', { class: 'num', text: fmt.format(st.totals[i]) }))).reverse()))));
-    return el('section', { class: 'card nat-card reveal is-in' }, hdr('Month by month', 'chart', 'The last three years, stacked by state', 'Wells by the day of their first job. A well is disclosed weeks to months afterwards, so the newest months are lighter and will rise.'),
+    return el('section', { class: 'card nat-card reveal is-in' }, hdr('Month by month', 'chart', 'Every month since ' + doc.months[0].slice(0, 4) + ', stacked by state', 'Wells by the day of their first job: the rush of 2011 to 2014, the slowdowns after it and the years since. A well is disclosed weeks to months afterwards, so the newest months are lighter and will rise.'),
       key, g, el('p', { class: 'fine', text: 'The 12-month figures above use months to ' + monthLabel(doc.settled.slice(0, 7)) + ' only: a month is settled once 120 days have passed since the newest job in the registry.' }), table);
   }
 
@@ -238,6 +284,7 @@ export function createOverview(meta) {
       return;
     }
     if (mySeq !== seq) return;
+    if (wantAll) { try { await loadHistory(); S.all = true; } catch (e) { /* the address asked for every year and the earlier wells did not load: the last two years */ } if (mySeq !== seq) return; }
     const host = $('#hero');
     hero(dt);
     S.hero = createUSMap({ canvas: $('#hero-canvas'), host, outlines: dt.outlines, P: dt.P, doc: dt.doc, interactive: false, box: heroBox(host) });
@@ -253,16 +300,15 @@ export function createOverview(meta) {
     freshness(dt);
     started = true;
     select(sel, { fromHash: true });
-    if (/[?&]debug\b/.test(location.search)) window.__nw = { map: S.map, hero: S.hero, P: dt.P, doc: dt.doc, D };
+    if (/[?&]debug\b/.test(location.search)) window.__nw = { get map() { return S.map; }, hero: S.hero, get P() { return scope(dt).P; }, doc: dt.doc, D, years: switchYears };
   }
 
   return {
-    // the address names a state (#overview?s=TX): the explorer zooms to it. Drawn on the first visit only; later visits just move the map.
+    // the address names a state (#overview?s=TX) and the years (y=all: every year since 2011): the explorer zooms to it. Drawn on the first visit only; later visits just move the map.
     async show(params) {
-      const want = ((params && params.get('s')) || '').toUpperCase() || null;
-      if (!started && !seq) { seq++; sel = want; await draw(seq); return; }
-      if (started) select(want, { fromHash: true });
-      else sel = want;
+      const want = ((params && params.get('s')) || '').toUpperCase() || null; const years = !!params && params.get('y') === 'all';
+      if (!started && !seq) { seq++; sel = want; wantAll = years; await draw(seq); return; }
+      if (started) { select(want, { fromHash: true }); if (years !== S.all) await switchYears(years); } else { sel = want; wantAll = years; }
     },
     get selected() { return sel; },
     pause() { if (S.tl && S.tl.open) S.tl.pause(); },
