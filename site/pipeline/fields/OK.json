@@ -1,0 +1,673 @@
+{
+ "state": "OK",
+ "name": "Oklahoma",
+ "agency": {
+  "name": "Oklahoma Corporation Commission (Oil and Gas Conservation Division)",
+  "short": "OCC",
+  "url": "https://oklahoma.gov/occ/divisions/oil-gas.html"
+ },
+ "form": {
+  "name": "Notice of Intent to Drill (permit to drill, recomplete, re-enter or deepen)",
+  "number": "Form 1000",
+  "url": "https://oklahoma.gov/content/dam/ok/en/occ/documents/og/okies/okies-form-1000-instructions.pdf",
+  "read": true,
+  "notes": "Read the OCC's OKIES user manual for Form 1000 (Version 1: 04.10.2026, 21 pages of screens). The paper Form 1000 PDF and the OCC's forms pages could not be fetched (the forms-page addresses returned 404), so nothing here is read from the paper form. Form 1000 is the 'Notice of Intent to Drill' (Permit to Drill, Recomplete, Re-enter or Deepen), filed in OKIES behind a login; the manual's forms list names it 'Notice of Intent To Drill' (purpose: apply for a permit to drill or rework a well). Tabs: Form Information (operator, Notice of Intent: Amend, Deepen, Drill, Recomplete, Re-enter; type of drilling operation: Directional, Horizontal, Multi-Unit, Vertical; type of well; type of permit: Non-Expedited, Expedited, Temporary; well fee), Operator Information (contacts), Well Information (well name and number, section, township, range, meridian, county, footages from the section lines, quarter-section spot, NAD83 latitude and longitude, ground elevation, base of treatable water looked up on the OCC's map, distance from property boundary, anticipated spud date), Zones of Significance (zone, target or adjacent, estimated or actual, top and bottom TVD, spacing order numbers, unit size, proposed logs, and yes-no flags for multi-unit, location exception, increased density, exception to rule, change of operator, unspaced formation), Order Notations (location exception details, lease outline grid), Pits (mud system, chlorides, pit system, category, liner), Features and Cement (per wellbore: type, start depth, kickoff, MD and TVD, hole size, entry point, take points; casing strings; cement segments), Operator Assertions (32 yes, no or N/A items on surface owners, fracturing, unit well, federal land, water well, surface water, casing and cement, reserve pits, soil liner), Payment (credit card or ACH before submitting) and Submit (certification). The manual shows no plat upload and no surface-owner entry screen."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD API_Number (14 digits, assigned on approval); the tracker reads it and publishes none"
+  },
+  "permit_number": {
+   "s": "form",
+   "e": "form",
+   "n": "OKIES shows a 'File Number' on the form; the ITD file has no such column (API is its key, Receipt_Number is separate)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Well_Name and Well_Number, both required on the form; the tracker never publishes them"
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "form",
+   "n": "No lease or unit name box on the wellhead screen; it asks 'Distance from Property Boundary' only"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Entity_Name; the tracker names an operator only if the name passes its corporate rule"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Operator_Number (OCC operator ID); the form fills it from the login"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "No business-type item on the form or in the ITD file; the tracker infers it from the name (LLC, LP, corporation)"
+  },
+  "bond": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 1000; OKIES keeps bonds on the operator record (its search can find one by bond number)"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD County, and digits 3-5 of the API number; the form requires the county"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district on the form or in the ITD file (OffSite_District is for fluid disposal, not an office)"
+  },
+  "field_pool": {
+   "s": "form",
+   "e": "form",
+   "n": "No field box; the zone name (formation) under Zones of Significance is the nearest item; ITD Formation_Name is blank"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Surf_Long_X, Surf_Lat_Y (NAD83, required on the form); the tracker publishes it rounded to about 100 m"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Section, Township, Range, PM, Q1-Q4 and footages from the section line; most are required on the form"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Entry and take points (lat/long) on the form; ITD proposed bottom-hole columns are 0 in all 27 rows of the 7-day file"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Take points with lat/long, entry point and kickoff depth on the form; no survey or path in the open files"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Ground_Elevation, filled on all rows; required on the form"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Assertion 1 says a copy goes to each surface owner 'listed on the form'; no owner column in the ITD file"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Well_Type and Well_Class (the form's Type of Well); the tracker reads the class"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Application_Type (DR, RC, RE, DP, AM) = the form's Notice of Intent: drill, recomplete, re-enter, deepen, amend"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "Form asks directional, horizontal, multi-unit, vertical; ITD Drill_Type and Location_Type_Sub are blank in all 27 rows"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Depth and Total_Depth (permit total measured depth), filled on all rows; the tracker reads it"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Required on the form; ITD True_Vertical_Depth is 0 in 26 of 27 rows of the 7-day file"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "No length box (entry and take points only); ITD Length is 0 on new drills; the completions file has as-drilled length"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "Zones of Significance asks zone name and Target category; ITD Formation_Name is blank in the 7-day file"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "Zones tab asks top and bottom TVD, estimated or actual; ITD Formation_Depth is blank in the 7-day file"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Features tab: strings, MD range, diameters, weight, grade, burst; ITD has only Surface_Casing_Depth (4 of 27 rows)"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Cement Segment tab: type, top, bottom, strength, weight, sacks, yield; ITD has only Cement_Circulation_* (No or 0)"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No blowout-preventer item; assertion 11 only commits to a 30-minute casing pressure test"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on Form 1000; the completions file records gas encountered (Gas_Type: H2S or CO2) after drilling"
+  },
+  "pit_waste": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Land_Application, Evaporation, Annular_Injection, offsite fields; pit category and chloride columns are 0 or blank"
+  },
+  "water": {
+   "s": "data",
+   "e": "file",
+   "n": "Yes or no only: ITD Water_Well and Surface_Water (assertions 8, 9), plus Depth_BTW; no volume is asked"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Assertion 4 asks only 'Will this well be hydraulically fractured?'; no ITD column; completions has Frac_Completion"
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "file",
+   "n": "Completions Spacing_Order (15 of 33 rows); form asks spacing order and unit size; ITD Spacing_Order is blank"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Order Notations tab: location exception, increased density, exception to rule; ITD order columns are blank"
+  },
+  "mineral_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Only a yes or no federal-land flag (assertion 7, ITD Fed_Government); no owner is named"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Well Fee is computed on the first screen and paid by card or ACH before submitting; ITD holds a receipt number only"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Order Notations tab takes CD numbers and orders; ITD Hearing_Date and Pending_CD_Order are 0 or blank in the 7-day file"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Submit_Date; the form stamps 'Date Received' at submission; the tracker uses it for days to approval"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Approval_Date (UTC Excel serial, turned into Central days); the basis of the tracker's counts"
+  },
+  "date_expires": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Expire_Date, filled on all rows"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Completions Spud (1002A, read by the tracker); the form's Anticipated Spud Date is not an ITD column"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Completions Well_Completion, Drilling_Finished and First_Prod dates; the tracker reads first production"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD Well_Status and wells-file WELLSTATUS (tracker reads it); rejected and deleted applications are types REJ and DEL"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "ITD IMAGE_URL links the filed record but was not opened; the OKIES manual shows no plat upload; plat not verified"
+  },
+  "form_image": {
+   "s": "data",
+   "e": "file",
+   "n": "ITD IMAGE_URL: one document-viewer link per permit (27 of 27 rows); not opened; the tracker publishes none"
+  },
+  "completion_report": {
+   "s": "data",
+   "e": "file",
+   "n": "Completions workbook (1002A: dates, depths, casing, tests), read by the tracker; scanned images not opened"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Completions has only Open_Hole_Logs (yes or no) and Last_Log_Run; the form lists proposed logs; filed logs not verified"
+  },
+  "production_link": {
+   "s": "none",
+   "e": "doc",
+   "n": "OCC publishes no production file; the completions file carries an OTC production unit number (Tax Commission data)"
+  }
+ },
+ "sources": [
+  {
+   "id": "occ-itd-daily",
+   "name": "Intent to Drill, past 7 days (ITD-wells-formations-daily.xlsx)",
+   "url": "https://oklahoma.gov/content/dam/ok/en/occ/documents/og/ogdatafiles/ITD-wells-formations-daily.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0.02,
+   "free": true,
+   "login": false,
+   "license": "No license or disclaimer text on the data page (footer: Copyright State of Oklahoma)",
+   "columns": [
+    "API_Number",
+    "IMAGE_URL",
+    "Operator_Number",
+    "Entity_Name",
+    "Address1",
+    "Address2",
+    "City",
+    "State",
+    "Zip_Code",
+    "Well_Name",
+    "Well_Number",
+    "Well_Type",
+    "Well_Status",
+    "Location_Type",
+    "Location_Type_Sub",
+    "Surf_Long_X",
+    "Surf_Lat_Y",
+    "County",
+    "Section",
+    "Township",
+    "Range",
+    "PM",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Footage_NS",
+    "NS",
+    "Footage_EW",
+    "EW",
+    "Proposed_Bottom_Hole_Long_X",
+    "Proposed_Bottom_Hole_Lat_Y",
+    "PBH_County",
+    "PBH_Section",
+    "PBH_Township",
+    "PBH_Range",
+    "PBH_PM",
+    "PBH_Q1",
+    "PBH_Q2",
+    "PBH_Q3",
+    "PBH_Q4",
+    "PBH_FootageNS",
+    "PBH_NS",
+    "PBH_FootageEW",
+    "PBH_EW",
+    "Length",
+    "Measured_Total_Depth",
+    "True_Vertical_Depth",
+    "PBHL_From_Lease",
+    "Formation_Code",
+    "Formation_Name",
+    "Formation_Depth",
+    "Total_Depth",
+    "Spacing_Order",
+    "Pending_CD_Order",
+    "Location_Exception_Order",
+    "Increased_Density_Order",
+    "Commercial_Pit_Permit",
+    "Other_Disposal_Method",
+    "Permit_Type",
+    "Operator_Suffix",
+    "Amended_Reason",
+    "Is_Extended",
+    "Application_Type",
+    "Drill_Type",
+    "Depth",
+    "Surface_Casing_Depth",
+    "Water_Well",
+    "Deep_Surface_Casing",
+    "Surface_Water",
+    "Alternate_Casing_Design",
+    "Ground_Elevation",
+    "Depth_BTW",
+    "Cement_Circulation_Surface",
+    "Cement_Circulation_From",
+    "Cement_Circulation_To",
+    "Land_Application",
+    "Land_Application_Year",
+    "Land_Application_Permit",
+    "Evaporation",
+    "Solidification",
+    "Annular_Injection",
+    "Hearing_Date",
+    "Submit_Date",
+    "Create_User",
+    "Create_Date",
+    "Modify_User",
+    "Modify_Date",
+    "Batch_ID_Date",
+    "Batch_ID_Number",
+    "Remarks",
+    "Well_Class",
+    "Approval_Date",
+    "Expire_Date",
+    "Reject_Date",
+    "Cancel_Date",
+    "Irregular_Section",
+    "Surface_Casing_In_Place",
+    "Fed_Government",
+    "Sign_Name",
+    "Sign_Phone",
+    "Sign_Fax",
+    "Sign_Date",
+    "Walk_Through",
+    "Receipt_Number",
+    "AltCsg_Circulation_Zones",
+    "AltCsg_Exceed_50Gallons",
+    "AltCsg_Depth_LessThan100ft",
+    "AltCsg_WaterWell_QtrMile",
+    "Permit_Status",
+    "Date_Of_Operation",
+    "Assigned_To",
+    "Follow_Up",
+    "Spot_Grid",
+    "Free_Amend",
+    "Payment_Auth_Number",
+    "Air_Mud_Max_Chlorides",
+    "Air_Mud_Avg_Chlorides",
+    "Air_Pit_Category",
+    "Oil_Mud_Max_Chlorides",
+    "Oil_Mud_Avg_Chlorides",
+    "Oil_Pit_Category",
+    "Water_Mud_Max_Chlorides",
+    "Water_Mud_Avg_Chlorides",
+    "Water_Pit_Category",
+    "Deep_Ground_Water",
+    "Within_1Mile_H2O",
+    "Liner_Required_20Mil",
+    "OffSite_District",
+    "OffSite_County",
+    "OffSite_Number",
+    "WH_Protect_Area",
+    "Pit_Surface_Type",
+    "Yield_GT50",
+    "Pit_Deep_SCA",
+    "Pit_CBL",
+    "Pit_Liner_Required",
+    "Pit_Formation"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "recompletion",
+    "re-entry",
+    "deepening",
+    "amendment"
+   ],
+   "reachable": "ok",
+   "tested": "One GET on 2026-11-01: 200, 21,247 bytes, one sheet, 27 data rows and 138 columns (header read; the data dictionary also lists 138, but has Operator_Email, which the file lacks, and lacks IMAGE_URL, which the file has). Approvals 2026-10-23 to 10-29 (the file ends the day before it is made, about 00:41 UTC). All 27 rows have approval, submit and expire dates and a document link. Blank or 0 in all 27 rows: Drill_Type, Location_Type_Sub, Formation_*, Spacing_Order, the order columns, Hearing_Date, the proposed bottom-hole columns, Measured_Total_Depth and True_Vertical_Depth (26 of 27) and Length (26 of 27). Columns hold operator address and signer name fields (see privacy_notes); none was copied."
+  },
+  {
+   "id": "occ-itd-master",
+   "name": "Intent to Drill Master File (ITD-wells-formations-base.xlsx)",
+   "url": "https://oklahoma.gov/content/dam/ok/en/occ/documents/og/ogdatafiles/ITD-wells-formations-base.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "1999",
+   "size_mb": 147,
+   "free": true,
+   "login": false,
+   "license": "No license or disclaimer text on the data page (footer: Copyright State of Oklahoma)",
+   "columns": [
+    "Same columns as the 7-day file (one shared data dictionary)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "recompletion",
+    "re-entry",
+    "deepening",
+    "amendment",
+    "rejected",
+    "deleted"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD on 2026-11-01: 200, 154,129,222 bytes, Last-Modified 2026-10-31 00:41 UTC, byte ranges accepted. Not downloaded (over 100 MB). The tracker's weekly refresh reads it (404,870 rows since 1999: one row per formation until mid-2025, folded to one permit per API number and approval day) and builds the monthly permit counts from it."
+  },
+  {
+   "id": "occ-completions",
+   "name": "Well completions (Form 1002A): past 7 days and the 2010-to-present master",
+   "url": "https://oklahoma.gov/content/dam/ok/en/occ/documents/og/ogdatafiles/completions-wells-formations-daily.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "2010",
+   "size_mb": 73,
+   "free": true,
+   "login": false,
+   "license": "No license or disclaimer text on the data page (footer: Copyright State of Oklahoma)",
+   "columns": [
+    "API_Number",
+    "Completion_No",
+    "Well_Name",
+    "Well_Number",
+    "Operator_Name",
+    "Operator_Number",
+    "Well_Status",
+    "Well_Type",
+    "Location Type",
+    "Location_Type_Sub",
+    "Surf_Long_X",
+    "Surf_Lat_Y",
+    "County",
+    "Section",
+    "Township",
+    "Range",
+    "PM",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "FootageNS",
+    "NS",
+    "FootageEW",
+    "EW",
+    "Bottom_Hole_Long_X",
+    "Bottom_Hole_Lat_Y",
+    "BH_County",
+    "BH_Section",
+    "BH_Township",
+    "BH_Range",
+    "BH_PM",
+    "BH_Q1",
+    "BH_Q2",
+    "BH_Q3",
+    "BH_Q4",
+    "BH_FootageNS",
+    "BH_NS",
+    "BH_FootageEW",
+    "BH_EW",
+    "Depth_Of_Deviation",
+    "Radius_of_Turn",
+    "Direction",
+    "Length",
+    "Measured_Total_Depth",
+    "True_Vertical_Depth",
+    "BHL_From_Lease",
+    "Amended",
+    "Amended_Reason",
+    "Review_Status",
+    "Spud",
+    "Drilling_Finished",
+    "Well_Completion",
+    "Recomplete",
+    "First_Prod",
+    "First_Sales",
+    "MinGas_Allowable",
+    "Gas_Purchaser",
+    "ITD_On_File",
+    "Open_Hole_Logs",
+    "Last_Log_Run",
+    "Unusual_Circumstance",
+    "UC_Explanation",
+    "Remarks",
+    "OTC_Prod_Unit_No",
+    "Create_Date",
+    "Create_User",
+    "Modify_Date",
+    "Modify_User",
+    "Commingled",
+    "Commingled_Approved",
+    "Multiple",
+    "Single",
+    "Multiple_Approved",
+    "Approved_By",
+    "DF_Elevation",
+    "GF_Elevation",
+    "Total_Depth",
+    "Commingled_Order",
+    "Loc_Except_Order",
+    "Increased_Density_Order",
+    "Spacing_Order",
+    "Special_Order",
+    "Drill_Type",
+    "Class_Type",
+    "Formation_Name",
+    "Formation_Code",
+    "Formation_Depth",
+    "Perforated_Top_Depth",
+    "Perforated_Bottom_Depth",
+    "Acid_Completion",
+    "Frac_Completion",
+    "Casing_Type",
+    "Size",
+    "Weight",
+    "Grade",
+    "Feet",
+    "PSI",
+    "SAX",
+    "Case_Top",
+    "Case_Bottom",
+    "Test_Date",
+    "Oil_BBL_Per_Day",
+    "Oil_Gravity",
+    "Gas_MCF_Per_Day",
+    "Gas_Oil_Ratio",
+    "Water_BBL_Per_Day",
+    "Pumping_Flowing",
+    "Shut_In_Pressure",
+    "Choke_Size",
+    "Flow_Tubing_Pressure",
+    "Packer_Depth",
+    "Packer_Brand_Type",
+    "Plug_Depth",
+    "Plug_Type",
+    "Gas_Type",
+    "Gas_Depth"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "completion filings (new and amended)"
+   ],
+   "reachable": "ok",
+   "tested": "7-day file fetched on 2026-11-01: 200, 31,563 bytes, 33 rows (one per casing string or test), 117 columns in the header. Review_Status Approved or ACCEPTED; the 3 ACCEPTED rows are horizontals with lateral length, MD, TVD, formation and bottom hole filled, the other 30 leave those blank or 0. Master (completions-wells-formations-base.xlsx): HEAD 200, 76,441,750 bytes, Last-Modified 2026-10-31 00:40 UTC, not downloaded. Dates are the 1002A's, not permit approvals."
+  },
+  {
+   "id": "occ-wells-csv",
+   "name": "RBDMS well data (rbdms-wells.csv), the nightly well inventory",
+   "url": "https://oklahoma.gov/content/dam/ok/en/occ/documents/og/ogdatafiles/rbdms-wells.csv",
+   "kind": "bulk",
+   "format": "csv",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 121,
+   "free": true,
+   "login": false,
+   "license": "No license or disclaimer text on the data page (footer: Copyright State of Oklahoma)",
+   "columns": [
+    "API",
+    "WELL_RECORDS_DOCS",
+    "WELL_NAME",
+    "WELL_NUM",
+    "OPERATOR",
+    "WELLSTATUS",
+    "WELLTYPE",
+    "SYMBOL_CLASS",
+    "SH_LAT",
+    "SH_LON",
+    "COUNTY",
+    "SECTION",
+    "TOWNSHIP",
+    "RANGE",
+    "QTR4",
+    "QTR3",
+    "QTR2",
+    "QTR1",
+    "PM",
+    "FOOTAGE_EW",
+    "EW",
+    "FOOTAGE_NS",
+    "NS"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "HEAD on 2026-11-01: 200, 127,027,176 bytes, Last-Modified 2026-10-31 09:30 UTC, byte ranges accepted; the first 8 KB read for the header: 23 columns (the data dictionary adds WELL_BROWSE_LINK, which the file lacks). Well status, type, operator, location and a link column to the OCC's imaged well documents; no permit, spud or completion dates. The tracker counts it nightly (457,359 wells)."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "Free, no login, reachable (200). The Intent to Drill master and 7-day workbooks have one row per application with an approval date, submit date, application type (drill, recomplete, re-enter, deepen, amend), well class and surface location, and the master goes back to 1999. The tracker already builds monthly and daily counts from them. Caveat: many permit columns are 0 or blank in current rows, and the files are Excel, not CSV.",
+ "producer_plan": "Already built (d8_ok_monthly weekly, d8_ok_daily nightly). Read the Intent to Drill master workbook (154 MB, about 70 s with the tracker's own stream reader) and the 7-day file; keep Application_Type DR with an Approval_Date for new drills, and fold rows (one per formation until mid-2025) to one permit per first ten API digits and Central approval day; Approval_Date is a UTC Excel serial, so convert to Central days before counting by month. Other bands by the same column: RC recomplete, RE re-enter, DP deepen (other), AM amend (left out of permit counts, counted as amended), and injection or disposal by Well_Class (DIS, SWD, INJ, DNC) among the approved rows. REJ and DEL rows are excluded. Caveats: the 7-day file ends the day before it is made (about 00:41 UTC), so a morning run reads the master for the gap; Drill_Type and Formation_* are blank, so horizontals cannot be counted from permits (depth is the proxy); an approval dated in the future is a typo to skip.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "recomplete",
+  "injection",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The Intent to Drill files carry operator address columns, the submitting person's name, phone and fax columns (and the dictionary lists an e-mail column), and the well and lease-like names; the tracker reads none of them and names operators only when they are corporations, LLCs or limited partnerships. Form 1000's contacts tab takes a name, phone and e-mail. Each permit's IMAGE_URL links to the filed document in the OCC's viewer, which was not opened and may hold personal details. Nothing personal is copied here.",
+ "unknowns": [
+  "The paper Form 1000 and any plat instructions: the OCC forms pages returned 404, so the plat requirement and the surface-owner entry screen were not seen",
+  "What the IMAGE_URL documents hold (Form 1000 image, plat, attachments); links not opened",
+  "Fill rates of the Intent to Drill columns across the master: only the 27 rows of the 7-day file were profiled, and the OKIES go-live may have changed what is filled",
+  "Whether filed well logs are online (the form lists proposed logs; the completions file has only a yes-no flag and a date)",
+  "UIC applications and UIC well lists exist on the data page (open applications file, all UIC wells) and were not opened; injection permits may use other forms",
+  "The OCC Well Data Finder and Well Browse lookups were not opened, so no cell uses a query page",
+  "Operator list columns (the OCC's registrant file holds names, phones and addresses and was not read)"
+ ],
+ "researched": "2026-11-01"
+}
