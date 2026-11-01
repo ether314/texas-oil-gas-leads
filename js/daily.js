@@ -32,9 +32,9 @@ export function createDailyView({ root }) {
 
   async function data() {
     if (dt) return dt;
-    const [doc, pts, out, nat, arrivals, tx, ok, nm, detail, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), loadOpt('newwells/arrivals'), loadOpt('daily/index'), loadOpt('daily-ok/index'), loadOpt('daily-nm/index'), loadOpt('newwells/detail'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
+    const [doc, pts, out, nat, arrivals, tx, ok, nm, detail, names, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), loadOpt('newwells/arrivals'), loadOpt('daily/index'), loadOpt('daily-ok/index'), loadOpt('daily-nm/index'), loadOpt('newwells/detail'), loadOpt('county-names'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
     // the oil permit files are optional: a page without one still draws the wells
-    raw = { doc, pts, nat, arrivals, detail: D.detailFits(detail, pts) ? detail : null, reports: { TX: tx, OK: ok, NM: nm }, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
+    raw = { doc, pts, nat, arrivals, detail: D.detailFits(detail, pts) ? detail : null, countyNames: names, reports: { TX: tx, OK: ok, NM: nm }, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
     // how many permits Texas, Oklahoma and New Mexico approved each day (the nightly captures' series; Oklahoma's from its permit points): optional, the page is whole without them
     raw.oil = null;
     try {
@@ -373,7 +373,7 @@ export function createDailyView({ root }) {
   /* ---------- the wells of the day, as a table (the map's twin) and as a download ---------- */
   const round4 = (v) => Math.round(v * 1e4) / 1e4;
   // the CSV's columns: every record of the day with every fact the report has, a number where it is one (a longitude's minus sign is not a formula)
-  const CSV_HEAD = ['kind', 'date', 'state', 'county', 'operator', 'api_number', 'latitude', 'longitude', 'datum', 'job_start', 'job_end', 'depth_ft', 'base_water_gal', 'non_water_gal', 'land'];
+  const CSV_HEAD = ['kind', 'date', 'state', 'county', 'operator', 'operator_number', 'api_number', 'latitude', 'longitude', 'datum', 'job_start', 'job_end', 'depth_ft', 'base_water_gal', 'non_water_gal', 'land'];
   // the table's own heading carries the year, so a job's days read "Oct 14 to Oct 18"; a job that crosses into another year says it
   const shortDate = (d, yearOf) => (d.slice(0, 4) === yearOf ? fmtDate(d).replace(/, \d{4}$/, '') : fmtDate(d));
   const jobText = (a, b) => (b && b !== a ? shortDate(a, a.slice(0, 4)) + ' to ' + shortDate(b, a.slice(0, 4)) : shortDate(a, a.slice(0, 4)));
@@ -389,13 +389,14 @@ export function createDailyView({ root }) {
       return { st, kind: 0, county: w.county || '', widx: i,
         cells: ['Fracked well', w.state, w.county || dash, w.operator || 'Not named', w.api == null ? dash : D.apiText(w.api), pos(w.lat, w.lon), jobText(w.start, w.end), D.feetText(w.tvd) || dash, D.gallonsText(w.water) || dash, landWord(w.land).replace(/^private or state$/, dash)],
         titles: { 1: st, 5: w.datum ? 'Datum ' + w.datum : null, 8: w.nonWater != null ? 'Other base fluid: ' + D.gallonsText(w.nonWater) : null },
-        csv: ['Fracked well', w.start, st, w.county || '', w.operator || '', w.api == null ? '' : D.apiText(w.api), round4(w.lat), round4(w.lon), w.datum || '', w.start, w.end || '', w.tvd == null ? '' : w.tvd, w.water == null ? '' : w.water, w.nonWater == null ? '' : w.nonWater, landWord(w.land)] };
+        csv: ['Fracked well', w.start, st, w.county || '', w.operator || '', '', w.api == null ? '' : D.apiText(w.api), round4(w.lat), round4(w.lon), w.datum || '', w.start, w.end || '', w.tvd == null ? '' : w.tvd, w.water == null ? '' : w.water, w.nonWater == null ? '' : w.nonWater, landWord(w.land)] };
     });
     const permits = pidx.map((j) => {
       const st = name(D.permitState(Q, j)); const word = D.permitWord(Q, j); const op = D.permitOperator(Q, j); const ft = Q.tvd[j] ? Q.tvd[j] * 100 : null; const when = iso(day);
-      return { st, kind: 1, county: '',
-        cells: [word, D.permitState(Q, j), dash, op || 'Not named', dash, pos(Q.lat[j], Q.lon[j]), shortDate(when, when.slice(0, 4)), D.feetText(ft) || dash, dash, dash], titles: { 1: st },
-        csv: [word, when, st, '', op || '', '', round4(Q.lat[j]), round4(Q.lon[j]), '', '', '', ft == null ? '' : ft, '', '', ''] };
+      const county = D.permitCounty(Q, j, raw.countyNames); const apiText = Q.api[j] ? D.apiText(Q.api[j]) : null;
+      return { st, kind: 1, county: county || '',
+        cells: [word, D.permitState(Q, j), county || dash, op || 'Not named', apiText || dash, pos(Q.lat[j], Q.lon[j]), shortDate(when, when.slice(0, 4)), D.feetText(ft) || dash, dash, dash], titles: { 1: st, 3: op && Q.opNum[j] ? 'Operator number ' + Q.opNum[j] : null },
+        csv: [word, when, st, county || '', op || '', op ? Q.opNum[j] : '', apiText || '', round4(Q.lat[j]), round4(Q.lon[j]), '', '', '', ft == null ? '' : ft, '', '', ''] };
     });
     const rows = [...wells, ...permits];
     rows.sort((x, y) => x.st.localeCompare(y.st) || x.kind - y.kind || x.county.localeCompare(y.county));
@@ -416,7 +417,7 @@ export function createDailyView({ root }) {
       : el('p', { class: 'nd', text: !Q ? 'No well.' : !f.wells ? (pAvail ? 'No oil permit or spud with a location.' : 'No oil permit locations for this day or state.') : pAvail ? 'No fracked well or oil permit with a location.' : 'No fracked well.' }),
     rows.length > TABLE_ROWS ? el('p', { class: 'fine', text: 'The first ' + TABLE_ROWS + ' of ' + fmt.format(rows.length) + ' are listed; the download has all of them, or choose a state to see its own.' }) : null,
     rows.length ? el('div', { class: 'actions' }, S.csv) : null,
-    el('p', { class: 'fine', text: 'The API number is the well’s own, as FracFocus gives it (the first ten digits: state, county, well). A well is placed by its GPS point, county and state: no source the report reads has a well’s street address or a parcel number. Operators are named only when they are corporations, LLCs or partnerships. No well name or lease is published.' }),
+    el('p', { class: 'fine', text: 'The API number is the well’s own (the first ten digits: state, county, well), as FracFocus gives it for a fractured well and as the agency’s permit file gives it for an Oklahoma, New Mexico or offshore permit or spud; Texas’s permit file here has none. A well is placed by its GPS point, county and state: no source the report reads has a well’s street address or a parcel number. Operators are named only when they are corporations, LLCs or partnerships. No well name or lease is published.' }),
     dt.P.det ? null : el('p', { class: 'fine', text: 'The API numbers, the job’s last day and the exact depth and water are not loaded for these wells, so those columns show what the points file holds, or a dash.' })].filter(Boolean));
     S.csv.textContent = 'Download this day (' + fmt.format(rows.length) + (rows.length === 1 ? ' row' : ' rows') + ', CSV)'; S.csv.disabled = !rows.length;
   }
