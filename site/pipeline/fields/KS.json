@@ -1,0 +1,541 @@
+{
+ "state": "KS",
+ "name": "Kansas",
+ "agency": {
+  "name": "Kansas Corporation Commission, Conservation Division (permits); Kansas Geological Survey, University of Kansas (public well database built from KCC filings)",
+  "short": "KCC / KGS",
+  "url": "https://www.kcc.ks.gov/conservation"
+ },
+ "form": {
+  "name": "Notice of Intent to Drill (with Form CDP-1 Application for Surface Pit and Form KSONA-1 Surface Owner Notification Act certification)",
+  "number": "KCC Form C-1 (July 2014) with instructions; CDP-1 and KSONA-1 in the same packet",
+  "url": "https://www.kcc.ks.gov/images/PDFs/oil-gas/forms/c1cdp1_ksona.pdf",
+  "read": true,
+  "notes": "Read the packet in full as text (420 KB PDF, 78 KB of text; the file name matches a web-search result for the KCC-hosted copy, and the July 2014 revision date matches that result; I did not re-download it, and the KCC intents page refused a request with HTTP 403, so I did not test the KCC site again). C-1 side one: expected spud date; spot description and footages from section lines; operator license number, name, address, contact; contractor; county, lease, well number, field; prorated/spaced field; target formation(s); nearest lease or unit line; ground elevation; well drilled for (oil, gas, disposal, enhanced recovery, storage, seismic) and well class (infield, pool extension, wildcat); equipment type; OWWO block for re-entries; directional, deviated or horizontal with TVD and bottom-hole location; KCC docket number; water well within a quarter mile and public supply within a mile; depth to fresh and usable water; surface and conductor pipe lengths, Alternate I or II; projected total depth and formation at total depth; water source and DWR permit; cores. Side two: plat with acres attributable to the well. Office-use box: API number, district, effective date, authorization expiry (void if drilling has not begun within 12 months), approver. A C-1 must be approved five days before spud. CDP-1 covers the pit; KSONA-1 certifies notice to the surface owner. No items for bond, fee, H2S, frac, mineral owner, formation tops or a permit number. Injection authorizations (Form U-1), plugging (CP-1) and cathodic protection (CB-1) forms were not read. The KCC may now take intents through its online system, which I could not see."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_NUMBER in the master list and layer; KCC assigns it on approval ('API # 15-' in the office-use box)"
+  },
+  "permit_number": {
+   "s": "none",
+   "e": "form",
+   "n": "C-1 has no permit number; the API number is the id. KCC_PERMIT column is empty on all 1,442 permits since 2025"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL (well number) and LEASE_WELL_NAME in the master list; C-1 asks Lease Name and Well #"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "LEASE in the master list, LEASE_NAME in the layer; C-1 asks Lease Name"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "ORIG_OPERATOR and CURR_OPERATOR in the master list; OPERATOR_NAME in the layer"
+  },
+  "operator_id": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1 asks the operator License#; no license number column in the KGS file or layer"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "C-1 asks license number, name, address, contact only; licensing application not read"
+  },
+  "bond": {
+   "s": "none",
+   "e": "form",
+   "n": "No bond item on C-1, CDP-1 or KSONA-1; financial assurance sits with operator licensing (not read)"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "COUNTY in the ArcGIS layer; the master-list text file has no county column"
+  },
+  "district": {
+   "s": "form",
+   "e": "form",
+   "n": "'District #' in the KCC office-use box of the C-1; not a column in the KGS file or layer"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "FIELD (blank on 420 of 1,442 permits since 2025), FIELD_NAME in layer; C-1 asks field and prorated/spaced"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "LATITUDE, LONGITUDE (NAD27, computed from footages; some GPS); C-1 does not ask coordinates"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "TOWNSHIP, RANGE, SECTION, SPOT, FEET_NORTH, FEET_EAST, FOOT_REF; C-1 asks the same footages"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1 'Bottom Hole Location' (footages, section, township, range) for directional or horizontal wells"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Horizontal Mississippi wells attach a plat of the horizontal path; the survey follows with the ACO-1"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ELEVATION with ELEV_REF (KB, DF, GL or TOPO estimate); C-1 asks ground surface elevation (feet MSL)"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "KSONA-1 certifies notice to the surface owner (owner name and address if KCC sends it); plat of roads and tanks"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "STATUS/WELL_TYPE codes: OIL, GAS, EOR, SWD, CATH, WATER, D&A; C-1 'Well Drilled For' and Well Class"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "doc",
+   "n": "No work-type column; API suffix (-0001...) is KGS's workover code, -01xx horizontal. C-1 has an 'If OWWO' block"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "CHK_HORIZONTAL flag in the layer (horizontal only); C-1 asks directional, deviated or horizontal yes/no"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1 'Projected Total Depth'; the file's DEPTH is the drilled total depth (blank on 470 of 1,442 recent)"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1 'If Yes, true vertical depth' for directional or horizontal wells"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "No lateral-length item on the C-1; only the bottom-hole location and horizontal path plat"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1 'Target Formation(s)'; file's PRODUCE_FORM is the producing zone from completion (blank on 807 of 1,442)"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "C-1 asks only 'Formation at Total Depth'; KGS tops file is built from logs after drilling"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Surface pipe planned length, Alternate I or II, conductor pipe length; no production casing"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Only the Alternate I or II choice and the surface-pipe cementing affidavit; no volumes or tops"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "Only a certification that a BOP will be used, for horizontal Mississippi wells without a separate application"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No H2S item on the C-1, CDP-1 or KSONA-1"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Separate Form CDP-1 filed with the C-1: pit type, capacity, liner, chloride, sensitive groundwater area"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1: water source for drilling (well, farm pond, other), DWR permit #, depth to fresh and usable water; no volume"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "No stimulation or frac item on the C-1, CDP-1 or KSONA-1"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1: prorated/spaced field yes/no; plat: acres attributable to well; acreage attribution plat in spaced fields"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "C-1 'KCC DKT #' for a K.A.R. 82-3-103a horizontal application; setback certification; no other exception item"
+  },
+  "mineral_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Lessor or mineral owner not asked; horizontal wells attach a leased-acreage description and unitization statement"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "C-1 has no fee line; a $30 KSONA-1 handling fee applies only if KCC notifies the owner; fee schedule not read"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "KSONA-1 certifies notice to the surface owner; no offset-owner notice or hearing item on the forms"
+  },
+  "date_received": {
+   "s": "form",
+   "e": "form",
+   "n": "Signature date on the C-1; no filing-date column in the KGS file or layer; KCC search not readable (HTTP 403)"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT (DD-MON-YYYY) in the master list, PERMIT_DATE in the layer; KGS does not say if filed or approved"
+  },
+  "date_expires": {
+   "s": "form",
+   "e": "form",
+   "n": "'This authorization expires', void if drilling not started within 12 months; KGS status 'Expired Intent to Drill'"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SPUD in the master list, SPUD_DATE in the layer; C-1 asks 'Expected Spud Date'"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "COMPLETION (master list), COMPLETION_DATE (layer); ACO-1 completion form due within 120 days of spud"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "STATUS and STATUS2 in the master list; WELL_CLASS in the layer (Approved Intent to Drill, Spudded, Producing...)"
+  },
+  "plat_image": {
+   "s": "query",
+   "e": "web",
+   "n": "KGS data page lists scanned intents (with the plat) and other forms from KGS and KCC; CHK_SCAN flag in the layer"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "KGS data page: 'Scanned ACO-1s, drillers logs, intents, plugging reports' linked from the well record"
+  },
+  "completion_report": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned ACO-1 completion forms via the KGS well record; CHK_ACO flag in the layer"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "Wireline log headers, LAS and scanned logs via KGS well pages; CHK_LAS and CHK_SCAN flags in the layer"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "OIL_KID, OIL_DOR_ID, GAS_KID, GAS_DOR_ID link wells to KGS lease production; IP_OIL, IP_GAS, IP_WATER"
+  }
+ },
+ "sources": [
+  {
+   "id": "ks-kgs-wells-layer",
+   "name": "KGS 'Oil and Gas Wells' feature layer (well-header data from KCC filings; CSV, KML, shapefile, GeoJSON and file geodatabase downloads from the same item)",
+   "url": "https://services2.arcgis.com/ZOdjAzAQ2B0f85zi/ArcGIS/rest/services/Oil_and_Gas_Wells/FeatureServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "KGS 'as is' disclaimer, no warranty; copyright text 'KGS'",
+   "columns": [
+    "OBJECTID",
+    "KID",
+    "FIELD_NAME",
+    "LEASE_NAME",
+    "WELL_NAME",
+    "WELL_CLASS",
+    "OPERATOR_NAME",
+    "TOWNSHIP",
+    "TOWNSHIP_DIRECTION",
+    "RANGE",
+    "RANGE_DIRECTION",
+    "SECTION",
+    "SUBDIVISION_1_LARGEST",
+    "SUBDIVISION_2",
+    "SUBDIVISION_3",
+    "SUBDIVISION_4_SMALLEST",
+    "SPOT",
+    "FEET_NORTH_FROM_REFERENCE",
+    "FEET_EAST_FROM_REFERENCE",
+    "REFERENCE_CORNER",
+    "ROTARY_TOTAL_DEPTH",
+    "STATUS",
+    "SPUD_DATE",
+    "PERMIT_DATE",
+    "COMPLETION_DATE",
+    "API_NUMBER",
+    "PLUG_DATE",
+    "ELEVATION_KB",
+    "ELEVATION_GL",
+    "ELEVATION_DF",
+    "PRODUCING_FORMATION",
+    "NAD27_LATITUDE",
+    "NAD27_LONGITUDE",
+    "COMPLETION_YEAR",
+    "WELL_TYPE",
+    "COUNTY",
+    "CURR_OPERATOR",
+    "PERMIT_DATE_TXT",
+    "SPUD_DATE_TXT",
+    "COMPLETION_DATE_TXT",
+    "PLUG_DATE_TXT",
+    "WELL_LABEL",
+    "LONGITUDE_LATITUDE_SOURCE",
+    "CHK_SCAN",
+    "CHK_PAPER",
+    "CHK_LAS",
+    "CHK_CUTTINGS",
+    "CHK_CORE",
+    "CHK_TOP",
+    "CHK_PRECAMB",
+    "API_NUM_NODASH",
+    "ELEVATION_LIDAR",
+    "FORMATION_AT_TOTAL_DEPT",
+    "IP_OIL",
+    "IP_GAS",
+    "IP_WATER",
+    "OIL_KID",
+    "OIL_DOR_ID",
+    "GAS_KID",
+    "GAS_DOR_ID",
+    "KCC_PERMIT",
+    "STATUS2",
+    "COMMENTS",
+    "CHK_HORIZONTAL",
+    "CHK_ACTIVE",
+    "CHK_ACO",
+    "CHK_LAS3",
+    "CHK_DST",
+    "CHK_COREIMG",
+    "PROD_FORM_SEARCH",
+    "LABEL",
+    "FIELD_KID"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permitted wells (new, workover codes in API suffix)",
+    "injection and disposal wells",
+    "cathodic protection boreholes",
+    "plugged wells"
+   ],
+   "reachable": "ok",
+   "tested": "Fresh count query 2026-11-01: PERMIT_DATE >= 2026-01-01 returned HTTP 200 {\"count\":757}. Earlier fetches (2026-10-31): layer schema (maxRecordCount 2000, Query and Extract, last data edit 2026-10-31 02:29 UTC, so it is rebuilt nightly) and a grouped count of those 757 rows by WELL_CLASS: Approved Intent to Drill 229, Producing 182, Spudded 170, Inactive 82, Plugged and Abandoned 79, Authorized Injection Well 11, Cancelled API Number 3, Approved for Plugging 1. Layer total 519,739 rows. PERMIT_DATE is an ArcGIS date; PERMIT_DATE_TXT is text."
+  },
+  {
+   "id": "ks-kgs-master-list",
+   "name": "KGS master list of oil and gas wells, 'All Wells' ks_wells.zip (comma-delimited text, same columns as the KGS file format page)",
+   "url": "https://www.kgs.ku.edu/PRS/Ora_Archive/ks_wells.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "1930s (sparse; four rows have impossible years)",
+   "size_mb": 44,
+   "free": true,
+   "login": false,
+   "license": "KGS 'as is' disclaimer, no warranty",
+   "columns": [
+    "KID",
+    "API_NUMBER",
+    "API_NUM_NODASH",
+    "LEASE",
+    "WELL",
+    "FIELD",
+    "LATITUDE",
+    "LONGITUDE",
+    "LONG_LAT_SOURCE",
+    "TOWNSHIP",
+    "TWN_DIR",
+    "RANGE",
+    "RANGE_DIR",
+    "SECTION",
+    "SPOT",
+    "FEET_NORTH",
+    "FEET_EAST",
+    "FOOT_REF",
+    "ORIG_OPERATOR",
+    "CURR_OPERATOR",
+    "ELEVATION",
+    "ELEV_REF",
+    "SURFACE_ELEVATION_LIDAR",
+    "DEPTH",
+    "FORMATION_AT_TOTAL_DEPTH",
+    "PRODUCE_FORM",
+    "IP_OIL",
+    "IP_GAS",
+    "IP_WATER",
+    "PERMIT",
+    "SPUD",
+    "COMPLETION",
+    "PLUGGING",
+    "MODIFIED",
+    "OIL_KID",
+    "OIL_DOR_ID",
+    "GAS_KID",
+    "GAS_DOR_ID",
+    "KCC_PERMIT",
+    "STATUS",
+    "STATUS2",
+    "COMMENTS",
+    "LEASE_WELL_NAME"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permitted wells (new, workover codes in API suffix)",
+    "injection and disposal wells",
+    "cathodic protection boreholes",
+    "plugged wells"
+   ],
+   "reachable": "ok",
+   "tested": "One HEAD 2026-11-01: HTTP 200, Last-Modified 2026-10-09. Opened the copy an earlier researcher downloaded (44,028,388 bytes; ks_wells.txt 204,980,116 bytes; 519,691 rows, 42 columns): 207,731 rows have a PERMIT date (text DD-MON-YYYY), newest 2026-10-08. Permit rows per year match the KGS well-statistics table exactly: 2023 1,372; 2024 1,260; 2025 749; 2026 693 to Oct 8. By month 2026: Jan 42, Feb 36, Mar 67, Apr 105, May 98, Jun 97, Jul 77, Aug 55, Sep 78, Oct 38. Among 1,442 permits since 2025: KCC_PERMIT empty on all, FIELD blank on 420, DEPTH blank on 470, SPUD blank on 486; 145 plain-API rows are EOR or SWD wells and 130 are cathodic or other service holes; 67 carry an API suffix (-0001 mostly). The file is a snapshot (updated about monthly), so the layer is fresher."
+  },
+  {
+   "id": "ks-kgs-permitted-by-month",
+   "name": "KGS 'Wells permitted in <month>' searches (monthly well lists, Apr 2023 to Oct 2026, from the data-bases page)",
+   "url": "https://chasm.kgs.ku.edu/ords/qualified.ogw5.PermitDate",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "2023-04",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "KGS 'as is' disclaimer",
+   "columns": [],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells by permit month"
+   ],
+   "reachable": "not-tested",
+   "tested": "Linked from the data-bases page (HTTP 200 on that page, 24 KB); 'These searches create files containing wells based on the date chosen' and all files match the master-list format. Not requested, because the layer and the zip hold the same rows."
+  },
+  {
+   "id": "ks-kgs-well-stats",
+   "name": "KGS 'Oil and Gas Well Statistics for Kansas' (yearly table of wells permitted, drilled, by type)",
+   "url": "https://www.kgs.ku.edu/PRS/wellStats.html",
+   "kind": "report",
+   "format": "html",
+   "grain": "aggregate",
+   "cadence": "irregular",
+   "history_from": "2013",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "KGS 'as is' disclaimer",
+   "columns": [
+    "Wells permitted",
+    "New oil wells drilled",
+    "New gas wells drilled",
+    "Dry holes drilled",
+    "Service wells drilled",
+    "Total new wells drilled",
+    "Total new footage drilled",
+    "Horizontal wells permitted",
+    "Horizontal wells drilled",
+    "Coalbed methane well permits issued"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "wells permitted per year",
+    "horizontal wells permitted"
+   ],
+   "reachable": "ok",
+   "tested": "Page read (HTTP 200, 11 KB, tables updated Oct 9, 2026): wells permitted 1,372 (2023), 1,260 (2024), 749 (2025), 693 (2026 to date); horizontal wells permitted 10, 12, 4, 8. Totals now: 72,476 producing oil wells, 24,234 producing gas wells, 5,701 SWD or injection wells, 520,211 master-list records. Methods note: horizontal wells are flagged by a digit in the second place of the workover code in the API number."
+  },
+  {
+   "id": "ks-kcc-intents-search",
+   "name": "KCC 'Notices of Intents' search (intents to drill filed in the past 365 days, daily download)",
+   "url": "https://www.kcc.ks.gov/conservation/intents",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "intents to drill"
+   ],
+   "reachable": "blocked-403",
+   "tested": "One GET with the web-fetch tool returned HTTP 403 and was not repeated or tried another way. From a search-engine summary of the page (not read by me): the search covers the past 365 days, new intents are posted daily and downloadable about 6 p.m. Central, and the KCC points users to the KGS energy portal as an alternative. Fields and download format unknown."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "The KGS layer and master list are free, need no login, answered HTTP 200 from here, hold one row per well with a PERMIT date and a spud date, and are rebuilt nightly (layer) or about monthly (zip); yearly permit counts match KGS's own statistics. It is an A with two honest limits: the file has no work-type column (workovers and horizontals show only in the API suffix and the well type) and KGS does not say whether PERMIT is the filing or the approval date. The KCC's own intents search was blocked (HTTP 403) from here.",
+ "producer_plan": "Source: the KGS 'Oil and Gas Wells' feature layer (nightly) or, for a no-API fallback, the ks_wells.zip master list (about 44 MB, 205 MB unpacked, 42 columns, a snapshot). From the layer: query where=PERMIT_DATE >= DATE '2023-01-01' with outFields=API_NUMBER,WELL_CLASS,WELL_TYPE,PERMIT_DATE,SPUD_DATE,CHK_HORIZONTAL,COUNTY,STATUS2,returnGeometry=false, in pages of 2,000 by resultOffset (about 4,100 rows since 2023 in the zip, so three requests). From the zip: read ks_wells.txt as comma-separated Latin-1, parse PERMIT as DD-MON-YYYY, drop impossible years. Count by permit month. Bands: new = API without a suffix and a type of oil, gas, dry or unknown; injection = EOR or SWD type (about 10 percent of rows; EOR wells are enhanced-recovery injectors); reentry = API with a suffix -0001 to -0099 (KGS's workover codes; 2 to 5 percent of rows); horizontal = suffix -01xx to -09xx (flag only, not a band); other = CATH (cathodic protection boreholes), WATER, strat and observation holes (about 9 percent) so they do not inflate new-well counts. Exclude status 'Cancelled API Number'. Keep 'Approved Intent to Drill' rows: they are permits not yet drilled (229 of 757 in 2026). Caveats: PERMIT is one date per API, so a re-permit of the same API overwrites; recent months keep growing as KGS keys in intents, so the last two weeks are provisional; the layer drops no rows but statuses change over time (a permit can later show Expired Intent or Plugged), so count by PERMIT_DATE, never by current status. If the KCC's own intents list becomes readable it would give filing dates and the 365-day pending queue, but it returned 403 here.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The KGS file and layer carry operator names (company names; some small operators may be individuals, not screened), well and lease names, API numbers, coordinates and a free-text COMMENTS column that was not screened for names. No phone numbers, e-mails or street addresses in the columns. The C-1 collects contact name, phone and mailing address, and KSONA-1 collects a surface owner's name and address, but neither is in the KGS data. If operators are named, apply the corporation-only rule.",
+ "unknowns": [
+  "Whether KGS's PERMIT date is the KCC approval (effective) date or the filing date",
+  "What the KCC intents search and its download hold (columns, history), since the page returned HTTP 403",
+  "Whether the live KCC filing (an online system) asks more than the 2014 C-1 packet, and whether a newer C-1 revision exists",
+  "Operator business type, bond, fee, and operator license numbers (licensing forms not read)",
+  "Whether a re-permit or reentry of an existing API creates a new row or overwrites the permit date",
+  "Whether the master-list zip is refreshed on a schedule (only Last-Modified 2026-10-09 and the page note were seen)",
+  "Class II injection authorizations (Form U-1) and plugging permits: not read",
+  "Content of the COMMENTS column (not screened for personal names)"
+ ],
+ "researched": "2026-10-31"
+}

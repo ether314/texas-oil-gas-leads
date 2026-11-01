@@ -45,9 +45,9 @@
    "n": "ORGANIZATION_ID; form asks for the operator code number"
   },
   "operator_type": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Not on MD-10-R-1; operator registration (OR-1) not read"
+   "s": "none",
+   "e": "form",
+   "n": "No business-type box on MD-10-R-1; operator registration (OR-1) not read"
   },
   "bond": {
    "s": "form",
