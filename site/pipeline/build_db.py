@@ -21,7 +21,7 @@ Two layers, so nothing is lost and common questions are easy:
     county_permits, county_permit_months      per state and county: last 12 months, the 12 before, mean depth, and the 36 monthly counts
     operators               every state's published operator table (Texas's joined with its extras); the full row of each in `extra`
     permit_points           one row per permit with a published location (latitude, longitude, day, depth)
-    new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well of the last 24 months with its
+    new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well since 2011 (the last 24 months and the history file) with its
                             published GPS point (latitude, longitude, day, county, operator when it may be named, depth, water, land), and each state's top operators
     companies               the Texas Comptroller's company pool as published here
     daily_reports, daily_permits      the Daily reports by state and day, and each Texas permit row of those days
@@ -37,6 +37,7 @@ ignores or outside the repository (`ff_db.ensure_local_only`); the one committed
 Counts of different measures (permits approved, wells spudded) are different columns of meaning: `jurisdictions.measure` says which, and nothing here adds them.
 """
 import argparse
+import bisect
 import datetime
 import glob
 import hashlib
@@ -218,19 +219,35 @@ def load_points(db, data):
 LAND = {0: "private or state", 1: "federal", 2: "tribal", 3: "federal and tribal"}
 
 
+def newwell_rows(pt, below=None):
+    """The rows of a points file (the last 24 months or the history): state, day, place, county, operator, depth, water, land. `below`: only the days before that day number (the history's overlap with the points file is dropped)."""
+    rows = []
+    for i in range(pt["n"]):
+        if below is not None and pt["d"][i] >= below:
+            break  # the days are in order
+        c, o = pt["c"][i], pt["o"][i]
+        rows.append((pt["states"][pt["s"][i]], decode_day(pt["t0"], pt["d"][i]), pt["lat"][i] / 1e4, pt["lon"][i] / 1e4, pt["counties"][c][1] if c >= 0 else None,
+                     pt["ops"][o] if o >= 0 else None, pt["tvd"][i] * 100 or None, pt["h2o"][i] * 100000 or None, LAND[pt["f"][i]]))
+    return rows
+
+
+def history_below(pt, hist):
+    """How many days of the history lie before the points file starts: the rows the points file does not already hold."""
+    return (datetime.date.fromisoformat(pt["t0"]) - datetime.date.fromisoformat(hist["t0"])).days
+
+
 def load_newwells(db, data):
-    ps, pp = os.path.join(data, "newwells", "summary.json"), os.path.join(data, "newwells", "points.json")
+    ps, pp, ph = (os.path.join(data, "newwells", f) for f in ("summary.json", "points.json", "points-history.json"))
     if not (os.path.exists(ps) and os.path.exists(pp)):
         return 0
     sm, pt = jload(ps), jload(pp)
     for s in sm["states"]:
         db.executemany("INSERT INTO new_wells_months VALUES (?,?,?)", [(s["id"], m, v) for m, v in zip(sm["months"], s["new"])])
         db.executemany("INSERT INTO new_wells_operators VALUES (?,?,?,?)", [(s["id"], i + 1, name, n) for i, (name, n) in enumerate(s["operators"])])
-    rows = []
-    for i in range(pt["n"]):
-        c, o = pt["c"][i], pt["o"][i]
-        rows.append((pt["states"][pt["s"][i]], decode_day(pt["t0"], pt["d"][i]), pt["lat"][i] / 1e4, pt["lon"][i] / 1e4, pt["counties"][c][1] if c >= 0 else None,
-                     pt["ops"][o] if o >= 0 else None, pt["tvd"][i] * 100 or None, pt["h2o"][i] * 100000 or None, LAND[pt["f"][i]]))
+    rows = newwell_rows(pt)
+    if os.path.exists(ph):  # every earlier well with a point, back to 2011 (the page loads these only on request; here they are rows like the others)
+        hist = jload(ph)
+        rows = newwell_rows(hist, history_below(pt, hist)) + rows
     db.executemany("INSERT INTO new_wells VALUES (?,?,?,?,?,?,?,?,?)", rows)
     return len(rows)
 
@@ -384,8 +401,15 @@ def check(out):
             if db.execute("SELECT COUNT(*) FROM national_months").fetchone()[0] != want:
                 p.append("national_months does not match national.json")
         nw = db.execute("SELECT json FROM documents WHERE path = 'newwells/points.json'").fetchone()
-        if nw and db.execute("SELECT COUNT(*) FROM new_wells").fetchone()[0] != json.loads(nw[0])["n"]:
-            p.append("new_wells does not match newwells/points.json")
+        nh = db.execute("SELECT json FROM documents WHERE path = 'newwells/points-history.json'").fetchone()  # absent in a file made before the history existed
+        if nw:
+            pts = json.loads(nw[0])
+            want = pts["n"]
+            if nh:
+                hist = json.loads(nh[0])
+                want += bisect.bisect_left(hist["d"], history_below(pts, hist))
+            if db.execute("SELECT COUNT(*) FROM new_wells").fetchone()[0] != want:
+                p.append("new_wells does not match newwells/points.json and points-history.json")
         wdocs = sum(sum(len(w["docs"]) for w in json.loads(t)["wells"]) for (t,) in db.execute("SELECT json FROM documents WHERE path GLOB 'wells/county/*.json'"))
         if db.execute("SELECT COUNT(*) FROM well_documents").fetchone()[0] != wdocs:
             p.append("well_documents does not match the county files")

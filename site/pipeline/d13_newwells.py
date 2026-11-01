@@ -57,10 +57,11 @@ URL = "https://www.fracfocusdata.org/digitaldownload/FracFocusCSV.zip"
 PAGE = "https://fracfocus.org/data-download"
 OUT = os.environ.get("D13_DIR") or os.path.join(SITE, "public", "data", "newwells")
 OUTLINES = os.path.join(SITE, "public", "data", "us-states.json")
-FIRST_MONTH = C.FIRST_MONTH
 REGISTRY_START = date(2011, 1, 1)  # the registry began in 2011: an earlier job date is a typing error
 LAG_DAYS = 120  # a month is settled when it ended this long before the newest job in the file
 POINT_MONTHS = 24  # the points file holds the wells of this many months, the newest month included
+SUMMARY_FIRST = "2011-01"  # the monthly series starts with the registry
+HISTORY_MIN = 0.9  # the history holds at least this share of the wells the summary counts before its end (the real registry: 99.8% to 100% in every year)
 TOLERANCE = 0.1  # degrees outside a state's outline that a point may lie (the coast, the old datum)
 MAX_WATER = 150e6  # gallons of water in one job: the registry has typing errors of 400 million and more
 MAX_MEMBER = 400 * 1024 * 1024  # a disclosure list is 61 MB today
@@ -314,8 +315,8 @@ class Wells:
 
 
 def months_through(asof):
-    """The months of the series: from 2019-01 to the newest job's month; and the last settled month (it ended LAG_DAYS or more before the newest job)."""
-    months = C.month_list(FIRST_MONTH, C.month_of(asof))
+    """The months of the series: from the registry's first month (2011-01) to the newest job's month; and the last settled month (it ended LAG_DAYS or more before the newest job)."""
+    months = C.month_list(SUMMARY_FIRST, C.month_of(asof))
     settled = max((m for m in months if C.month_end(m).toordinal() + LAG_DAYS <= asof.toordinal()), default=None)
     if settled is None:
         raise ValueError("no month has settled yet")
@@ -339,8 +340,7 @@ def build(wells, today=None):
     prev12 = months[months.index(settled) - 23:months.index(settled) - 11]
     by = collections.defaultdict(list)
     for r in recs:
-        if C.month_of(r[0]) >= FIRST_MONTH:
-            by[r[1]].append(r)
+        by[r[1]].append(r)
     states = []
     for code, rs in by.items():
         new = [0] * len(months)
@@ -379,11 +379,25 @@ def build(wells, today=None):
     states.sort(key=lambda s: (-s["p12"], s["name"]))
     first_pt = C.add_months(C.month_of(asof), -(POINT_MONTHS - 1)) + "-01"
     t0 = date.fromisoformat(first_pt)
-    pts = sorted((r for r in recs if r[4] and r[0] >= t0), key=lambda r: (r[0], r[1], r[4]))
-    sidx = {s["id"]: i for i, s in enumerate(states)}
+    sids = [s["id"] for s in states]
+    points = encode_points(sorted((r for r in recs if r[4] and r[0] >= t0), key=lambda r: (r[0], r[1], r[4])), t0, sids, asof)
+    summary = {
+        "v": 1, "asOf": asof.isoformat(), "settled": C.month_end(settled).isoformat(), "lagDays": LAG_DAYS, "read": wells.read, "wells": len(recs),
+        "source": {"name": "FracFocus Chemical Disclosure Registry", "url": PAGE}, "months": months, "states": states,
+        "note": "A well is counted once, on the day of its first hydraulic-fracturing disclosure; disclosures arrive weeks to months after the job, so the newest months are still filling in.",
+    }
+    return summary, points
+
+
+COLS = ("lat", "lon", "d", "s", "c", "o", "tvd", "h2o", "f")
+
+
+def encode_points(rows, t0, sids, asof):
+    """Located wells (already in day order) as the points file's columns of whole numbers, with the county and operator tables they index."""
+    sidx = {sid: i for i, sid in enumerate(sids)}
     ctable, otable, cix, oix = [], [], {}, {}
-    cols = {k: [] for k in ("lat", "lon", "d", "s", "c", "o", "tvd", "h2o", "f")}
-    for r in pts:
+    cols = {k: [] for k in COLS}
+    for r in rows:
         ckey = (r[1], r[2])
         if r[2] and ckey not in cix:
             cix[ckey] = len(ctable)
@@ -401,13 +415,23 @@ def build(wells, today=None):
         cols["tvd"].append(round(r[5] / 100) if r[5] else 0)
         cols["h2o"].append(round(r[6] / 1e5) if r[6] else 0)
         cols["f"].append(r[7])
-    summary = {
-        "v": 1, "asOf": asof.isoformat(), "settled": C.month_end(settled).isoformat(), "lagDays": LAG_DAYS, "read": wells.read, "wells": len(recs),
-        "source": {"name": "FracFocus Chemical Disclosure Registry", "url": PAGE}, "months": months, "states": states,
-        "note": "A well is counted once, on the day of its first hydraulic-fracturing disclosure; disclosures arrive weeks to months after the job, so the newest months are still filling in.",
-    }
-    points = {"v": 1, "t0": first_pt, "asOf": asof.isoformat(), "n": len(pts), "states": [s["id"] for s in states], "counties": ctable, "ops": otable, **cols}
-    return summary, points
+    return {"v": 1, "t0": t0.isoformat(), "asOf": asof.isoformat(), "n": len(rows), "states": sids, "counties": ctable, "ops": otable, **cols}
+
+
+def history_end(asof):
+    """The history file holds the wells before January 1 of the year before the newest job's: it moves once a year, and it is never later than the points file's start (a gap would lose wells), only earlier (an overlap of up to 11 months, which the page drops)."""
+    return date(asof.year - 1, 1, 1)
+
+
+def build_history(wells, summary):
+    """The wells with a usable point from the registry's start to history_end: the same columns and the same state order as the points file, with tables of their own. The page loads it only when asked."""
+    asof = date.fromisoformat(summary["asOf"])
+    until = history_end(asof)
+    rows = sorted((r for r in wells.first.values() if r[4] and r[0] < until), key=lambda r: (r[0], r[1], r[4]))
+    doc = encode_points(rows, REGISTRY_START, [s["id"] for s in summary["states"]], asof)
+    doc["until"] = until.isoformat()
+    del doc["asOf"]  # the history does not change with each week's read: its file changes only when an old well does, or once a year when its end moves
+    return doc
 
 
 # ------------------------------------------------------------------------------------------------ validation
@@ -423,8 +447,8 @@ def validate_summary(doc, today=None):
     if doc["asOf"] > today.isoformat():
         p.append("summary: asOf is in the future")
     months = doc.get("months")
-    if not (isinstance(months, list) and len(months) >= 36 and months == C.month_list(months[0], months[-1]) and months[0] == FIRST_MONTH):
-        return p + ["summary: months must run from %s without a gap" % FIRST_MONTH]
+    if not (isinstance(months, list) and len(months) >= 36 and months == C.month_list(months[0], months[-1]) and months[0] == SUMMARY_FIRST):
+        return p + ["summary: months must run from %s without a gap" % SUMMARY_FIRST]
     if months[-1] != doc["asOf"][:7]:
         p.append("summary: the months end where asOf is")
     if doc["settled"] != C.month_end(doc["settled"][:7]).isoformat() or doc["settled"][:7] not in months or C.month_end(doc["settled"][:7]).toordinal() + LAG_DAYS > date.fromisoformat(doc["asOf"]).toordinal():
@@ -479,18 +503,22 @@ def validate_summary(doc, today=None):
     return p
 
 
-def validate_points(doc, summary=None):
+def validate_points(doc, summary=None, history=False):
+    """The points file (the last 24 months) or, with history=True, the history file (the registry's start to `until`): the same columns, the same checks."""
     p = []
+    what = "history" if history else "points"
     if not isinstance(doc, dict) or doc.get("v") != 1:
-        return ["points: not a v1 document"]
-    cols = ("lat", "lon", "d", "s", "c", "o", "tvd", "h2o", "f")
+        return [what + ": not a v1 document"]
+    cols = COLS
     n = doc.get("n")
     if not (isinstance(n, int) and n > 1000 and all(isinstance(doc.get(c), list) and len(doc[c]) == n for c in cols)):
-        return ["points: every column must hold n rows (n over 1,000)"]
-    for k in ("t0", "asOf"):
+        return [what + ": every column must hold n rows (n over 1,000)"]
+    for k in ("t0", "until") if history else ("t0", "asOf"):
         if not (isinstance(doc.get(k), str) and re.fullmatch(r"\d{4}-\d\d-\d\d", doc[k])):
-            return ["points: %s must be a date" % k]
-    span = (date.fromisoformat(doc["asOf"]) - date.fromisoformat(doc["t0"])).days
+            return [what + ": %s must be a date" % k]
+    if history and (doc["t0"] != REGISTRY_START.isoformat() or (summary and doc["until"] != history_end(date.fromisoformat(summary["asOf"])).isoformat())):
+        return [what + ": it must run from the registry's start to the January 1 before the newest job's year"]
+    span = (date.fromisoformat(doc["until"] if history else doc["asOf"]) - date.fromisoformat(doc["t0"])).days - (1 if history else 0)
     states, ct, ot = doc.get("states"), doc.get("counties"), doc.get("ops")
     if not (isinstance(states, list) and all(isinstance(x, str) for x in states) and isinstance(ct, list) and isinstance(ot, list)):
         return ["points: states, counties and ops must be lists"]
@@ -507,38 +535,54 @@ def validate_points(doc, summary=None):
         p.append("points: a point's county must belong to its state")
     for row in ct:
         if not (isinstance(row, list) and len(row) == 2 and row[0] in STATE_OF.values() and isinstance(row[1], str) and C.PLACE.match(row[1]) and not re.search(r"\d{3,}", row[1])):
-            p.append("points: county table row %r" % (row,))
+            p.append(what + ": county table row %r" % (row,))
             break
     for name in ot:
         if not (isinstance(name, str) and may_name(name)):
-            p.append("points: operator name the rule refuses: " + privacy_check.mask(name))
+            p.append(what + ": operator name the rule refuses: " + privacy_check.mask(name))
             break
     if summary and not p:
         ids = [s["id"] for s in summary["states"]]
         if states != ids:
-            p.append("points: states differ from the summary's")
-        elif doc["asOf"] != summary["asOf"]:
-            p.append("points: asOf differs from the summary's")
+            p.append(what + ": states differ from the summary's")
+        elif not history and doc["asOf"] != summary["asOf"]:
+            p.append(what + ": asOf differs from the summary's")
         else:
-            t0 = doc["t0"][:7]
+            lo = summary["months"].index(doc["t0"][:7])
+            hi = summary["months"].index(doc["until"][:7]) if history else len(summary["months"])
+            share = HISTORY_MIN if history else 0.8
             for i, s in enumerate(summary["states"]):
                 have = doc["s"].count(i)
-                total = sum(s["new"][summary["months"].index(t0):])
-                if have > total or (total >= 50 and have < 0.8 * total):
-                    p.append("points %s: %d points against %d wells in the same months" % (s["id"], have, total))
-    for what in privacy_check.scan(json.dumps(doc, ensure_ascii=False), digits=True):
-        p.append("points hold " + what)
+                total = sum(s["new"][lo:hi])
+                if have > total or (total >= 50 and have < share * total):
+                    p.append("%s %s: %d points against %d wells in the same months" % (what, s["id"], have, total))
+    for hit in privacy_check.scan(json.dumps(doc, ensure_ascii=False), digits=True):
+        p.append(what + " holds " + hit)
     return p
 
 
-def write(summary, points, out_dir=OUT):
-    """Validates, then writes both files (compact, deterministic). Nothing is written when either is bad."""
+FILES = ("summary.json", "points.json", "points-history.json")
+
+
+def validate_pair(points, history):
+    """The two point files together: the history must reach the points file's first day (a gap would lose the wells in between)."""
+    if history["until"] < points["t0"]:
+        return ["history: it ends %s, before the points start (%s): wells in between would be lost" % (history["until"], points["t0"])]
+    return []
+
+
+def write(summary, points, out_dir=OUT, history=None):
+    """Validates, then writes the files (compact, deterministic). Nothing is written when any is bad."""
     bad = validate_summary(summary) + validate_points(points, summary)
+    if history is not None:
+        bad += validate_points(history, summary, history=True) or validate_pair(points, history)
     if bad:
         raise ValueError("; ".join(bad[:6]))
     os.makedirs(out_dir, exist_ok=True)
     paths = []
-    for name, doc in (("summary.json", summary), ("points.json", points)):
+    for name, doc in (("summary.json", summary), ("points.json", points), ("points-history.json", history)):
+        if doc is None:
+            continue
         path = os.path.join(out_dir, name)
         text = json.dumps(doc, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n"
         old = open(path, encoding="utf-8").read() if os.path.exists(path) else None
@@ -551,8 +595,9 @@ def write(summary, points, out_dir=OUT):
 
 
 def load_committed(out_dir=OUT):
+    """[summary, points] as committed (None for one that is missing or unreadable); the history file is load_history's."""
     out = []
-    for name in ("summary.json", "points.json"):
+    for name in FILES[:2]:
         try:
             with open(os.path.join(out_dir, name), encoding="utf-8") as f:
                 out.append(json.load(f))
@@ -561,15 +606,26 @@ def load_committed(out_dir=OUT):
     return out
 
 
+def load_history(out_dir=OUT):
+    try:
+        with open(os.path.join(out_dir, FILES[2]), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
 def check(out_dir=OUT):
     summary, points = load_committed(out_dir)
     if summary is None or points is None:
         return ["the files are missing or unreadable"]
-    return validate_summary(summary) + validate_points(points, summary)
+    history = load_history(out_dir)
+    if history is None:
+        return validate_summary(summary) + validate_points(points, summary) + ["history: the file is missing or unreadable"]
+    return validate_summary(summary) + validate_points(points, summary) + (validate_points(history, summary, history=True) or validate_pair(points, history))
 
 
 def guard(summary, committed, floor=0.9):
-    """A run may not lose history: the last 24 months' wells must be at least `floor` of the committed file's, and the rows read too."""
+    """A run may not lose history: the last 24 months' wells, and all the wells the summary counts, must be at least `floor` of the committed file's, and the rows read too."""
     if not committed or not floor:
         return []
     def window(doc):
@@ -577,6 +633,8 @@ def guard(summary, committed, floor=0.9):
     problems = []
     if window(summary) < floor * window(committed):
         problems.append("the last 24 months hold %d wells against the committed %d" % (window(summary), window(committed)))
+    if summary["wells"] < floor * committed.get("wells", 0):
+        problems.append("%d wells against the committed %d" % (summary["wells"], committed["wells"]))
     if summary["read"] < floor * committed.get("read", 0):
         problems.append("%d rows read against the committed %d" % (summary["read"], committed["read"]))
     return problems
@@ -587,12 +645,13 @@ def run(rows, out_dir=OUT, today=None, floor=0.9, outlines=None):
     for row in rows:
         wells.add(row)
     summary, points = build(wells)
+    history = build_history(wells, summary)
     bad = guard(summary, load_committed(out_dir)[0], floor)
     if bad:
         raise ValueError("refusing to write: " + "; ".join(bad))
-    done = write(summary, points, out_dir)
-    log("read %d rows: %d wells (%d without a usable date, %d without an API number, %d outside the states), %d points; newest job %s, settled to %s" % (
-        wells.read, len(wells.first), wells.skipped["date"], wells.skipped["api"], wells.skipped["state"], points["n"], summary["asOf"], summary["settled"]))
+    done = write(summary, points, out_dir, history)
+    log("read %d rows: %d wells (%d without a usable date, %d without an API number, %d outside the states), %d points and %d earlier ones; newest job %s, settled to %s" % (
+        wells.read, len(wells.first), wells.skipped["date"], wells.skipped["api"], wells.skipped["state"], points["n"], history["n"], summary["asOf"], summary["settled"]))
     return summary, points, done
 
 

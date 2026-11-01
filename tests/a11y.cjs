@@ -53,6 +53,7 @@ function serve() {
 const VIEWS = [
   ['overview', '#overview', '#nw-slot .bar-row'],
   ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
+  ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'],
   ['map', '#map', '#map-root canvas'],
   ['operators', '#operators', '#ops-root table.grid tbody tr'],
   ['operators, three states', '#operators?st=tx,ok,nm', '#ops-root table.grid tbody tr'],
@@ -256,7 +257,7 @@ function targets() {
   // ---- reflow
   {
     const REFLOW = [
-      ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
+      ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'], ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'],
       ['map', '#map', '#map-root canvas'], ['operators', '#operators', '#ops-root table.grid tbody tr'], ['operators, New Mexico', '#operators?st=nm', '#ops-root table.grid tbody tr'],
       ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
       ['daily', '#daily', '#daily-root .dd-nav'], ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
