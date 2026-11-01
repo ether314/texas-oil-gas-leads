@@ -362,17 +362,25 @@ def stage(zf, docs, stage_dir, log=log):
 
 # ------------------------------------------------------------------------------------------------ releases
 
+RATE_LIMITED = re.compile(r"rate limit|scraping|abuse|wait a few minutes|retry-after|HTTP 429", re.I)
+
+
 def gh(args, timeout=900):
-    """A gh call that is retried patiently (an upload of many files meets resets and, sometimes, rate limits)."""
+    """A gh call, retried patiently and with one attempt at a time (no inner retries: asking again during a limit only extends it). A failure that reads as GitHub's secondary rate
+    limit (it began on the second run of 2026-11-01, after about 4,500 uploads in 35 minutes: "... scraping GitHub ...") waits minutes, not seconds; any other failure waits seconds."""
     last = None
-    for i in range(4):
+    for i in range(8):
         try:
-            return d7_release._gh(args, timeout=timeout)
+            return d7_release._gh(args, timeout=timeout, retry=False)
         except d7_release.ReleaseError as e:
             last = e
             if d7_release.DEADLINE is not None and d7_release.DEADLINE - time.time() < 60:
                 break
-            time.sleep(min(60, 10 * (i + 1)))
+            limited = bool(RATE_LIMITED.search(str(e)))
+            wait = min(180, 75 * (i + 1)) if limited else min(60, 10 * (i + 1))
+            if d7_release.DEADLINE is not None:
+                wait = min(wait, max(1, d7_release.DEADLINE - time.time() - 30))
+            time.sleep(wait)
     raise last
 
 
@@ -639,47 +647,63 @@ def check(out, lk=None):
 # ------------------------------------------------------------------------------------------------ the shares
 
 class Shares:
-    """The RRC side: listings and downloads. A class so a test can put files in its place."""
+    """The RRC side: listings and downloads. A class so a test can put files in its place.
+
+    Every download gets a NEW session with its listing read again: a share's page (a JSF view) expires after a few minutes without a request, and
+    the upload of one pack takes longer than that. The first real run (2026-11-01) read the completion pack and uploaded it in 7 minutes; the next
+    five downloads, on the sessions opened before it, were answered HTTP 500 and ViewExpiredException."""
 
     def __init__(self, log=log):
         self.guid = {d["id"]: d["guid"] for d in d7_daily.DATASETS}
         self.log = log
-        self.shares = {}
+        self.rows = {}  # how many of a share's newest files the listing reads (set by listings())
+        self.key = {"w1": "w1images", "ds": "dirsurveys", "ci": "complimages", "cd": "completions"}
 
-    def share(self, key):
-        if key not in self.shares:
-            sh = Share(self.guid[key], Session())
-            sh.open()
-            self.shares[key] = sh
-        return self.shares[key]
+    def fresh(self, key, rows):
+        """A share with a session of its own, opened now and listed newest first (what download() needs to find a file)."""
+        sh = Share(self.guid[key], Session())
+        sh.open()
+        sh.newest(rows)
+        return sh
 
     def listings(self, window):
-        ids = {"w1": "w1images", "ds": "dirsurveys", "ci": "complimages", "cd": "completions"}
         out = {}
-        for pack, key in ids.items():
-            sh = self.share(key)
-            out[pack] = sh.newest((15 if pack == "w1" else 1) * (window + 6))
+        for pack, key in self.key.items():
+            self.rows[pack] = (15 if pack == "w1" else 1) * (window + 6)
+            sh = self.fresh(key, self.rows[pack])
+            out[pack] = [dict(r) for r in sh.newest(self.rows[pack])]
+            sh.s.close()
         return out
 
     def download(self, pack, name, dest_dir, limit):
-        key = {"w1": "w1images", "ds": "dirsurveys", "ci": "complimages", "cd": "completions"}[pack]
-        sh = self.share(key)
-        sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, limit
-        try:
-            return sh.download(name, dest_dir)
-        finally:
-            sh.s.deadline = None
+        last = None
+        for _ in range(2):  # a second try on a session of its own: the first may have met a view that expired between opening and asking
+            sh = self.fresh(self.key[pack], self.rows.get(pack) or 60)
+            sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, limit
+            try:
+                return sh.download(name, dest_dir)
+            except (ShareError, OSError) as e:
+                last = e
+            finally:
+                sh.s.close()
+        raise last
 
     def permits(self, dest_dir, limit):
-        sh = self.share("permits")
-        sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, limit
-        try:
-            sh.newest(rrc_share.PAGE_ROWS)
-            if "daf420.dat" not in sh.links:
-                sh.open()
-            return sh.download("daf420.dat", dest_dir)
-        finally:
-            sh.s.deadline = None
+        last = None
+        for _ in range(2):
+            sh = Share(self.guid["permits"], Session())
+            sh.open()
+            sh.s.attempts, sh.s.timeout, sh.s.deadline = 3, 60, limit
+            try:
+                sh.newest(rrc_share.PAGE_ROWS)
+                if "daf420.dat" not in sh.links:
+                    sh.open()
+                return sh.download("daf420.dat", dest_dir)
+            except (ShareError, OSError) as e:
+                last = e
+            finally:
+                sh.s.close()
+        raise last
 
 
 # ------------------------------------------------------------------------------------------------ one run
