@@ -10,6 +10,7 @@ import { showTip, hideTip, tipRow } from './tip.js';
 import * as G from './usgeo.js';
 import * as D from './newwells-data.js';
 import { createUSMap } from './usmap.js';
+import { renderStats } from './daily-stats.js';
 import { segmented } from './ui.js';
 
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
@@ -112,7 +113,8 @@ export function createDailyView({ root }) {
     if (f.wells) put(box, el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(n) }), el('span', { text: Q ? (n === 1 ? ' new fracked well' : ' new fracked wells') : (n === 1 ? ' new well' : ' new wells') })));
     if (pAvail) put(box, el('div', { class: 'nat-big dd-bigq' }, el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }), el('strong', { text: fmt.format(pn) }), el('span', { text: pn === 1 ? ' oil permit or spud with a location' : ' oil permits and spuds with a location' })));
     if (f.wells) {
-      const t = typ(); const tp = t.perDay; const then = n > tp * 1.5 ? '; this one is busier.' : n < tp * 0.5 ? '; this one is quieter.' : '; this one is about typical.';
+      const t = typ(); const tp = t.perDay; const rg = D.typicalRange(P, doc, iso(day)); const rk = rg && !late ? D.dayRank(P, day, rg.d0, rg.d1, sel) : null;
+      const then = (n > tp * 1.5 ? '; this one is busier' : n < tp * 0.5 ? '; this one is quieter' : '; this one is about typical') + (rk ? ', busier than ' + Math.round(rk.share * 100) + '% of those ' + fmt.format(rk.days) + ' days.' : '.');
       put(box, el('p', { class: 'fine', text: late
         ? 'A typical settled day has about ' + tp.toFixed(1) + '. This day is still being disclosed, so its count will rise: do not read it as a slow day.'
         : t.latest ? 'A typical day over the last 12 settled months has about ' + tp.toFixed(1) + then
@@ -124,8 +126,7 @@ export function createDailyView({ root }) {
       const prows = pAvail ? D.permitsPerState(Q, day, day) : [];
       if (prows.length) put(box, stateList(f.wells ? 'Oil permits and spuds by state' : 'By state', prows, true));
     }
-    const land = idx.filter((i) => P.f[i]).length;
-    if (n) put(box, el('p', { class: 'fine', text: fmt.format(land) + ' of the ' + fmt.format(n) + (n === 1 ? ' fracked well is' : ' fracked wells are') + ' on federal or tribal land. Hover a dot for its well' + (f.permits ? ', a ring for its permit' : '') + '.' }));
+    if (n) put(box, el('p', { class: 'fine', text: 'Hover a dot for its well' + (f.permits ? ', a ring for its permit' : '') + '. The numbers below describe the wells.' }));
     else if (pAvail && pn) put(box, el('p', { class: 'fine', text: 'Hover a ring for its permit.' }));
     if (f.wells && !n) put(box, el('p', { class: 'nd', text: 'No well had its first fracturing job this day in the registry' + (late ? ' yet.' : '.') + ' It is shown as none, not as a figure the registry lacks.' }));
     if (f.permits) put(box, el('p', { class: 'fine', text: permitNote(pn) }));
@@ -136,12 +137,19 @@ export function createDailyView({ root }) {
     const moved = followDay();
     map.setRange(lo, day);
     S.summary.replaceChildren(summary());
+    paintStats();
     S.date.textContent = weekday(ms(day)) + ', ' + dayLabel(ms(day));
     if (moved) drawChart(); else drawMarker();
     syncSlider();
     S.dateInput.value = iso(day);
     S.prev.disabled = ms(day) <= firstMs(); S.next.disabled = day >= dt.P.span;
     drawTable(); S.chips.forEach((b, id) => b.setAttribute('aria-pressed', String(id === sel))); if (S.pick) S.pick.value = sel || '';
+  }
+  // the numbers card: what the day's wells look like (daily-stats.js), for the chosen day and state
+  function paintStats() {
+    const r = renderStats({ P: dt.P, doc: dt.doc, day, sel, late: day > dt.settledDay });
+    S.statsSub.textContent = r.sub; S.statsSub.hidden = !r.sub;
+    S.stats.className = r.nodes.length > 1 ? 'dd-stats' : 'dd-stats is-empty'; S.stats.replaceChildren(...r.nodes);
   }
   // the chart and the slider hold 150 days: they stay while the chosen day is inside them and move to the 150 around it when it is not
   function followDay() {
@@ -385,8 +393,11 @@ export function createDailyView({ root }) {
     S.yCap = el('p', { class: 'fine dd-ycap' });
     const yearsBox = el('div', { class: 'dd-yearsbox' }, S.yCap, S.yStatus, S.years);
     const chartCard = el('section', { class: 'card nat-card reveal is-in' }, chartHead, yearsBox, S.chart, S.chartNote);
+    S.statsSub = el('p', { class: 'sub' }); S.stats = el('div', { class: 'dd-stats' });
+    const statsHead = hdr('The day in numbers', 'layers', 'What the day’s wells look like', null); statsHead.querySelector('h2').id = 'dd-stats-h'; statsHead.firstChild.append(S.statsSub);
+    const statsCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-stats-h' }, statsHead, S.stats);
     const tableCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-table-h' }, el('p', { class: 'eyebrow' }, icon('layers', 15), 'The wells'), S.tableHead, S.table);
-    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job. A few wells in a thousand have no usable GPS point: they are in the months and the typical day, but not on the map or in a day\'s count.' })));
+    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, statsCard, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job. A few wells in a thousand have no usable GPS point: they are in the months and the typical day, but not on the map or in a day\'s count.' })));
     drawChart();
   }
   // want: the day the address asks for, if any (a day before the last two years loads the earlier wells before the first paint)
