@@ -61,7 +61,6 @@ def load(name, default=None):
 GAP_WHY = {
     "AR": "Arkansas publishes a wells map layer with a status date only (no permit or spud date), and no bulk file with an issue date was found, so permits cannot be counted by month.",
     "MO": "Missouri publishes no current permit list: its wells map layer has no permit dated after August 2019, and the Geological Survey's wells list (updated August 2024) gives spud dates only, the newest in August 2023. It is a very small producer (41 wells spudded since 2019, 39 of them in Cass County).",
-    "OH": "Ohio publishes a permit list with issue dates, free and with no login, but as a query page rather than a bulk file, and a reader for it has not been built yet.",
 }
 
 

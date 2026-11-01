@@ -173,6 +173,8 @@ class Client:
                 if 300 <= e.code < 400:
                     moved += 1
                     last = "redirected to %s" % re.sub(r"[?#].*", "", e.headers.get("Location", "") or "another page")[:60]
+                    if attempt + 1 < TRIES:
+                        C.log("OH: request redirected to the home page; trying again in %d seconds (%d of %d)" % (self.retry_pause, attempt + 1, TRIES))
                 else:
                     last = "HTTP %d" % e.code
             except urllib.error.URLError as e:
@@ -230,7 +232,7 @@ def form_fields(html, start, end, button):
 
 def grid_total(html):
     """N, the number of rows the search found, from a results page: the grid's own "Item 1 to 25 of N", or, when there is no pager (25 rows or fewer), the rows themselves.
-    A page with no grid, a pager that does not start at 1 or a count that does not match the rows shown raises RuntimeError."""
+    A page with no grid, a pager that does not start at 1, a count that does not match the rows shown, or an empty grid that does not say "No Records Available" raises RuntimeError."""
     if GRID not in html:
         raise RuntimeError("the reply is not the Permit and Plug List (no results grid): the server may have sent its home page or an error")
     shown = len(ROW.findall(html))
@@ -242,6 +244,8 @@ def grid_total(html):
         return n
     if shown > PAGE_SIZE:
         raise RuntimeError("the grid shows %d rows with no pager" % shown)
+    if not shown and "rgNoRecords" not in html:
+        raise RuntimeError("the grid has no rows and does not say there are none")
     return shown
 
 
@@ -312,6 +316,7 @@ def read_window(client, form, start, end):
         raise RuntimeError("%s to %s: %s" % (start, end, e))
     if len(rows) != n:
         raise RuntimeError("the export from %s to %s holds %d rows but the grid counted %d" % (start, end, len(rows), n))
+    C.log("OH: %s to %s: %d rows" % (start, end, n))
     return rows
 
 
