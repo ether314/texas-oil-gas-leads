@@ -1030,8 +1030,66 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     await ctx.close();
   }
 
+  // 21. layout and keyboard of the National report and the matrix (2026-11-01, from the other session's review): an operator's name is whole (it wrapped to a second line instead of ending in an ellipsis at 100 px),
+  //     the chart is drawn at the width it has (its axis text is not shrunk to a third on a phone), its axis tops near the data, the matrix has a few tab stops and not 1,680 (the arrow keys move between cells),
+  //     its group strip wraps instead of hiding choices, and an address without a count or a group shows the permits and every group (the page kept the last choice)
+  for (const [label, size] of [['desktop', { width: 1280, height: 900 }], ['tablet', { width: 820, height: 900 }], ['phone', { width: 360, height: 800 }]]) {
+    const ctx = await browser.newContext({ viewport: size, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    try {
+      await page.goto(base + '#national?s=TX', { waitUntil: 'load' });
+      await page.waitForSelector('#national-root .nat-list li', { timeout: 25000 });
+      const names = await page.evaluate(() => [...document.querySelectorAll('#national-root .nat-panel .nat-ln')].map((n) => ({ t: n.textContent, cut: n.scrollWidth > n.clientWidth + 1, lines: Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)) })));
+      check(names.length > 6 && names.every((n) => !n.cut && n.lines <= 2) && !names.some((n) => /…$/.test(n.t)), label + ': every name in a panel\'s lists is whole, on one or two lines (' + names.length + ' names, the longest ' + Math.max(...names.map((n) => n.t.length)) + ' characters)');
+      const chart = await page.evaluate(() => { const g = document.querySelector('#national-root .nat-chart'); const vb = g.viewBox.baseVal; const ax = g.querySelector('text.ax'); return { ratio: g.getBoundingClientRect().width / vb.width, axis: parseFloat(getComputedStyle(ax).fontSize) * (g.getBoundingClientRect().width / vb.width), ticks: [...g.querySelectorAll('text.ax')].slice(0, 8).map((t) => t.textContent), vbw: vb.width }; });
+      check(chart.ratio > 0.9 && chart.ratio < 1.1 && chart.axis >= 10, label + ': the chart is drawn at the width it has (scale ' + chart.ratio.toFixed(2) + ', axis text ' + chart.axis.toFixed(1) + ' px, drawn ' + chart.vbw + ' wide)');
+      // the axis tops near the biggest bar: the top tick is at most 1.5 times the tallest month
+      const tall = await page.evaluate(() => { const g = document.querySelector('#national-root .nat-chart'); const ticks = [...g.querySelectorAll('text.ax')].map((t) => t.textContent.replace(/,/g, '')).filter((t) => /^\d+$/.test(t)).map(Number); return { top: Math.max(...ticks), rows: [...document.querySelectorAll('#national-root .nat-details tbody tr')].slice(0, 36).map((tr) => +tr.lastElementChild.textContent.replace(/,/g, '')) }; });
+      check(tall.top >= Math.max(...tall.rows) && tall.top <= Math.max(...tall.rows) * 1.5, label + ': the axis tops at ' + tall.top + ' for a tallest month of ' + Math.max(...tall.rows));
+      // an address without a count shows the permits, even after a visit to the wells spudded
+      await page.click('#natm-spuds');
+      await page.goto(base + '#fields', { waitUntil: 'load' });
+      await page.goto(base + '#national', { waitUntil: 'load' });
+      await page.waitForSelector('#national-root .nat-chart', { timeout: 25000 });
+      check((await page.locator('#natm-permits').getAttribute('aria-pressed')) === 'true' && !/m=spuds/.test(await page.evaluate(() => location.hash)), label + ': #national after a visit to Wells spudded shows the permits again');
+      // the matrix
+      await page.goto(base + '#fields?g=where', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root table.fx', { timeout: 25000 });
+      const groupRows = await page.locator('#fields-root tr.fx-group').count();
+      await page.goto(base + '#fields', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root table.fx', { timeout: 25000 });
+      check(groupRows === 1 && (await page.locator('#fields-root tr.fx-group').count()) > 1 && (await page.locator('#fxg-all').getAttribute('aria-pressed')) === 'true', label + ': #fields after #fields?g=where shows every group again');
+      const strip = await page.evaluate(() => { const s = document.querySelector('#fields-root .fx-tools .seg'); const r = s.getBoundingClientRect(); return { fits: s.scrollWidth <= s.clientWidth + 1, buttons: [...s.querySelectorAll('button')].every((b) => { const q = b.getBoundingClientRect(); return q.left >= r.left - 1 && q.right <= r.right + 1; }), wrap: s.classList.contains('wrap') }; });
+      check(strip.wrap && strip.fits && strip.buttons, label + ': the group strip wraps, and every choice is inside it: ' + JSON.stringify(strip));
+      const stops = await page.evaluate(() => [...document.querySelectorAll('#fields-root table.fx button')].filter((b) => b.tabIndex >= 0).length);
+      const total = await page.evaluate(() => document.querySelectorAll('#fields-root table.fx button.fx-c').length);
+      check(total > 1000 && stops <= 1 + 50 + 40 && (await page.evaluate(() => [...document.querySelectorAll('#fields-root table.fx button.fx-c')].filter((b) => b.tabIndex >= 0).length)) === 1, label + ': the matrix has ' + stops + ' tab stops among its buttons, one of them in the ' + total + ' cells');
+      if (label === 'desktop') {
+        const first = page.locator('#fields-root table.fx button.fx-c').first();
+        await first.focus();
+        await page.keyboard.press('ArrowRight');
+        const right = await page.evaluate(() => document.activeElement.getAttribute('aria-label'));
+        await page.keyboard.press('ArrowDown');
+        const down = await page.evaluate(() => document.activeElement.getAttribute('aria-label'));
+        await page.keyboard.press('End');
+        const end = await page.evaluate(() => ({ label: document.activeElement.getAttribute('aria-label'), stops: [...document.querySelectorAll('#fields-root table.fx button.fx-c')].filter((b) => b.tabIndex >= 0).length }));
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(200);
+        const first0 = await first.getAttribute('aria-label');
+        check(right && down && right !== first0 && down.split(', ')[0] === right.split(', ')[0] && down !== right && end.stops === 1 && /\/?s=/.test(await page.evaluate(() => location.hash)), 'the arrow keys move between cells (right: ' + right + ' / down: ' + down + ' / end: ' + end.label + '), the tab stop goes with the focus, and Enter chooses a cell');
+      }
+    } catch (e) {
+      check(false, label + ': the layout block: ' + e.message.split('\n')[0].slice(0, 240));
+    }
+    check(!errs.length, label + ': the layout pages load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
 
-  // 21. the national Daily report (2026-11-01): one day of new wells, nationwide, the same for every state; the day can be chosen four ways, the newest days say they are filling in,
+  // 22. the national Daily report (2026-11-01): one day of new wells, nationwide, the same for every state; the day can be chosen four ways, the newest days say they are filling in,
   //     a state can be chosen, a day with no well says none, and nothing is a figure only some states have
   for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });

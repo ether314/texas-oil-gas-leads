@@ -664,10 +664,10 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .nat-seg { flex: var(--p) 1 0; min-width: 2px; background: var(--c); border-radius: 3px; }
 .nat-mixkeys { display: flex; flex-wrap: wrap; gap: 2px var(--sp-3); margin: var(--sp-2) 0 0; padding: 0; list-style: none; font-size: var(--fs-xs); color: var(--ink-2); }
 .nat-mixkeys li { display: inline-flex; align-items: center; gap: 5px; }
-.nat-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-4) var(--sp-5); margin-top: var(--sp-4); }
+.nat-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--sp-4) var(--sp-5); margin-top: var(--sp-4); } /* one column unless each can have 300 px: an operator's name was cut at 100 px in two cramped ones */
 .nat-list ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.nat-list li { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(24px, 1fr) auto; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
-.nat-ln { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nat-list li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(24px, 1fr) auto; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.nat-ln { overflow-wrap: anywhere; line-height: 1.25; } /* a name wraps to a second line rather than ending in an ellipsis */
 .nat-lt { display: block; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .nat-lb { display: block; height: 100%; width: calc(var(--p) * 100%); border-radius: 4px; background: var(--c, var(--s1)); }
 .nat-lv { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
@@ -938,3 +938,8 @@ body:has(.pv-dialog[open]) { overflow: hidden; }
 .nat-sw.tz { background: var(--surface); box-shadow: none; }
 .is-own::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 3px; height: 0; border-bottom: 2px dotted currentColor; opacity: 0.9; }
 .nat-sw.is-own::after { left: 3px; right: 3px; bottom: 2px; color: #0b0b0b; }
+
+/* a segmented control whose choices wrap onto more lines instead of scrolling out of sight (the matrix's groups: "Documents and links" was cut off at 1280 px with no sign there was more) */
+.seg.wrap { display: flex; flex-wrap: wrap; overflow: visible; border-radius: var(--r-md); gap: 2px; }
+.seg.wrap .seg-thumb { display: none; }
+.seg.wrap button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px var(--shadow-soft), inset 0 0 0 1px var(--border); }

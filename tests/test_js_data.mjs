@@ -210,6 +210,15 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(Nt.mix(doc.states[0]) === null && Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } }).length === 3 && Math.abs(Nt.mix({ mix12: { new: 6, amend: 2, inj: 2 } })[0].share - 0.6) < 1e-9, 'national: the mix needs two known bands, and shares add to one');
   check(Nt.fluidMix({ fluid: null }) === null && Nt.fluidMix({ fluid: { oil: 3, gas: 1, both: 0, other: 0, unknown: 1 } }).sum === 5, 'national: fluid mix is null where the state records none');
   check(Nt.listAnd(['a', 'b', 'c']) === 'a, b and c' && Nt.niceMax(0).top === 1 && Nt.niceMax(730).top >= 730 && Nt.niceMax(730).ticks[0] === 0, 'national: lists and axis scales');
+  check(Nt.niceMax(1150).top === 1250 && Nt.niceMax(1150).ticks.join() === '0,250,500,750,1000,1250' && Nt.niceMax(120).top === 125 && Nt.niceMax(7).top === 8 && Nt.niceMax(1).ticks.join() === '0,1' && Nt.niceMax(11).ticks.join() === '0,5,10,15', 'national: an axis tops close to the data (1,150 tops at 1,250; it topped at 2,000)');
+  let axisOk = true; let axisWhy = '';
+  for (let v = 1; v <= 6000; v += 1) {
+    const a = Nt.niceMax(v);
+    const whole = a.ticks.every((t) => Number.isInteger(t));
+    const tight = a.top >= v && (v < 6 || a.top <= v * 1.5);
+    if (!(whole && tight && a.ticks.length >= 2 && a.ticks.length <= 7 && a.ticks[0] === 0 && a.ticks.at(-1) === a.top)) { axisOk = false; axisWhy = v + ' -> ' + JSON.stringify(a); break; }
+  }
+  check(axisOk, 'national: for every whole count from 1 to 6,000 the axis has whole ticks, at most 6 steps, and a top between the data and 1.5 times it ' + axisWhy);
   const cov = Nt.coverage(doc, ['TX', 'CO']);
   check(cov[0].status === 'permits' && cov[1].status === 'gap' && Nt.coverage(doc, ['NM'])[0].status === 'spuds', 'national: coverage rows say permits, spuds or not read yet');
   // the committed file
