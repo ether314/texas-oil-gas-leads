@@ -83,6 +83,11 @@ The second run (after that fix) did four more packs (the 10-30 surveys and W-1 p
 Now a failure that reads as a rate limit waits 75, 150, then 180 s (up to 8 tries, never past the run's budget) and `gh` makes one attempt at a time (asking again during a limit extends it); any other failure waits seconds.
 A normal night is one new day, about 2,300 files and 10 minutes, well under what triggered it; a catch-up of several days in a row will wait, and stops cleanly at the run's budget.
 
+Then the **site's own deploy was refused**: run 2's `pages build and deployment` failed with `API rate limit exceeded for installation` (HTTP 403) at 02:39:42, a minute after the last upload, so the site stayed on the older build although `gh-pages` held the new files.
+The repository's token has one quota, shared with GitHub's own Pages deployment; two runs had used about 4,500 uploads of it in 35 minutes. The next successful publish (any workflow) puts the data live, and nothing is lost. To keep a run from spending it all,
+**a run stops starting packs once it has uploaded 3,400 files** (`MAX_FILES_PER_RUN`, `--max-files`): each pack's size is estimated before it is downloaded (`EST_FILES`: 400 W-1, 250 survey, 2,400 completion files, from the four real days seen), the first pack of a run always goes up, a pack that
+would pass the cap is left for the next run (a smaller one of an older day may still fit), and the log says so. One ordinary day (about 2,300 files) fits and a second does not, so **a catch-up does about one day per run**: dispatch it again an hour later.
+
 ## Checked before the first run (2026-11-01)
 
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its
