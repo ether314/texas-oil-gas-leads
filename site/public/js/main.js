@@ -9,11 +9,12 @@ import { createTables } from './tables.js';
 import { createDailyView } from './daily.js';
 import { createNationalView } from './national.js';
 import { createImagesView } from './images.js';
+import { createFieldsView } from './fields.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
 import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesIn, inName, shortName, placesOne, measurePhrase, measureAnd, everyOf, spudCaveat, ucFirst, listOr } from './states.js';
 
-const VIEWS = { overview: 'Overview', national: 'National report', images: 'Texas images', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
+const VIEWS = { overview: 'Overview', national: 'National report', fields: 'Permit data', images: 'Texas images', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the states bar; the others (Sources) hide it
 const STATE_VIEWS = new Set(['overview', 'map', 'daily', 'operators', 'companies']);
 
@@ -90,6 +91,7 @@ async function boot() {
   const daily = createDailyView({ root: $('#daily-root') });
   const national = createNationalView({ root: $('#national-root') });
   const images = createImagesView({ root: $('#images-root') });
+  const fields = createFieldsView({ root: $('#fields-root') });
   const lazy = { operators: { t: tables.operators, started: false, key: '' }, companies: { t: tables.companies, started: false, key: '' } };
   // loads a table the first time its view is shown, and the Operators again when the states shown have changed since
   function ensure(name) {
@@ -192,6 +194,7 @@ async function boot() {
     if (id === 'daily') daily.activate(params).then(() => { bar.set(choice(), false); setNote(); });
     if (id === 'national') national.activate(params); else if (shown === 'national') national.deactivate();
     if (id === 'images') images.activate(params); else if (shown === 'images') images.deactivate();
+    if (id === 'fields') fields.activate(params); else if (shown === 'fields') fields.deactivate();
     if (id === 'about') fillProdNote();
     if (moveFocus) {
       if (shown !== id || hasQuery) window.scrollTo(0, 0);

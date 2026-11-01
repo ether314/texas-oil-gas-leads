@@ -1,0 +1,576 @@
+{
+ "state": "IN",
+ "name": "Indiana",
+ "agency": {
+  "name": "Indiana Department of Natural Resources, Division of Reclamation (Oil and Gas Program; formerly Division of Oil and Gas)",
+  "short": "IN DNR Oil & Gas",
+  "url": "https://www.in.gov/dnr/oil-and-gas/"
+ },
+ "form": {
+  "name": "Application for Well Permit (Form A1)",
+  "number": "State Form 21096 (R3 / 3-18)",
+  "url": "https://forms.in.gov/Download.aspx?id=9154",
+  "read": true,
+  "notes": "Fillable 6-page PDF read in full. Part I general (operator, applicant type, bond, well type, application type, fee), II surface location and lease, III casing and cement, IVa-d drilling info by well type, V diagram (Class II only), VI affirmation, VII survey plat. Fee $250 ($750 expedited); no BOP, H2S, pit, water or frac sections. Page also lists forms for transfers, test holes, temporary abandonment, fluid storage."
+ },
+ "cells": {
+  "api_number": {
+   "s": "none",
+   "e": "form",
+   "n": "No API field on the form, in the layer or in the weekly PDF; IGS ID and permit number are the keys"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "permit_number in OilAndGasWells layer 0 (also IGS_ID)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "lease_name + well_number in layer 0"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "lease_name in layer 0"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "operator_name in layer 0; individuals can be operators"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "form",
+   "n": "Form asks name only (as on the Organizational Report); no operator number field"
+  },
+  "operator_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Applicant is: individual, partnership, corporation, LLC, LP, public corp."
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Type of bond (surety, blanket, CD, personal surety, none required)"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "county in layer 0"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district or region on the form or in the layer"
+  },
+  "field_pool": {
+   "s": "query",
+   "e": "web",
+   "n": "Pool name or Wildcat on form; shown in weekly 'Permits Issued' PDF, not a layer field"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Point geometry plus Utmx/Utmy; 'method' column says how it was located"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "township, range, direction, land_type, land_number; footages only on form/PDF"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Horizontal/directional only: UTMs of kickoff, entry, termination (instructions)"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Directional and horizontal wells: proposed directional survey attached"
+  },
+  "elevation": {
+   "s": "query",
+   "e": "web",
+   "n": "Elevation (G.L.) on form; printed in weekly 'Permits Issued' PDF, not a layer field"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Name of surface owner; notice of intent to survey to owner"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "CompType in Completion table (oil, gas, ER, SWD...); permit-time type in weekly PDF"
+  },
+  "work_type": {
+   "s": "query",
+   "e": "web",
+   "n": "Form: new, workover, deepening, sidetrack, conversion; PDF shows it. Completion ReportType differs"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "WellConfiguration (vertical/directional/horizontal) in Completion table"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "'Proposed measured length', horizontal wells only; may mean lateral length"
+  },
+  "proposed_depth_tvd": {
+   "s": "query",
+   "e": "web",
+   "n": "Form: proposed TVD, all wells; weekly PDF prints 'estimated depth'"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form's 'proposed measured length' (horizontal) is ambiguous: lateral or total"
+  },
+  "target_formation": {
+   "s": "query",
+   "e": "web",
+   "n": "Deepest formation to be drilled; printed in weekly 'Permits Issued' PDF"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "Class II wells only: confining and injection zone names and intervals"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Part III casing sizes, depths, hole sizes"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Part III cement type, volume, yield"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP or pressure-control item on the form"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No H2S item on the form"
+  },
+  "pit_waste": {
+   "s": "none",
+   "e": "form",
+   "n": "No pit or drilling-waste item on the form"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "Only non-potable water-supply wells give a withdrawal rate; no drilling-water item"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "No frac plan on form; layer has a HydroFrac flag and frac reports are filed later"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Drilling unit acreage 5/10/20/40 ac, pooled or waterflood unit"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "'Other acres' with exception petition; image type 'Spacing Exceptions' listed"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Does operator control the drilling rights in the unit; if no, state basis"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "$250 fee, $750 expedited (2-day)"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Survey notice to surface owner; coal mine and storage-field operator notices"
+  },
+  "date_received": {
+   "s": "form",
+   "e": "form",
+   "n": "'Date received' in the state-use box; not in layer or PDF"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "Issue date printed per permit in weekly 'Permits Issued' PDF (2020 on); not in layer"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No expiry field seen; status values include Expired"
+  },
+  "spud_date": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on the form and no spud column in layer; daily drilling reports are images"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "CompDate and ReportedDate in Completion table"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "status in layer 0: Active, Drilling, Expired, Revoked, Cancelled, Plugged, TA..."
+  },
+  "plat_image": {
+   "s": "data",
+   "e": "file",
+   "n": "DOG_Image_FileList: Description 'Surveyor Plat' with URL"
+  },
+  "form_image": {
+   "s": "data",
+   "e": "file",
+   "n": "DOG_Image_FileList: Description 'Application' and 'Permit Certificate' with URL"
+  },
+  "completion_report": {
+   "s": "data",
+   "e": "file",
+   "n": "DOG_Image_FileList: 'Completion Report', frac and well rework reports with URL"
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "DOG_Image_FileList: many log types (PDF, TIF, IFF) with URL"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Monthly report gives statewide oil/gas totals only; per-well link not verified"
+  }
+ },
+ "sources": [
+  {
+   "id": "in-dnr-wells-layer",
+   "name": "DNR Oil and Gas Wells (OilGasWells feature layer 0), behind the Well Records Viewer",
+   "url": "https://services.arcgis.com/2Mcx1M1MORKfBNPM/arcgis/rest/services/OilAndGasWells/FeatureServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "DNR viewer disclaimer: distributed as-is, reference only; no license text seen",
+   "columns": [
+    "OBJECTID",
+    "igs_id",
+    "permit_number",
+    "county",
+    "land_type",
+    "land_number",
+    "township",
+    "range",
+    "operator_name",
+    "lease_name",
+    "well_number",
+    "status",
+    "scancount",
+    "twp_direction",
+    "rng_direction",
+    "hydrofrac",
+    "utmx",
+    "utmy",
+    "method",
+    "classii",
+    "twp_number",
+    "rng_number",
+    "permit_int",
+    "igs_int",
+    "scanstat",
+    "currentstat",
+    "permitz",
+    "igsz"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "GET .../OilAndGasWells/FeatureServer/0?f=json 200, 14.6 KB schema (point layer, query+extract, maxRecordCount 2000, data last edited 2026-10-13); distinct-value query for status/method/classii/hydrofrac 200. No date columns; classii is only an injection flag. Record count not requested."
+  },
+  {
+   "id": "in-dnr-completion-table",
+   "name": "DNR Completion table (OilAndGasWells table 2), joined to wells by IGS_ID",
+   "url": "https://services.arcgis.com/2Mcx1M1MORKfBNPM/arcgis/rest/services/OilAndGasWells/FeatureServer/2",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "as layer 0",
+   "columns": [
+    "OBJECTID",
+    "IGS_ID",
+    "ConfCompletion",
+    "CompDate",
+    "ReportedDate",
+    "ConfRelDate",
+    "CompType",
+    "WellConfiguration",
+    "ReportType",
+    "TotalDepthDriller",
+    "TotalDepthLoggeer",
+    "PlugbackDepth",
+    "DirectionalDist",
+    "DirectionalHeading",
+    "Event_ID",
+    "Occurrence_Interval1",
+    "Occurrence_Remarks1",
+    "Occurrence_Remarks2",
+    "Occurrence_Interval2",
+    "Occurrence_Remarks3",
+    "Occurrence_Remarks4",
+    "Timestamp",
+    "Status",
+    "Active",
+    "upsize_ts",
+    "rowguid",
+    "HydrFrac",
+    "HistFrac",
+    "igsz"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "completion",
+    "re-work",
+    "re-completion",
+    "conversion",
+    "re-construction"
+   ],
+   "reachable": "ok",
+   "tested": "GET .../FeatureServer/2?f=json 200, 10.6 KB schema; distinct CompType/WellConfiguration/ReportType query 200 (CompType: oil, gas, enhanced recovery, saltwater disposal, gas storage, dry hole, water supply, coal bed methane, test types; ReportType: Completion, Re-Work, Re-Completion, Conversion, Re-construction). Dates are completion/reported dates, not permit dates."
+  },
+  {
+   "id": "in-dnr-image-filelist",
+   "name": "DNR image file list (OilAndGasWells table 1: scanned well-file documents with URLs)",
+   "url": "https://services.arcgis.com/2Mcx1M1MORKfBNPM/arcgis/rest/services/OilAndGasWells/FeatureServer/1",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "as layer 0",
+   "columns": [
+    "OBJECTID",
+    "IGS_ID",
+    "Permit_Number",
+    "County",
+    "Description",
+    "Filename",
+    "ScanDate",
+    "URL",
+    "Type",
+    "Land_Type",
+    "Land_Number",
+    "Township",
+    "Range",
+    "Operator_Name",
+    "Lease_Name",
+    "Well_Number",
+    "Status",
+    "Twp_Direction",
+    "Rng_Direction",
+    "Utmx",
+    "Utmy",
+    "Method",
+    "ClassII",
+    "Class2",
+    "Twp_Number",
+    "Rng_Number",
+    "permit_int",
+    "permitz"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "GET .../FeatureServer/1?f=json 200, 10.2 KB schema; distinct Type/Description query 200: 111 document kinds incl. Application, Permit Certificate, Surveyor Plat, Completion Report, Hydraulic Fracturing Report, Spacing Exceptions, many logs. ScanDate is the scan date, not the filing date. Document URLs not opened (they are scans that may carry personal data)."
+  },
+  {
+   "id": "in-dnr-weekly-permits-pdf",
+   "name": "Weekly 'Permits Issued' list (one PDF per week ending Friday)",
+   "url": "https://www.in.gov/dnr/oil-and-gas/publications/weekly-permits-listing",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2020",
+   "size_mb": 0.25,
+   "free": true,
+   "login": false,
+   "license": "public record",
+   "columns": [
+    "operator name",
+    "operator address",
+    "operator phone",
+    "well type (Oil, Gas, Non-Commercial Gas, Class II...)",
+    "permit date",
+    "well number",
+    "lease name",
+    "permit number",
+    "county",
+    "section/township/range",
+    "footages from lines",
+    "quarter sections",
+    "surface elevation",
+    "direction (Vertical...)",
+    "application type (New, Deepening...)",
+    "pool name or Wildcat",
+    "target formation",
+    "estimated depth"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new",
+    "deepening",
+    "workover",
+    "conversion",
+    "other (as the form's application types)"
+   ],
+   "reachable": "ok",
+   "tested": "GET .../files/og-week2643.pdf (week 10/19-10/23/2026) 200, 228 KB, 1 page, text extracts with pdftotext; 1 permit that week. Index page 200 lists weeks back to 2020. One narrative paragraph per permit, regular wording."
+  },
+  {
+   "id": "in-dnr-monthly-report-pdf",
+   "name": "DNR Monthly Report (permits, completions, plugged wells, statewide production)",
+   "url": "https://www.in.gov/dnr/oil-and-gas/files/og-mon2605.pdf",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 0.33,
+   "free": true,
+   "login": false,
+   "license": "public record",
+   "columns": [
+    "activity by county (permits issued, completions by type)",
+    "permits issued in pools / as wildcats by county",
+    "statewide oil (BBL) and gas (MCF) production by month",
+    "permits issued (same paragraphs as the weekly list)",
+    "wells completed",
+    "wells plugged by date"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new",
+    "deepening",
+    "workover",
+    "conversion"
+   ],
+   "reachable": "ok",
+   "tested": "GET .../files/og-mon2605.pdf (May 2026) 200, 325 KB, 7 pages: 5 permits in the month, 5 completions, 14 plugged wells; production section is statewide only."
+  },
+  {
+   "id": "in-dnr-well-records-viewer",
+   "name": "Indiana Oil & Gas Well Records Viewer (ArcGIS Experience, one well at a time)",
+   "url": "https://www.in.gov/dnr/oil-and-gas/permits-and-forms/permits/well-records-search/",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "as-is disclaimer",
+   "columns": [
+    "searchable by operator name, permit number, location (per the DNR page)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "DNR page 200; the app's config (arcgis.com item JSON, 200) names the OilAndGasWells service above as its data source. App itself not driven."
+  },
+  {
+   "id": "in-igws-pdms",
+   "name": "Indiana Geological and Water Survey Petroleum Database (PDMS), legacy site",
+   "url": "https://legacy.igws.indiana.edu/PDMS",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "blocked-proxy",
+   "tested": "One GET: connection reset through the proxy (tunnel closed). Not retried. A search snippet says it holds ~83,000 wells with ASCII table download; unverified."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "A free, reachable ArcGIS API gives one row per well with permit number, status, operator, lease, county, PLSS and point location, plus a completion table (CompDate, CompType, ReportType). But no permit approval or spud date is in any bulk source. Approval dates (and work type, depth, pool) exist only in the weekly and monthly PDFs, which are text-extractable but not machine-readable data. Indiana is tiny (about 5 permits in May 2026, 1 in the week of Oct 23).",
+ "producer_plan": "Two-part. (1) Permits by month: download the weekly 'Permits Issued' PDFs (index page lists them back to 2020; one polite fetch per week, a few hundred files, then only new weeks), run pdftotext, and split on the fixed sentence 'was issued a(n) <type> permit on <date>'; read type (Oil, Gas, Non-Commercial Gas, Class II...), date, permit number, county, application type (New, Deepening, Workover...), direction, pool and depth. Count by month and by type. Check against the monthly report's per-county 'permits issued' totals. (2) Wells and status: query OilAndGasWells layer 0 (resultOffset paging, 2000 per page, returnGeometry optional) for status and location, and the Completion table (layer 2) for completions by month (CompDate) and CompType; join on IGS_ID, permit number from layer 0. Do not publish operator names that are individuals (many Indiana operators are); apply the corporation/LLC/LP rule. Caveats: PDF wording could change; counts are tiny so noise is high; the layer has no approval date, so it cannot rebuild history by itself.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "recomplete",
+  "injection",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The weekly and monthly PDFs print each operator's name, street address and phone, and many operators and surface owners are individuals; the layer's operator_name column and the scanned documents can name individuals. List and publish only counts, place-level data and corporate/LLC/LP operator names. No personal data copied here.",
+ "unknowns": [
+  "Record count and update cadence of the ArcGIS layers (last edit 2026-10-13 only)",
+  "Whether any API field or operator number exists in the PDMS or the viewer (not on the form or layer)",
+  "How far back the monthly reports go and whether weekly PDFs exist before 2020",
+  "Whether per-well production is published (monthly report shows only statewide totals)",
+  "Permit expiration and spud dates (not on the form or in the layer)",
+  "Whether the 'proposed measured length' on the form means lateral length or total measured depth",
+  "IGWS PDMS bulk download (host reset the connection)"
+ ],
+ "researched": "2026-10-31"
+}

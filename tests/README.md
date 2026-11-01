@@ -34,6 +34,8 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
 - `test_d11_run.py`: the runner that runs every state's producer (`d11_nat_run.py`): fake producers run as the workflow runs real ones, covering a good file, the same data again, a file written and then a failure (restored exactly, or removed), a hang (stopped at its limit), a refusal (an
   answer, exit 0), a file that does not validate, exit 0 with no file, a token that must not be visible, the run's budget, a rebuild that fails (national.json put back) and two mutants.
 - `test_workflow_national.py`: `.github/workflows/refresh-national.yml` the same way as the monthly one: after the monthly files, in the nightly's concurrency group, every step bounded and isolated, the `if:` conditions for all 8 outcomes, and the drop, commit (new state files included, only the national files ever added) and last steps run against a throwaway clone.
+- `test_d11_fields.py`: the permit-data matrix (`d11_fields_build.py`, the researched `fields/<ST>.json`): the catalog of 48 metrics, 16 deliberate faults the rules must refuse (a missing metric, `data` with only a form or a web page behind it, `unknown` with evidence, a note over 120 characters,
+  grade A with nothing reachable, an http link, an e-mail address, phone or API number), the builder on a temporary folder, the output validator, a mutant, and the committed files.
 - `test_build_db.py`: the local SQLite database (`build_db.py`): every data file stored verbatim (size and SHA-256), every table with exactly the rows its source implies (a band a source cannot tell has no row, never a zero; measures
   kept apart), a build that is repeatable, a failed build that leaves the old file alone, a file that is not SQLite never overwritten, `--check` noticing a tampered document or table, the odd shapes in the real files, and a mutant.
 - `test_d9_nm.py`: New Mexico's files (`d9_nm_monthly.py`): the lag that decides where they end, what a well becomes, the naming rule, no depth, a year's wells agreeing across the series, the counties and the operators,
@@ -56,6 +58,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   files, that every merged county and point falls on the map. Node only; CI runs it before the smoke test.
 - `test_js_data.mjs` also covers `national-data.js` (totals within a measure and never the BLM's, size classes, the stack and where its axis ends, the mix, the tile map covering every jurisdiction in the committed file).
 - `test_js_data.mjs` also covers `images-data.js` (a pack not listed is null and never zero, totals and the average over only the days that had a pack, a day file's packs and kinds, the permits whose files are published, the lifecycle, and that every kind in the committed live days is described).
+- `test_js_data.mjs` also covers `fields-data.js` (a state's and a metric's score, the order of the columns, the headline, the agencies of each status, that every committed agency answers all 48 metrics).
 - `smoke.cjs`: Playwright (Chromium). `node --check` does not catch syntax errors in ES modules; this does. Locally Playwright is
   preinstalled in the Claude sandbox; in CI it is installed by `.github/workflows/ci.yml`, which runs them all on every pull request and push to `main`.
   It also drives the states bar: choosing a state changes the Overview and the address, the Daily report and the Operators page follow (the State
@@ -77,6 +80,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   The National report is driven too: the panel opens on the biggest state, a tile opens its panel and the address, a producing state with no data says "Not read yet" and never a figure, the count toggle changes the stack and the address,
   a ranking row selects its tile, and the view shows no NaN, undefined, null or Infinity.
   The Texas images view is driven too: a column for each report day, the day list, choosing a day shows its packs and the address, any contact sheet loads from the site itself, and no NaN.
+  The permit-data matrix is driven too: a cell, an agency's code and a metric each open their panel and the address, a group tab filters the rows, no NaN, and the page says what it could not verify.
   It checks that every button draws its words as one piece (a label split into two flex items gets the icon's gap between its words, which read as a double space).
   It downloads the Operators CSV (a State column, blank not zero where a state publishes no figure, no number turned into text) and walks the archive's days (the newest, the oldest, every tenth and each day with an empty Texas queue) for rendered NaN, undefined, null or Infinity.
 - `a11y.cjs`: Playwright (Chromium), the same server as the smoke test. Contrast: every visible piece of text on 11 views, light and dark, desktop and phone, is held to

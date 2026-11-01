@@ -1,0 +1,373 @@
+{
+ "state": "VA",
+ "name": "Virginia",
+ "agency": {
+  "name": "Virginia Department of Energy (Virginia Energy), Division of Gas and Oil",
+  "short": "Virginia Energy DGO",
+  "url": "https://www.energy.virginia.gov/gas-oil/gasoil.shtml"
+ },
+ "form": {
+  "name": "Application for a New Permit, Permit Modification, or Transfer of Permit Rights (with notice, plat and technical data forms)",
+  "number": "DGO-GO-1 (rev. 6/09 in 4VAC25-150-9998); plat DGO-GO-7; technical data DGO-GO-9; operations plan checklist DGO-GO-12; drilling report DGO-GO-14; completion report DGO-GO-15",
+  "url": "https://law.lis.virginia.gov/admincode/title4/agency25/chapter150/section9998/",
+  "read": false,
+  "notes": "NOT READ: the blank form was not found (the Code lists form numbers and revision dates only, no link; a search found no PDF). Filing is online through the agency's eForms login (https://www.energy.virginia.gov/DGOEforms/frmlogin.aspx). Form cells come from 4VAC25-150-80, -90 and -500 (law.lis.virginia.gov) and the permit requirements page, marked evidence 'doc' or 'web', and many are 'unknown'."
+ },
+ "cells": {
+  "api_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "FiNo (file number) in the wells layers; taken as the tracking number, not confirmed as permit no."
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "FiOperation (operation name, e.g. a well designation)"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "FiFarm (farm name); ApFarm on pending wells"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "CoName"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "bond": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-80 B: bond under Code 45.2-1633; web page: bond for reclamation and plugging"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "TblCnName"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "TblInCode (inspector code), TblCnZone; layer 7 'DGO Inspector Areas'; meaning inferred"
+  },
+  "field_pool": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Point geometry; FiStPlaneX/Y in State Plane feet, Virginia South, NAD83"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-90 D.3: courses and distances from two landmarks on the plat"
+  },
+  "bottom_hole_loc": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "FiElev (ApElev on pending wells); plat shows elevation (90 D.1)"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-80 C: persons to be notified, incl. surface owners; proof of notice"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "TblOpDesc: Coal Bed, Gas, Gas/Pipeline, Horizontal Gas, Service Well..."
+  },
+  "work_type": {
+   "s": "form",
+   "e": "doc",
+   "n": "DGO-GO-1 covers new permit, modification, transfer; map has a Pending Well Modifications layer"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Only through TblOpDesc values 'Horizontal Gas' and 'Horizontal Coalbed'"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-500 A: approximate depth to be drilled; layer TotalDepth is for active wells"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "target_formation": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-500 A: depth and thickness of known coal, groundwater and gas/oil strata"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-500 A: each string's size, top and bottom depth"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-500 A: extent to which each string is cemented"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-80 C: hydrogen sulfide information, if applicable"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "web",
+   "n": "Operations plan: pit design, disposal of pit fluids, produced water, cuttings (permit page)"
+  },
+  "water": {
+   "s": "form",
+   "e": "web",
+   "n": "Drilling and stimulating plan covers water and fluids; source and volume not confirmed"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-80 C: list of anticipated hydraulic fracturing ingredients"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-90 A: plat covers the board-approved drilling unit"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-80 C and permit page: notice to mineral and coal owners"
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-80 B: permit fee (Code 45.2-1631) and Orphaned Well Fund fee"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "Notice to affected parties, local government and newspaper; objections allowed (permit page)"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_approved": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layers have FiStatDt (status date), not a labeled issue date; 'Permit Issuance' report unread"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "FiWellComp and FiDrComp (drilling complete) on Active Wells layer"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "TblPsDesc: Issued, Construction, Constructed Waiting On Rig, Constructed/Never Drilled"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "doc",
+   "n": "4VAC25-150-90: certified plat, form DGO-GO-7; an online scan is not verified"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "DGO Inquiry lists 'Permitted Applications/File Scans'; page title only, not opened"
+  },
+  "completion_report": {
+   "s": "query",
+   "e": "web",
+   "n": "DGO Inquiry lists 'Completion Report' under Well Records; not opened (form DGO-GO-15)"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "DGO Inquiry lists 'Geophysical Logs' under Well Records; not opened"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "DGO Inquiry lists monthly gas and oil production reports; not opened"
+  }
+ },
+ "sources": [
+  {
+   "id": "va-dgo-wells-mapserver",
+   "name": "Virginia Energy DGO_wells MapServer: Active Wells (0), Pending Wells (1), Pending Well Modifications (2), Facilities Permits (3), Permitted Undrilled Wells (4), Plugged Wells (5), Waste Disposal Wells (6), Inspector Areas (7)",
+   "url": "https://energy.virginia.gov/gis/rest/services/DGO/DGO_wells/MapServer",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown (portal says data provided as is)",
+   "columns": [
+    "layer 0 Active Wells: FiStPlaneX, FiStPlaneY, FiNo, FiPriority, FiInspDue, FiElev, CoName, TblCnName, TblQuDesc, TblInCode, TblOpDesc, TblPsDesc, FiFarm, TblCnZone, Shape, FiStatDt, FiDrComp, FiWellComp, TotalDepth, OBJECTID, FiOperation",
+    "layer 4 Permitted Undrilled Wells: same as layer 0 without FiWellComp and TotalDepth",
+    "layer 1 Pending Wells: ApStPlaneX, ApStPlaneY, FiNo, ApElev, ApFarm, TblInCode, CoName, TblOpDesc, TblCnName, TblQuDesc, TblCnZone, Shape, ApNo, ApInspDt, OBJECTID, ApOperation"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "Coal Bed",
+    "Coalbed/Pipeline",
+    "Gas",
+    "Gas/Pipeline",
+    "Horizontal Gas",
+    "Horizontal Coalbed",
+    "Service Well"
+   ],
+   "reachable": "ok",
+   "tested": "Service ?f=json 200 (4.3 KB; 8 layers; Map,Query,Data; maxRecordCount 2000). Layers 4, 0 and 1 ?f=json 200 (6 KB each). One grouped statistics query on layer 4: 197 undrilled permitted wells, TblPsDesc Issued/Construction/Constructed Waiting On Rig/Constructed/Never Drilled, FiStatDt from 2001-09-28 to 2026-10-30 (newest 'Issued' 2026-10-30). Almost all wells are coalbed methane or gas; no oil category seen. 6 requests to energy.virginia.gov in all, 3-5 s apart."
+  },
+  {
+   "id": "va-vgob-wells-mapserver",
+   "name": "Virginia Energy VGOB DGO_wells_VGOB MapServer (gas and oil wells for the Gas and Oil Board; pending, facilities, plugged, disposal)",
+   "url": "https://energy.virginia.gov/gis/rest/services/VGOB/DGO_wells_VGOB/MapServer",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "not read"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "not-tested",
+   "tested": "Requested once: HTTP 200 with body {error: code 500, 'Service VGOB/DGO_wells_VGOB/MapServer not started'}. Not asked again. Description from a search summary only."
+  },
+  {
+   "id": "va-dgo-inquiry",
+   "name": "Gas and Oil Data Information System (DGO Inquiry): Permit Listing, Permit Issuance, Permit Issuance Statistics, Well Location Download, Weekly Rigs Report, production reports, well records and file scans",
+   "url": "https://www.energy.virginia.gov/DgoInquiry",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "not read (links are ASP.NET postbacks, not direct file URLs)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "not-tested",
+   "tested": "Page read through WebFetch only (no curl request): lists the report names above; coordinates are State Plane feet, Virginia South, NAD83; the reports themselves were not opened, so whether 'Permit Issuance' carries issue dates is unverified (has_approval_date left false for that reason)."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "The ArcGIS well layers are free, no login and answered from here, one record per well, but they hold only a status date (FiStatDt), a drilling-complete date and a well-completion date, not a labeled permit issue date, and a well leaves the 'undrilled' layer once drilled. Counts of wells completed per month are possible; permits issued per month are not from the layers. The 'Permit Issuance' reports in the DGO Inquiry may give issue dates but are postback pages (unread). Virginia is almost all coalbed methane and gas.",
+ "producer_plan": "Option 1, history: query layer 0 (Active Wells) in pages of 2000 and count FiDrComp (drilling complete) and FiWellComp (well completion) by month, split by TblOpDesc; this measures wells drilled or completed, like New Mexico's spuds, with a lag. Option 2, permits going forward: query layer 4 (Permitted Undrilled Wells) and layer 1 (Pending Wells) every night and keep a log of each FiNo with its TblPsDesc and FiStatDt; the first night a FiNo appears with TblPsDesc 'Issued' and its FiStatDt gives an approximate issue month, and Pending Wells gives applications waiting. Wells leave layer 4 when drilled, so history cannot be rebuilt from it. Check whether FiStatDt on an 'Issued' row is the issue date (many fall on the same day in pairs and threes, which looks like batches, but this is not confirmed). Option 3: the DGO Inquiry 'Permit Issuance' and 'Permit Issuance Statistics' reports, if they give issue dates; they need an ASP.NET form post, which is fragile. The VGOB service is not started. Work type is not a field (new vs modification is separate layers: Pending Wells vs Pending Well Modifications).",
+ "activity_bands_possible": [
+  "new",
+  "amend",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "Layers hold company names (CoName) and farm names (FiFarm, often a landowner's family name); no phone or street address seen in the field list. A build needs a corporate-name filter on operators and should not publish farm names. The form collects owner addresses (not read).",
+ "unknowns": [
+  "the DGO-GO-1 form text",
+  "API number in any open file",
+  "whether FiStatDt is the permit issue date",
+  "contents of the DGO Inquiry reports and the Well Location Download",
+  "layer 0 record count and date range",
+  "fields of layers 2, 3, 5, 6 and 7",
+  "refresh cadence of the layers",
+  "bottom-hole location for horizontal wells",
+  "operator ID and entity type",
+  "spud date",
+  "license"
+ ],
+ "researched": "2026-10-31"
+}

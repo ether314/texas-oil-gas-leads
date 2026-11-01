@@ -1,0 +1,498 @@
+{
+ "state": "FO",
+ "name": "Federal offshore (Gulf of America)",
+ "agency": {
+  "name": "Bureau of Safety and Environmental Enforcement (BSEE), U.S. Department of the Interior",
+  "short": "BSEE",
+  "url": "https://www.bsee.gov/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill (APD), with the Supplemental APD Information Sheet (Casing Design)",
+  "number": "Form BSEE-0123 (05/2023) and Form BSEE-0123S (05/2023); OMB control no. 1014-0025, the header says approval expires 10/31/2026",
+  "url": "https://www.bsee.gov/sites/bsee.gov/files/2024-03/Form%200123%20exp%202026.pdf",
+  "read": true,
+  "notes": "Read the blank BSEE-0123 (boxes 1 to 32: proposal to drill new well, sidetrack, bypass or deepen; BSEE operator no.; operator; well name; sidetrack and bypass no.; proposed start date; plan control no.; API; lease, area, block and latitude/longitude at total depth (proposed) and at surface; markers anticipated with top MD and TVD; attachments list; contact; certification; BSEE-use box with approval and assigned API) and its information sheet (box 33, questions A to H on mud quantity, zero discharge, riserless drilling, conductor waiver, EPA discharge permit, shut-in, worst-case discharge, digital BOP testing). Also read the blank BSEE-0123S (operator, well name, leases, API, exploratory or development, H2S absent, known or unknown, activation depth, rig, subsea BOP, water depth, RKB height, mineral code, drive pipe, anchors, casing intervals with size, weight, grade, burst, collapse, depth MD and TVD, pore pressure, hole size, mud weight, cement volume, preventers and tests). The attachments are set by 30 CFR 250.411 to 250.418 (plat, design criteria, drilling prognosis, casing and cementing, diverter, BOP, additional information such as directional plot, drilling fluids program and H2S contingency plan), read on Cornell LII's copy; cells marked doc come from there. One public-information copy of a 2015 APD was also read for its attachment list. The form's OMB approval date (10/31/2026) passed the day before this research; whether a renewed revision exists was not checked on BSEE's OCS forms page."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 0 (12 digits: well + sidetrack code); BSEE-0123 box 9; APD query column"
+  },
+  "permit_number": {
+   "s": "none",
+   "e": "form",
+   "n": "No APD number box; the API is assigned on approval (BSEE-use box); box 8 is the plan control no."
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole fields 1-2 (name, suffix); BSEE-0123 box 4; APD query column"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Lease numbers only (fields 6 and 24), not names; BSEE-0123 boxes 12 and 17"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Name from the company file by operator number; the APD query has Company Name"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 3 (BSEE operator number); BSEE-0123 box 2"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Company file has 19 fields (only number, dates, name read); tracker infers type from name"
+  },
+  "bond": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on BSEE-0123 or BSEE-0123S"
+  },
+  "county": {
+   "s": "none",
+   "e": "form",
+   "n": "Federal waters, no county; area and block (fields 11, 13) stand in; tracker calls an area a county"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 17 (district code of the BSEE regional office); APD query has Region"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 4 (bottom field name code); not on BSEE-0123"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole fields 20-21 (NAD27); APD query; BSEE-0123 boxes 20-21 (NAD 83 or 27)"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Area and block (field 11) and footages from block lines (field 10); form boxes 18-19"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole fields 12-13 and 22-23 (calculated from the survey); form boxes 12-16 (proposed)"
+  },
+  "lateral_path": {
+   "s": "query",
+   "e": "web",
+   "n": "Directional survey files (Well page); planned plot is an attachment (250.418(c)); layout not read"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 7 (RKB elevation); BSEE-0123S box 12 (RKB height)"
+  },
+  "surface_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Federal waters; not asked"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 16 (D, E, C); APD query Well Type; BSEE-0123S box 6"
+  },
+  "work_type": {
+   "s": "query",
+   "e": "web",
+   "n": "APD query Permit Type (New Well, Sidetrack, Bypass, Revised...); form box 1 adds Deepen"
+  },
+  "well_direction": {
+   "s": "none",
+   "e": "form",
+   "n": "No direction box; a directional plot is attached if directional (250.418(c))"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "No TD box; BSEE-0123S gives depth MD and TVD per casing interval. File depths are as drilled"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123S depth TVD per casing interval; markers' TVD tops (boxes 22-24)"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on BSEE-0123 or BSEE-0123S"
+  },
+  "target_formation": {
+   "s": "none",
+   "e": "form",
+   "n": "No target box; the form lists markers anticipated (boxes 22-24)"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123 boxes 22-24: marker name, top MD, top TVD (250.414(d))"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123S: casing size, weight, grade, burst, collapse, depth, hole size (250.415)"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123S: cement volume per interval; top of cement not asked"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123S preventer type, size, ratings, tests; box 10 subsea BOP (250.731)"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123S boxes 7-8: absent, known, unknown; activation depth; plan (250.418(d))"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "BSEE-0123 box 33 B and E: zero discharge, EPA discharge permit; no pit field"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on BSEE-0123 or BSEE-0123S"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on BSEE-0123 or BSEE-0123S"
+  },
+  "spacing_unit": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; offshore leases are by block"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; 250.414(h) alternate procedures concern drilling methods"
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Data Center menu lists a Lease Owner query keyed by lease number; page not opened"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the form; BSEE's service fees were not read"
+  },
+  "notice_hearing": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on BSEE-0123 or BSEE-0123S"
+  },
+  "date_received": {
+   "s": "query",
+   "e": "web",
+   "n": "APD query and eWell APD query: APD Received Date; not in the borehole file"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "APD query: APD Approved Date (not in the borehole file); the grid exports to CSV"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No expiry on the form or in the APD query columns; approval terms not read"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 5 (YYYYMMDD); BSEE-0123 box 7 is the proposed start date"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Borehole file has total-depth and status dates, not a completion date"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Borehole field 18 (status code) and field 15 (status date)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "doc",
+   "n": "Location plat is required with the APD (250.411(a), 250.412); online copies not verified"
+  },
+  "form_image": {
+   "s": "form",
+   "e": "form",
+   "n": "A 'Public Information' copy is required; a few are posted on the BSEE site; full set not verified"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Data Center menu lists eWell End of Operations and Well Activity Report queries (not opened)"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Data Center menu lists a File Request System 'Well Data' item (not opened)"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "BSEE production files (OGOR downloads in the menu); tracker uses EIA instead; layouts not read"
+  }
+ },
+ "sources": [
+  {
+   "id": "fo-borehole",
+   "name": "BSEE Data Center: All Releasable Borehole Information (5010delimit.zip)",
+   "url": "https://www.data.bsee.gov/Well/Files/5010delimit.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "weekly",
+   "history_from": "1940",
+   "size_mb": 4,
+   "free": true,
+   "login": false,
+   "license": "US federal data; the Data Center's disclaimer page was not read",
+   "columns": [
+    "api_well_number",
+    "well_name",
+    "well_name_suffix",
+    "operator_number",
+    "bottom_field_name_code",
+    "spud_date",
+    "bottom_lease_number",
+    "rkb_elevation",
+    "bh_total_md",
+    "true_vertical_depth",
+    "surface_ns_ew_footages",
+    "surface_area_block",
+    "bottom_ns_ew_footages",
+    "bottom_area_block",
+    "total_depth_date",
+    "status_date",
+    "type_code",
+    "district_code",
+    "status_code",
+    "water_depth",
+    "surface_longitude",
+    "surface_latitude",
+    "bottom_longitude",
+    "bottom_latitude",
+    "surface_lease_number",
+    "complex_id_num",
+    "structure_number",
+    "update_date",
+    "well_class_code"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new well (first borehole)",
+    "sidetrack",
+    "bypass"
+   ],
+   "reachable": "ok",
+   "tested": "One HEAD: HTTP 200, 3,994,904 bytes, last modified Sun 25 Oct 2026 (the Well page lists the same date). Then one 64 KB range request (HTTP 206) of the zip, inflated in part: 914 real rows, every one with 29 quoted comma-delimited fields and no header row. Column names above come from the Data Center's field definitions, which list 37 fields in the fixed layout; the delimited file joins footages and area-with-block into single fields, and the order was checked against the values in those rows. One row per borehole (55,575 in the repo's run); spud dates since the 1940s per the repo notes; no approval date. A spud arrives with some delay."
+  },
+  {
+   "id": "fo-apd-query",
+   "name": "BSEE Data Center: APD/AST/ABP Online Query (multiregional)",
+   "url": "https://www.data.bsee.gov/Well/APD/Default.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "US federal data; the Data Center's disclaimer page was not read",
+   "columns": [
+    "API Well Number",
+    "Permit Type",
+    "APD Received Date",
+    "APD Approved Date",
+    "Region",
+    "Company Number",
+    "Company Name",
+    "Bottom Area Code",
+    "Bottom Block Number",
+    "Bottom Lease Number",
+    "Surface Area Code",
+    "Surface Block Number",
+    "Surface Lease Number",
+    "Surface NS Dist",
+    "Surface NS Code",
+    "Surface EW Dist",
+    "Surface EW Code",
+    "Well Type",
+    "Well Name",
+    "Well Name Suffix",
+    "Water Depth (feet)",
+    "Rig ID Number",
+    "Rig Name",
+    "Surf X Coord Loc",
+    "Surf Y Coord Loc",
+    "Surface Latitude",
+    "Surface Longitude"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new well",
+    "sidetrack",
+    "bypass",
+    "revised new well",
+    "revised sidetrack",
+    "revised bypass"
+   ],
+   "reachable": "ok",
+   "tested": "One GET of the page: HTTP 200, 389,721 bytes of HTML, 'data last updated 10-31-2026 04:00 PM CST'. A filter form (region, API, permit type, areas, blocks, leases, company, water depth, received and approved date ranges) over a grid of 30,169 items (1,509 pages of 20), with PDF, XLS, XLSX, RTF and CSV export of the grid. Permit Type options read from the page: Bypass, New Well, Revised Bypass, Revised New Well, Revised Sidetrack, Sidetrack. No query or export was run (the grid is an ASP.NET page that needs postbacks); the first rows shown date from 1996. This is where BSEE publishes approval dates, one row per APD action."
+  },
+  {
+   "id": "fo-ewell-apd-query",
+   "name": "BSEE Data Center: eWell APD Online Query (APDs submitted via eWell since April 2004)",
+   "url": "https://www.data.bsee.gov/Well/eWellAPD/Default.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "2004-04",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "US federal data; the Data Center's disclaimer page was not read",
+   "columns": [
+    "API Well Number",
+    "Approved Date",
+    "Received Date",
+    "Permit Type",
+    "Water Depth (feet)",
+    "Well Type",
+    "Well Name",
+    "Well Name Bp Suffix",
+    "Well Name St Suffix",
+    "Company Number",
+    "Company Name",
+    "Bottom Lease Number",
+    "Bottom Area",
+    "Bottom Block",
+    "Surface Lease Number",
+    "Surface Area",
+    "Surface Block",
+    "Rig ID Number",
+    "Rig Name",
+    "Surface NS Dist",
+    "Surface NS Code",
+    "Surface EW Dist",
+    "Surface EW Code",
+    "Surf X Coord Loc",
+    "Surf Y Coord Loc",
+    "Surface Latitude",
+    "Surface Longitude"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new well",
+    "sidetrack",
+    "bypass",
+    "revised sidetrack"
+   ],
+   "reachable": "ok",
+   "tested": "One GET of the page: HTTP 200, 363,325 bytes of HTML, updated 10-31-2026 04:00 PM CST, 20,091 items, same filter style and CSV/XLS export as the APD query. Only APDs submitted electronically since April 2004; the first rows shown are revised-sidetrack actions of 2010. No query or export run."
+  },
+  {
+   "id": "fo-company",
+   "name": "BSEE Data Center: Company file (compalldelimit.zip)",
+   "url": "https://www.data.bsee.gov/Company/Files/compalldelimit.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 0.2,
+   "free": true,
+   "login": false,
+   "license": "US federal data; the Data Center's disclaimer page was not read",
+   "columns": [
+    "(19 comma-delimited fields; the tracker reads only the company number, the start and end dates of a name, and the full name)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested by me. The repo's producer reads it weekly and the repo notes (NOTES_D10) describe it: 0.2 MB, made monthly, a row for every name and address a company has had (71 of 449 operators that spudded a well have more than one name). It holds street addresses and contacts, which are never read."
+  },
+  {
+   "id": "fo-directional",
+   "name": "BSEE Data Center: Directional Survey files (points and azimuth)",
+   "url": "https://www.data.bsee.gov/Well/Files/directdelimit.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "weekly",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "US federal data; the Data Center's disclaimer page was not read",
+   "columns": [
+    "(not seen; the Well page links the layout from the file name)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested. The Well page lists 'Directional Survey (Points)' and '(Azimuth)' with this file family, 'all releasable directional survey points', last updated 10/25/2026; they are as-drilled surveys, not planned paths."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "The weekly borehole file is bulk, free and reachable, with one row per borehole, but it has spud dates and no approval date or permit type, so counts measure wells spudded. Approval dates, received dates and permit types (new well, sidetrack, bypass, revised) are published only in the online APD query, a grid with CSV export that was not scripted here.",
+ "producer_plan": "As the tracker does: read the weekly borehole zip (no header; 29 fields), take the first ten digits of the API number as the well, count it on the spud day of its earliest borehole (field 5), place it by surface area and block (field 11), name the operator from the company file by operator number (field 3), and show a month only after a 60-day lag. A sidetrack or bypass is another borehole of the same well and is not counted, so the 'new' band is the only one this file gives cleanly. For approvals and bands, the better source is the APD query: filter Approved Date by month, export the grid to CSV, and count rows by Permit Type (New Well = new; Sidetrack and Bypass = other; Revised ... = amend), after finding out how the page's postbacks can be driven politely, which was not tested. Wells are about 45 a year, so one month holds a handful and 12-month counts are the useful figure.",
+ "activity_bands_possible": [
+  "new",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The borehole file holds API numbers, operator numbers, lease, area and block, coordinates and dates; no names of individuals were seen in the rows read. The company file (not read by me) holds street addresses and contacts. The APD query columns are company numbers and names, rigs and locations. Public-information copies of APDs and the form carry contact names, phones and e-mail addresses (none copied here).",
+ "unknowns": [
+  "The approval date and permit type for the old and recent APDs as a script would get them: the export was not run",
+  "Whether any current APD form revision replaced BSEE-0123 and BSEE-0123S after their 10/31/2026 OMB expiry",
+  "Whether scanned APDs, plats, completion reports (End of Operations) and logs are online per well (menu items seen, pages not opened)",
+  "Fees, APD expiry terms, lease owner details and the layout of production and directional survey files",
+  "The delimited borehole layout beyond the 914 rows read (sorted by API number, mostly old wells)"
+ ],
+ "researched": "2026-10-31"
+}

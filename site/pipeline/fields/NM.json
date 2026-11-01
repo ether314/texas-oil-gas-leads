@@ -1,0 +1,448 @@
+{
+ "state": "NM",
+ "name": "New Mexico",
+ "agency": {
+  "name": "Oil Conservation Division (OCD), Energy, Minerals and Natural Resources Department, State of New Mexico",
+  "short": "OCD",
+  "url": "https://www.emnrd.nm.gov/ocd/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Re-Enter, Deepen, Plugback, or Add a Zone (APD), with Form C-102 (Well Location and Acreage Dedication Plat)",
+  "number": "Form C-101 (the blank PDF is the revision of July 18, 2013; the OCD forms page says to file it electronically via OCD Permitting)",
+  "url": "https://emnrd.nm.gov/ocd/wp-content/uploads/sites/6/C-101.pdf",
+  "read": true,
+  "notes": "Read the blank C-101 PDF (boxes numbered 1 to 23: operator and OGRID, API, property, well no., surface and bottom-hole location, pool, work type, well type, cable/rotary, lease type, ground elevation, proposed depth, formation, contractor, spud date, water distances, closed loop, casing and cement table, BOP, certification, OCD approval and expiration box). The OCD's operator guidance for state/fee wells and for federal/Indian wells (both read) describe the newer online APD: general information, surface and bottom-hole locations, completions with the C-102 plat, casing, comments, and uploads (directional survey, H2S plan, wellbore schematic, BOP diagram, drilling plan, closed-loop or C-144 pit, natural gas management plan). Cells marked doc come from that guidance. The live ePermitting screens are behind a person-check and were not seen. For wells on federal or Indian land the BLM-approved Form 3160-3 comes first (federal approvals are the BLM's) and the OCD still takes a C-101 and C-102."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field id (API); OCD assigns it on approval; also C-101 box 3"
+  },
+  "permit_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": "C-101 has no permit-number box; OCD's ePermitting application ID not seen (gated)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field name; C-101 boxes 5-6 (property name, well no.)"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 boxes 4-5 property code and name; the layer carries lease type only"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field ogrid_name; the tracker names only corporations, LLCs and LPs"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field ogrid (OGRID); C-101 box 2"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on C-101; the tracker infers it from the operator's name"
+  },
+  "bond": {
+   "s": "none",
+   "e": "form",
+   "n": "No bond box on C-101; the BLM 3160-3 filed for federal wells asks a BLM bond number"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer fields county and county_code (FIPS)"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer fields district and district_code (OCD district office)"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field pool_id_list (pool codes); C-101 box 9 pool name and code"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer latitude and longitude (datum in 'projection'); guidance asks NAD 83, 5 decimals"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer ulstr (unit, section, township, range); footages only on C-101 box 7"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 8 proposed bottom hole; the layer is the surface point only"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "doc",
+   "n": "Directional survey required for directional and horizontal wells (APD guidance)"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 15 ground level elevation; not in the layer"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "C-102 plat: surface and mineral owner must be marked (APD guidance)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer fields type and sub_type_code; C-101 box 12"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 11 (new, re-enter, deepen, plugback, add zone); the layer has no work type"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field directional_status (well bore direction)"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 17, measured depth per guidance; layer depths are as drilled, mostly 0"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "C-101 asks one proposed depth (measured); layer TVD is as drilled; plan attachments not seen"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "doc",
+   "n": "Not a field; C-102 shows kick-off, first- and last-take points (guidance)"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 18 formation; guidance: deepest formation of interest"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "doc",
+   "n": "APD guidance: drilling plan lists all formation tops and fluid types"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 21: casing type, hole and casing size, weight, setting depth"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 21: sacks of cement and estimated top of cement"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 box 22: BOP type, working and test pressure, manufacturer"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "doc",
+   "n": "H2S plan uploaded 'if applicable' (APD guidance); no H2S box on the C-101 PDF"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 closed-loop statement; a pit needs Form C-144 (guidance)"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "C-101 asks depth to groundwater and distances to water, not source or volume"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the C-101 or in the APD guidance"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "doc",
+   "n": "C-102 dedicated acres, consolidation code, unit ID, spacing unit type (guidance)"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "doc",
+   "n": "Order boxes list non-standard location (NSL) and proration (NSP) orders (guidance)"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer lease_type only (the class of lease, not an owner); C-102 marks mineral owner"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the C-101; a fee appeared only in a search summary of a gated OCD page"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "Potash, Carlsbad brine well and city notices go with the APD (guidance)"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "C-101 has a signature date only; no received date in the layer"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "API_Export effective_date is the APD approval only while status is New; C-101 'Approved Date'"
+  },
+  "date_expires": {
+   "s": "form",
+   "e": "form",
+   "n": "C-101 'Expiration Date' (OCD box); not in the layer"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer spud_date (years 9999 and 1900 mean not spudded); C-101 box 20 is the planned date"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has spud, last-produced and plug dates; the completion report was not read"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Layer field status (New, Active, Plugged...)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "doc",
+   "n": "C-102 plat is uploaded with the APD (guidance); not seen in the one well file read"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "Per-well scanned PDFs; layer field 'files' is labeled a link to them; one held a BLM APD packet"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen in the one scanned well file read (it held an APD packet)"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen; there is no log field in the layer"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has last_production_date and a well-details link; production reports not verified"
+  }
+ },
+ "sources": [
+  {
+   "id": "nm-wells-public",
+   "name": "OCD Oil and Gas Wells, public feature layer (Wells_Public)",
+   "url": "https://gis.emnrd.nm.gov/arcgis/rest/services/OCDView/Wells_Public/FeatureServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "None stated; the layer's copyright text credits the OCD permitting database",
+   "columns": [
+    "OBJECTID",
+    "id",
+    "name",
+    "type",
+    "status",
+    "sub_type_code",
+    "ogrid",
+    "ogrid_name",
+    "district_code",
+    "district",
+    "county_code",
+    "county",
+    "ulstr",
+    "latitude",
+    "longitude",
+    "projection",
+    "directional_status",
+    "details",
+    "files",
+    "year_spudded",
+    "spud_date",
+    "lease_type",
+    "measured_vertical_depth",
+    "true_vertical_depth",
+    "pool_id_list",
+    "last_production_date",
+    "plug_date",
+    "GlobalID"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new well (by spud date)",
+    "injection",
+    "salt water disposal"
+   ],
+   "reachable": "ok",
+   "tested": "One ?f=json request on the layer: HTTP 200, 11,849 bytes of JSON, 28 fields, maxRecordCount 6000, query/sync/extract enabled. No record query by me; the tracker's producers read it (142,463 wells on 2026-10-31, 'refreshed daily' per the repo notes). A well point is added when an APD is submitted and approved; spud_date is reported late (about 60 days)."
+  },
+  {
+   "id": "nm-api-export",
+   "name": "OCD Wells, large-scale map layer (API_Export MapServer)",
+   "url": "https://gis.emnrd.nm.gov/arcgis/rest/services/OCDView/API_Export/MapServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "None stated in the layer description",
+   "columns": [
+    "id",
+    "name",
+    "type_code",
+    "type",
+    "status_code",
+    "status",
+    "ogrid",
+    "ogrid_name",
+    "district_code",
+    "district",
+    "county_code",
+    "county",
+    "ulstr",
+    "latitude",
+    "longitude",
+    "projection",
+    "directional_status",
+    "search",
+    "details",
+    "files",
+    "status2",
+    "symbology",
+    "year_spudded",
+    "spud_date",
+    "lease_type_code",
+    "lease_type",
+    "measured_vertical_depth",
+    "true_vertical_depth",
+    "pool_id_list",
+    "effective_date",
+    "last_production_date",
+    "last_inspection_date",
+    "last_mit_bht_date",
+    "plug_date",
+    "last_edited_on",
+    "GlobalID",
+    "SHAPE",
+    "OBJECTID",
+    "sub_type_code",
+    "subtype"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new well (by approval, while status is New)"
+   ],
+   "reachable": "ok",
+   "tested": "One ?f=json request on the layer: HTTP 200, 65,693 bytes of JSON, 40 fields, maxRecordCount 3000. It adds effective_date and last_edited_on to the public layer. Per the repo notes effective_date is the APD approval date only for a well still in status New (a spudded or completed well drops out), so older months lose approvals; the Daily report uses it for the newest days. No record query by me."
+  },
+  {
+   "id": "nm-ocd-imaging",
+   "name": "OCD Imaging: scanned well files (one PDF per well)",
+   "url": "https://ocdimage.emnrd.nm.gov/Imaging/FileStore/hobbs/WF/314304/30025448550000_1_WF.pdf",
+   "kind": "query",
+   "format": "pdf",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 4,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "(scanned PDF per well; no columns)"
+   ],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "One GET of one well file found through a web search (a 2018 federal well): HTTP 200, 3.7 MB, 79 pages. It held a BLM APD packet (Form 3160-3, drilling plan, directional survey and H2S pages, closed-loop and pit pages, wellhead drawings), not a C-101, so what a state well's file holds was not seen. The per-well link is the layer's 'files' field (not read)."
+  },
+  {
+   "id": "nm-ocd-permitting",
+   "name": "OCD Permitting (ePermitting: APD filing and OCD forms list)",
+   "url": "https://wwwapps.emnrd.nm.gov/OCD/OCDPermitting/OperatorData/AllOCDForms.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "(not seen)"
+   ],
+   "has_approval_date": null,
+   "has_spud_date": null,
+   "has_well_type": null,
+   "has_work_type": null,
+   "has_location": null,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Opened once with the fetch tool: only a 'Human Verification Required' gate (a person-check) came back, so no data was seen and nothing was scripted or retried. The repo notes (NOTES_D9) found the same gate on the permitting site."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "The public well layer is bulk, free and reachable, with one record per well, but it has no approval date: it counts wells by spud date (reported about two months late) and has no work type. Approval dates exist only as effective_date on the MapServer copy for wells still in status New, so they fade for older months. The tracker counts wells spudded; the OCD publishes no approvals by well and date.",
+ "producer_plan": "Monthly counts as the tracker builds them: read the Wells_Public layer with paged ?f=json queries (id, type, status, ogrid, ogrid_name, county_code, latitude, longitude, spud_date), count one well per API number on its spud day, drop the placeholder years 9999 and 1900, and show a month only after a 60-day lag. Activity bands: wells are all new wells; injection and disposal wells separate by the type field; no re-entry, recompletion or amendment is visible. Approval counts: query the MapServer layer for status = New and effective_date in the day or month (exact for recent weeks only), and keep each night's count so that older months stop depending on wells that leave status New. The layer's historic-moment archive gives additions per month but not which wells.",
+ "activity_bands_possible": [
+  "new",
+  "injection"
+ ],
+ "privacy_notes": "The layer holds operator names and OGRIDs, well names, API numbers and surface coordinates; no contact details were in its schema. An OGRID name can be an individual, so the tracker names only corporations, LLCs and partnerships. The C-101 and the scanned well files carry signers' names, e-mail addresses and phone numbers (none copied here).",
+ "unknowns": [
+  "Whether the layer's 'files' field links to the OCD Imaging well files, and whether a state well's file holds its C-101 and C-102 plat",
+  "The live ePermitting APD screens and any application or permit number, received date or fee (behind a person-check)",
+  "Completion reports (C-105), logs and production by well (C-115): not read",
+  "How far back the layer's records and the MapServer's effective_date reach",
+  "Whether the C-101 revision of 2013 is what the online form still asks (the guidance is newer)"
+ ],
+ "researched": "2026-10-31"
+}

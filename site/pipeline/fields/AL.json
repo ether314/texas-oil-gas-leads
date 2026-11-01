@@ -1,0 +1,375 @@
+{
+ "state": "AL",
+ "name": "Alabama",
+ "agency": {
+  "name": "State Oil and Gas Board of Alabama",
+  "short": "OGB",
+  "url": "https://www.ogb.state.al.us/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Deepen, Convert or Amend",
+  "number": "OGB-1 (OGB-1A re-entry, OGB-1B directional)",
+  "url": "https://admincode.legislature.state.al.us/api/chapter/400-1-2",
+  "read": false,
+  "notes": "The blank OGB-1 PDF could not be found, so it was not read; form cells come from Rule 400-1-2-.01 (read in full, revised 8/12/24) and the GIS layer schema. Filed with: $300 fee (none to convert or deepen), surveyor plat in triplicate (surface and bottom-hole locations, lat/long, state plane, unit boundaries), Affidavit of Ownership or Control (OGB-2, 2C, 2D), bond (OGB-3 single or OGB-4 blanket), Organization Report (OGB-5). Permit expires 6 months after issue if not spudded. The URL is the rule chapter, not the form."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WellName and HistoricWellName"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "UnitName (unit); no separate lease field"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Operator"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has an internal EntityKey only; Organization Report OGB-5 not read"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Organization Report OGB-5 not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "doc",
+   "n": "Bond on Form OGB-3 (single well) or OGB-4 (blanket) with the application unless on file"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "CountyName"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "Region (values seen: BWB, SW)"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "FieldName, FieldNumber, PoolName, PoolCode"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude, Longitude"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "SecNum, Township, Range and PLSS text"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "HasBHL flag; separate Bottomhole Locations and Lines layers in the service (names only, not queried)"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": "A Bottomhole Lines layer exists; not queried, so path vs straight line unknown"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "KB, GR, DF"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the rule; OGB-1 and plat contents beyond the rule not read"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WellType and TypeDesc (CM, GAS, OIL, SWD, WI, WS, UN)"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "doc",
+   "n": "Forms OGB-1 (drill, deepen, convert, amend), 1A (re-entry), 1B (directional); not a layer field"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "doc",
+   "n": "Directional wells use Form OGB-1B; the layer only has a HasBHL flag"
+  },
+  "proposed_depth_md": {
+   "s": "unknown",
+   "e": "none",
+   "n": "OGB-1 not read; layer MD, TVD, DTD, LTD may be drilled depths, not proposed"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "OGB-1 not read; layer TVD is not labeled proposed or as drilled"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "PoolName is the pool, not necessarily the target on the permit"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "file",
+   "n": "DrillingUnitAcres, DrillingUnitDescription, UnitName; plat must show the spacing unit"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "doc",
+   "n": "Non-compliant applications go to Board hearing (rule 400-1-2-.01(5)); no exception field seen"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "Affidavit of Ownership or Control (Form OGB-2): 100% of drilling rights in the unit"
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "$300 payable to State Treasurer; none for convert or deepen"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "Board approves non-compliant applications after due notice and hearing"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PermitDate (esriFieldTypeDate); 16,011 of 16,236 rows filled, latest 2026-10-28"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule: expires 6 months after issuance if not spudded; no field seen"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SpudDate; 14,906 of 16,236 rows filled (a future value 2047 is in the data)"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has FirstProductionDate and StatusDate but no completion date"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "WellStatus, StatusDesc, StatusDate (Permitted Well, Producing, Active...)"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "LastLogDate only, not the logs"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has FirstProductionDate; production reports not checked"
+  }
+ },
+ "sources": [
+  {
+   "id": "al-ogb-wells-layer",
+   "name": "OGB Online Map: Wells (MapServer layer 0)",
+   "url": "https://gis.ogb.state.al.us/arcgis/rest/services/OGB/OGBOnlineMap/MapServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "1940",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated; service metadata asks for a written data request for formal use",
+   "columns": [
+    "pKey",
+    "Permit",
+    "API",
+    "WellName",
+    "Operator",
+    "FieldName",
+    "PoolName",
+    "WellStatus",
+    "WellType",
+    "CountyName",
+    "SecNum",
+    "Township",
+    "TownshipDir",
+    "Range",
+    "RangeDir",
+    "TypeDesc",
+    "StatusDesc",
+    "ConstructKey",
+    "FieldKey",
+    "CountyKey",
+    "WellKey",
+    "Longitude",
+    "Latitude",
+    "FieldNumber",
+    "PermitDate",
+    "PoolCode",
+    "Region",
+    "Comment",
+    "DrillingUnitAcres",
+    "DrillingUnitDescription",
+    "PLSS",
+    "HistoricWellName",
+    "EntityKey",
+    "LastLogDate",
+    "FirstProductionDate",
+    "SpudDate",
+    "DTD",
+    "LTD",
+    "TVD",
+    "MD",
+    "StatusDate",
+    "UnitName",
+    "UnitKey",
+    "GR",
+    "KB",
+    "DF",
+    "SHAPE",
+    "HasBHL"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permit by well type: coal bed methane, gas, oil, water disposal, water injection, water source, undesignated"
+   ],
+   "reachable": "ok",
+   "tested": "Four small requests: service?f=json (200, 6 KB, 16 layers incl. Wells, Well Units, Bottomhole, Fields, CBM, Offshore), layer 0?f=json (200, 151 KB, 49 fields), one statistics query (16,236 wells; 16,011 with PermitDate from 1940-08-13 to 2026-10-28; 14,906 with SpudDate) and one query of 116 permits since 2023-01-01 with no geometry or names. maxRecordCount 2000, formats JSON/geoJSON/PBF. Permits per month since 2023: 1 to 12 (about 30 a year; 86 of the 116 are coal bed methane, 20 still \"Permitted Well\")."
+  },
+  {
+   "id": "al-ogb-site",
+   "name": "OGB web application (well search and details, GSA/OGB)",
+   "url": "https://www.ogb.state.al.us/",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Home page GET: 200, 8.7 KB, an AngularJS shell (well search, details, ng-csv, pdf.js scripts). Behind it are API calls that were not inspected; no forms page or form PDF found."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "A free, reachable ArcGIS layer with one row per well, a PermitDate (filled for 99%, newest 2026-10-28), SpudDate, well type, county, region and coordinates; monthly permit counts can be queried directly. Weak points: no work-type field (deepen, convert, re-entry are not separated), and volume is small (about 30 permits a year, most coal bed methane).",
+ "producer_plan": "Query MapServer/0/query with where=PermitDate >= DATE 'YYYY-MM-DD', returnGeometry=false and outFields Permit, API, PermitDate, SpudDate, WellType, TypeDesc, WellStatus, CountyName, Region; page with resultOffset (2000 per page). Convert the epoch-millisecond PermitDate to a date (check the time zone against a few known permits) and count by month; split by WellType (OIL and GAS as new drill, SWD and WI as injection, CM coal bed methane and WS water source as other). Spud counts come from SpudDate. Watch: the layer is one row per well, so a later deepen or convert permit may not add a row; a future SpudDate (2047) exists, so cap dates; rows with status \"Permitted Well\" are permits not yet drilled. The refresh cadence is unknown: compare the monthly count of a past month on two dates.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The layer holds operator names and a free-text Comment field (91 of 116 recent rows have one; not read). Check Comment and operator names against the tracker rule before publishing. No contact details in the schema.",
+ "unknowns": [
+  "The OGB-1 form itself (fields beyond the rule: proposed depth, target formation, casing, BOP, H2S, water, pits)",
+  "Refresh cadence of the layer",
+  "Whether PermitDate is the original permit date or the latest amendment",
+  "Contents of the Bottomhole layers and the Comment field",
+  "Whether the web application offers a CSV export or documents (plats, forms)",
+  "Operator ID and business type (Form OGB-5)"
+ ],
+ "researched": "2026-10-31"
+}

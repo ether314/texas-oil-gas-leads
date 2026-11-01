@@ -1,0 +1,444 @@
+{
+ "state": "LA",
+ "name": "Louisiana",
+ "agency": {
+  "name": "Louisiana Department of Conservation and Energy (formerly Department of Energy and Natural Resources), Office of Conservation",
+  "short": "C&E / OC",
+  "url": "https://www.dce.louisiana.gov/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill for Minerals",
+  "number": "MD-10-R-1 (Rev 08/2009 body, footer Rev 10/25); amendments MD-10-R-A-1 and MD-10-R-AO",
+  "url": "https://denr.louisiana.gov/assets/OC/eng_div/Forms/MD10R1.xls",
+  "read": true,
+  "notes": "Read the blank Excel form and its instruction sheet. Filed on buff paper in duplicate with the district office, with three original surveyor plats, the fee, financial security and Affidavit AFLN-1 (Rev 01/2024: surface-owner pre-entry notice and natural-gas management); permit valid 180 days. The form is one page: operator and code, parish and field codes, well name and number, section-township-range, location description, product, new/repermit/redrill/dual, straight/directional/horizontal, lease/unit, proposed MD and TVD, proposed zone, applicable orders, fee. No casing, cement, BOP, H2S, pit, water or frac fields. The agency page names no online filing for permits to drill; injection (UIC) applications use other forms not read."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_NUM (14 digits); also an office-use box on MD-10-R-1"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_SERIAL_NUM: the state serial number is the permit key (office-use box on form)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_NAME and WELL_NUM"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "LUW_NAME (production unit name, 110 of 304 recent) and LEASE_NUM (2 of 304); well name carries it"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "ORG_OPER_NAME"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "ORGANIZATION_ID; form asks for the operator code number"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "No business-type box on MD-10-R-1; operator registration (OR-1) not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Office-use box: financial security required prior to permitting, yes/no"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "PARISH_CODE and PARISH_NAME"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "DISTRICT_CODE (district office that takes the application)"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "FIELD_NAME and FIELD_ID; SANDS and RESERVOIRS hold the zone"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "SURFACE_LAT_DEC_DEG, SURFACE_LONG_DEC_DEG, plus Lambert and UTM X/Y"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "SECTION, TOWNSHIP, WELL_RANGE, MERIDIAN, LOCATION text; form asks section, township, range"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Location description includes the bottom hole if applicable; layer holds surface points only"
+  },
+  "lateral_path": {
+   "s": "none",
+   "e": "form",
+   "n": "Form asks only Straight, Directional or Horizontal; no survey or path"
+  },
+  "elevation": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No elevation box on MD-10-R-1; contents of the surveyor plat not read in full"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Affidavit AFLN-1: surface owner given 30-day pre-entry notice, or an exemption box"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "PRODUCT_TYPE_CODE is 00 (none) on 145 of 173 permits in the last year; oil/gas known later"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Boxes New Well, Repermit, Redrill (re-entry of plugged well), Dual; layer OPERATION_TYPE_CODE is 01 on all"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "Boxes Straight, Directional, Horizontal; layer DIRWELL was empty on all 304 permits since 2025"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "MEASURED_DEPTH filled on 304 of 304 permits since 2025; a permitted-not-drilled sample carries it"
+  },
+  "proposed_depth_tvd": {
+   "s": "data",
+   "e": "file",
+   "n": "TRUE_VERTICAL_DEPTH filled on 302 of 304 permits since 2025"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on MD-10-R-1"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "SANDS (122 of 304) and RESERVOIRS (106 of 304); FORMATIONS empty; form: proposed zone of completion"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on MD-10-R-1"
+  },
+  "casing_program": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form; LAC 43:XIX.103 lists no casing plan to file with the application"
+  },
+  "cement_program": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form or in the filing rule"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form or in the filing rule"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form or in the filing rule"
+  },
+  "pit_waste": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form or in the filing rule"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form (box 'SPC Plan (on water)' is for wells drilled over water)"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the form or in the filing rule"
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "file",
+   "n": "UNIT_WELL_FLAG (Y/N) only; the applicable conservation orders are written on the form"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No exception box on the form; 'applicable conservation orders' line may cite one"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "Flags only: STATE_INTEREST_FLAG (22 of 304) and MINERAL_INTEREST_FLAG; no owner name"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Application fee and check number on form; amount set by depth under the fee order"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Surface-owner pre-entry notice (AFLN-1); no public comment period seen"
+  },
+  "date_received": {
+   "s": "form",
+   "e": "form",
+   "n": "Date of Application box; not a layer field"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_DATE (epoch ms at local midnight)"
+  },
+  "date_expires": {
+   "s": "form",
+   "e": "form",
+   "n": "Office-use 'Exp.' box; permit valid 180 days from issue per form instructions"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SPUD_DATE (205 of 304 permits since 2025)"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "ORIGINAL_COMPLETION_DATE and LAST_RECOMPLETION_DATE"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_STATUS_CODE, WELL_STATUS_DATE, LEGEND_DESC (for example PERMITTED)"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Plat required with application; whether plats are in the imaged well file not verified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "SONRIS has an imaged well file by serial number; its contents were not verified (page gave 504)"
+  },
+  "completion_report": {
+   "s": "query",
+   "e": "web",
+   "n": "SONRIS Data Portal lists a Well Completions and Recompletions report; not opened"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Layer has only LOG_REVIEWED_FLAG; log documents not verified"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "HYPERLINK column opens the well profile, which shows monthly production (agency guide)"
+  }
+ },
+ "sources": [
+  {
+   "id": "la-omr-oil-gas-wells",
+   "name": "SONRIS GIS, Oil/Gas Wells point layer (OMR map service, layer 13)",
+   "url": "https://sonris-gis.dnr.la.gov/arcgis/rest/services/DNRSvc/OMR/MapServer/13",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated; copyright line names the Office of Conservation; description says over 215,000 wells permitted since the early 1900s",
+   "columns": [
+    "OBJECTID",
+    "WELL_SERIAL_NUM",
+    "ORGANIZATION_ID",
+    "ORGOP_LINE_ID",
+    "WELL_CLASS_TYPE_CODE",
+    "WELL_NAME",
+    "WELL_NUM",
+    "TOWNSHIP",
+    "EFFECTIVE_DATE",
+    "API_NUM",
+    "OPERATION_TYPE_CODE",
+    "PERMIT_DATE",
+    "SPUD_DATE",
+    "WELL_STATUS_CODE",
+    "WELL_STATUS_DATE",
+    "ORIGINAL_COMPLETION_DATE",
+    "LAST_RECOMPLETION_DATE",
+    "LAST_TEST_DATE",
+    "ORPHANED_FLAG",
+    "PRODUCT_TYPE_CODE",
+    "CLASSIFICATION",
+    "UNIT_WELL_FLAG",
+    "EXEMPT_29E_FLAG",
+    "FIELD_ID",
+    "LEASE_NUM",
+    "MUD_DENSITY",
+    "USDW_VALUE",
+    "AREA_USDW_VALUE",
+    "SOURCE_AREA_USDW_VALUE",
+    "MAX_SIP",
+    "SIP_ASSIGNED_DATE",
+    "SOURCE_OF_SIP_VALUE",
+    "INJECTION_RATE",
+    "COMMENTS",
+    "LOCATION",
+    "SECTN",
+    "MERIDIAN",
+    "WELL_RANGE",
+    "PARISH_CODE",
+    "SURFACE_LAT_DEC_DEG",
+    "SURFACE_LONG_DEC_DEG",
+    "MEASURED_DEPTH",
+    "LEGEND",
+    "DISTRICT_CODE",
+    "INSPECTION_DATE",
+    "INSPECTION_YEAR_INDEX",
+    "SECTION",
+    "INJECTION_VOLUME",
+    "LOG_REVIEWED_FLAG",
+    "ORPHAN_STATUS_CODE",
+    "ORPHAN_STATUS_DATE",
+    "FIELD_NAME",
+    "ORG_OPER_NAME",
+    "PARISH_NAME",
+    "SCOUT_WELL_STATUS_CODE",
+    "SCOUT_REPORT_DATE",
+    "SCOUT_MEASURED_DEPTH",
+    "SCOUT_TRUE_VERTICAL_DEPTH",
+    "LUW_CODE",
+    "LUW_TYPE_CODE",
+    "LUW_NAME",
+    "LW_REC_STATUS",
+    "SURFACE_LAMBERT_X",
+    "SURFACE_LAMBERT_Y",
+    "SURFACE_COORD_SYSTEM_CODE",
+    "SURFACE_ZONE",
+    "SURFACE_UTM83_X",
+    "SURFACE_UTM83_Y",
+    "UPPER_PERFS",
+    "LOWER_PERFS",
+    "SANDS",
+    "RESERVOIRS",
+    "FORMATIONS",
+    "HYPERLINK",
+    "GIS_UPD_DATE",
+    "LEGEND_DESC",
+    "DIRWELL",
+    "SCOUT_DETAIL",
+    "MINERAL_INTEREST_FLAG",
+    "STATE_INTEREST_FLAG",
+    "DOC_ACCESS",
+    "SHAPE",
+    "STATE_ZONE",
+    "COASTAL_PERMIT_NUM",
+    "SE_ANNO_CAD_DATA",
+    "TRUE_VERTICAL_DEPTH"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permit to drill for minerals (one row per well serial number)",
+    "injection and disposal wells appear by status code, not by permit type"
+   ],
+   "reachable": "ok",
+   "tested": "One grouped statistics query on layer 13 (PERMIT_DATE since 2025-11-01, grouped by OPERATION_TYPE_CODE, WELL_CLASS_TYPE_CODE, PRODUCT_TYPE_CODE): HTTP 200, 1.2 KB JSON: 173 permits, 12 months, newest permit 2026-10-13, all OPERATION_TYPE_CODE 01, no class code, product 00 on 145, gas 20 on 20, oil 10 on 8. Earlier saved responses from this machine (the service layer list, a 4-row sample, fill counts) gave the 86-field schema and show GIS_UPD_DATE 2026-10-31 09:05 UTC on the newest rows. The 304 recent permits in the fill counts used in the cell notes run from 2025-01-14 to 2026-10-13 (that filter was not recorded). maxRecordCount 1000 (32,000 without geometry); formats JSON, geoJSON, PBF; supports statistics, group-by and pagination."
+  },
+  {
+   "id": "la-sonris-data-portal",
+   "name": "SONRIS Data Portal: Well Information Search (Wells by Permit Date), Work Permits, Well Completions (APEX reports with CSV/HTML/Excel download)",
+   "url": "https://www.sonris.com/",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells by permit date",
+    "work permits (downhole permits, district office)",
+    "well completions and recompletions",
+    "injection wells"
+   ],
+   "reachable": "timeout",
+   "tested": "Not opened (the pages are interactive reports). The agency guide says results can be filtered by permit date range and exported to CSV, HTM or Excel with Actions > Download; no login is mentioned. The portal application's well-profile page (requested by an earlier researcher) and its document-search page (requested by me, after one redirect) both returned HTTP 504; not retried. Column list not seen."
+  },
+  {
+   "id": "la-sonris-doc-access",
+   "name": "SONRIS imaged well files and document search (by well serial number)",
+   "url": "https://sonlite.dnr.state.la.us/ords/r/sonris_pub/document_access/finddocuments",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "timeout",
+   "tested": "One request with a serial number: the old address answered 302 to the new document_access page, which answered HTTP 504 (error code 504, 16 bytes). An earlier researcher's well-profile request also got 504. Not retried; document types not seen."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "Reachable, free ArcGIS layer with one row per well, PERMIT_DATE and SPUD_DATE, coordinates, depth and operator, so monthly counts of permits can be queried. Held to B, not A, because the layer has no usable work type (OPERATION_TYPE_CODE is 01 on every recent permit), the product code is 00 on 145 of 173 permits in the last year (so oil versus gas cannot be split at permit time), and only 173 permits a year appear, which may omit wells without coordinates (not checked against an agency total). The SONRIS portal that might fill gaps returned 504.",
+ "producer_plan": "Query layer 13 with where PERMIT_DATE >= DATE 'YYYY-MM-DD', returnGeometry=false, and outFields WELL_SERIAL_NUM, API_NUM, PERMIT_DATE, SPUD_DATE, WELL_STATUS_CODE, LEGEND_DESC, PRODUCT_TYPE_CODE, OPERATION_TYPE_CODE, WELL_CLASS_TYPE_CODE, PARISH_CODE, DISTRICT_CODE, FIELD_NAME, ORG_OPER_NAME, MEASURED_DEPTH, TRUE_VERTICAL_DEPTH, UNIT_WELL_FLAG; page with resultOffset (1,000 per page, or more without geometry). PERMIT_DATE is epoch milliseconds at local midnight (05:00 UTC in summer, 06:00 in winter): convert to America/Chicago before taking the month. Count rows per month as new-well permits; count a row as injection when WELL_CLASS_TYPE_CODE or the status code marks an injection or disposal well (check on real rows first). Re-entries (Redrill), repermits and amendments are not visible as separate rows. Cap or drop future SPUD_DATE values. Rows with status 03 (permit expired) stay in the layer, so count by PERMIT_DATE, not by current status. Compare one past month's count on two dates to learn whether rows are revised, and compare with the SONRIS Wells by Permit Date report when the portal answers. Refresh cadence unknown (GIS_UPD_DATE was one bulk stamp on 2026-10-31).",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The layer has business operator names (ORG_OPER_NAME, 40 characters; may include an individual or a dba), and two free-text fields (COMMENTS, SCOUT_DETAIL, up to 2,000 characters) that were not read: apply the tracker's nameable-operator rule and do not publish the free text. No phone or e-mail column in the schema. The blank form has contact-person fields, but they are not in the open data.",
+ "unknowns": [
+  "How often the layer is refreshed and whether PERMIT_DATE is revised by amendments or repermits",
+  "Whether the layer omits permitted wells that have no surface coordinates, and the agency's own yearly permit total",
+  "What OPERATION_TYPE_CODE values other than 01 mean and whether any injection permits carry a PERMIT_DATE",
+  "SONRIS Data Portal columns and download size (all requests to that host returned 504)",
+  "Contents of the imaged well file (plats, application forms, logs)",
+  "Injection well (UIC) application forms and fields",
+  "Operator business type and registration fields (OR-1)",
+  "Whether permits to drill can be filed online"
+ ],
+ "researched": "2026-10-31"
+}

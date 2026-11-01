@@ -1,0 +1,383 @@
+{
+ "state": "NV",
+ "name": "Nevada",
+ "agency": {
+  "name": "Nevada Division of Minerals, Commission on Mineral Resources (Oil, Gas and Geothermal / Fluid Minerals Program)",
+  "short": "NDOM",
+  "url": "https://www.minerals.nv.gov/programs/oil-gas/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill an Oil or Gas Well",
+  "number": "Form 02 (revision dated 01/23/2024), 2 pages; also Form 01 organization report, Form 03B surety bond (10/10/2025)",
+  "url": "https://www.minerals.nv.gov/uploadedFiles/mineralsnvgov/content/Programs/OG/OGForms/Form02_OG_AppForPermitDrillOilGas_20240123_FI_RE.pdf",
+  "read": true,
+  "notes": "Read both pages of the current blank fillable Form 02 (HTTP 200, 256 KB, linked from https://www.minerals.nv.gov/programs/oil-gas/forms-and-reports/; an older 2019 path from a search result returned 404). Page 1: operator and send-to address, lease name, split estate, well no., quarter-quarter, section, township, range (M.D.B.M.), UTM N and E (NAD83), field, county, footages from section lines, distance from nearest town, fee owner (patented land), federal lease serial no., land type (Federal, Private, State), lessee, unconventional stimulation yes/no, proposed depth, elevation and KB, plat if wildcat, bond status and number. Page 2: confidentiality notice (NAC 522.540), certification, office box (Permit No., API No., Approval Date, By), conditions of permit. The form says to submit a proposed drilling program with the application; that program and the Form 01 organization report were not read, so casing, cement, BOP, H2S, water and pit items are unknown."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API column in Oil Well Locations (745 of 745 rows); also an office box on Form 02"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit column (0002 to 0988); 'Permit No.' in the office box of Form 02"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Well column; form asks Lease name and Well No."
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "BLMLease_ (BLM lease serial, 631 rows); Form 02 asks 'Lease name'"
+  },
+  "operator_name": {
+   "s": "query",
+   "e": "web",
+   "n": "In 2026 permit titles on the Permits page; Producers List PDF not read; no operator column in layer"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 01 organization report exists (not read); Form 02 has no item"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "'Status of a bond ... NRS 522.230', bond number and surety if posted with U.S. Government"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "CountyName in the Historic Oil Production layer; Form 02 asks County"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Field (3-letter code such as EXP, TMR, ESP); Form 02 asks Field"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "UTM_Easting and UTM_Northing (NAD83), not lat/long; Form 02 asks UTM too"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "form",
+   "n": "Quarter-quarter, Sec, T, R, M.D.B.M. and feet from section lines on Form 02"
+  },
+  "bottom_hole_loc": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 02 gives one well location; directional plans not seen"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; a drilling program is attached (content not read)"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "'The elevation is ___ feet above sea level. The KB will be ___'"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Fee Owner and address (patented land), 'Split Estate? Yes/No' (names not copied)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Type: Prod, Inj, WW, Strat; Form 02 says oil or gas well"
+  },
+  "work_type": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 02 is a drill application with no work-type item; workovers by sundry Form 04 (not read)"
+  },
+  "well_direction": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "'It is proposed to drill the well to a depth of ___ feet using a rotary rig'"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "target_formation": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; a drilling program is attached (content not read)"
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; a drilling program is attached (content not read)"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; a drilling program is attached (content not read)"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "'Considered for unconventional well stimulation? Yes/No'; stimulation checklist (Mar 2026)"
+  },
+  "spacing_unit": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "Land_Status (Federal, Private, Split Fed Surf) and BLMLease_; Form 02 asks lessee, lease serial no., land type"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "'Application must be accompanied with permit fee' (amount not on the form)"
+  },
+  "notice_hearing": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "date_received": {
+   "s": "form",
+   "e": "form",
+   "n": "Certification 'Date' beside the signature; 'Entered in Database' date is office use"
+  },
+  "date_approved": {
+   "s": "query",
+   "e": "web",
+   "n": "Date in permit titles on the Permits page (Oil 0988 04-29-2026) and on the permit PDF; not in the layer"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Completion_Date (text, 699 of 745 rows)"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Status: Plugged, In Use, Shut-In, Abandoned, Pending, Withdrawn, Drilling"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "'If wildcat, attach plat by licensed surveyor showing location'"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "Permit PDFs (signed filled form) linked on the Permits page; one opened (0988)"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 02; not verified elsewhere"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "Historic Oil, Gas and Water Production layers: one value per well per year, 1954 to 2026"
+  }
+ },
+ "sources": [
+  {
+   "id": "nv-og-well-layer",
+   "name": "NDOM 'Oil Well Locations' (ArcGIS layer in the 'Oil & Gas Production and Well Data' feature service)",
+   "url": "https://services.arcgis.com/CXYUMoYknZtf5Qr3/arcgis/rest/services/OGHistoricData/FeatureServer/1",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "1954",
+   "size_mb": 0.25,
+   "free": true,
+   "login": false,
+   "license": "unknown; hosted on the NDOM open data hub (data-ndom.opendata.arcgis.com)",
+   "columns": [
+    "OBJECTID",
+    "Permit",
+    "UTM_Easting",
+    "UTM_Northing",
+    "Well",
+    "Status",
+    "API",
+    "Well_Type",
+    "Completion_Date",
+    "Field",
+    "Land_Status",
+    "BLMLease_",
+    "GlobalID",
+    "Conventional"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil wells: production, injection, water well, stratigraphic test"
+   ],
+   "reachable": "ok",
+   "tested": "Found through the NDOM ArcGIS organization search (item modified 2026-05-30). Service ?f=json and layer ?f=json: HTTP 200 (12 KB). One query of all rows without geometry: HTTP 200, 253,108 bytes, 745 rows (max 1,000, not truncated). Status: Plugged 615, In Use 73, Shut-In 45, Abandoned 8, Pending 2, Withdrawn 1, Drilling 1. Well_Type: Prod 707, Inj 15, WW 9, Strat 8. Land_Status: Federal 644, Private 95. Completion years since 2015: 2, 0, 1, 2, 1, 2, 2, 0, 1, 0, 1 (2015 to 2025). Permit numbers run 0002 to 0988. No operator, county or date-approved column."
+  },
+  {
+   "id": "nv-og-permits-page",
+   "name": "NDOM Oil and Gas Permits and Permit Notices (HTML list of permit PDFs, current year and five prior)",
+   "url": "https://www.minerals.nv.gov/programs/oil-gas/Permits/",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "2021",
+   "size_mb": 0.03,
+   "free": true,
+   "login": false,
+   "license": "State web page",
+   "columns": [
+    "link text: 'Oil <permit no.> <MM-DD-YYYY> <operator> <well name>', one PDF per permit (filled Form 02 with Conditions of Approval)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "oil well permit to drill"
+   ],
+   "reachable": "ok",
+   "tested": "GET: HTTP 200, 35 KB. Six permits listed: 0983 (2021-07-20), 0984 (2022-07-15), 0985 and 0986 (both 2023-02-14), 0987 (2026-02-26), 0988 (2026-04-29); none in 2024 or 2025. Older permits only on request (Fluid Minerals Program Manager). One permit PDF (0988): HTTP 200, 1.3 MB, 2 pages, a digitally signed filled form with permit no., API no. and approval date 4/29/2026."
+  },
+  {
+   "id": "nv-og-production-layers",
+   "name": "NDOM Historic Oil, Gas and Water Production layers 1954 to 2026 (same feature service, layers 2 to 4) and 'Nevada Oil Patch' PDF reports",
+   "url": "https://services.arcgis.com/CXYUMoYknZtf5Qr3/arcgis/rest/services/OGHistoricData/FeatureServer/2",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "annual",
+   "history_from": "1954",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "Permit",
+    "WellName",
+    "Status",
+    "API",
+    "Well_Type",
+    "Completion_Date",
+    "UTM_Easting",
+    "UTM_Northing",
+    "F1954 ... F2026 (annual volume per well)",
+    "CountyName",
+    "Conventional"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil production by well and year (not a permit source)"
+   ],
+   "reachable": "ok",
+   "tested": "Layer 2 ?f=json: HTTP 200, 23 KB, schema read only; rows not downloaded. The forms page also links monthly 'Nevada Oil Patch' production PDFs by fiscal year (not fetched)."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "Free, reachable ArcGIS layer with one row per oil well (permit number, API, status including Pending and Drilling, completion date) but no approval, filing or spud date. Approval dates are only in the titles and PDFs on the Permits page (HTML, six PDFs in six years). Volume is tiny: 2 permits in 2026, none in 2024 or 2025.",
+ "producer_plan": "For counts of approvals, read the Permits page and parse each link text 'Oil <number> <MM-DD-YYYY> ...' (date format varies: 2-26-2026 and 04-29-2026); that gives approved new-drill permits by month, almost always zero. The page keeps only the current year and five prior years. Use the Oil Well Locations layer (where=1=1, 745 rows, 253 KB) to catch permits not yet on the page (Status Pending, Drilling) and Completion_Date for completions by month; take a snapshot each run and treat a new Permit number as a new permit. Well_Type separates production, injection, water and stratigraphic wells; new drill vs re-entry is not captured. Geothermal and lithium well permits sit on other NDOM pages and are not oil and gas. Expect 0 to 3 permits a year.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "Permit PDFs and Form 02 carry contact names, phone numbers, e-mail addresses and fee-owner names and addresses (not copied). The layer holds no operator or owner names; the permits page names companies only in the cases seen.",
+ "unknowns": [
+  "contents of the proposed drilling program and Form 01 organization report (casing, cement, BOP, H2S, water, pits, operator ID and type)",
+  "whether the Permits page ever lists permits before they are approved",
+  "spud dates (daily drilling reports go to the Division but are not public as far as seen)",
+  "layer update schedule and license",
+  "fee amount in force (NRS 522.050 caps from a search summary were not read)",
+  "whether permits older than six years can be had as a list",
+  "completion reports (Form 05) and well logs online"
+ ],
+ "researched": "2026-10-31"
+}

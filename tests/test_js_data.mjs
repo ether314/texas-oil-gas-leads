@@ -247,5 +247,26 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(real.length === idx.days.length && [...kinds].every((k) => Im.KIND_INFO[k]), 'images: every kind in the committed live days has a description (' + [...kinds].filter((k) => !Im.KIND_INFO[k]).join(', ') + ')');
 }
 
+/* ---------- fields-data.js ---------- */
+{
+  const Fd = await imp('fields-data.js');
+  const metrics = [{ key: 'a', label: 'A', group: 'g' }, { key: 'b', label: 'B', group: 'g' }, { key: 'c', label: 'C', group: 'h' }];
+  const cells = (a, b, c) => ({ a: [a, 'file', ''], b: [b, 'form', ''], c: [c, 'none', ''] });
+  const doc = { metrics, groups: [{ id: 'g', label: 'G' }, { id: 'h', label: 'H' }], order: ['ND', 'KS', 'CO'], states: {
+    ND: { name: 'North Dakota', cells: cells('data', 'data', 'form') }, KS: { name: 'Kansas', cells: cells('data', 'query', 'unknown') }, CO: { name: 'Colorado', cells: cells('form', 'unknown', 'unknown') } } };
+  check(same(Fd.stateScore(doc, 'ND'), { data: 2, query: 0, form: 1, none: 0, unknown: 0, asked: 3, total: 3 }) && Fd.stateScore(doc, 'CO').asked === 1, 'fields: a state\'s score counts each status and what it asks for at all');
+  check(Fd.metricScore(doc, 'a').data === 2 && Fd.metricScore(doc, 'b').query === 1 && Fd.metricScore(doc, 'c').unknown === 2 && Fd.metricScore(doc, 'a').total === 3, 'fields: a metric\'s score counts the agencies');
+  check(Fd.columns(doc).join() === 'ND,KS,CO' && Fd.columns(doc, 'name').join() === 'CO,KS,ND', 'fields: columns run most published first, or A to Z');
+  check(Fd.metricsIn(doc, 'g').length === 2 && Fd.metricsIn(doc, 'all').length === 3 && Fd.metricsIn(doc, null).length === 3, 'fields: a group filters the rows');
+  const h = Fd.headline(doc);
+  check(h.best.id === 'ND' && h.best.n === 2 && h.topMetric.m.key === 'a' && Math.abs(h.unknownShare - 3 / 9) < 1e-9 && h.agencies === 3, 'fields: the headline names the best agency and metric and the share not verified');
+  check(Fd.headline({ ...doc, states: { ND: { name: 'x', cells: cells('none', 'none', 'none') }, KS: doc.states.KS, CO: doc.states.CO } }).best.id === 'KS', 'fields: ties and zeros do not name an agency with nothing published');
+  check(same(Fd.byStatus(doc, 'a'), { data: ['KS', 'ND'], query: [], form: ['CO'], none: [], unknown: [] }), 'fields: the agencies of each status for a metric, by name');
+  check(Fd.cellOf(doc, 'ND', 'a').s === 'data' && Fd.cellOf(doc, 'ZZ', 'a') === null && Fd.shortCode('FO') === 'Gulf' && Fd.shortCode('BL') === 'BLM' && Fd.shortCode('ND') === 'ND', 'fields: a cell, no cell, and the short codes');
+  check(Fd.CODES.map((c) => c.id).join() === 'data,query,form,none,unknown' && Object.keys(Fd.GRADES).join() === 'A,B,C,D', 'fields: five statuses and four grades');
+  const real = read('permit-fields');
+  check(real.order.every((id) => Fd.stateScore(real, id).total === real.metrics.length) && real.order.every((id) => Fd.stateScore(real, id).data + Fd.stateScore(real, id).query + Fd.stateScore(real, id).form + Fd.stateScore(real, id).none + Fd.stateScore(real, id).unknown === 48), 'fields: every committed state answers all 48 metrics');
+}
+
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
 process.exit(fails ? 1 : 0);

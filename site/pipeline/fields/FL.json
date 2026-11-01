@@ -1,0 +1,404 @@
+{
+ "state": "FL",
+ "name": "Florida",
+ "agency": {
+  "name": "Florida Department of Environmental Protection, Division of Water Resource Management, Oil and Gas Program",
+  "short": "FDEP OGP",
+  "url": "https://floridadep.gov/water/oil-gas"
+ },
+ "form": {
+  "name": "Application for Permit to Drill (Oil & Gas Form 3)",
+  "number": "Oil & Gas Form 3 (revised April 22, 2014)",
+  "url": "https://floridadep.gov/sites/default/files/Form%203%20Application%20for%20Permit%20to%20Drill_1.pdf",
+  "read": true,
+  "notes": "One-page form, read in full. Filed with an Organization Report (Form 1), performance security, a surveyor plat, site construction plans, a casing and cementing program, a contingency plan where applicable and a $2,000 fee (rule 62C-26.003, read on Cornell LII). The form has no field for well type, work type, lease, formation, depth plan, BOP, H2S, water, pits or fracturing, so those are none or unknown. The bottom line is agency use: file number, action, date, API number."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_NO (10 digits)"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMITNO; letters/decimals mark later modifications"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_NAME; form asks \"Well Name and Number\""
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3 asks well name and field, no lease or unit name"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "COMPANY (operator of record)"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 has no operator ID; Organization Report (Form 1) not read"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Organization Report (Form 1) not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 3 asks the security type and its serial number; not in the workbook"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "COUNTY (of bottom-hole location)"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district on Form 3 or in the workbook"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "OILFIELD (field name or WILDCAT)"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "LATITUDE, LONGITUDE (decimal and DMS); form asks both"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "STR, QSEC and SHL footages; form asks Sec/Twp/Rge for SHL and BHL"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "BHL = footage from unit boundary (or SAME); no BH coordinates"
+  },
+  "lateral_path": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3 asks no survey or path"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "GRND_ELEV and DERRICK_ELEV"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 3; plat contents not read"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "No purpose column; only via CURRENT_STATUS (PROD, INJ, SWD...)"
+  },
+  "work_type": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3 and the workbook carry no work type"
+  },
+  "well_direction": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; BHL \"SAME\" only hints at a vertical well"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Form asks \"Proposed Depth\"; file MD/TVD are as drilled"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "File TVD column is the drilled wellbore; planned TVD not seen"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 3"
+  },
+  "target_formation": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3 asks Field/Area only, no target formation"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 3"
+  },
+  "casing_program": {
+   "s": "data",
+   "e": "file",
+   "n": "COND/SURF/INT/PROD_CSG and TUBING as size at depth; rule 62C-26.003 requires a program"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Rule 62C-26.003: program with cement class and quantity; not a workbook column"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Form asks acres assigned and distance to unit boundary; file has SHL/BHL footage only"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form asks if all mineral interest is leased; lease map and nonconsenting owners attached"
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "$2,000 processing fee, rule 62C-26.003(8); not on Form 3 itself"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "Notice to working interest owners (s. 377.2411); local permits and contingency plan near waters"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "ISSUE_DATE = date final authority signed the permit (Excel serial)"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SPUD_DATE"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "COMPLETION_DATE (also PLUG_DATE)"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "CURRENT_STATUS and HISTORICAL_STATUS (PENDING, DENIED, N/D...)"
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "DOCUMENTS column links a per-permit document list (Oculus); contents not checked"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "DOCUMENTS column links a per-permit document list (Oculus); contents not checked"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "DOCUMENTS column links a per-permit document list (Oculus); contents not checked"
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_LOGS lists log types received, not the logs"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Separate well production files by year (2012-present) on the Oil and Gas Data page"
+  }
+ },
+ "sources": [
+  {
+   "id": "fl-permit-database",
+   "name": "Oil and Gas Permit Database (OG_WELLS_WEBSITE_4.xlsx, tab WELLS)",
+   "url": "https://floridadep.gov/sites/default/files/OG_WELLS_WEBSITE_4.xlsx",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "quarterly",
+   "history_from": "1945",
+   "size_mb": 0.7,
+   "free": true,
+   "login": false,
+   "license": "public record; none stated",
+   "columns": [
+    "PERMIT_SORT",
+    "PERMITNO",
+    "OG_NUMBERS",
+    "DOCUMENTS",
+    "LOCATION",
+    "COUNTY",
+    "OILFIELD",
+    "COMPANY",
+    "WELL_NAME",
+    "CURRENT_STATUS",
+    "HISTORICAL_STATUS",
+    "OIL_SHOW",
+    "SCAN",
+    "WELL_LOGS",
+    "LOCALE",
+    "FEDLANDS",
+    "STR",
+    "QSEC",
+    "LATITUDE",
+    "LONGITUDE",
+    "LAT_DDMMSS",
+    "LONG_DDMMSS",
+    "SHL",
+    "BHL",
+    "DERRICK_ELEV",
+    "GRND_ELEV",
+    "ISSUE_DATE",
+    "SPUD_DATE",
+    "COMPLETION_DATE",
+    "PLUG_DATE",
+    "TVD",
+    "MD",
+    "COND_CSG",
+    "SURF_CSG",
+    "INT_CSG",
+    "PROD_CSG",
+    "TUBING",
+    "SAMPLES",
+    "CORES",
+    "CORE_ANALY",
+    "DR_STM_TST",
+    "TEST_OIL",
+    "TEST_GAS",
+    "TEST_WATER",
+    "PERFS_OPEN_INTERVAL",
+    "PLUGS",
+    "BHT_DEG_F",
+    "API_NO",
+    "WNUMBER",
+    "PA_NUMBERS",
+    "COMMENTS",
+    "PUBLIC_DATA"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permit (new drill)",
+    "modification (decimal permit number)",
+    "injection or disposal (via status)"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD then one GET: HTTP 200, 703,015 bytes, last-modified 2026-09-08. Five tabs (Facility Information lookup, WELLS, TOTALS, LOG ABBREVIATION CHEAT SHEET, LEGEND). WELLS has 1,478 rows (1,431 with ISSUE_DATE, 1945-06-26 to 2020-03-04; 1,156 with SPUD_DATE, latest 2021-05-18; 47 without an issue date: never drilled, pending, denied). Dates are Excel serial numbers. Latest permit numbers: 1388 PENDING, 1393 issued Dec 2019, 1394 DENIED. The agency page says it is updated quarterly or as needed, last Sept 8, 2026."
+  },
+  {
+   "id": "fl-well-production",
+   "name": "Well Production Data by Year (2012-present) and related field, state and historical production files",
+   "url": "https://floridadep.gov/water/oil-gas/content/well-production-data",
+   "kind": "report",
+   "format": "other",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "2012",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Listed on the agency Oil and Gas Data page (fetched); the production files were not opened."
+  },
+  {
+   "id": "fl-mapdirect",
+   "name": "Interactive Map of Permitted Wells (MapDirect) and GIS point file MMP_OIL_GAS_PERMIT_WELLS.zip",
+   "url": "https://ca.dep.state.fl.us/mapdirect/?focus=oilandgas",
+   "kind": "map",
+   "format": "shp",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Map link is on the agency page (fetched). The zip name and \"as of Feb 5, 2025\" come only from a web search summary of its metadata; not requested."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "A free, reachable 0.7 MB workbook with one row per permit and an ISSUE_DATE (final agency action) plus spud and completion dates. But Florida issues almost no permits: the latest ISSUE_DATE in the file is 2020-03-04, with 19 in 2019, and 4 or fewer a year 2014-2018, so monthly counts are near zero.",
+ "producer_plan": "Download OG_WELLS_WEBSITE_4.xlsx, read the WELLS tab, convert ISSUE_DATE (Excel serial) to a date and count rows by month. A decimal PERMITNO (1335.1) is a later modification of the same permit: count it as \"amend\", whole numbers as new permits. Drop rows with no ISSUE_DATE (never drilled, pending, denied) or show them as pending. Injection and disposal wells can be split out only through CURRENT_STATUS (INJ, SWD). The file changes quarterly, so check its last-modified header. Expect a near-empty series since March 2020: the national report should say \"no permits issued since March 2020\" rather than show zeros as a trend.",
+ "activity_bands_possible": [
+  "new",
+  "amend",
+  "injection"
+ ],
+ "privacy_notes": "The workbook has company names (COMPANY) and a free-text COMMENTS column marked for intra-office use; check it before publishing. Form 3 has a signer with a residential address, not published in the workbook.",
+ "unknowns": [
+  "Contents of the Oculus document list per permit (plat, form, completion report online?)",
+  "The GIS zip and map layer fields",
+  "Form 1 Organization Report fields (operator ID, business type)",
+  "Whether BOP, H2S, water, pit or frac plans are required in the site plans",
+  "Update cadence of the production files",
+  "Whether any permit after Dec 2019 is recorded beyond the pending 1388"
+ ],
+ "researched": "2026-10-31"
+}

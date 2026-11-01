@@ -1,0 +1,343 @@
+{
+ "state": "TN",
+ "name": "Tennessee",
+ "agency": {
+  "name": "Tennessee Department of Environment and Conservation, Division of Mineral and Geologic Resources, Oil and Gas Program",
+  "short": "TDEC DMGR",
+  "url": "https://www.tn.gov/environment/mineral-geologic/oil-gas.html"
+ },
+ "form": {
+  "name": "Application For Permit To Drill",
+  "number": "CN-0211",
+  "url": "https://tdec.tn.gov/etdec/DownloadFile.aspx?row_id=CN-0211",
+  "read": false,
+  "notes": "The form PDF answered 403 from this machine (one request, not repeated). Form cells come from the agency permitting page (https://www.tn.gov/environment/mineral-geologic/oil-gas/permitting.html) and rules 0400-52-02-.01, 0400-52-02-.02 and 0400-52-03-.01 (Cornell LII), so most are form/doc evidence, not read on the form. Filed with: plat by a Tennessee surveyor, Organization Report CN-0219, Surface Owner Certification CN-0694, Pooling Affidavit CN-0690, Reclamation Plan CN-0692, action plan, bond, $500 fee."
+ },
+ "cells": {
+  "api_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "permit_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": "A permit exists; field list of the Data Viewer not seen (403)"
+  },
+  "well_name": {
+   "s": "form",
+   "e": "doc",
+   "n": "Rule 0400-52-02-.02: amending changes to well name/number needs CN-0228"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "doc",
+   "n": "Newspaper notice for close-spacing permits names operator, lease, well number"
+  },
+  "operator_name": {
+   "s": "form",
+   "e": "doc",
+   "n": "CN-0219 Organization Report names the responsible parties"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "bond": {
+   "s": "form",
+   "e": "web",
+   "n": "Plugging and reclamation bond required with application; amount on Bonds page"
+  },
+  "county": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "field_pool": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "surface_latlon": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat (surveyor) gives lat/long and Carter Coordinates; rule 0400-52-03-.01"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat: Carter coordinates, distance to 2 nearest lease lines and 2 landmarks; no PLSS"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "doc",
+   "n": "Horizontal wells: plat shows collar, entry and termination point lat/long"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "elevation": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat shows surface elevation above MSL and a benchmark; rule 0400-52-03-.01"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "web",
+   "n": "Surface Owner Certification CN-0694; plat names surface owners within 3,000 ft"
+  },
+  "well_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "work_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "well_direction": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "doc",
+   "n": "Proposed total depth changes need CN-0228 amendment (rule 0400-52-02-.02)"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "web",
+   "n": "Second-hand: a state page says form asks target formation; form not read"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "doc",
+   "n": "Plat shows pits, tanks; erosion, surface-water and reclamation plan; no waste plan seen"
+  },
+  "water": {
+   "s": "form",
+   "e": "doc",
+   "n": "Only a frac fluid volume estimate and drinking-water wells within 1/4 mile; no water source"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "doc",
+   "n": "Application states whether the well will be fractured and an estimated fluid volume"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "web",
+   "n": "Pooling Affidavit CN-0690 if more than one landowner; plat shows unit lines, acres"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "doc",
+   "n": "Closer-than-spacing sites need owner notice and newspaper notice; objection to Board"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "doc",
+   "n": "Applicant must say whether it has the right to drill; contested ownership: claimants listed"
+  },
+  "fee": {
+   "s": "form",
+   "e": "web",
+   "n": "$500 application fee (amend $100, change operator $100)"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "doc",
+   "n": "Surface-owner notice (15-day reply), newspaper notice and Board hearing on objection"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_approved": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule: valid 365 days from issuance; whether the data shows it unknown"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "status": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  }
+ },
+ "sources": [
+  {
+   "id": "tn-dataviewer",
+   "name": "TDEC Oil and Gas Data Viewer (Oil and Gas Well Permits)",
+   "url": "https://dataviewers.tdec.tn.gov/dataviewers/r/tdec_reports/f11776/oil-and-gas-well-permits",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "One GET with curl: HTTP 403 (server awselb/2.0, 118-byte page). Not repeated. Agency page says the database of permits is searchable here and that changes show up the next day (search summary). Flag fields (approval date, type) are NOT verified; page looks like an Oracle APEX report."
+  },
+  {
+   "id": "tn-og-mapserver",
+   "name": "TDEC Oil and Gas Wells map layer (Oil_and_Gas2 MapServer, layer 0)",
+   "url": "https://tdeconline.tn.gov/arcgis/rest/services/Oil_and_Gas2/MapServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "One GET of layer0?f=json with curl: HTTP 403 (118-byte page). Not repeated. Existence, point geometry and display field PERMIT_NO come only from a web search summary of the service directory; fields and date columns are unverified."
+  },
+  {
+   "id": "tn-og-mapviewer",
+   "name": "DMGR Map Viewer (permitted wells with links to the Data Viewer)",
+   "url": "https://www.tn.gov/environment/mineral-geologic/oil-gas/data-map-viewers/map-viewer.html",
+   "kind": "map",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "The Data and Map Viewers page itself answered 200 (it describes both tools); the map viewer page answered 403 on one GET, not repeated."
+  }
+ ],
+ "grade": "D",
+ "grade_reason": "Every TDEC data host answered 403 to one polite request from this machine (data viewer, map layer, form PDF), and no bulk file or documented API was found. The agency does publish a searchable permit database and a map layer, so this would be C (query/HTML only) if a runner can reach them.",
+ "producer_plan": "Best case: the Oil and Gas Data Viewer (an interactive report; an APEX report normally offers a CSV download, unverified) or the Oil_and_Gas2 map layer (query with where=1=1, resultOffset paging) would give one row per permit or well with the permit number; whether an approval date and work type exist is unknown. Tennessee permits are few (tens a year), so a monthly count would be tiny and noisy. Next step for a human: open the viewer in a browser, look for the CSV download and the column list, and try the map layer from a GitHub runner once. Failing that, a public-records request to the Oil and Gas Program.",
+ "activity_bands_possible": [],
+ "privacy_notes": "Not seen. The permit database likely names operators and may include individuals; apply the tracker rule (organizations only).",
+ "unknowns": [
+  "Fields, size, history and cadence of the Data Viewer and map layer",
+  "Whether any bulk download exists",
+  "Whether approval or spud dates are published",
+  "The permit form itself (403)",
+  "API number format used by the agency",
+  "Whether completion paperwork is online"
+ ],
+ "researched": "2026-10-31"
+}

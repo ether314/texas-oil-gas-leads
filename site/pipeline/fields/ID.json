@@ -1,0 +1,397 @@
+{
+ "state": "ID",
+ "name": "Idaho",
+ "agency": {
+  "name": "Idaho Department of Lands, Oil and Gas Conservation Commission (OGCC) / Oil and Gas Program",
+  "short": "IDL OGCC",
+  "url": "https://ogcc.idaho.gov/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Deepen, or Plug Back",
+  "number": "OGR-101 (revised June 2025), 4 pages; fee schedule OGR-100",
+  "url": "https://ogcc.idaho.gov/wp-content/uploads/OGR-101-Application-Drill-Deepen-Plug-2025-FORM.pdf",
+  "read": true,
+  "notes": "Read all 4 pages of the blank fillable form (HTTP 200, 238 KB): page 1 fees, denial reasons, completion and log rules; page 2 operator and well description; page 3 purchased-lease, surface owner, state leases, actions checkboxes, maps; page 4 other required information, certification, office-use box (Approval Date, US Well Number, Operator Number). Fee: drill $2,000, deepen $500, plug back $500 (printed on the form). Filed by mail to Boise. Rule: IDAPA 20.07.02.200; Idaho Code 47-316."
+ },
+ "cells": {
+  "api_number": {
+   "s": "query",
+   "e": "web",
+   "n": "US Well Number (USWN 11-075-20041) on each well file page; also an office-use box on the form"
+  },
+  "permit_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No separate permit number seen; the USWN identifies the permit and well"
+  },
+  "well_name": {
+   "s": "query",
+   "e": "web",
+   "n": "Well file page title ('James #1-10'); form asks Name of Lease and Well Number"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "'Name of Lease' on OGR-101"
+  },
+  "operator_name": {
+   "s": "query",
+   "e": "web",
+   "n": "'Operator:' on each well file page; form has Name of Operator"
+  },
+  "operator_id": {
+   "s": "form",
+   "e": "form",
+   "n": "'Operator Number (if known)' in the office-use box"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "'Bond Type and Number' (if lease purchased with wells); denial for failure to post required bonds"
+  },
+  "county": {
+   "s": "query",
+   "e": "web",
+   "n": "'County:' on well file page and on the form"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "field_pool": {
+   "s": "form",
+   "e": "form",
+   "n": "'Field and Reservoir (if wildcat, so state)'"
+  },
+  "surface_latlon": {
+   "s": "form",
+   "e": "form",
+   "n": "Latitude, Longitude (decimal degrees) and datum on the form"
+  },
+  "surface_plss": {
+   "s": "form",
+   "e": "form",
+   "n": "Section, Township, Range and footages from section lines"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Plat must show surface and bottom-hole locations for directional wells"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Directional or Horizontal Drilling box; attachment required under IDAPA 20.07.02"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "'Elevation (ground)' on the form"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "'Surface Rights Owner (at proposed surface location)'; state-lease boxes (a person's name not copied)"
+  },
+  "well_type": {
+   "s": "form",
+   "e": "form",
+   "n": "'Type of Test/Unit': Gas / 640 acre or Oil / 40 acre or Other"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "'Application to: Drill ($2,000), Deepen ($500), Plug Back ($500)'"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "'Directional or Horizontal Drilling' checkbox"
+  },
+  "proposed_depth_md": {
+   "s": "query",
+   "e": "web",
+   "n": "'Proposed Measured Depth' on the well file page; form has 'Proposed depth'"
+  },
+  "proposed_depth_tvd": {
+   "s": "query",
+   "e": "web",
+   "n": "'Proposed Total Vertical Depth' on the well file page"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "'Estimated depth to the top of the target formations'"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "'Estimated depth to the top of the important geologic markers'"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "'Proposed casing program': size, weight, setting depth"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "'Type and amount of cement to be used, and the intervals cemented'"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "'Schematic diagram of the BOP and well head assemblies' with size and pressure rating"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "'Pit Construction' box (attachment); erosion control and reclamation plans"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "'Well Treatment' box; a separate well-treatment application is posted for comment"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Type of Test/Unit (640 or 40 acre, or Docket No.) and acres in lease(s)"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "'Is Operator requesting a well location exception?' Yes/No"
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Drill $2,000, Deepen $500, Plug Back $500 printed on the form"
+  },
+  "notice_hearing": {
+   "s": "query",
+   "e": "web",
+   "n": "Page posts applications for 10 business days of public comment (lists seismic and well treatment)"
+  },
+  "date_received": {
+   "s": "form",
+   "e": "form",
+   "n": "'Date:' beside the operator block and the signature date; not published as data"
+  },
+  "date_approved": {
+   "s": "form",
+   "e": "form",
+   "n": "Office-use 'Approval Date'; approved PDFs are named by date (2026.02.04_...) on the well page"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the OGR-101 checklist; not verified elsewhere"
+  },
+  "status": {
+   "s": "query",
+   "e": "web",
+   "n": "'Well Status:' (e.g. Drilled/Confidential) on each well file page"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Survey plat required; the posted Permit to Drill PDF is a combined file (not opened)"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "'Permit to Drill' PDF linked from each well file page"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form says a completion report is due in 30 days; not seen online for a well"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "LASFiles.zip: LAS logs for wells drilled 2007 and later that are releasable"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Page: monthly production exports to .csv from the Data Explorer; PDF reports per month"
+  }
+ },
+ "sources": [
+  {
+   "id": "id-well-file-pages",
+   "name": "OGCC Well & Facilities Files (index of wells and one HTML page per well)",
+   "url": "https://ogcc.idaho.gov/well-files/",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "2007",
+   "size_mb": 0.15,
+   "free": true,
+   "login": false,
+   "license": "State web pages; some documents marked confidential by submitters are posted only where public",
+   "columns": [
+    "Well Status",
+    "County",
+    "Operator",
+    "Proposed Measured Depth",
+    "Proposed Total Vertical Depth",
+    "Document Links (Permit to Drill, Sundry Notice 1..n)",
+    "USWN and well name in the index"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "well permit to drill, sundry notices; wells in Bonneville, Canyon and Payette counties"
+   ],
+   "reachable": "ok",
+   "tested": "GET of /well-files/: HTTP 200, 148 KB, lists 34 wells by county (3 Bonneville, 2 Canyon, 29 Payette) as USWN plus name, one Highway 30 processing facility, and a LAS zip. GET of one well page (James #1-10): HTTP 200, shows status, county, operator, proposed MD and TVD and three PDF links; the approval date appears only in the PDF's file name (2026.02.04) and inside the PDF (not opened)."
+  },
+  {
+   "id": "id-data-explorer",
+   "name": "OGCC Data Explorer (RBDMS Data Mining web app, 'ID Data Explorer')",
+   "url": "https://welldata.ogcc.idaho.gov/",
+   "kind": "query",
+   "format": "other",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "2007",
+   "size_mb": 0.17,
+   "free": true,
+   "login": false,
+   "license": "Page says the Department makes no warranty; no license stated",
+   "columns": [
+    "not verified: the app runs in the browser; the OGCC pages say wells can be searched, reviewed and downloaded and monthly production can be exported to .csv; layer switches in the script include APD, BHL, well treatment and wells"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown (layers named APD, well treatment, surface facility, UIC permit in the app's script)"
+   ],
+   "reachable": "ok",
+   "tested": "GET of the app shell: HTTP 200, 174 KB HTML (IIS, AngularJS and OpenLayers, 'CSV Export' buttons, a staff 'Log In' that is not required to view). Its data calls were not exercised, so the CSV columns, any API and approval dates are unverified. Page last updated Nov 28, 2025 (OGCC page footer)."
+  },
+  {
+   "id": "id-permit-applications-page",
+   "name": "OGCC Permit Applications (posted for public comment: seismic, well treatment)",
+   "url": "https://ogcc.idaho.gov/well-permit-applications/",
+   "kind": "report",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "2025",
+   "size_mb": 0.15,
+   "free": true,
+   "login": false,
+   "license": "State web page",
+   "columns": [
+    "applicant",
+    "status (Under review / Approved with date)",
+    "application and approval PDFs with posting dates",
+    "comment deadline",
+    "comments received"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "seismic permit",
+    "well treatment permit"
+   ],
+   "reachable": "ok",
+   "tested": "GET: HTTP 200, 150 KB; four items (two seismic permits for 2025 and 2026, one pending seismic permit, one well treatment for the ML Investments #2-10 well). Drill permits are not listed here."
+  },
+  {
+   "id": "id-las-zip",
+   "name": "LAS well log files, wells drilled 2007 and later",
+   "url": "https://gis1.idl.idaho.gov/FileServer/oilgas/welldata/LASFiles.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "2007",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "LAS well logs (not a permit file)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "well logs, not permits"
+   ],
+   "reachable": "not-tested",
+   "tested": "Link read on the well files page only; not requested (size unknown)."
+  }
+ ],
+ "grade": "C",
+ "grade_reason": "Idaho has about 34 wells since 2007 (about one permit a year, none in some years). Permit facts are in a browser-based Data Explorer (CSV export promised, columns not verified) and HTML well pages with status, county, operator and proposed depths; the approval date is only in each permit PDF and its file name. No bulk permit file or API was found.",
+ "producer_plan": "Too small for a monthly series, so treat it as a hand list. Read https://ogcc.idaho.gov/well-files/ for the wells (USWN, county, name); open each well page for status, operator, proposed MD and TVD and the 'Permit to Drill' PDF, whose file name starts with the approval date (YYYY.MM.DD). That gives approved drill permits by month, with zero for almost every month (34 wells listed, since 2007). Work type (drill, deepen, plug back) is on the form only; well treatment and seismic applications are posted separately on /well-permit-applications/. Re-check whether the Data Explorer CSV export (wells and production) works without a login before building anything; it was not tested. Rows lag: many wells are 'Drilled/Confidential' and details can be withheld.",
+ "activity_bands_possible": [
+  "new",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "Well pages show the operator company; permit PDFs and the form carry contact names, telephone numbers, e-mail addresses and surface-owner names (not copied). The OGCC page names a staff contact and a public commenter (not copied).",
+ "unknowns": [
+  "columns and filters of the Data Explorer CSV export, and whether it needs no login",
+  "whether the Data Explorer has an approval date or permit type field",
+  "operator type, permit expiry, spud and completion dates",
+  "whether the LAS zip and PDFs are reachable (not requested)",
+  "mineral owner (the form asks only about state leases)",
+  "H2S and water plans (not on the form's checklist)"
+ ],
+ "researched": "2026-10-31"
+}

@@ -1,0 +1,433 @@
+{
+ "state": "OR",
+ "name": "Oregon",
+ "agency": {
+  "name": "Oregon Department of Geology and Mineral Industries (DOGAMI), Mineral Land Regulation and Reclamation (MLRR)",
+  "short": "DOGAMI MLRR",
+  "url": "https://www.oregon.gov/dogami/mlrr/Pages/oilgas.aspx"
+ },
+ "form": {
+  "name": "Application for Permit to Drill an Oil or Gas Well (DOGAMI)",
+  "number": "no form number printed on the copies read",
+  "url": "https://www.oregon.gov/dogami/mlrr/logs/og/JH32-27-64-Giuseppe/app.pdf",
+  "read": true,
+  "notes": "The current blank form is not linked on https://www.oregon.gov/dogami/mlrr/Pages/oilgas.aspx (page updated 12/18/2025: applications go by e-mail, fee and a paper copy by mail, an online permitting system is planned). I read two filed applications from the well log index (JH32-27-64-Giuseppe, a 1998-vintage layout, and IW32H-22-65, 2009), both one-page scans with a text layer, and a third (Hood, permit 583) that was an image with no text. Their layout (company, lease, well no., section/township/range and footages, field, county, elevation, mineral owner, surface owner, lessee, casing table, geologic objectives, proposed depth, DOGAMI approval box) may differ from the current form; cells marked form rest on it plus the page's list of required items (application, fee, bond, mineral rights, organization report, plan of operation, plat of pad with mud sump). Items missing from that layout are marked unknown, not none."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PermitID holds API-format numbers (36-009-00334); a few such as 36-021-C0001 are not"
+  },
+  "permit_number": {
+   "s": "form",
+   "e": "form",
+   "n": "'O&G Permit #' (e.g. 515) on the form; the sheet's PermitID is the API number"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WellName column (255 of 741 rows filled)"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Lease on form; sheet SiteName is a site or pool name (550 of 741 filled)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Permittee column; a few permittees are individuals"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on the 1998-2009 application read; current form not found"
+  },
+  "operator_type": {
+   "s": "form",
+   "e": "web",
+   "n": "New operators file an organization report (individual, partnership, corporation)"
+  },
+  "bond": {
+   "s": "form",
+   "e": "web",
+   "n": "Drilling bond sized to well depth; surety bond named on the form"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "County column"
+  },
+  "district": {
+   "s": "none",
+   "e": "web",
+   "n": "One statewide MLRR office in Albany; no district in the file or on the form"
+  },
+  "field_pool": {
+   "s": "form",
+   "e": "form",
+   "n": "'Wildcat or Field Name' on the form; not a column (SiteName holds pool names for some)"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude and Longitude columns (737 of 741 rows)"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Township, Range, Section, QrtSection; form also has footages from section corner"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "'Directional? (if yes, BHL & SHL)' on the form; not in the file"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "web",
+   "n": "Plan of operation covers directional surveys and directional drilling (page text)"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "Ground elevation and Kelly Bushing height on the form; not in the file"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Surface Owner and address on the form (a name or address: not copied here)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WellType column, 15 spellings, only 182 of 741 rows filled"
+  },
+  "work_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "PermitType has one value (Oil and Gas Well); re-drills only as an -RD name suffix; form has no item"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "'Directional? No / Yes' box on the form"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "Depth column (479 of 741 filled); the file does not say proposed or final"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Some applications give MD and TVD in 'Proposed Depth'; the file has one Depth"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "'Geologic Objectives' on the form"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Casing table: hole, casing, weight, grade, depth, cement"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Only 'Amount of Cement' in sacks per string on the form"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "web",
+   "n": "Required plat shows the mud sump against cut and fill"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "spacing_unit": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Lessor / Mineral Owner on the form; evidence of rights or lease required"
+  },
+  "fee": {
+   "s": "form",
+   "e": "web",
+   "n": "Application fee set by the ORS 520 fee schedule (2026 schedule PDF on the page)"
+  },
+  "notice_hearing": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "ApplicationDate (625 of 741 filled); rows repeat a permit for renewals"
+  },
+  "date_approved": {
+   "s": "form",
+   "e": "form",
+   "n": "Signed 'approved (date)' box on the scanned application; not a column in the sheet"
+  },
+  "date_expires": {
+   "s": "form",
+   "e": "form",
+   "n": "Form note: permit expires one year from issue; renewal each year (page)"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified: current blank application not found"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Status column: Permitted, Closed, Cancelled, Denied, Withdrawn, Application, Admin, Unknown"
+  },
+  "plat_image": {
+   "s": "query",
+   "e": "web",
+   "n": "Per-well plat PDFs on the well log index (e.g. .../CC34-04-65Permit583-Hood/plat.pdf)"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "Per-well application PDF (app.pdf, a scan) on the well log index"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Per-well summary, history and plug-record PDFs exist; not read to confirm"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "Oil & Gas Well Logs page: about 4,950 per-well PDF links (logs, mud, history)"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "Mist Gas Field annual xlsx, monthly Mcf per well with API No.; no other Oregon field"
+  }
+ },
+ "sources": [
+  {
+   "id": "or-og-permits-xls",
+   "name": "DOGAMI Oil & Gas Permits Spreadsheet (OG_Permits_20260126.xls)",
+   "url": "https://www.oregon.gov/dogami/mlrr/spreadsheets/OG_Permits_20260126.xls",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "1949",
+   "size_mb": 0.26,
+   "free": true,
+   "login": false,
+   "license": "State of Oregon web page; the log index carries a no-warranty disclaimer, no license stated",
+   "columns": [
+    "PermitID",
+    "WellName",
+    "SiteName",
+    "Permittee",
+    "PermitType",
+    "WellType",
+    "Status",
+    "County",
+    "ApplicationDate",
+    "Depth",
+    "Township",
+    "Range",
+    "Section",
+    "QrtSection",
+    "Latitude",
+    "Longitude"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil and gas well permit (one PermitType value); WellType separates producer, exploration, gas injection/withdrawal, observation, monitoring, water disposal where filled"
+   ],
+   "reachable": "ok",
+   "tested": "GET https://www.oregon.gov/dogami/mlrr/spreadsheets/OG_Permits_20260126.xls: HTTP 200, 255,488 bytes, legacy .xls (one sheet, prmqry_E_OG_Permits_Online, 741 data rows, 718 distinct PermitID; the page says two tabs but only one is in the file). Page says last updated 01/28/2026. ApplicationDate runs 1949-08-29 to 2025-12-12; 7 rows dated 2025, 2 in 2023, 1 in 2022, 1 in 2020, 5 in 2019. Status: Unknown 262, Closed 190, Cancelled 160, Permitted 79, Admin 21, Denied 14, Withdrawn 9, Application 6."
+  },
+  {
+   "id": "or-og-well-logs",
+   "name": "DOGAMI Oil & Gas Well Log Index (per-well PDFs: application, plat, history, summary, logs)",
+   "url": "https://www.oregon.gov/dogami/mlrr/Pages/oilgas-logs.aspx",
+   "kind": "query",
+   "format": "pdf",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 0.56,
+   "free": true,
+   "login": false,
+   "license": "State of Oregon web page; no-warranty disclaimer, not for site-specific studies",
+   "columns": [
+    "well folder name",
+    "document type in file name (app, plat, permit, history, summary, plugrecord, mud, lithlog, bundle, logs)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permit documents by well; scans, not data"
+   ],
+   "reachable": "ok",
+   "tested": "GET of the index page: HTTP 200, 562,483 bytes of HTML with about 4,950 links to PDFs under /dogami/mlrr/logs/og/<well>/<doc>.pdf. Fetched three app.pdf files (each 44 to 62 KB, one page, scans; two have a text layer with an approval date box). Page text points to the Excel spreadsheet (a 01/29/2021 file, older than the 2026 one)."
+  },
+  {
+   "id": "or-mist-production",
+   "name": "Mist Gas Field production figures (annual workbooks, 2002 to 2025)",
+   "url": "https://www.oregon.gov/dogami/mlrr/mist/2025_MistGasField_DOGAMI_Report.xlsx",
+   "kind": "report",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "annual",
+   "history_from": "2002",
+   "size_mb": 0.3,
+   "free": true,
+   "login": false,
+   "license": "State of Oregon web page; production is as reported by the permit holder",
+   "columns": [
+    "API No.",
+    "1st Report",
+    "Last Report",
+    "Well Name",
+    "Mcf",
+    "TYPE/STATUS",
+    "(one sheet per month, an Instructions sheet, a 'Permit List Updated 2024' sheet)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "gas production by well, Mist Gas Field only"
+   ],
+   "reachable": "ok",
+   "tested": "GET of the 2025 workbook: HTTP 200, 300,655 bytes, 14 sheets (Jan to Dec, Instructions, Permit List Updated 2024); headings read from shared strings. Not a permit source."
+  },
+  {
+   "id": "or-permit-viewer-layer",
+   "name": "DOGAMI Permit Viewer, 'Permit Files' ArcGIS layer (PermitFiles/FeatureServer/0)",
+   "url": "https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/PermitFiles/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "MLRR_PermitID",
+    "Date_Digitized",
+    "Paper_Original",
+    "SITE_NAME",
+    "SYNONYM",
+    "MINING_DISTRICT_Map",
+    "COUNTY",
+    "MAP_TITLE_DESCRIPTION",
+    "MAP_DATE",
+    "MAP_SCALE",
+    "AUTHOR",
+    "SECT_FRACTION",
+    "SECTION",
+    "TOWNSHIP",
+    "RANGE",
+    "LATDEC_N",
+    "LONGDEC_E",
+    "TOPO_24K",
+    "TOPO_100K",
+    "ELEV_FT",
+    "Commodities",
+    "tifpdfjpgOriginalScanName",
+    "hyperlinks",
+    "ORIG_FID",
+    "PermitType",
+    "Status",
+    "Permittee"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "mining and geothermal permit files only (PermitType codes OPA, OPM, OPP, VPA, XPA, GTE, TEG, LEP...); no oil and gas code"
+   ],
+   "reachable": "ok",
+   "tested": "Followed the page's 'Map' link: web app item -> web map -> this layer. Layer ?f=json: HTTP 200, 14.8 KB, point layer, max 2,000 records. One grouped count by PermitType returned 19 codes, none oil and gas. Not an oil and gas source."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "A free, reachable bulk spreadsheet with one row per permit (county, PLSS, lat/long, well type, depth, status, permittee) and an ApplicationDate, but no approval or issue date, no work type, and only 182 of 741 rows have a well type. Volume is tiny: about 7 rows dated 2025 and 20 in the last ten years, nearly all in the Mist gas field (Columbia County), mostly gas storage and observation wells.",
+ "producer_plan": "Download OG_Permits_<date>.xls from https://www.oregon.gov/dogami/mlrr/Pages/oilgas.aspx (the file name carries a date, so read the link from the page each time). Keep rows with a valid ApplicationDate and count them by month: the unit is an application row, and a permit that was renewed or re-applied (the same PermitID with two dates) appears twice, so count distinct PermitID plus date. Split by WellType where filled (producer/exploration vs gas injection/withdrawal vs observation/monitoring); leave blank types as 'other'. New drill and re-entry cannot be told apart. The file has no approval date, so the monthly count measures applications filed, not permits approved; the signed approval date exists only in the scanned application PDFs. Expect 0 to 10 rows a year; a month is usually zero. The sheet is updated by hand a few times a year, so a monthly refresh gets mostly unchanged files. Parsing needs an .xls reader (xlrd or LibreOffice); the repository is standard library only, so convert to CSV by hand or ask DOGAMI for xlsx.",
+ "activity_bands_possible": [
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The Permittee column names individuals ('Surname, Given' form) as well as companies, and some site and well names carry a person's name; the per-well application PDFs hold lessor and surface-owner names, addresses and phone numbers. Nothing was copied. Publish operators only when they are organizations.",
+ "unknowns": [
+  "current blank application form (not linked; only filed scans from 1998 and 2009 read)",
+  "operator ID, work type, formation tops, BOP, H2S, water, fracturing, spacing and public notice on the current form",
+  "whether per-well summary or history PDFs are completion reports and carry spud dates",
+  "what the second tab the page mentions contains (the file has one sheet)",
+  "whether the planned online permitting system will publish data",
+  "update schedule of the spreadsheet (page says 01/28/2026; the file name says 20260126; the logs page links a 2021 file)"
+ ],
+ "researched": "2026-10-31"
+}

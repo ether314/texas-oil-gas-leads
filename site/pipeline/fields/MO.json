@@ -1,0 +1,412 @@
+{
+ "state": "MO",
+ "name": "Missouri",
+ "agency": {
+  "name": "Missouri Department of Natural Resources, Missouri Geological Survey (staff to the State Oil and Gas Council), Rolla",
+  "short": "MoDNR MGS",
+  "url": "https://dnr.mo.gov/geology/geosrv/oilandgas.htm"
+ },
+ "form": {
+  "name": "Oil and Gas Permit to Drill or Modify Well Application",
+  "number": "MO 780-0211",
+  "url": "https://dnr.mo.gov/land-geology/oil-gas-permit-drill-or-modify-well-permit",
+  "read": false,
+  "notes": "NOT READ. dnr.mo.gov answered HTTP 403 to the one request made to the permit page (not retried), and www.sos.mo.gov answered 403 for the rule 10 CSR 50-2. A third-party copy (templateroller) shows only title, release date 2018-03-01 and no fields. Every cell that depends on the form is therefore unknown; cells marked data come from the DNR's map layer and its metadata."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_NUMBER (9 digits) in oil_gas_wells layer"
+  },
+  "permit_number": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_NAME in layer"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "LEASE in layer (name of lease or property)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "OPERATOR in layer"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "bond": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form MO 780-0211 could not be read (dnr.mo.gov answered 403)"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "COUNTY in layer"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "FIELD_POOL in layer ('the underground pool being produced')"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "LATITUDE, LONGITUDE (approximate, NAD83) and point geometry"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "TOWNSHIP, RANGE, SECTION_, SURVEYLOC1/2 (quarter calls or footages), LAND_GRANT"
+  },
+  "bottom_hole_loc": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ELEVATION (ft) in layer"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WELL_TYPE: oil, gas, horizontal oil, Class II injection, observation, dry hole..."
+  },
+  "work_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "PERMIT_DAT covers permits to drill, deepen or recomplete; no work-type column"
+  },
+  "well_direction": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Only 'Horizontal Oil Well' appears as a WELL_TYPE value; no direction column"
+  },
+  "proposed_depth_md": {
+   "s": "unknown",
+   "e": "none",
+   "n": "TOTAL_DPTH is 'total depth of the well'; proposed vs actual not stated"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "FORMATION: formation the well is producing or injecting into"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "casing_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "cement_program": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spacing_unit": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "A search snippet of a 2019 IOGCC summary says $100; not verified from the agency"
+  },
+  "notice_hearing": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_DAT: date permit to drill, deepen or recomplete was issued; layer ends 2019-08-15"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Search snippet of DNR page says valid one calendar year; page itself blocked (403)"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SPUD_DATE in layer (3,940 rows; newest 2021-06-04)"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "STATUS and STATUSDATE: Active, Shut in, Plugged, Abandoned, Orphaned..."
+  },
+  "plat_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "form_image": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_LINK 'link to well permit and/or other files'; link not opened"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "DOWNHOLE flag, DOWN_LINK downhole files, STRAT_LINK strip log image; links not opened"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  }
+ },
+ "sources": [
+  {
+   "id": "mo-dnr-oil-gas-wells-layer",
+   "name": "Oil and Gas Wells (MoDNR/MGS viewing service, non-confidential permitted wells)",
+   "url": "https://gis.dnr.mo.gov/host/rest/services/geology/oil_gas_wells/MapServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "1966",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "no restriction listed (access constraints: none); no-warranty use statement; JSON, GeoJSON and PBF query formats",
+   "columns": [
+    "OBJECTID",
+    "COUNTY",
+    "API_NUMBER",
+    "OPERATOR",
+    "LEASE",
+    "WELL_NAME",
+    "WELL_TYPE",
+    "TYPE_DATE",
+    "STATUS",
+    "STATUSDATE",
+    "PERMIT_DAT",
+    "SPUD_DATE",
+    "CONFIDDATE",
+    "TOWNSHIP",
+    "TWP_DIR",
+    "RANGE",
+    "RNG_DIR",
+    "SECTION_",
+    "SURVEYLOC1",
+    "SURVEYLOC2",
+    "LAND_GRANT",
+    "QUADRANGLE",
+    "LATITUDE",
+    "LONGITUDE",
+    "ELEVATION",
+    "TOTAL_DPTH",
+    "FORMATION",
+    "FIELD_POOL",
+    "SHAPE",
+    "PERMIT_LINK",
+    "DOWNHOLE",
+    "DOWN_LINK",
+    "STRAT_LINK"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil",
+    "gas",
+    "horizontal oil",
+    "Class II disposal injection",
+    "Class II enhanced recovery injection",
+    "observation",
+    "stratigraphic test",
+    "dry hole"
+   ],
+   "reachable": "ok",
+   "tested": "gis.dnr.mo.gov: layer ?f=pjson 200, 9 KB schema (Map, Query, Data; maxRecordCount 2000); statistics query 200: 10,369 wells, 5,307 with PERMIT_DAT (1966-05-22 to 2019-08-15), 3,940 with SPUD_DATE (newest 2021-06-04), newest STATUSDATE 2021-08-03; counts of permits dated 2015 or later: 58, dated 2019 or later: 2; distinct WELL_TYPE (16) and STATUS (15) values 200. Metadata XML (info.mo.gov, 200) says data current to 2021-08-25, update 'as needed', excludes wells under confidentiality. The layer is frozen: no permit after 2019-08."
+  },
+  {
+   "id": "mo-dnr-permit-page",
+   "name": "DNR page: Oil and Gas Permit to Drill or Modify Well (form, instructions)",
+   "url": "https://dnr.mo.gov/land-geology/oil-gas-permit-drill-or-modify-well-permit",
+   "kind": "query",
+   "format": "html",
+   "grain": "aggregate",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "One GET: HTTP 403 (a 'Forbidden' page). Not retried and no other route tried to the same pages."
+  },
+  {
+   "id": "mo-sos-rule-10csr50-2",
+   "name": "10 CSR 50-2 (drilling permit rules) at the Secretary of State",
+   "url": "https://www.sos.mo.gov/cmsimages/adrules/csr/current/10csr/10c50-2.pdf",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "public rule",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "One GET: HTTP 403 HTML page. Not retried."
+  },
+  {
+   "id": "mo-geostrat",
+   "name": "GeoSTRAT (MGS web map used to locate permitted oil and gas wells)",
+   "url": "https://dnr.mo.gov/geology/geosrv/oilandgas.htm",
+   "kind": "map",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Named in a search summary of the DNR oil and gas pages only; the URL is the agency oil and gas page that surfaced, not the viewer; not opened, so whether it is fresher than the layer is unknown."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "The wells layer is shaped like an A (free ArcGIS API, API number, PERMIT_DAT issue date, SPUD_DATE, well type, status, location) but it is frozen: the newest permit is 2019-08-15 and the newest spud 2021-06-04, and confidential wells are left out, so it gives history, not current monthly counts. No current bulk source or permit list was found, the permit form could not be read, and the DNR and Secretary of State pages answered 403 from here. History only: about 13 permits a year since 2015, 2 in 2019.",
+ "producer_plan": "Missouri is tiny and not worth a monthly producer on the present data. A history-only file could be built from the layer (query PERMIT_DAT, SPUD_DATE, WELL_TYPE, STATUS, COUNTY; 10,369 rows fit in 6 pages of 2,000) giving permits and spuds by month through Aug 2019 / Jun 2021, and shown as 'not updated since 2021'. For current activity the owner would need a public-records request to the Geological Survey in Rolla, or to find whether GeoSTRAT or the DNR permit page publishes a fresher list (not checked: pages blocked or not opened). PERMIT_DAT covers drill, deepen and recomplete permits together, so work types cannot be separated.",
+ "activity_bands_possible": [
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The layer's OPERATOR and LEASE columns may name individuals or landowners; the linked permit files and the metadata hold staff contact details (not copied). Publish only corporate, LLC or LP operator names and county-level counts.",
+ "unknowns": [
+  "Contents of Form MO 780-0211 (every form-only cell)",
+  "Whether any source newer than the 2021 layer exists (GeoSTRAT, DNR permit page, ePermitting)",
+  "Permit counts per year today and whether many wells are hidden by confidentiality",
+  "What the PERMIT_LINK, DOWN_LINK and STRAT_LINK documents contain (not opened)",
+  "Permit number, bond, fee and notice requirements (snippets only)",
+  "Why the layer stopped in 2021"
+ ],
+ "researched": "2026-10-31"
+}
