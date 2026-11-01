@@ -7,10 +7,9 @@ import { showTip, hideTip, tipRow } from './tip.js';
 import { spark, delta } from './charts.js';
 import * as N from './national-data.js';
 
-const MEASURE_NAME = { permits: 'Permits approved', spuds: 'Wells spudded' };
-const MEASURE_ONE = { permits: 'new-drill permits', spuds: 'wells spudded' };
-// what one count is and what a state's places are called: the BLM counts APDs approved by state office; the others new-drill permits or wells spudded by county or area
-const unitOf = (s) => s.unit || MEASURE_ONE[s.measure];
+const MEASURE_NAME = Object.fromEntries(N.MEASURES.map((m) => [m.id, m.name]));
+// what one count is: the BLM counts APDs approved by state office, Oregon applications filed, Virginia wells drilled; the others new-drill permits or wells spudded
+const unitOf = (s) => s.unit || N.measureOf(s.measure).one;
 const OWN_VIEW = { TX: 'tx', OK: 'ok', NM: 'nm', FO: 'fo' }; // the jurisdictions that also have the Map and Operators pages
 // Element.append writes the word "null" for a null child, so nothing is appended without dropping the empty ones first
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
@@ -38,17 +37,19 @@ export function createNationalView({ root }) {
   function figures() {
     const have = doc.states.length; const all = N.jurisdictions(doc);
     const t = doc.totals;
+    const other = doc.states.filter((s) => !N.measureOf(s.measure).sum);
     return el('dl', { class: 'dr-tiles nat-kpis' }, [
       { label: 'Agencies with data', value: have + ' of ' + all, note: all - have + ' not read yet' },
       { label: 'Permits approved, last 12 months', value: fmt.format(t.permits12), note: nameList('permits') },
       t.spudStates ? { label: 'Wells spudded, last 12 months', value: fmt.format(t.spuds12), note: nameList('spuds') + ' (no approval dates by well)' } : null,
+      other.length ? { label: 'Counted another way', value: String(other.length), note: N.listAnd(other.map((s) => s.name + ' (' + unitOf(s) + ')')) + ': shown, never added to the counts above' } : null,
       { label: 'Latest update', value: fmtDate(N.newest(doc)), note: 'the newest day any agency’s file was current to; each state’s own date is below' },
     ].filter(Boolean).map((x) => el('div', { class: 'dr-tile' }, el('dt', { text: x.label }), el('dd', { text: x.value }), el('small', { text: x.note }))));
   }
 
   /* ---------- the tile map and the state panel ---------- */
   function tileLabel(id, k) {
-    if (k.kind === 'data') return k.s.name + ': ' + fmt.format(k.s.p12) + ' ' + unitOf(k.s) + ' in the last 12 months' + (N.OVERLAP.has(id) ? ' (on federal land, overlaps the states)' : '');
+    if (k.kind === 'data') return k.s.name + ': ' + (N.noneRecorded(k.s) ? 'none recorded in the last 24 months' : fmt.format(k.s.p12) + ' ' + unitOf(k.s) + ' in the last 12 months') + (N.OVERLAP.has(id) ? ' (on federal land, overlaps the states)' : '');
     if (k.kind === 'gap') return k.g.name + ': producing state, no permit data read yet';
     return (N.QUIET_NAMES[id] || id) + ': no oil production in the EIA tables';
   }
@@ -57,11 +58,11 @@ export function createNationalView({ root }) {
     Object.entries(N.TILES).forEach(([id, [x, y]]) => {
       const k = N.tileKind(doc, id);
       const live = k.kind !== 'quiet';
-      const cls = 'nat-tile ' + (k.kind === 'data' ? 't' + k.size + (k.s.measure === 'spuds' ? ' is-spud' : '') + (N.OVERLAP.has(id) ? ' is-fed' : '') : k.kind === 'gap' ? 't0' : 'tq');
+      const cls = 'nat-tile ' + (k.kind === 'data' ? (k.size ? 't' + k.size : 'tz') + (k.s.measure === 'spuds' ? ' is-spud' : '') + (N.measureOf(k.s.measure).sum ? '' : ' is-own') + (N.OVERLAP.has(id) ? ' is-fed' : '') : k.kind === 'gap' ? 't0' : 'tq');
       const label = id === 'FO' ? 'Gulf' : id === 'BL' ? 'BLM' : id;
       const node = el(live ? 'button' : 'div', { class: cls, type: live ? 'button' : null, 'aria-label': live ? tileLabel(id, k) : null, 'aria-pressed': live ? 'false' : null, 'data-id': id },
         el('span', { class: 'nat-code', text: label }),
-        k.kind === 'data' ? el('small', { class: 'nat-n', text: stat(k.s.p12) }) : null);
+        k.kind === 'data' ? el('small', { class: 'nat-n', text: N.noneRecorded(k.s) ? '–' : stat(k.s.p12) }) : null);
       node.style.setProperty('--x', x + 1); node.style.setProperty('--y', y + 1);
       if (live) {
         node.addEventListener('click', () => select(id));
@@ -77,6 +78,7 @@ export function createNationalView({ root }) {
   function tipFor(id, k) {
     if (k.kind === 'data') {
       const s = k.s; const f = N.change(s);
+      if (N.noneRecorded(s)) return [el('div', { class: 'tip-head', text: s.name }), tipRow('None recorded', 'in the last 24 months'), tipRow(fmtDate(s.through), 'data through')];
       return [el('div', { class: 'tip-head', text: s.name }), tipRow(fmt.format(s.p12), unitOf(s) + ', last 12 months'),
         f != null ? tipRow((f > 0 ? '+' : f < 0 ? '−' : '') + Math.round(Math.abs(f) * 100) + '%', 'on the 12 months before') : null,
         tipRow(fmtDate(s.through), 'data through')];
@@ -90,6 +92,8 @@ export function createNationalView({ root }) {
       el('ul', { class: 'nat-keys', 'aria-label': 'Tile shading, by size of the last 12 months against the biggest state in the same count' }, swatches),
       el('ul', { class: 'nat-keys' },
         el('li', { class: 'nat-key' }, el('i', { class: 'nat-sw t3 is-spud', 'aria-hidden': 'true' }), el('span', { text: 'underlined: wells spudded, not permits' })),
+        el('li', { class: 'nat-key' }, el('i', { class: 'nat-sw t2 is-own', 'aria-hidden': 'true' }), el('span', { text: 'dotted: counted another way, never added (applications, wells drilled)' })),
+        el('li', { class: 'nat-key' }, el('i', { class: 'nat-sw tz', 'aria-hidden': 'true' }), el('span', { text: 'outlined, empty: read, and none in the 12 months' })),
         el('li', { class: 'nat-key' }, el('i', { class: 'nat-sw t0', 'aria-hidden': 'true' }), el('span', { text: 'dashed: producing state, not read yet' })),
         el('li', { class: 'nat-key' }, el('i', { class: 'nat-sw tq', 'aria-hidden': 'true' }), el('span', { text: 'no oil production' }))));
   }
@@ -133,15 +137,17 @@ export function createNationalView({ root }) {
     put(box, 
       el('div', { class: 'nat-ph' }, el('h3', { text: s.name }), el('span', { class: 'badge', text: MEASURE_NAME[s.measure] })),
       el('p', { class: 'nat-agency', text: s.agency + ' · counted by ' + s.basis }),
-      el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' ' + unitOf(s) + ' in the 12 months to ' + monthLabel(s.through.slice(0, 7)) }), c != null ? delta(c) : null),
+      N.noneRecorded(s)
+        ? el('div', { class: 'nat-big' }, el('strong', { text: 'None recorded' }), el('span', { text: ' in the 24 months to ' + monthLabel(s.through.slice(0, 7)) + ': the source has no ' + N.measureOf(s.measure).one.replace(/^new-drill /, '') + ' dated in them, which is not the same as none happening' }))
+        : el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' ' + unitOf(s) + ' in the 12 months to ' + monthLabel(s.through.slice(0, 7)) }), c != null ? delta(c) : null),
       vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: N.SERIES_COLOR[id] || 'var(--s1)', label: s.name + ', ' + unitOf(s) + ' by month, last ' + vals.length + ' months' })) : null);
     const m = N.mix(s);
-    if (m) put(box, el('div', { class: 'nat-sub' }, el('h4', { text: 'Kinds of permits, last 12 months' }), bandBar(m), el('ul', { class: 'nat-mixkeys' }, m.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', {}, sw, b.label + ' ' + fmt.format(b.n)); }))));
-    else put(box, el('p', { class: 'fine', text: 'This source gives ' + (s.unit || 'new wells') + ' only: kinds of permits (re-entries, reworks, injection wells, amendments) are not available for ' + s.name + '.' }));
+    if (m) put(box, el('div', { class: 'nat-sub' }, el('h4', { text: (N.measureOf(s.measure).family === 'permits' ? 'Kinds of permits' : 'Kinds of wells') + ', last 12 months' }), bandBar(m), el('ul', { class: 'nat-mixkeys' }, m.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', {}, sw, b.label + ' ' + fmt.format(b.n)); }))));
+    else put(box, el('p', { class: 'fine', text: 'Kinds of permits (re-entries, reworks, injection wells, amendments) are not split for ' + s.name + ' in this report.' }));
     const fl = N.fluidMix(s);
     if (fl) put(box, el('p', { class: 'fine', text: 'By fluid: ' + fl.parts.map((x) => fmt.format(x.n) + ' ' + x.id).join(', ') + (fl.unknown ? ', ' + fmt.format(fl.unknown) + ' not recorded' : '') + '.' }));
     put(box, 
-      el('div', { class: 'nat-lists' }, list('Top ' + (s.place || (s.measure === 'spuds' ? 'areas' : 'counties')), s.counties, unitOf(s)), list('Top operators', s.operators, unitOf(s))),
+      el('div', { class: 'nat-lists' }, list('Top ' + (s.place || 'counties'), s.counties, unitOf(s)), list('Top operators', s.operators, unitOf(s))),
       s.operators.length && s.namedShare != null ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round(s.namedShare * 100) + '% of the year’s new wells.' }) : null,
       s.note ? el('p', { class: 'fine', text: s.note }) : null);
     if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_VIEW[id] }, 'Open ' + s.name + ' in the Map', icon('arrow', 16)));
@@ -199,15 +205,16 @@ export function createNationalView({ root }) {
   /* ---------- the ranking ---------- */
   function ranking() {
     const wrap = el('div', { class: 'nat-rank' });
-    ['permits', 'spuds'].forEach((m) => {
+    N.MEASURES.forEach((meas) => {
+      const m = meas.id;
       const list = N.rankBy(doc, m); if (!list.length) return;
       const top = Math.max(1, ...list.map((s) => s.p12));
-      wrap.append(el('h3', { class: 'nat-rh', text: MEASURE_NAME[m] + ' (' + (m === 'permits' ? 'by approval or issue date' : 'by spud date') + ')' }),
+      wrap.append(el('h3', { class: 'nat-rh', text: meas.name + ' (' + meas.by + ')' + (meas.sum ? '' : ': counted another way, added to nothing') }),
         el('ul', { class: 'nat-rows' }, list.map((s) => {
           const bar = el('i', { class: 'nat-rb' }); bar.style.setProperty('--p', String(s.p12 / top)); bar.style.setProperty('--c', N.SERIES_COLOR[s.id] || 'var(--n-other)');
-          const b = el('button', { type: 'button', class: 'nat-row', 'aria-current': 'false', 'aria-label': s.name + ', ' + fmt.format(s.p12) + ' in the last 12 months. Open its panel.' },
+          const b = el('button', { type: 'button', class: 'nat-row', 'aria-current': 'false', 'aria-label': s.name + ', ' + (N.noneRecorded(s) ? 'none recorded in the last 24 months' : fmt.format(s.p12) + ' in the last 12 months') + '. Open its panel.' },
             el('span', { class: 'nat-rn' }, el('span', { class: 'nat-rc', text: s.id === 'FO' ? 'Gulf' : s.id === 'BL' ? 'BLM' : s.id }), s.name), el('span', { class: 'nat-rt' }, bar),
-            el('span', { class: 'nat-rv', text: fmt.format(s.p12) }), el('span', { class: 'nat-rd' }, N.change(s) != null ? delta(N.change(s)) : el('span', { class: 'nd', text: 'n/a' })),
+            el('span', { class: 'nat-rv', text: N.noneRecorded(s) ? '–' : fmt.format(s.p12) }), el('span', { class: 'nat-rd' }, N.change(s) != null ? delta(N.change(s)) : el('span', { class: 'nd', text: 'n/a' })),
             el('span', { class: 'nat-rw', text: 'to ' + monthLabel(s.through.slice(0, 7)) }));
           b.addEventListener('click', () => { select(s.id); slots.map.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
           rows.set(s.id, b);
@@ -225,19 +232,19 @@ export function createNationalView({ root }) {
     const ul = el('ul', { class: 'nat-mixrows' }, withMix.sort((a, b) => b.p12 - a.p12).map((s) => {
       const m = N.mix(s); const bar = bandBar(m);
       return el('li', {}, el('button', { type: 'button', class: 'link nat-mn', text: s.name, onclick: () => { select(s.id); slots.map.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }), bar,
-        el('span', { class: 'nat-mv', text: fmt.format(m.reduce((t, b) => t + b.n, 0)) + ' filings' }));
+        el('span', { class: 'nat-mv', text: fmt.format(m.reduce((t, b) => t + b.n, 0)) + (N.measureOf(s.measure).family === 'permits' ? ' filings' : ' wells') }));
     }));
     const keys = el('ul', { class: 'nat-keys' }, N.BANDS.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', { class: 'nat-key' }, sw, el('span', { text: b.label })); }));
     const others = doc.states.filter((s) => !N.mix(s)).map((s) => s.name);
     return el('section', { class: 'card nat-card reveal is-in' }, hdr('Every kind of filing', 'layers', 'What the permits are for', 'New wells, injection and disposal wells, re-entries, reworks and amendments, for the states whose agencies tell them apart.'),
-      keys, ul, others.length ? el('p', { class: 'fine', text: 'Not available: ' + N.listAnd(others) + ' (their sources give new wells only).' }) : null);
+      keys, ul, others.length ? el('p', { class: 'fine', text: 'Not split in this report: ' + N.listAnd(others) + '.' }) : null);
   }
 
   /* ---------- who is covered ---------- */
   function coverageCard() {
-    const order = [...N.rankBy(doc, 'permits'), ...N.rankBy(doc, 'spuds')].map((s) => s.id).concat(doc.gaps.map((g) => g.id).sort((a, b) => N.nameOf(doc, a).localeCompare(N.nameOf(doc, b))));
+    const order = N.MEASURES.flatMap((m) => N.rankBy(doc, m.id)).map((s) => s.id).concat(doc.gaps.map((g) => g.id).sort((a, b) => N.nameOf(doc, a).localeCompare(N.nameOf(doc, b))));
     const data = N.coverage(doc, order);
-    const status = (r) => (r.status === 'gap' ? 'Not read yet' : r.status === 'spuds' ? 'Wells spudded' : 'Permits approved');
+    const status = (r) => (r.status === 'gap' ? 'Not read yet' : MEASURE_NAME[r.status]);
     const table = el('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Which agencies the report covers' },
       el('table', { class: 'grid nat-cov' }, el('thead', {}, el('tr', {}, ['State', 'Counts', 'Agency', 'Data through', 'Updates'].map((h) => el('th', { scope: 'col', text: h })))),
         el('tbody', {}, data.map((r) => el('tr', { class: r.status === 'gap' ? 'is-gap' : null },

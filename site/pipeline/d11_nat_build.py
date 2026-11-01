@@ -100,6 +100,7 @@ def adapt(sid, spec):
         "months": months, "bands": {b: (new if b == "new" else None) for b in C.BANDS}, "fluid": None,
         "counties": [[n, c] for n, c in cs], "operators": [[n, c] for n, c in rows],
         "namedShare": round(min(1.0, named / window), 3) if window else None, "read": sum(new),
+        **({"place": "areas"} if sid == "FO" else {}),
         "note": {"TX": "The monthly files are rebuilt by hand; the Daily report holds the newest days.", "OK": "", "NM": "Spud dates arrive about two months late, so the series ends two months back.",
                  "FO": "About 45 wells a year; spud dates arrive late."}[sid],
     }

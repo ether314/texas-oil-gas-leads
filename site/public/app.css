@@ -1198,3 +1198,9 @@ body:has(.pv-dialog[open]) { overflow: hidden; }
   .lchip input:checked + .lchip-body, .theme button[aria-pressed="true"], .seg button[aria-selected="true"] { outline: 2px solid Highlight; }
   .card { border-color: CanvasText; background: Canvas; }
 }
+
+/* the National tiles (2026-11-01): a state read with none in the 12 months is drawn apart from one not read yet (dashed), and a count of another kind (applications, wells drilled) is dotted */
+.nat-tile.tz, .nat-sw.tz { --tb: var(--surface); --tf: var(--ink); border: 1px solid var(--border-2); }
+.nat-sw.tz { background: var(--surface); box-shadow: none; }
+.is-own::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 3px; height: 0; border-bottom: 2px dotted currentColor; opacity: 0.9; }
+.nat-sw.is-own::after { left: 3px; right: 3px; bottom: 2px; color: #0b0b0b; }

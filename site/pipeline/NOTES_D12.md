@@ -93,6 +93,12 @@ until its budget ended, recording nothing. A refusal that reads as a rate limit 
 quota before the first pack and after the last (`quota_line()`: `gh api rate_limit` is free), so the next report can say what the limit is instead of guessing. At that point the live site served 407 wells and 2,286 documents (the Pages deploy of run 2's
 data succeeded after the limit eased); 10-29's W-1 pack and the 10-28 packs were still to do.
 
+**The fourth run, and an audit of the live files** (2026-11-01, 04:07 UTC). The run logged GitHub's quota for the first time: `core 4987 of 5000 left`, so the ordinary REST quota was never the limit; the refusals (`... scraping GitHub ...`) are GitHub's secondary limit on bursts of uploads
+(800 files went through, then every upload was refused for the 25 minutes the run kept asking, and the third run's refusal had begun at 02:36). That run was re-doing 10-30's completion pack because the PNG change (`RULES`) re-reads a pack that refused something: it re-sent its first 800 files, which were already on the release.
+Counting every document of the live index against the actual assets of the nine releases (sizes from the public API) found 2,285 of 2,286 with their file there at the recorded size, and one lost: well 40530919's original (`_c4.pdf`) and two page-one pictures in `wells-2026-10-30-ci-02`.
+`gh release upload --clobber` **deletes the old file and then uploads the new one**, so a refusal in between loses a file that was fine. Now `publish_chunk` reads what the release holds (name, size, state and, where `gh` gives it, the SHA-256), sends only what is missing, and uses `--clobber` only for a file that
+differs (or whose upload never finished); what is already there whole is not touched, so a refused run can lose at most a file that had to be replaced, and a re-read pack costs the files that changed instead of all of them. The run's cap counts files really sent. The three lost files come back the next time that pack is read.
+
 ## Checked before the first run (2026-11-01)
 
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its

@@ -89,6 +89,13 @@ Things to know:
 (59, 48, 22 and 29 wells for 2022 to 2025 against the Board's 88, 67, 50 and 37): the shapefile holds only located wells, and expired and cancelled permits are not in it. A figure that is 30 to 55 percent short, published beside agencies' full counts,
 would read as a fall. Mississippi stays a gap in the report ("not read yet", with its researched grade) until a file with every permit is found (the yearly PDF report is one candidate: a table of county by month, which a producer could read).
 
+## Four counts, two that add
+
+A state's file says what it counts (`measure`). **Permits approved** (`permits`) and **wells spudded** (`spuds`) are each added within their own measure into the report's two totals and drawn in its two stacked charts. Two states count something else and are **shown, ranked on their own and added to nothing**:
+Oregon counts **applications filed** (`applications`: DOGAMI's file has no approval date) and Virginia **wells drilled by the day drilling was completed** (`drilled`: Virginia Energy publishes no permit or spud date). Before 2026-11-01 they sat under permits and spuds, which put Virginia's 49 wells into the spud total and called Oregon's applications approvals.
+On the page a tile of another kind is dotted, shaded against the biggest state counting something like it (permits for applications, spuds for wells drilled) so it is never the "largest" of its own group of one, and the top figures name them under "Counted another way". A state whose last **24 months** hold nothing (Arizona, Florida, Oregon, South Dakota) is shown as "None recorded", with a dash on its tile, never as a 0: the source dating nothing in two years is not the same as nothing happening.
+A read zero (a year after a year with some) is outlined, apart from a state not read yet (dashed).
+
 ## Known limits
 
 - **`asOf` is the day a state's data is current to.** For most states that is the newest record's day. Nevada's page is edited by hand and Virginia's layers publish no update time, so for those two it is the day of the read (their `note` says so, and Nevada's `lag_days` keeps a month with no permit from reading as a real zero too early); the National page's top figure is therefore called "Latest update", not "newest record".
