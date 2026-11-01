@@ -16,6 +16,7 @@ Run: python3 -I tests/test_d11_ne.py"""
 import collections
 import json
 import os
+import re
 import sys
 import tempfile
 from datetime import date
@@ -131,14 +132,14 @@ PAGE_LINKS = "".join('<li><a href="http://nogcc.ne.gov/Publications/%dWellPermit
 PAGE = "<html><body><div class='nav'><a href=\"Default.aspx\">Home</a></div><h3>Production/Permit Statistics</h3><ul>%s</ul><h3>Drilling Permits</h3></body></html>" % PAGE_LINKS
 
 
-def files(truth=TRUTH, tables=True, shift=None, years=None):
+def files(truth=TRUTH, no_table=NOTABLE, shift=None, years=None):
     """{url: bytes of text} for the page, every year's list and every year's summary."""
     out = {NE.PAGE: PAGE.encode()}
     for y, rows in truth.items():
         if years and y not in years:
             continue
         out["http://nogcc.ne.gov/Publications/%dWellPermits.pdf" % y] = list_text(y, rows, old=y < 2021, breaks=(2,) if y == 2022 else ()).encode()
-        out["http://nogcc.ne.gov/Publications/ANNSUM%d.pdf" % y] = summary_text(y, rows, table=tables and y not in NOTABLE, shift=(shift or {}).get(y, 0)).encode()
+        out["http://nogcc.ne.gov/Publications/ANNSUM%d.pdf" % y] = summary_text(y, rows, table=y not in no_table, shift=(shift or {}).get(y, 0)).encode()
     return out
 
 
@@ -162,9 +163,10 @@ def text_of(b):
     return b.decode()
 
 
-def run(fs=None, old=None, today=TODAY):
+def run(fs=None, old=None, today=TODAY, min_total=10):
+    """The producer on the fixture; `old` is {} (nothing committed) unless given, so no test reads the real committed file."""
     g = net(fs)
-    return NE.build(get=g, to_text=text_of, pause=0, today=today, old=old), g
+    return NE.build(get=g, to_text=text_of, pause=0, today=today, old={} if old is None else old, min_total=min_total), g
 
 
 # ------------------------------------------------------------------------------------------------ the page
@@ -203,7 +205,7 @@ gb = NE.parse_list(blank_op, 2022, TODAY)
 check(len(gb) == 4 and gb[0]["operator"] == "", "a permit whose operator is blank is still a permit")
 
 # the bands
-b = lambda name, suffix="0000": NE.band_of("   %s   1196S 2197W SE SW 29-4N-18W   DUNDY" % name, "26057" + "21000" + suffix)[:0] or NE.band_of("   %s   1196S 2197W SE SW 29-4N-18W   DUNDY" % name, "2605721000" + suffix)  # noqa: E731
+b = lambda name, suffix="0000": NE.band_of("   %s   1196S 2197W SE SW 29-4N-18W   DUNDY" % name, "2605721000" + suffix)  # noqa: E731
 check(b("SAMPLE 1-1") == "new" and b("SAMPLE 1-1", "0001") == "redrill" and b("SAMPLE 1-1", "0100") == "redrill", "an API number that is not the well's first (0001, 0100) is a re-entry; an ordinary one is a new well")
 check(b("SAMPLE (OWWO) 1-1") == "redrill" and b("SAMPLE OWWO 1-1") == "redrill", "OWWO in a name is a re-entry even on a first number")
 check(all(b(n) == "inj" for n in ("SAMPLE SWD 1-1", "SAMPLE WIW 3", "SAMPLE INJ 2", "SAMPLE INJECTION 4", "SAMPLE DISPOSAL 5")), "a whole word SWD, WIW, INJ, INJECTION or DISPOSAL in the name is a disposal or injection well")
@@ -216,8 +218,9 @@ check(tally == {"new": 4, "inj": 2, "redrill": 0} or tally == collections.Counte
 good = list_text(2022, new_rows)
 check(raises(lambda: NE.parse_list(good + "   A NOTE THE COMMISSION ADDED\n", 2022, TODAY)), "a line this does not know fails the list")
 check(raises(lambda: NE.parse_list(good.replace("RICHARDSON", "ATLANTIS", 1), 2022, TODAY)), "a county that is not a Nebraska county fails")
-check(raises(lambda: NE.parse_list(good.replace("API #: 2605", "API #: 260", 1), 2022, TODAY)), "an API number of the wrong length fails")
-check(raises(lambda: NE.parse_list(good.replace("API #: 2605", "API #: 3605", 1), 2022, TODAY)), "an API number of another state fails")
+first_api = re.search(r"API #: (\d{14})", good).group(1)
+check(raises(lambda: NE.parse_list(good.replace(first_api, first_api[:13], 1), 2022, TODAY)), "an API number of the wrong length fails")
+check(raises(lambda: NE.parse_list(good.replace(first_api, "36" + first_api[2:], 1), 2022, TODAY)), "an API number of another state fails")
 check(raises(lambda: NE.parse_list(good.replace("05/04/2022", "05/04/2021"), 2022, TODAY)), "a date outside the list's year fails")
 check(raises(lambda: NE.parse_list(good.replace("05/04/2022", "02/30/2022"), 2022, TODAY)), "a date that is not a day fails")
 check(raises(lambda: NE.parse_list(good.replace("11/04/2022", "01/04/2022"), 2022, TODAY)), "dates out of order fail")
@@ -267,7 +270,7 @@ check("PAT Q ROE" not in blob and "ROE BROTHERS" not in blob.replace("ROE BROTHE
 check(NE.PAGE_SHOWN.startswith("https://") and doc["source"]["url"] == NE.PAGE_SHOWN and "null" not in doc["note"].lower().split() and "NaN" not in doc["note"], "the source address is an https page; the note has no programmer's word")
 
 # the series ends in December only when the year is closed
-fs_open = files(tables=False)
+fs_open = files(no_table=NOTABLE | {2025})
 d_open, _g = run(fs_open)
 check(d_open["through"] == "2025-09-30" and d_open["asOf"] == "2025-10-14" and d_open["months"][-1] == "2025-09", "a newest year with no summary table is not closed: it is current to its newest permit (October 14), so the series ends in September")
 check(sum(d_open["bands"]["new"]) == sum(doc["bands"]["new"]) - 1, "and the October permit is not in it (a partial month is never counted)")
@@ -276,13 +279,14 @@ check(d_early["asOf"] == "2025-10-14" and d_early["months"][-1] == "2025-09", "a
 check(raises(lambda: run(files(shift={2025: 4}))[0]), "a list that disagrees with the Commission's summary (four more in its table) fails the run")
 check(run(files(shift={2021: 1, 2022: 2}))[0]["through"] == "2025-12-31", "a difference of one or two in older years is the Commission's own (a re-issued permit) and passes")
 check(raises(lambda: run(files(years=[2019, 2020, 2021, 2022, 2023, 2024]))[0], RuntimeError), "a page that links a year whose file is not there fails")
-fs_no_table = files(tables=False)
-check(raises(lambda: run(fs_no_table, today=TODAY)[0] if False else NE.build(get=net(fs_no_table), to_text=lambda b: (_ for _ in ()).throw(RuntimeError("x")), pause=0, today=TODAY)), "a file that cannot be read as text fails")
-stale = files()
-stale[NE.PAGE] = PAGE.replace("2025WellPermits", "2022WellPermits").replace("ANNSUM2025", "ANNSUM2022").encode()
-check(raises(lambda: run(stale, today=date(2026, 10, 31))[0]) or True, "(a page whose newest list is older than two years fails)")
-check(raises(lambda: NE.build(get=net(files()), to_text=text_of, pause=0, today=date(2028, 3, 1), old={})), "a page whose newest list is for 2025 is stale in 2028")
-check(NE.build(get=net(files()), to_text=text_of, pause=0, today=date(2027, 2, 1), old={})["through"] == "2025-12-31", "in February 2027, before the 2026 list is posted, the series stays at December 2025")
+boom = lambda b: (_ for _ in ()).throw(RuntimeError("x"))  # noqa: E731
+check(raises(lambda: NE.build(get=net(files()), to_text=boom, pause=0, today=TODAY, old={}, min_total=10)), "a file that cannot be read as text fails")
+check(raises(lambda: NE.build(get=net(files()), to_text=text_of, pause=0, today=TODAY, old={})), "a read of fewer permits than the floor (100) fails: the lists may be cut short")
+old_page = dict(files())
+old_page[NE.PAGE] = re.sub(r'<li><a href="http://nogcc.ne.gov/Publications/(2023|2024|2025)[A-Za-z]*\.pdf">[^<]*</a></li>', "", PAGE.replace("ANNSUM", "ANNSUM")).encode()
+check(raises(lambda: run(old_page)[0]), "a page whose newest list is for 2022 is stale in 2026 (the newest list must be for 2024 or later)")
+check(raises(lambda: run(files(), today=date(2028, 3, 1))[0]), "a page whose newest list is for 2025 is stale in 2028")
+check(run(files(), today=date(2027, 2, 1))[0]["through"] == "2025-12-31", "in February 2027, before the 2026 list is posted, the series stays at December 2025")
 
 # the committed file stands for the older years
 with tempfile.TemporaryDirectory() as tmp:

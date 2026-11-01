@@ -236,7 +236,7 @@ def previous(keep_from, path=None):
         return {}
 
 
-def build(get=C.polite_get, to_text=pdf_to_text, pause=PAUSE, today=None, old=None):
+def build(get=C.polite_get, to_text=pdf_to_text, pause=PAUSE, today=None, old=None, min_total=MIN_TOTAL):
     today = today or date.today()
     lists, summaries = parse_page(get(PAGE, max_bytes=MAX_PAGE).decode("utf-8", "replace"))
     newest_year = max(lists)
@@ -266,8 +266,8 @@ def build(get=C.polite_get, to_text=pdf_to_text, pause=PAUSE, today=None, old=No
     if not n_checked and not kept:
         raise RuntimeError("no year's list could be checked against the Commission's summary")
     total = len(permits) + sum(sum(v for v in c.values() if isinstance(v, int)) for c in kept.values())
-    if total < MIN_TOTAL:
-        raise RuntimeError("only %d permits in all (expected %d or more): the lists may be cut short" % (total, MIN_TOTAL))
+    if total < min_total:
+        raise RuntimeError("only %d permits in all (expected %d or more): the lists may be cut short" % (total, min_total))
     t = C.Tally(STATE, bands=("new", "inj", "redrill"), fluid=False)
     for ym, counts in sorted(kept.items()):
         for b, n in counts.items():
