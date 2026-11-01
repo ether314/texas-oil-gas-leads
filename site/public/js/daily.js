@@ -11,10 +11,12 @@ import * as G from './usgeo.js';
 import * as D from './newwells-data.js';
 import { createUSMap } from './usmap.js';
 import { renderStats } from './daily-stats.js';
+import * as Oil from './oil-day-data.js';
 import { segmented } from './ui.js';
 
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
+const plural = (n, one, many) => fmt.format(n) + ' ' + (n === 1 ? one : many);
 const weekday = (ms) => new Date(ms).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
 const CHART_DAYS = 150; // the days the chart and the slider show: the newest 150, or the 150 that hold the chosen day
 const TABLE_ROWS = 80;
@@ -32,6 +34,13 @@ export function createDailyView({ root }) {
     const [doc, pts, out, nat, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
     // the oil permit files are optional: a page without one still draws the wells
     raw = { doc, pts, nat, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
+    // how many permits Texas, Oklahoma and New Mexico approved each day (the nightly captures' series; Oklahoma's from its permit points): optional, the page is whole without them
+    raw.oil = null;
+    try {
+      const ok = raw.permits.find((x) => x.id === 'OK');
+      const [tx, nm] = await Promise.all([loadOpt('daily/permits-series'), loadOpt('daily-nm/permits-series')]);
+      if (ok && tx && nm) raw.oil = Oil.counts({ tx, nm, okPoints: ok.pm });
+    } catch (e) { raw.oil = null; }
     dt = makeDt(D.decode(pts), false);
     return dt;
   }
@@ -112,6 +121,12 @@ export function createDailyView({ root }) {
       el('p', { class: 'nat-agency', text: (sName || 'All states') + ' · ' + what }));
     if (f.wells) put(box, el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(n) }), el('span', { text: Q ? (n === 1 ? ' new fracked well' : ' new fracked wells') : (n === 1 ? ' new well' : ' new wells') })));
     if (pAvail) put(box, el('div', { class: 'nat-big dd-bigq' }, el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }), el('strong', { text: fmt.format(pn) }), el('span', { text: pn === 1 ? ' oil permit or spud with a location' : ' oil permits and spuds with a location' })));
+    if (f.permits && raw.oil) { // every permit approved that day, whether or not it has a map location (the ring count above is only the ones that do)
+      const rows = Oil.permitsOn(raw.oil, iso(day)); const one = sel && Oil.OIL_IDS.includes(sel); const total = rows ? (sel ? (one ? (rows.find((r) => r.id === sel) || {}).n : null) : rows.reduce((t, r) => t + r.n, 0)) : null; // a state that publishes no daily list has none, however many the three approved
+      if (total != null) put(box, el('p', { class: 'fine dd-approved' }, 'Approved that day' + (one ? ' in ' + (rows.find((r) => r.id === sel) || {}).name : '') + ': ', el('strong', { text: plural(total, 'new-drill permit', 'new-drill permits') }),
+        one ? '' : ' (' + rows.map((r) => r.name + ' ' + fmt.format(r.n)).join(', ') + ')', '. The rings show the ones with a map location.'));
+      else if (!sel || Oil.OIL_IDS.includes(sel)) put(box, el('p', { class: 'fine dd-approved', text: 'The count of every permit approved each day starts on ' + fmtDate(raw.oil.first) + '.' }));
+    }
     if (f.wells) {
       const t = typ(); const tp = t.perDay; const rg = D.typicalRange(P, doc, iso(day)); const rk = rg && !late ? D.dayRank(P, day, rg.d0, rg.d1, sel) : null;
       const then = (n > tp * 1.5 ? '; this one is busier' : n < tp * 0.5 ? '; this one is quieter' : '; this one is about typical') + (rk ? ', busier than ' + Math.round(rk.share * 100) + '% of those ' + fmt.format(rk.days) + ' days.' : '.');
@@ -202,7 +217,7 @@ export function createDailyView({ root }) {
     kinds = id === 'wells' || id === 'permits' ? id : 'both';
     if (!dt.Q) return;
     map.setKinds(flags()); if (S.kinds) S.kinds.set(kinds, false);
-    paintDay(); if (!fromHash) writeHash();
+    drawChart(); paintDay(); if (!fromHash) writeHash();
   }
   function choose(id, { fromHash = false } = {}) {
     sel = allowed(id) ? id : null;
@@ -260,7 +275,9 @@ export function createDailyView({ root }) {
     drawYears();
     const { P } = dt; const cd = chartData(); const W = 720; const H = 230; const L = 40; const R = 6; const T = 10; const B = 26;
     const tot = new Array(cd.n).fill(0); cd.series.forEach((s) => s.values.forEach((v, i) => { tot[i] += v; }));
-    const tp = typ(); const { top, ticks } = D.niceTop(Math.max(...tot, tp.perDay * 1.1, 1));
+    const tp = typ();
+    const ov = flags().permits && raw.oil ? Oil.valuesOver(raw.oil, iso(S.win), cd.n, sel) : null; // the permits approved each day of the chart (null: no count that day), a line of rings beside the bars
+    const { top, ticks } = D.niceTop(Math.max(...tot, tp.perDay * 1.1, ov ? Math.max(0, ...ov.filter((v) => v != null)) : 0, 1));
     const slot = (W - L - R) / cd.n; const bw = Math.max(1.5, slot * 0.78); const y = (v) => T + (H - T - B) * (1 - v / top);
     const g = svg('svg', { class: 'nat-chart dd-chart', viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'New wells by day, ' + fmtDate(iso(S.win)) + ' to ' + fmtDate(iso(S.win + cd.n - 1)) + ', stacked by state; the days after ' + fmtDate(dt.doc.settled) + ' are still filling in. Use the day slider above, or the table below, to read a day.' });
     ticks.forEach((t) => g.append(svg('line', { class: t === 0 ? 'base' : 'grid', x1: L, x2: W - R, y1: y(t), y2: y(t) }), svg('text', { class: 'ax', x: L - 6, y: y(t) + 4, 'text-anchor': 'end', text: stat(t) })));
@@ -274,18 +291,26 @@ export function createDailyView({ root }) {
       const d = S.win + i; const dm = ms(d);
       if (new Date(dm).getUTCDate() === 1) g.append(svg('text', { class: 'ax', x: sx(i) + slot / 2, y: H - 8, 'text-anchor': 'middle', text: monthLabel(iso(d).slice(0, 7)).replace(/(\w+) (\d{4})/, (a, mo, yr) => mo + ' ’' + yr.slice(2)) }));
       const hit = svg('rect', { class: 'nat-hit', x: sx(i).toFixed(1), y: T, width: slot.toFixed(1), height: H - T - B });
-      hit.addEventListener('pointermove', (e) => showTip([el('div', { class: 'tip-head', text: weekday(dm) + ', ' + dayLabel(dm) }), ...cd.series.filter((s) => s.values[i]).slice().reverse().map((s) => tipRow(fmt.format(s.values[i]), s.name)), tipRow(fmt.format(tot[i]), 'in all'), late ? tipRow('Still filling in', '') : null, tipRow('Click to open this day', '')], e.clientX, e.clientY));
+      hit.addEventListener('pointermove', (e) => showTip([el('div', { class: 'tip-head', text: weekday(dm) + ', ' + dayLabel(dm) }), ...cd.series.filter((s) => s.values[i]).slice().reverse().map((s) => tipRow(fmt.format(s.values[i]), s.name)), tipRow(fmt.format(tot[i]), 'in all'), ov && ov[i] != null ? tipRow(fmt.format(ov[i]), 'new-drill permits approved') : null, late ? tipRow('Still filling in', '') : null, tipRow('Click to open this day', '')], e.clientX, e.clientY));
       hit.addEventListener('pointerleave', hideTip);
       hit.addEventListener('click', () => setDay(d));
       g.append(hit);
     }
+    if (ov && ov.some((v) => v != null)) { // a thin line with a ring for each day that has a count; a day without one is a gap, not a zero
+      let d = ''; let pen = false;
+      ov.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + (sx(i) + slot / 2).toFixed(1) + ' ' + y(v).toFixed(1); pen = true; });
+      g.append(svg('path', { class: 'dd-oil-line', d }));
+      ov.forEach((v, i) => { if (v != null) g.append(svg('circle', { class: 'dd-oil-dot', cx: (sx(i) + slot / 2).toFixed(1), cy: y(v).toFixed(1), r: slot >= 4 ? 2.6 : 1.8 })); });
+    }
     g.append(S.marker);
     g.append(svg('line', { class: 'dd-typ', x1: L, x2: W - R, y1: y(tp.perDay), y2: y(tp.perDay) }), svg('text', { class: 'ax', x: W - R - 2, y: y(tp.perDay) - 4, 'text-anchor': 'end', text: 'typical day, ' + tp.perDay.toFixed(0) }));
     const key = el('ul', { class: 'nat-keys nat-chart-keys', 'aria-label': 'States in the chart' }, cd.series.map((s) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', s.color); return el('li', { class: 'nat-key' }, sw, el('span', { text: s.name })); }));
-    S.chart.replaceChildren(key, g);
+    const oilKey = ov === null ? null : el('ul', { class: 'nat-keys nat-chart-keys dd-oilkey', 'aria-label': 'The oil permits in the chart' }, el('li', { class: 'nat-key' }, el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }),
+      el('span', { text: 'Oil permits approved each day: the line of rings' + (sel && !Oil.OIL_IDS.includes(sel) ? ' (not published by day for this state)' : ov.some((v) => v != null) ? (sel ? '' : ' (Texas, Oklahoma and New Mexico)') : ' (none by day for these days)') })));
+    S.chart.replaceChildren(key, oilKey, g);
     S.chartData = { cd, slot, L };
     S.chartTitle.textContent = S.win >= winMax() ? 'The last ' + CHART_DAYS + ' days, stacked by state' : 'The ' + CHART_DAYS + ' days from ' + fmtDate(iso(S.win)) + ', stacked by state';
-    S.chartNote.textContent = 'The dashed line is a typical day over ' + (tp.latest ? 'the 12 settled months' : 'the 12 months ' + monthLabel(tp.from) + ' to ' + monthLabel(tp.to)) + ' (all states, or the one chosen).';
+    S.chartNote.textContent = (ov && ov.some((v) => v != null) ? 'The line of rings is the new-drill permits approved each day in ' + (sel ? 'the chosen state' : 'Texas, Oklahoma and New Mexico, which publish them daily') + ' (read since ' + fmtDate(raw.oil.first) + '), on the same scale as the bars: a permit and a fracked well are different events, weeks to months apart, and are not added. ' : '') + 'The dashed line is a typical day of fracked wells over ' + (tp.latest ? 'the 12 settled months' : 'the 12 months ' + monthLabel(tp.from) + ' to ' + monthLabel(tp.to)) + ' (all states, or the one chosen).';
     S.earlier.disabled = ms(S.win) <= firstMs(); S.later.disabled = S.win >= winMax();
     drawMarker();
   }

@@ -15,6 +15,7 @@ const S = await imp('states.js');
 const O = await imp('overview-data.js');
 const GEO = await imp('usgeo.js');
 const NW = await imp('newwells-data.js');
+const OD = await imp('oil-day-data.js');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(DATA, n + '.json'), 'utf8'));
 
 let fails = 0;
@@ -494,6 +495,33 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(h1 - h0 > 300 && NW.dayMs(PH, h1) === NW.dayMs(P, d1) && NW.landShare(PH, h0, h1).of === land.of && NW.leaders(PH, h0, h1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join() === NW.leaders(P, d0, d1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join(),
     'newwells: the settled year over the merged points is the same year as over the points alone (the panel and the lists read the same wells either way)');
   check((() => { try { NW.mergePoints(pts, { ...hist, states: hist.states.slice().reverse() }); return false; } catch (e) { return /same read/.test(e.message); } })(), 'newwells: a history from another read than the points (other states) is refused');
+}
+
+/* ---------- oil-day-data.js: the permits the three daily-publishing states approved each day, for the Daily report's chart and summary ---------- */
+{
+  const eq = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  // a made-up week: Oklahoma's points (day in column 3) with a weekend in them, Texas's and New Mexico's series
+  const okPts = { t0: '2026-01-01', asOf: '2026-01-10', pts: [[0, 0, 0, 0, 0, 39], [0, 0, 0, 5, 0, 39], [0, 0, 0, 5, 0, 17], [0, 0, 0, 6, 0, 39], [0, 0, 0, 20, 0, 39]] };
+  const tx = { days: ['2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08'], newDrill: [0, 0, 30, 28, 25, 31] };
+  const nm = { days: ['2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09'], newDrill: [2, 0, 0, 5, 4, 6, 7, 9] };
+  const cn = OD.counts({ tx, nm, okPoints: okPts });
+  check(cn.first === '2026-01-03' && cn.last === '2026-01-08' && cn.per.OK.get('2026-01-01') === 1 && cn.per.OK.get('2026-01-02') === 0 && cn.per.OK.get('2026-01-06') === 2 && cn.per.OK.get('2026-01-10') === 0 && cn.per.OK.size === 10, 'oil days: the days that count are the days all three states have (here Jan 3 to Jan 8), and Oklahoma\'s counts come from its permit points with the zeros in them (a point past the file\'s end is not counted)');
+  check(eq(OD.permitsOn(cn, '2026-01-05'), [{ id: 'TX', name: 'Texas', n: 30 }, { id: 'OK', name: 'Oklahoma', n: 0 }, { id: 'NM', name: 'New Mexico', n: 5 }]) && OD.permitsOn(cn, '2026-01-02') === null && OD.permitsOn(cn, '2026-01-09') === null && OD.permitsOn(null, '2026-01-05') === null
+    && OD.permitsOn(OD.counts({ tx, nm: { days: ['2026-01-02', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08'], newDrill: [2, 0, 5, 4, 6, 7] }, okPoints: okPts }), '2026-01-03') === null, 'oil days: a day inside the range has a count for each state; a day outside it, or one a state has no count for, has none (null), never zero');
+  const vals = OD.valuesOver(cn, '2026-01-02', 8); const valsTx = OD.valuesOver(cn, '2026-01-02', 8, 'TX'); const valsNd = OD.valuesOver(cn, '2026-01-02', 8, 'ND');
+  check(eq(vals, [null, 0, 0, 35, 34, 32, 38, null]) && eq(valsTx, [null, 0, 0, 30, 28, 25, 31, null]) && valsNd.every((v) => v === null), 'oil days: the chart\'s line is the three states added (Jan 5: 30 + 0 + 5; the weekend is a real zero), or one state\'s, null outside the days all three have, and all null for a state that is not one of the three');
+  // the committed files: every day the counts cover has a count for all three states, and the sources agree where they overlap
+  const txS = read('daily/permits-series'); const nmS = read('daily-nm/permits-series'); const okP = read('permits-ok'); const real = OD.counts({ tx: txS, nm: nmS, okPoints: okP });
+  let allDays = true;
+  for (let t = Date.parse(real.first + 'T00:00:00Z'); t <= Date.parse(real.last + 'T00:00:00Z'); t += 864e5) { const r = OD.permitsOn(real, new Date(t).toISOString().slice(0, 10)); if (!r || r.length !== 3 || r.some((x) => !Number.isInteger(x.n) || x.n < 0)) allDays = false; }
+  const lastOf = (name) => { const m = new Map(); for (const r of read(name).days) if (r.dd) m.set(r.dd, r); return m; };
+  const lastOk = lastOf('daily-ok/index'); const lastTx = lastOf('daily/index'); const lastNm = lastOf('daily-nm/index');
+  check(real.first >= '2026-07-21' && real.last <= txS.days[txS.days.length - 1] && real.last >= '2026-10-01' && allDays
+    && [...lastOk].every(([dd, r]) => real.per.OK.get(dd) === r.pn) && [...lastTx].every(([dd, r]) => !real.per.TX.has(dd) || real.per.TX.get(dd) === r.pn) && [...lastNm].every(([dd, r]) => !real.per.NM.has(dd) || real.per.NM.get(dd) === r.pn),
+  'oil days: on the committed files every day from ' + real.first + ' to ' + real.last + ' has a count for Texas, Oklahoma and New Mexico, and each state\'s count equals its nightly capture\'s on every day the capture has (Oklahoma\'s from the permit points)');
+  const wk = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay(); let weekend = 0; let weekdays = 0;
+  for (const [d, n] of real.per.OK) if (d >= real.first && d <= real.last) { if (wk(d) === 0 || wk(d) === 6) weekend += n; else weekdays += n; }
+  check(weekdays > 20 && weekend <= weekdays / 10, 'oil days: Oklahoma approves on weekdays (' + weekdays + ' on weekdays and ' + weekend + ' on weekends in the covered days), so a weekend zero is a real zero and not a gap');
 }
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
