@@ -33,11 +33,14 @@ async function fillProdNote() {
   li.hidden = false; $('#src-prod2').hidden = false; $('#src-p5').hidden = !opr;
 }
 
-/* the Sources page's figures for the federal offshore are read from its own files, so the text moves with the weekly refresh instead of going stale (a week that
-   BSEE adds a month changes the date, the year's count and the operators; a missing file leaves a plain word, never an empty gap) */
-async function fillOffshore(meta) {
-  const [ser, ops, eia] = await Promise.all([loadOpt('series-permits-fo'), loadOpt('operators-fo'), loadOpt('series-fo')]);
-  const extra = { foSince: 'the start of the record', foThrough: 'the last complete month', foYear: 'Fewer than a hundred', foOps: 'a few', foEiaThrough: 'the newest month', foEiaNow: 'the monthly total' };
+/* the Sources page's figures for the files a weekly refresh moves (the federal offshore's, New Mexico's end date) are read from those files, so the text moves with the refresh
+   instead of going stale (a week that BSEE adds a month changes the date, the year's count and the operators; a missing file leaves a plain word, never an empty gap) */
+async function fillFromFiles(meta) {
+  const [ser, ops, eia, nm, eiaOk, eiaNm] = await Promise.all([loadOpt('series-permits-fo'), loadOpt('operators-fo'), loadOpt('series-fo'), loadOpt('series-permits-nm'), loadOpt('series-ok'), loadOpt('series-nm')]);
+  const extra = { foSince: 'the start of the record', foThrough: 'the last complete month', foYear: 'Fewer than a hundred', foOps: 'a few', foEiaThrough: 'the newest month', foEiaNow: 'the monthly total', nmThrough: 'the last complete month', okEiaThrough: 'the newest month', nmEiaThrough: 'the newest month' };
+  if (nm && nm.through) extra.nmThrough = fmtDate(nm.through);
+  if (eiaOk && eiaOk.latest) extra.okEiaThrough = monthLabel(eiaOk.latest);  // the EIA's monthly crude series (refreshed by hand each month): the month each one's file says it runs to
+  if (eiaNm && eiaNm.latest) extra.nmEiaThrough = monthLabel(eiaNm.latest);
   if (ser && ser.months && ser.months.length) {
     extra.foSince = monthLabel(ser.months[0]); extra.foThrough = fmtDate(ser.through);
     extra.foYear = fmt.format(ser.permits.slice(-12).reduce((t, n) => t + n, 0));
@@ -82,7 +85,7 @@ async function boot() {
     return;
   }
   fillMeta(meta);
-  fillOffshore(meta).catch(() => {});
+  fillFromFiles(meta).catch(() => {});
   renderSegments(meta);
   const overview = createOverview(meta);
 
