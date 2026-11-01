@@ -30,7 +30,9 @@ import d11_nat_common as C  # noqa: E402
 
 PRODUCER = re.compile(r"d11_nat_([a-z]{2})\.py")
 DEFAULT_TIMEOUT = 600  # seconds one producer may take; a big download gets more in TIMEOUTS
-TIMEOUTS = {}  # {"KS": 1200}
+# Kentucky, Indiana and West Virginia read one file per week: the first read of their history (17, 9 and 30 minutes) was done by hand and is committed, so a weekly run
+# reads only the newest weeks (about 3, 2 and 3 minutes). Their limit leaves room for a slow server and no more: without the committed file they fail here, by design.
+TIMEOUTS = {"KY": 900, "IN": 900, "WV": 900}
 log = C.log
 
 
