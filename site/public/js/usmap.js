@@ -47,7 +47,7 @@ function rng(seed) {
 
 // canvas, host: the element that sizes it. outlines: usgeo.buildOutlines. P: newwells-data.decode. doc: the summary (for a state's figures).
 // box(w, h): the drawing box in CSS px (the Overview's backdrop keeps clear of its text); default is the whole canvas with a margin.
-export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
+export function createUSMap({ canvas, host, outlines, P, doc, Q = null, qOpen = false, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
   const ctx = canvas.getContext('2d');
   const baseC = document.createElement('canvas'); const dotsC = document.createElement('canvas');
   const bctx = baseC.getContext('2d'); const dctx = dotsC.getContext('2d');
@@ -83,6 +83,8 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interact
   const glowFrom = () => Math.max(idxLo(), cum[Math.max(0, Math.floor(cursor) - glowDays) + 1]);
   const showing = (i) => !selected || P.states[P.s[i]] === selected;
   const showingQ = (j) => !selected || Q.states[Q.s[j]] === selected;
+  // the last day the permit rings run to: the cursor, or with qOpen (the Overview) and no replay running, the newest permit there is (permits are published to later days than the wells are disclosed)
+  const qCur = () => (qOpen && !tlOn && qn ? Math.max(Math.floor(cursor), Q.day[qn - 1]) : Math.floor(cursor));
 
   function loadPalette() {
     dark = isDark();
@@ -158,17 +160,22 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interact
   function paintPermits(rn) {
     drawnQ = 0;
     if (!Q || !showQ) return;
-    const cur = Math.floor(cursor); const r0 = Math.max(3, rn * 1.7); const back = dark ? 'rgba(8,10,14,0.55)' : 'rgba(255,255,255,0.8)';
-    for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) {
+    const cur = qCur(); const first = D.firstPermitAtOrAfter(Q, lo);
+    // thousands of rings over the whole country (the Overview) are drawn small and thin, with no backing, so the fracked wells' dots under them stay readable; a few hundred (a day) or a state's view keep the full rings
+    const dense = rn < 4.5 && Math.min(qn, D.firstPermitAtOrAfter(Q, cur + 1)) - first > 2500;
+    const r0 = dense ? Math.max(2.3, rn * 1.1) : Math.max(3, rn * 1.7); const back = dark ? 'rgba(8,10,14,0.55)' : 'rgba(255,255,255,0.8)';
+    if (dense) ctx.globalAlpha = 0.8;
+    for (let j = first; j < qn && Q.day[j] <= cur; j++) {
       if (!showingQ(j)) continue;
       const x = qx[j] * view.k + view.tx; const y = qy[j] * view.k + view.ty;
       if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
       const fresh = Q.day[j] > cur - glowDays;
       ctx.beginPath(); ctx.arc(x, y, r0, 0, TAU);
-      ctx.lineWidth = fresh ? 4 : 3; ctx.strokeStyle = back; ctx.stroke();
-      ctx.lineWidth = fresh ? 2 : 1.3; ctx.strokeStyle = fresh ? pal[qslot[j]].fresh : pal[qslot[j]].old; ctx.stroke();
+      if (!dense) { ctx.lineWidth = fresh ? 4 : 3; ctx.strokeStyle = back; ctx.stroke(); }
+      ctx.lineWidth = dense ? (fresh ? 1.4 : 1) : fresh ? 2 : 1.3; ctx.strokeStyle = fresh ? pal[qslot[j]].fresh : pal[qslot[j]].old; ctx.stroke();
       drawnQ++;
     }
+    ctx.globalAlpha = 1;
   }
 
   function draw(now = 0) {
@@ -273,7 +280,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interact
   function nearestQ(px, py) {
     lastQd = Infinity;
     if (!Q || !showQ) return -1;
-    const [x, y] = worldAt(px, py); const rad = Math.max(8, radius() * 3) / view.k; const cur = Math.floor(cursor); let best = -1; let bd = rad * rad;
+    const [x, y] = worldAt(px, py); const rad = Math.max(8, radius() * 3) / view.k; const cur = qCur(); let best = -1; let bd = rad * rad;
     for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) {
       if (!showingQ(j)) continue;
       const dx = qx[j] - x; const dy = qy[j] - y; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = j; }
@@ -342,7 +349,11 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interact
     get selected() { return selected; },
     // the replay bar's engine interface (timelapse.js): the days it runs over, how many wells are in by a day, and the cursor
     tlRange: [0, P.span],
-    tlCount(day) { return cum[Math.min(P.span, Math.max(0, Math.floor(day))) + 1] - idxLo(); },
+    // with only the permits shown, the replay counts the permits (rings) up to the day, not the wells that are hidden
+    tlCount(day) {
+      if (!showW && Q) return D.firstPermitAtOrAfter(Q, Math.floor(day) + 1) - D.firstPermitAtOrAfter(Q, lo);
+      return cum[Math.min(P.span, Math.max(0, Math.floor(day))) + 1] - idxLo();
+    },
     setTimelapse(on, day) { tlOn = !!on; cursor = on ? clamp(day, 0, P.span) : P.span; pickPulses(); render(performance.now()); if (!on) kick(); },
     // the days shown: [first, cursor]; the Daily report shows a window, the Overview all of it
     setRange(a, b) { lo = clamp(a, 0, P.span); cursor = clamp(b, lo, P.span); dotsKey = ''; pickPulses(); render(performance.now()); kick(); },
@@ -356,7 +367,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, Q = null, interact
     get drawnPermits() { return drawnQ; }, // the rings painted in the last frame (QA)
     get pulsing() { return pulses.length; }, // wells chosen to pulse (QA): none while permit rings are shown
     // the permits and spuds in the shown days that the chosen state allows (QA and the Daily's counts)
-    permitCount() { if (!Q || !showQ) return 0; let n = 0; const cur = Math.floor(cursor); for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) if (showingQ(j)) n++; return n; },
+    permitCount() { if (!Q || !showQ) return 0; let n = 0; const cur = qCur(); for (let j = D.firstPermitAtOrAfter(Q, lo); j < qn && Q.day[j] <= cur; j++) if (showingQ(j)) n++; return n; },
     screenOfQ: (j) => [qx[j] * view.k + view.tx, qy[j] * view.k + view.ty],
     // where a well is on the canvas, in CSS pixels (QA drives hovers and clicks with it)
     screenOf: (i) => [wx[i] * view.k + view.tx, wy[i] * view.k + view.ty],
