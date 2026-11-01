@@ -13,6 +13,10 @@ application, and is it published, as a downloadable data field, in a one-well-at
       form      read on the form                                           web   seen on an agency web page          none  (for `unknown`)
   n   a note of at most 120 characters
 
+Besides the agencies there is one registry, FracFocus (`fields/FF.json`): the national record of fracturing jobs, filed after the job, not a permit. It answers the same 48 questions
+about what a disclosure captures, is built into the output beside the agencies (`registries`, never counted as one of them, and shown first in the matrix) and carries a plain-words list of
+every field in its download (`registry_fields`, each tied to a permit metric where there is one, each checked against the columns of the real files it lists).
+
 A state also carries its agency, its form (name, number, link), its sources (what is published, in what format, how often, how far back, whether this machine could reach it), a grade
 (A: bulk, free, reachable, with a permit approval date, so monthly counts can be built; B: bulk but only spud, completion or filing dates; C: query forms, reports or aggregates;
 D: nothing public, blocked or paid), a plain-words producer plan and what could not be determined.
@@ -39,6 +43,8 @@ GRADES = ("A", "B", "C", "D")
 REACH = ("ok", "blocked-403", "blocked-proxy", "timeout", "not-tested")
 KINDS = ("bulk", "api", "map", "query", "report", "none")
 HAS = ("has_approval_date", "has_spud_date", "has_well_type", "has_work_type", "has_location")
+REGISTRIES = {"FF": "FracFocus"}  # sources that are not an agency's permit: the same questions, asked of what a disclosure captures (see the module's text)
+FIELD_GROUPS = ("well", "where", "job", "water", "chem")  # the groups of a registry's field list, in the order the page shows them
 log = C.log
 
 
@@ -136,22 +142,58 @@ def trim_source(s):
     return out
 
 
+def trim_fields(rows):
+    return [{"column": r["column"], "label": clip(r["label"], 60), "group": r["group"], "plain": clip(r["plain"], 160), "metric": r.get("metric") or ""} for r in rows]
+
+
 def trim_state(d):
     cells = {k: [v["s"], v["e"], clip(v.get("n", ""), 120)] for k, v in d["cells"].items()}
     f = d.get("form") or {}
-    return {
+    out = {
         "name": C.NAME_OF.get(d.get("state")) or d["name"], "agency": {k: (clip((d.get("agency") or {}).get(k), 200) if k != "url" else (d.get("agency") or {}).get(k)) for k in ("name", "short", "url")},
         "form": {"name": clip(f.get("name"), 240), "number": clip(f.get("number"), 160), "url": f.get("url") or "", "read": bool(f.get("read")), "notes": clip(f.get("notes"), 700)},
         "cells": cells, "sources": [deep_vis(trim_source(s)) for s in d.get("sources") or []], "grade": d["grade"], "grade_reason": clip(d.get("grade_reason"), 900),
         "producer_plan": clip(d.get("producer_plan"), 1200), "bands": [b for b in d.get("activity_bands_possible") or [] if b in C.BANDS],
         "privacy": clip(d.get("privacy_notes"), 400), "unknowns": [clip(u, 200) for u in (d.get("unknowns") or [])[:10]], "researched": d.get("researched") or "",
     }
+    if d.get("state") in REGISTRIES:
+        out["kind"] = "registry"
+        out["fields"] = trim_fields(d.get("registry_fields") or [])
+    return out
+
+
+def registry_problems(sid, d, keys):
+    """A registry's list of fields: each one a real column of a source it lists, every column of those sources in the list once, in a known group, a metric that exists or none."""
+    p = []
+    rows = d.get("registry_fields")
+    if not isinstance(rows, list) or not rows:
+        return ["%s: a registry needs registry_fields" % sid]
+    cols = [c for s in d.get("sources") or [] for c in s.get("columns") or []]
+    seen = set()
+    for r in rows:
+        c = r.get("column") if isinstance(r, dict) else None
+        if not (isinstance(c, str) and c):
+            p.append("%s: a field with no column" % sid)
+            continue
+        if c in seen:
+            p.append("%s: field %s is listed twice" % (sid, c))
+        seen.add(c)
+        if c not in cols:
+            p.append("%s: field %s is a column of none of the sources" % (sid, c))
+        if r.get("group") not in FIELD_GROUPS:
+            p.append("%s: field %s is in no known group" % (sid, c))
+        if not (isinstance(r.get("label"), str) and r["label"] and isinstance(r.get("plain"), str) and r["plain"]):
+            p.append("%s: field %s needs a label and a plain description" % (sid, c))
+        if r.get("metric") and r["metric"] not in keys:
+            p.append("%s: field %s names a metric that does not exist" % (sid, c))
+    p += ["%s: the column %s of a source is not in the field list" % (sid, c) for c in sorted(set(cols) - seen)]
+    return p
 
 
 def problems_in(sid, d, keys):
     p = []
     ok = lambda c, m: p.append("%s: %s" % (sid, m)) if not c else None  # noqa: E731
-    ok(d.get("state") == sid and sid in C.NAME_OF, "the file must name its own jurisdiction")
+    ok(d.get("state") == sid and (sid in C.NAME_OF or sid in REGISTRIES), "the file must name its own jurisdiction")
     ok(d.get("grade") in GRADES, "grade must be one of A to D")
     ag = d.get("agency") or {}
     ok(isinstance(ag.get("name"), str) and ag["name"] and str(ag.get("url", "")).startswith("https://"), "agency needs a name and an https address")
@@ -181,6 +223,8 @@ def problems_in(sid, d, keys):
         ok(any(s.get("has_approval_date") is True and s.get("reachable") == "ok" and s.get("grain") in ("well", "permit") for s in srcs or []), "grade A needs a reachable per-well or per-permit source with an approval date")
     if d.get("grade") in ("A", "B"):
         ok(any(s.get("kind") in ("bulk", "api", "map") and s.get("reachable") == "ok" for s in srcs or []), "grade %s needs a reachable bulk, API or map source" % d.get("grade"))
+    if sid in REGISTRIES:
+        p += registry_problems(sid, d, keys)
     text = re.sub(r"https?://[^\s\"'<>)\]]+", "", json.dumps(d, ensure_ascii=False))
     for what in privacy_check.scan(text, digits=True):
         p.append("%s: the research holds %s" % (sid, what))
@@ -203,7 +247,9 @@ def build(src=SRC, today=None):
     if bad:
         raise ValueError("; ".join(bad[:6]))
     order = [sid for sid, _ in C.JURISDICTIONS if sid in docs]
-    return {"v": 1, "generated": (today or date.today()).isoformat(), "groups": cat["groups"], "metrics": cat["metrics"], "order": order, "states": {sid: trim_state(docs[sid]) for sid in order}}
+    registries = [sid for sid in REGISTRIES if sid in docs]
+    return {"v": 1, "generated": (today or date.today()).isoformat(), "groups": cat["groups"], "metrics": cat["metrics"], "order": order, "registries": registries,
+            "states": {sid: trim_state(docs[sid]) for sid in order + registries}}
 
 
 def validate(doc):
@@ -216,11 +262,21 @@ def validate(doc):
         p.append("a metric is in no group")
     if len(set(keys)) != len(keys):
         p.append("duplicate metric keys")
-    if doc["order"] != [sid for sid in doc["order"] if sid in doc["states"]] or set(doc["order"]) != set(doc["states"]):
-        p.append("order and states disagree")
+    regs = doc.get("registries") or []
+    if doc["order"] != [sid for sid in doc["order"] if sid in doc["states"]] or set(doc["order"]) | set(regs) != set(doc["states"]) or set(doc["order"]) & set(regs):
+        p.append("order, registries and states disagree")
+    if any(sid not in REGISTRIES for sid in regs):
+        p.append("a registry this site does not carry")
     for sid, s in doc["states"].items():
-        if sid not in C.NAME_OF:
+        if sid not in C.NAME_OF and sid not in REGISTRIES:
             p.append("%s: not a jurisdiction" % sid)
+        if sid in regs:
+            fs = s.get("fields") or []
+            if s.get("kind") != "registry" or not fs:
+                p.append("%s: a registry carries its field list" % sid)
+            for f in fs:
+                if f.get("group") not in FIELD_GROUPS or (f.get("metric") and f["metric"] not in keys):
+                    p.append("%s: field %s malformed" % (sid, f.get("column")))
         if set(s["cells"]) != set(keys):
             p.append("%s: cells do not match the metrics" % sid)
         for k, v in s["cells"].items():

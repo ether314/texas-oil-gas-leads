@@ -166,10 +166,68 @@ def walk(o, path):
 
 walk(committed["states"], "")
 check(not left, "no string the matrix page shows has the researchers' voice left in it (%d found: %s)" % (len(left), left[:3]))
-check(committed["states"]["FO"]["name"] == F.C.NAME_OF["FO"] and all(st["name"] == F.C.NAME_OF[sid] for sid, st in committed["states"].items()), "each jurisdiction has one name, the National report's, in the matrix too")
+check(committed["states"]["FO"]["name"] == F.C.NAME_OF["FO"] and all(st["name"] == F.C.NAME_OF.get(sid, F.REGISTRIES.get(sid)) for sid, st in committed["states"].items()), "each jurisdiction has one name, the National report's, in the matrix too (a registry its own)")
 nat = json.load(open(os.path.join(DATA, "national.json"), encoding="utf-8"))
 check(nat["hasFields"] is True, "national.json knows the matrix file exists (so the national panels link to it)")
 check(all(sid in F.C.NAME_OF for sid in committed["order"]), "every researched jurisdiction is one the national report carries")
+
+# the registry (FracFocus): the same 48 questions about what a disclosure captures, kept apart from the agencies, with the list of every field in its download
+ff = docs["FF"]
+check(F.problems_in("FF", ff, keys) == [], "FracFocus's research passes the rules: %s" % F.problems_in("FF", ff, keys)[:2])
+check(committed["registries"] == ["FF"] and "FF" not in committed["order"] and "FF" in committed["states"] and committed["states"]["FF"]["kind"] == "registry", "FracFocus is a registry in the file: not one of the agencies in `order`, and its state says what it is")
+check(len(committed["order"]) == 35 and all("kind" not in committed["states"][sid] for sid in committed["order"]), "the 35 agencies are still the agencies, and none of them is marked a registry")
+real_cols = {c for src in ff["sources"] for c in src["columns"]}
+check(len(real_cols) == 34 and {f["column"] for f in committed["states"]["FF"]["fields"]} == real_cols, "every column of the registry's three kinds of file is in the field list once, and nothing else (34 columns)")
+check(set(real_cols) >= {"APINumber", "TVD", "TotalBaseWaterVolume", "CASNumber", "MassIngredient", "WaterSourceId"}, "the columns are the ones the registry's own data dictionary lists (read from the real files on 2026-11-01)")
+ffc = committed["states"]["FF"]["cells"]
+check(all(ffc[k][0] == "data" for k in ("api_number", "surface_latlon", "proposed_depth_tvd", "water", "county", "operator_name", "well_name")) and ffc["spud_date"][0] == "none" and ffc["completion_date"][0] == "none" and ffc["date_approved"][0] == "none" and ffc["permit_number"][0] == "none",
+      "FracFocus: the job's dates are not a spud or completion date and a disclosure has no permit number or approval date, so those cells say not captured")
+check(all(f["metric"] == "" or f["metric"] in keys for f in committed["states"]["FF"]["fields"]) and all(ffc[f["metric"]][0] == "data" for f in committed["states"]["FF"]["fields"] if f["metric"]), "a field matches a permit metric only where FracFocus's own cell for that metric says data")
+check(ff["grade"] in ("A", "B", "C", "D") and ff["researched"] == "2026-11-01" and not ff["form"]["url"].startswith("http:"), "FracFocus carries a grade, the day it was researched and an https form address")
+
+
+def broken_ff(fn):
+    d = copy.deepcopy(ff)
+    fn(d)
+    return F.problems_in("FF", d, keys)
+
+
+reg_faults = {
+    "a registry with no field list": lambda d: d.pop("registry_fields"),
+    "a field that is a column of no source": lambda d: d["registry_fields"].append({"column": "Invented", "label": "x", "group": "chem", "plain": "x", "metric": ""}),
+    "a column of a source left out of the field list": lambda d: d["registry_fields"].pop(0),
+    "a field listed twice": lambda d: d["registry_fields"].append(dict(d["registry_fields"][0])),
+    "a field in no known group": lambda d: d["registry_fields"][0].__setitem__("group", "elsewhere"),
+    "a field that matches a metric that does not exist": lambda d: d["registry_fields"][0].__setitem__("metric", "invented"),
+    "a field with no plain description": lambda d: d["registry_fields"][0].__setitem__("plain", ""),
+}
+for name, fn in reg_faults.items():
+    check(broken_ff(fn), "the rules refuse " + name)
+check(not F.problems_in("OK", copy.deepcopy(docs["OK"]), keys), "an agency needs no field list")
+
+with tempfile.TemporaryDirectory() as tmp:
+    shutil.copy(os.path.join(F.SRC, "metrics.json"), tmp)
+    for sid in ("KS", "FF"):
+        d = copy.deepcopy(base if sid == "KS" else ff)
+        if sid == "KS":
+            d["state"], d["name"] = "KS", "Kansas"
+        json.dump(d, open(os.path.join(tmp, sid + ".json"), "w"))
+    out = F.build(tmp, date(2026, 11, 1))
+    check(F.validate(out) == [] and out["order"] == ["KS"] and out["registries"] == ["FF"] and set(out["states"]) == {"KS", "FF"}, "the builder keeps a registry apart from the agencies: order %s, registries %s" % (out["order"], out["registries"]))
+    check(out["states"]["FF"]["kind"] == "registry" and len(out["states"]["FF"]["fields"]) == 34 and "kind" not in out["states"]["KS"] and "fields" not in out["states"]["KS"], "only the registry carries `kind` and its field list")
+good_reg = copy.deepcopy(committed)
+for name, fn in {
+    "a registry that is also in the order": lambda o: o["order"].append("FF"),
+    "a registry this site does not carry": lambda o: (o["registries"].append("ZZ"), o["states"].__setitem__("ZZ", copy.deepcopy(o["states"]["FF"]))),
+    "a registry with no field list": lambda o: o["states"]["FF"].__setitem__("fields", []),
+    "a registry field in no known group": lambda o: o["states"]["FF"]["fields"][0].__setitem__("group", "elsewhere"),
+    "a registry field that matches a metric that does not exist": lambda o: o["states"]["FF"]["fields"][0].__setitem__("metric", "invented"),
+    "a state in neither the order nor the registries": lambda o: o["registries"].pop(),
+}.items():
+    o = copy.deepcopy(good_reg)
+    fn(o)
+    check(F.validate(o), "the output validator refuses " + name)
+mutant("the field list is not checked against the sources", lambda m: setattr(m, "registry_problems", lambda sid, d, keys: []), lambda m: not m.problems_in("FF", copy.deepcopy(dict(ff, registry_fields=ff["registry_fields"][1:])), keys))
 
 print()
 print("FAILED %d: %s" % (len(FAILS), FAILS[:4]) if FAILS else "all passed")

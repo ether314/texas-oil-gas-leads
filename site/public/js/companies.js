@@ -43,7 +43,7 @@ export function createCompaniesView({ meta }) {
     note.textContent = fmtN(c.states) + ' states' + (c.offshore ? ' and the federal offshore' : '') + ': every operator they name with a new-well permit or spud in the last 12 months'
       + (c.top15 ? ', except ' + fmtN(c.top15) + ' state' + (c.top15 === 1 ? '' : 's') + ' that list only the 15 busiest' : '') + '.';
     moreText.replaceChildren('Texas, Oklahoma, New Mexico and the federal offshore also list operators whose newest permit or spud is 12 to 24 months old (band C) and show each operator\u2019s months, trend, depth and top county; the other states give the count for the last 12 months and nothing more. A state counts permits approved or, where it publishes no approval dates by well, wells spudded or drilled (marked beside the number); the two are never added. ' + spudCaveat(STATES.map((x) => x.id)) + ' Only corporations, LLCs and limited partnerships are named, never a person trading under a name. '
-      + (info.without.length ? 'No operator list yet for ' + listAnd(info.without) + ': ' : ''), info.without.length ? el('a', { href: '#national', text: 'the National report’s coverage table' }) : '', info.without.length ? ' says why. ' : '',
+      + (info.without.length ? 'No operator list yet for ' + listAnd(info.without) + ': ' : ''), info.without.length ? el('a', { href: '#overview', text: 'the Overview’s coverage table' }) : '', info.without.length ? ' says why. ' : '',
     info.prodEnd ? 'Oil and gas columns are Texas’s, for the 12 months to ' + info.prodEnd + '.' : '');
   }
   const fmtN = (n) => new Intl.NumberFormat('en-US').format(n);

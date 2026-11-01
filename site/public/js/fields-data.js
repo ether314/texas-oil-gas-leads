@@ -1,6 +1,8 @@
 // The matrix view's data code: pure functions over permit-fields.json (d11_fields_build.py), so Node can test them. Nothing here touches the page.
 // A cell is [status, evidence, note]. The statuses run from most to least available: data (a field in a downloadable file), query (a one-well-at-a-time
 // lookup), form (asked for on the application, published nowhere), none (the permit does not capture it), unknown (not verified: said so, never guessed).
+// A registry (FracFocus) answers the same questions about what a disclosure captures. It is a column of the matrix, shown first, but it is not an agency: the counts of
+// agencies (`metricScore`, `headline`, `byStatus`) are over `doc.order` only, and `doc.registries` names the others.
 
 export const CODES = [
   { id: 'data', label: 'Published as data', def: 'A field in a downloadable file or API.' },
@@ -29,6 +31,8 @@ export const REACH = {
   timeout: 'timed out',
   'not-tested': 'not tested',
 };
+export const GRAIN = { aggregate: 'totals only', well: 'one row a well', permit: 'one row a permit', disclosure: 'one row a disclosure' };
+export const FIELD_GROUPS = { well: 'The well and who filed', where: 'Where', job: 'The fracturing job', water: 'Water', chem: 'Chemicals' };
 export const SHORT = { FO: 'Gulf', BL: 'BLM' };
 export const shortCode = (id) => SHORT[id] || id;
 
@@ -50,14 +54,18 @@ export function metricScore(doc, key) {
   doc.order.forEach((sid) => { t[doc.states[sid].cells[key][0]]++; });
   return { ...t, asked: t.data + t.query + t.form, total: doc.order.length };
 }
-// the columns, most published first (data, then lookup, then form; ties by name) or A to Z
-export function columns(doc, by = 'coverage') {
+// the registries of a file (FracFocus), those a file really holds
+export const registries = (doc) => (doc.registries || []).filter((id) => doc.states[id]);
+// the agencies' columns, most published first (data, then lookup, then form; ties by name) or A to Z
+export function agencyColumns(doc, by = 'coverage') {
   const ids = doc.order.slice();
   const name = (id) => doc.states[id].name;
   if (by === 'name') return ids.sort((a, b) => name(a).localeCompare(name(b)));
   const sc = new Map(ids.map((id) => [id, stateScore(doc, id)]));
   return ids.sort((a, b) => (sc.get(b).data - sc.get(a).data) || (sc.get(b).query - sc.get(a).query) || (sc.get(b).form - sc.get(a).form) || name(a).localeCompare(name(b)));
 }
+// every column of the matrix: the registry first, whatever the order, then the agencies
+export const columns = (doc, by = 'coverage') => [...registries(doc), ...agencyColumns(doc, by)];
 export const metricsIn = (doc, group) => doc.metrics.filter((m) => !group || group === 'all' || m.group === group);
 // the facts the top of the page states
 export function headline(doc) {
@@ -72,7 +80,26 @@ export function headline(doc) {
 // the states that give a metric each status, for the metric panel
 export function byStatus(doc, key) {
   const out = Object.fromEntries(CODES.map((c) => [c.id, []]));
-  columns(doc, 'name').forEach((id) => { out[doc.states[id].cells[key][0]].push(id); });
+  agencyColumns(doc, 'name').forEach((id) => { out[doc.states[id].cells[key][0]].push(id); });
   return out;
 }
 export const percent = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+
+// A registry's list of fields in groups, each with the permit metric it matches and how many agencies publish that metric as data (null when it matches none).
+export function registryGroups(doc, rid) {
+  const r = doc.states[rid];
+  const rows = (r && r.fields) || [];
+  return Object.keys(FIELD_GROUPS).map((id) => ({
+    id, label: FIELD_GROUPS[id],
+    fields: rows.filter((f) => f.group === id).map((f) => {
+      const m = f.metric ? doc.metrics.find((x) => x.key === f.metric) : null;
+      return { ...f, matches: m ? { key: m.key, label: m.label, ...metricScore(doc, m.key) } : null };
+    }),
+  })).filter((g) => g.fields.length);
+}
+// What a registry captures that few agencies publish as data: its metrics answered `data`, fewest agencies first (ties by label), at most `max`.
+export function registryAdds(doc, rid, max = 3) {
+  return doc.metrics.filter((m) => { const c = cellOf(doc, rid, m.key); return c && c.s === 'data'; })
+    .map((m) => ({ m, n: metricScore(doc, m.key).data, total: doc.order.length }))
+    .sort((a, b) => a.n - b.n || a.m.label.localeCompare(b.m.label)).slice(0, max);
+}

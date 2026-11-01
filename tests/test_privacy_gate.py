@@ -72,8 +72,13 @@ def archive_copy(sub):
     return out
 
 
-def newest(out):
-    return sorted(f for f in os.listdir(out) if re.fullmatch(r"\d{4}-\d\d-\d\d\.json", f))[-1]
+def newest(out, section=None):
+    """The newest day file, or the newest that holds a section: a day can have none of a dataset (Texas on the first day of a month, when the Daily Permit File has no record yet:
+    2026-11-01 has no permits section), and an edit that puts a name into that section needs a day that has it."""
+    days = sorted(f for f in os.listdir(out) if re.fullmatch(r"\d{4}-\d\d-\d\d\.json", f))
+    if section:
+        days = [f for f in days if section in json.load(open(os.path.join(out, f)))]
+    return days[-1]
 
 
 def edit(out, name, fn):
@@ -105,7 +110,7 @@ for state, sub, validate, texas, where, bad_name in STATES:
         got = validate(out)
         check(any(label.split(" ", 1)[1] in g or label in g for g in got), "%s: a day file that holds %s fails the check: %s" % (state, label, got[:1]))
     out = archive_copy(sub)
-    edit(out, newest(out), put_name(where, bad_name))
+    edit(out, newest(out, where[0]), put_name(where, bad_name))
     got = validate(out)
     check(any("operator" in g and "AAAA" in g for g in got) and bad_name.split()[0] not in " ".join(got),
           "%s: an operator name the state's rule refuses fails the check, and the log shows its shape, not the name: %s" % (state, got[:1]))
