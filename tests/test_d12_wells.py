@@ -529,10 +529,33 @@ with tempfile.TemporaryDirectory() as tmp:
     saved = patched(gh)
     d7_release.time.sleep = lambda s: None
     try:
-        code = W.run(args(out, dl, days=1), io=io_, now=NOW, log=lambda m: None)
-        check(code == 1 and not os.path.exists(os.path.join(out, "index.json")) and W.check(out) != [] or code == 1, "a limit that never lifts ends the run red and records nothing (exit %d)" % code)
+        lines_ = []
+        code = W.run(args(out, dl, days=1), io=io_, now=NOW, log=lines_.append)
+        check(any("no further pack is started" in l for l in lines_), "the log says why the run stopped")
+        check(code == 1 and not os.path.exists(os.path.join(out, "index.json")), "a limit that never lifts ends the run red and records nothing (exit %d)" % code)
+        check([p for p, _ in io_.downloads] == ["ci", "cd"], "and the run stops at the first pack it cannot upload: it does not download the others (%s)" % io_.downloads)
     finally:
         unpatch(saved)
+
+# the mutant: no breaker, the run goes on to download and fail the packs after the first
+src_brk = open(os.path.join(PIPE, "d12_wells.py")).read()
+mod_brk = types.ModuleType("d12brk")
+mod_brk.__file__ = os.path.join(PIPE, "d12_wells.py")
+exec(compile(src_brk.replace("                if RATE_LIMITED.search(str(e)):  # the next pack", "                if False:  # the next pack", 1), "d12brk.py", "exec"), mod_brk.__dict__)
+with tempfile.TemporaryDirectory() as tmp:
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    io_ = world(tmp)
+    gh = FakeGH()
+    gh.limit = 10 ** 6
+    saved = patched(gh)
+    d7_release.time.sleep = lambda s: None
+    mod_brk.d7_daily.read_daf = lambda path: PERMITS
+    try:
+        mod_brk.run(args(out, dl, days=1), io=io_, now=NOW, log=lambda m: None)
+    finally:
+        unpatch(saved)
+    check(len(io_.downloads) > 2, "mutant caught: without the breaker the run downloads the packs it cannot upload (%d downloads)" % len(io_.downloads))
 
 # the mutant: the short waits of an ordinary failure for a rate limit too
 src = open(os.path.join(PIPE, "d12_wells.py")).read()
