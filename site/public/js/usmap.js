@@ -9,7 +9,7 @@ import * as G from './usgeo.js';
 import * as D from './newwells-data.js';
 
 const TAU = Math.PI * 2;
-const GLOW_DAYS = 30; // wells newer than this (before the replay's cursor) glow; older ones settle into the cached layer
+const GLOW_DAYS = 30; // wells newer than this (before the replay's cursor) glow; older ones settle into the cached layer (the Daily report glows one day)
 // each state's dot color, [on a dark page, on a light page]; the same hues as the stacked chart's colors (data's COLORS), every other state slate
 const RGB = {
   TX: [[255, 138, 78], [235, 104, 52]], NM: [[48, 204, 148], [27, 175, 122]], OK: [[160, 142, 250], [98, 80, 214]], ND: [[96, 168, 252], [42, 120, 214]],
@@ -46,7 +46,7 @@ function rng(seed) {
 
 // canvas, host: the element that sizes it. outlines: usgeo.buildOutlines. P: newwells-data.decode. doc: the summary (for a state's figures).
 // box(w, h): the drawing box in CSS px (the Overview's backdrop keeps clear of its text); default is the whole canvas with a margin.
-export function createUSMap({ canvas, host, outlines, P, doc, interactive = false, box = null, onSelect = null, onHover = null }) {
+export function createUSMap({ canvas, host, outlines, P, doc, interactive = false, box = null, onSelect = null, onHover = null, glowDays = GLOW_DAYS }) {
   const ctx = canvas.getContext('2d');
   const baseC = document.createElement('canvas'); const dotsC = document.createElement('canvas');
   const bctx = baseC.getContext('2d'); const dctx = dotsC.getContext('2d');
@@ -74,7 +74,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
   }
   const idxHi = () => cum[Math.min(P.span, Math.floor(cursor)) + 1]; // wells up to the cursor's day
   const idxLo = () => cum[Math.max(0, lo)]; // wells before the first visible day
-  const glowFrom = () => Math.max(idxLo(), cum[Math.max(0, Math.floor(cursor) - GLOW_DAYS) + 1]);
+  const glowFrom = () => Math.max(idxLo(), cum[Math.max(0, Math.floor(cursor) - glowDays) + 1]);
   const showing = (i) => !selected || P.states[P.s[i]] === selected;
 
   function loadPalette() {
@@ -160,7 +160,7 @@ export function createUSMap({ canvas, host, outlines, P, doc, interactive = fals
         if (!showing(i)) continue;
         const x = wx[i] * view.k + view.tx; const y = wy[i] * view.k + view.ty;
         if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
-        const age = Math.min(1, (Math.floor(cursor) - P.day[i]) / GLOW_DAYS);
+        const age = Math.min(1, (Math.floor(cursor) - P.day[i]) / glowDays);
         const wr = rn * (0.78 + 0.5 * Math.min(1, P.h2o[i] / 400)) * (1.12 - 0.12 * age); const gr = wr * 3.6;
         ctx.globalAlpha = (dark ? 0.34 : 0.42) * (1 - 0.45 * age);
         ctx.drawImage(sprites[slot[i]], x - gr, y - gr, gr * 2, gr * 2);

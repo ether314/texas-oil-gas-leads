@@ -13,11 +13,11 @@ import { createImagesView } from './images.js';
 import { createFieldsView } from './fields.js';
 import { icon } from './icons.js';
 import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, stateOf, statesIn, inName, shortName, placesOne, measurePhrase, measureAnd, everyOf, spudCaveat, ucFirst, listOr } from './states.js';
+import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesKey, statesIn, inName, shortName, placesOne, measurePhrase, measureAnd, everyOf, spudCaveat, ucFirst, listOr } from './states.js';
 
 const VIEWS = { overview: 'Overview', national: 'National report', fields: 'Permit data', images: 'Texas images', map: 'Map', operators: 'Operators', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
 // the views that follow the states bar; the others (Sources) hide it
-const STATE_VIEWS = new Set(['map', 'daily', 'operators', 'companies']);
+const STATE_VIEWS = new Set(['map', 'operators', 'companies']);
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -163,29 +163,19 @@ async function boot() {
     replaceHash(view, params);
   }
 
-  // what the bar says about the view on screen: the Daily report only has some states
+  // what the bar says when the address names two states of the four: which are shown
   const note = $('#statebar-note');
   function setNote() {
     let text = activeStates().length > 1 && activeStates().length < STATES.length ? 'Showing ' + statesIn(activeStates()) + '. Choose a state, or All, to change it.' : '';
-    if (shown === 'daily') {
-      const have = daily.available();
-      const missing = activeStates().filter((id) => have.length && !have.includes(id));
-      if (missing.length) {
-        const shownIds = activeStates().filter((id) => have.includes(id));
-        // a state that can never have a report says why (the federal offshore's file is weekly); one that may get a report says "yet"
-        const why = missing.length === 1 && stateOf(missing[0]).noDaily;
-        text = (text ? text + ' ' : '') + ucFirst(statesIn(missing)) + ' ' + (missing.length > 1 ? 'have' : 'has') + ' no Daily report' + (why ? ' (' + why + ')' : ' yet') + '; ' + (shownIds.length ? 'it shows ' + statesIn(shownIds) + '.' : 'it shows ' + statesIn(have) + ' instead.');
-      }
-    }
     note.textContent = text;
   }
 
   let shown = '';
   function show(moveFocus) {
     let { view, params, hasQuery } = parseHash();
-    // the Oklahoma report is part of the Daily report now: an old link to it opens the Daily report showing Oklahoma
+    // the Oklahoma report is part of the Daily report now: an old link to it opens the Daily report on Oklahoma's wells
     if (view === 'oklahoma') {
-      params.set('st', 'ok');
+      params.set('s', 'OK');
       history.replaceState(null, '', '#daily?' + params);
       view = 'daily'; hasQuery = true;
     }
@@ -211,7 +201,7 @@ async function boot() {
     pageTexts();
     ensure(id);
     if (id === 'overview') overview.show(params); else if (shown === 'overview') overview.pause();
-    if (id === 'daily') daily.activate(params).then(() => { bar.set(choice(), false); setNote(); });
+    if (id === 'daily') daily.activate(params); else if (shown === 'daily') daily.deactivate();
     if (id === 'national') national.activate(params); else if (shown === 'national') national.deactivate();
     if (id === 'images') images.activate(params); else if (shown === 'images') images.deactivate();
     if (id === 'fields') fields.activate(params); else if (shown === 'fields') fields.deactivate();
@@ -230,8 +220,7 @@ async function boot() {
     bar.set(choice(), false);
     syncAddress();
     pageTexts();
-    if (shown === 'daily') daily.setStates(ids);
-    else if (shown === 'map') map.setStates();
+    if (shown === 'map') map.setStates();
     else if (shown === 'operators' || shown === 'companies') ensure(shown);
     setNote();
   });

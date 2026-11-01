@@ -93,6 +93,22 @@ export function perDay(P, d0, d1, state = null) {
   for (let i = firstAtOrAfter(P, d0); i < P.n && P.day[i] <= d1; i++) if (si < 0 || P.s[i] === si) out[P.day[i] - d0]++;
   return out;
 }
+// wells per day over [d0, d1] for every state at once: a Map of state id -> array of d1 - d0 + 1 counts (one pass over the points)
+export function perDayByState(P, d0, d1) {
+  const out = new Map(); const n = Math.max(0, d1 - d0 + 1);
+  for (let i = firstAtOrAfter(P, d0); i < P.n && P.day[i] <= d1; i++) {
+    const id = P.states[P.s[i]]; let a = out.get(id);
+    if (!a) { a = new Array(n).fill(0); out.set(id, a); }
+    a[P.day[i] - d0]++;
+  }
+  return out;
+}
+// the newest day that has at least `min` wells (the newest days have only a few so far, because operators disclose late); the last day when no day has that many
+export function lastBusyDay(P, min = 10) {
+  const per = perDay(P, 0, P.span);
+  for (let d = per.length - 1; d >= 0; d--) if (per[d] >= min) return d;
+  return P.span;
+}
 // wells per state over [d0, d1]: [{ id, n }] ranked, only states with a well
 export function perState(P, d0, d1) {
   const n = new Array(P.states.length).fill(0);
