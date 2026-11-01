@@ -499,6 +499,24 @@ with tempfile.TemporaryDirectory() as tmp:
     fault("a phone number in a file", edit_json("county/283.json", lambda o: o["wells"][0].update(fl="PHANTOM 713 289 2950")))
     fault("a county file over its budget", lambda d: open(os.path.join(d, "county", "283.json"), "a").write(" " * 2_600_000))
 
+# an operator the site stops naming leaves the files at the next save (a name stored when the pack was read must not outlive the rule)
+with tempfile.TemporaryDirectory() as tmp:
+    out, dl = os.path.join(tmp, "wells"), os.path.join(tmp, "dl")
+    os.makedirs(dl)
+    io_ = world(tmp)
+    saved = patched(FakeGH())
+    try:
+        W.run(args(out, dl), io=io_, now=NOW, log=lambda m: None)
+        st = W.State.load(out)
+        lk = W.Lookups()
+        named = [w for wells in st.counties.values() for w in wells.values() if w["on"]]
+        lk.operator.pop(NAMEABLE)
+        st.save(out, lk, "2026-11-01T00:00:00Z", "o/r")
+        left = [w for f in os.listdir(os.path.join(out, "county")) for w in json.load(open(os.path.join(out, "county", f)))["wells"] if w["o"] == NAMEABLE]
+        check(named and left and all(w["on"] is None for w in left) and W.check(out, lk) == [], "an operator the site stops naming has its name removed from the files at the next save (%d wells)" % len(left))
+    finally:
+        unpatch(saved)
+
 # ------------------------------------------------------------------------------------------------ mutants: the old behavior put back must be caught
 
 
@@ -546,7 +564,7 @@ check(real_drop["units"] == set() and real_drop["rc"] == 1, "(the real code, an 
 
 mutant("a document with no well is published under a made-up well", ('        if not tie:\n            untied += 1\n            continue', '        if not tie:\n            tie = {"api": "00000000", "district": None, "op": None, "field": None}'),
        lambda r: "00000000" in r["text"] or bool(r["problems"]))
-mutant("every operator is named", ('w["on"] = lk.operator.get(d["op"])', 'w["on"] = "OP " + d["op"]'), lambda r: any("may not be named" in x for x in r["problems"]))
+mutant("every operator is named", ('"on": lk.operator.get(w["o"]) if w["o"] else None,', '"on": ("OP " + w["o"]) if w["o"] else None,'), lambda r: any("may not be named" in x for x in r["problems"]))
 mutant("the lease name is published as the field", ('"field": clean_field(pk[29])}', '"field": clean_field(pk[26])}'), lambda r: "LITTLE WILLIE" in r["text"])
 mutant("the landowner is read with the packet", ('"field": clean_field(pk[29])}', '"field": clean_field(pk[30])}'), lambda r: "MC KINNEY" in r["text"])
 mutant("a file is published whatever it is", ('    if info.file_size > MAX_ASSET or ext not in MAGIC:\n        return None', '    if False:\n        return None'), lambda r: True if r["rc"] != 0 else False)  # a crash or a different result is a catch

@@ -544,7 +544,7 @@ class State:
             for api in sorted(wells):
                 w = wells[api]
                 docs = sorted(w["docs"], key=lambda x: (x["d"], x["s"], x["f"]), reverse=True)
-                rows.append({"a": api, "fl": w["fl"], "di": w["di"], "o": w["o"], "on": w["on"],
+                rows.append({"a": api, "fl": w["fl"], "di": w["di"], "o": w["o"], "on": lk.operator.get(w["o"]) if w["o"] else None,  # re-derived at every save: a name the site may no longer use leaves the files at the next run
                              "docs": [{"d": x["d"], "s": x["s"], "k": x["k"], "pg": x["pg"], "b": x["b"], "x": x["x"], "f": x["f"], "t": ti[x["tag"]], "v": x["v"]} for x in docs]})
                 ndocs += len(docs)
                 for x in docs:
