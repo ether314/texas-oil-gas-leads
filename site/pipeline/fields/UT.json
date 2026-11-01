@@ -1,0 +1,694 @@
+{
+ "state": "UT",
+ "name": "Utah",
+ "agency": {
+  "name": "Utah Division of Oil, Gas and Mining, Department of Natural Resources",
+  "short": "DOGM",
+  "url": "https://ogm.utah.gov"
+ },
+ "form": {
+  "name": "Application for Permit to Drill (APD), with the APD Checklist",
+  "number": "Form 3 (11/2001 edition; blank PDF last modified 2021-04-14); APD Checklist dated 2005-02-08",
+  "url": "https://oilgas.ogm.utah.gov/pub/report_forms/Frm_03_2001.pdf",
+  "read": true,
+  "notes": "Read the blank Form 3 (items 1 to 25 and the instructions on its back) and the APD Checklist (https://oilgas.ogm.utah.gov/pub/report_forms/APDchecklist.pdf, 19 items). The forms page also lists an ePermit registration form 'for electronic permit and report submittal'; the e-filing screens are login-only and not seen, so the cells follow the paper form and checklist. Form 3 covers drill, reenter and deepen only; recompletions, conversions, plugging and reperforation go on Form 9 Sundry Notices (https://oilgas.ogm.utah.gov/pub/report_forms/Frm_09_2000.pdf, not read)."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.WellID (10 digits); Wells.API is 14 digits in the file (ReadMe says 10)"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.APDNumber, assigned when the APD is received (130 repeats: amended APDs)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.WellName"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.LeaseNumber (mineral lease no.) and UnitName; no lease name field"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.Operator (current operator, not the one at permit time)"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.OperatorNo"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3 asks operator name, address, phone only; operator registration forms not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 3 item 20 Bond description; no bond column in the files seen"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.CountyName"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district item on Form 3; no district column in Wells.csv"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.FieldName; Form 3 item 10"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.Latitude/Longitude and UTM_Surf_N/E (NAD83); the form asks footages only"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.QuarterQuarter, Sec, Township, Range, PM, FootageNS/EW"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 3 item 4 at proposed producing zone; planned survey end point is in DirectionalSurveyData.csv"
+  },
+  "lateral_path": {
+   "s": "data",
+   "e": "file",
+   "n": "DirectionalSurveyData.csv: MD, inclination, azimuth, offsets; CitingType Planned or AsDrilled"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.Ground_Elev (32,025 rows), Kelly_Elev, Floor_Elev; Form 3 item 21"
+  },
+  "surface_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.SurfaceOwner = type only (Federal/Indian/State/Fee); owner contact is in the APD packet"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.welltype (current type, not as permitted); Form 3 item 1B oil/gas/other"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.WorkType: DRILL, DEEPEN, REENTER, RECOMP, CONVERT, REPERF, PLUG"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.Slant (blank on 35% of rows); Wells.Dir_Horiz/Dir_Vert/Dir_Direct flags"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.ProposedMD (40,327 of 40,451 rows; in the file, not in the ReadMe); Form 3 item 19"
+  },
+  "proposed_depth_tvd": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.ProposedTVD (14,582 rows, mostly directional/horizontal wells; not in ReadMe)"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "No item on Form 3 or the APD checklist; derivable from the planned survey"
+  },
+  "target_formation": {
+   "s": "query",
+   "e": "web",
+   "n": "APD search shows a Proposed Zone column; not in Wells.csv or WellHistory.csv"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "Estimated tops of geologic markers: drilling program (Form 3 instructions, APD checklist 5)"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 3 item 24 (hole size, casing size/grade/weight, setting depth); checklist 11"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 3 item 24 (cement type, quantity, yield, slurry weight); checklist 12"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "BOPE specs, schematic and test plan in the drilling plan (checklist 7)"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "form",
+   "n": "Hydrogen sulfide hazards and contingency plan in the drilling plan (instructions; checklist 10)"
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 3 or the APD checklist; federal-lease surface use plans not read"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "Evidence of Water Rights approval attached (Form 3 item 25, checklist 4); no volume asked"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on Form 3 or the APD checklist"
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.UnitName only; acres assigned (Form 3 item 17) and acres in lease (item 16) not published"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Exception location application (checklist 17); Form 3 items 15 and 18 give distances to lease line and nearest well"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.LeaseType (Federal/Indian/State/Fee/Multiple) and LeaseNumber; owner type only"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No fee item on Form 3 or checklist; fee schedule not checked"
+  },
+  "notice_hearing": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No notice item on Form 3; exception-location notice rules not read"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.APDReceivedDate (filled on 27,431 of 52,897 rows; older APDs blank)"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.APDApprovedDate (39,221 rows, 1921 to 2026-10-29)"
+  },
+  "date_expires": {
+   "s": "query",
+   "e": "web",
+   "n": "Expiration search: Date Permit Will Expire; file has only APDExtDate and APDRescindDate"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.DrySpud (25,090 rows) and RotarySpud (8,702 rows)"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "WellHistory.WCRCompletionDate (latest value 2023-11-15, so not current); FirstProdDate"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.wellstatus (NEW, RET, APD, LA, DRL, P, S, TA, PA...); WellHistory.WellStatusReport"
+  },
+  "plat_image": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned well file PDF at /wellfiles/<county>/<API10>.pdf; attachments not opened to confirm plat"
+  },
+  "form_image": {
+   "s": "query",
+   "e": "web",
+   "n": "APD search page: whole permit as PDF since 2018-02-12 (a snapshot; amendments are elsewhere)"
+  },
+  "completion_report": {
+   "s": "query",
+   "e": "web",
+   "n": "Well Completion search and scanned well files; many completion-report fields are in WellHistory.csv"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "Well Logs search: TIF/PDF/LAS, depth range, date posted; results export to CSV"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells.TotCum_Oil/Gas/Water; monthly production zips by API on the download page (not opened)"
+  }
+ },
+ "sources": [
+  {
+   "id": "ut-wellhistory",
+   "name": "DOGM Well History Download File (WellHistory.zip containing WellHistory.csv)",
+   "url": "https://oilgas.ogm.utah.gov/pub/Database/WellHistory.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "1921",
+   "size_mb": 1.6,
+   "free": true,
+   "login": false,
+   "license": "No license stated on the download page; free public download",
+   "columns": [
+    "WellID",
+    "SideTrack",
+    "WorkType",
+    "Slant",
+    "APDNumber",
+    "APDReceivedDate",
+    "APDReturnDate",
+    "APDApprovedDate",
+    "APDExtDate",
+    "APDRescindDate",
+    "DrySpud",
+    "RotarySpud",
+    "WCRCompletionDate",
+    "SundryIntentReceivedDate",
+    "SundryIntentAcceptedDate",
+    "SundryIntentApprovedDate",
+    "SundryIntentCancelledDate",
+    "SundrySubsequentReceivedDate",
+    "SundryCompletionDate",
+    "WellStatusReport",
+    "WellTypeReport",
+    "FirstProdDate",
+    "TestDate",
+    "ProductionMethod",
+    "Choke64th",
+    "TubingPressure",
+    "CasingPressure",
+    "OilRate",
+    "GasRate",
+    "WaterRate",
+    "OilGravity",
+    "BTU",
+    "Cored",
+    "DST",
+    "DirSurveyRun",
+    "CompletionType",
+    "MD",
+    "TVD",
+    "PBMD",
+    "PBTVD",
+    "CurrentWellStatus",
+    "CurrentWellType",
+    "Confidential"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "DRILL (new well)",
+    "REENTER",
+    "DEEPEN",
+    "RECOMP",
+    "REPERF",
+    "CONVERT",
+    "PLUG"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD then GET of https://oilgas.ogm.utah.gov/pub/Database/WellHistory.zip: HTTP 200, 1,590,043 bytes zip, Last-Modified Sat 2026-10-31 10:12 GMT (a weekend, so automatic); one CSV of 12.9 MB, 52,897 data rows, 43 columns. ReadMe https://oilgas.ogm.utah.gov/pub/database_download_read/2-Well_History_Download_ReadMe.pdf read. Missing values are the text NULL. No location here: join to Wells.csv on WellID = first 10 digits of API."
+  },
+  {
+   "id": "ut-wells",
+   "name": "DOGM Well Data Download File (Wells.zip containing Wells.csv)",
+   "url": "https://oilgas.ogm.utah.gov/pub/Database/Wells.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "1900s",
+   "size_mb": 2.3,
+   "free": true,
+   "login": false,
+   "license": "No license stated on the download page; free public download",
+   "columns": [
+    "WellName",
+    "API",
+    "Operator",
+    "OperatorNo",
+    "FieldName",
+    "Ground_Elev",
+    "Kelly_Elev",
+    "Floor_Elev",
+    "FootageNS",
+    "NS",
+    "FootageEW",
+    "EW",
+    "UTM_Surf_N",
+    "UTM_Surf_E",
+    "Latitude",
+    "Longitude",
+    "QuarterQuarter",
+    "Sec",
+    "Township",
+    "TownshipDir",
+    "Range",
+    "RangeDir",
+    "PM",
+    "CountyName",
+    "Dir_Horiz",
+    "Dir_Vert",
+    "Dir_Direct",
+    "Confidential",
+    "ConfRelDate",
+    "LeaseNumber",
+    "LeaseType",
+    "SurfaceOwner",
+    "AbandonDate",
+    "wellstatus",
+    "welltype",
+    "TotCum_Oil",
+    "TotCum_Gas",
+    "TotCum_Water",
+    "Ind_Tribe",
+    "Multi_Lats",
+    "OriginalFieldType",
+    "UnitName",
+    "ProposedMD",
+    "ProposedTVD",
+    "FirstProdDate"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "HEAD then GET of https://oilgas.ogm.utah.gov/pub/Database/Wells.zip: HTTP 200, 2,268,848 bytes zip, Last-Modified Sat 2026-10-31 10:11 GMT; one CSV of 12.2 MB, 40,451 wells, 45 columns (ProposedMD and ProposedTVD are in the file but not in the ReadMe https://oilgas.ogm.utah.gov/pub/database_download_read/1-Well_Data_Download_ReadMe.pdf). API is 14 digits in the file. Status NEW/RET/APD/LA rows are permits not yet drilled (88/979/1,757/10,923 rows)."
+  },
+  {
+   "id": "ut-dirsurvey",
+   "name": "DOGM Directional Survey Data (directionalsurveydata.zip)",
+   "url": "https://oilgas.ogm.utah.gov/pub/Database/directionalsurveydata.zip",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 47.8,
+   "free": true,
+   "login": false,
+   "license": "No license stated on the download page; free public download",
+   "columns": [
+    "API",
+    "ConstructNumber",
+    "CitingType",
+    "MeasuredDepth",
+    "Inclination",
+    "Azimuth",
+    "DoglegRate",
+    "VerticalSection",
+    "NorthOffset",
+    "EastOffset",
+    "TrueVerticalDepth",
+    "TrueVerticalElevationCalc",
+    "LatitudeCalc",
+    "LongitudeCalc",
+    "X",
+    "Y",
+    "UTMZone"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "HEAD: HTTP 200, 47,849,816 bytes, Last-Modified Sat 2026-10-31 10:14 GMT. Then a range GET of the first 64 KB only: one CSV (DirectionalSurveyData.csv, 197 MB unzipped), header row above; CitingType values seen in that slice: Planned, PLANNED, ASDRILLED, AsDrilled. Not downloaded in full. The data page links a notice that this table is being rebuilt."
+  },
+  {
+   "id": "ut-sgid-wells",
+   "name": "Utah Oil and Gas Well Locations (SGID energy.oil_gas_wells), ArcGIS feature layer from DOGM",
+   "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/viewAGRC_WellData_Surf/FeatureServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Page https://gis.utah.gov/products/sgid/energy/oil-gas-wells states none",
+   "columns": [
+    "OBJECTID",
+    "API",
+    "WellName",
+    "Operator",
+    "OperatorNo",
+    "FieldName",
+    "Ground_Elev",
+    "Kelly_Elev",
+    "DrkFloor_Elev",
+    "CoordsSurf_N",
+    "CoordsSurf_E",
+    "UTMZone",
+    "Latitude",
+    "Longitude",
+    "FootageNS",
+    "Dir_NS",
+    "FootageEW",
+    "Dir_EW",
+    "QtrQtr",
+    "Section",
+    "Township",
+    "TownshipDir",
+    "Range",
+    "RangeDir",
+    "Meridian",
+    "County",
+    "Dir_Horiz",
+    "Dir_Vert",
+    "Dir_Direct",
+    "Confidential",
+    "ConfRelDate",
+    "LeaseNumber",
+    "LeaseType",
+    "SurfaceOwner",
+    "AbandonDate",
+    "WellStatus",
+    "WellType",
+    "TotCum_Oil",
+    "TotCum_Gas",
+    "TotCum_Water",
+    "IndianTribe",
+    "Multi_Lats",
+    "OriginalFieldType",
+    "UnitName",
+    "GISStatusType",
+    "OrigComplDate",
+    "MaxPress",
+    "IndianCountry",
+    "Primacy",
+    "FORKLIFT_HASH",
+    "JURISDICTION",
+    "GlobalID"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "One call to <layer>?f=json: HTTP 200, 16.7 KB of metadata, point layer, maxRecordCount 2000, dataLastEditDate 2026-10-30 09:55 UTC (the SGID page says nightly). No approval or spud date; only AbandonDate and OrigComplDate. Records not queried."
+  },
+  {
+   "id": "ut-livedata-apd",
+   "name": "DOGM LiveData Search: Drilling Permits Approved (APD), exports to CSV",
+   "url": "https://oilgas.ogm.utah.gov/oilgasweb/live-data-search/lds-well/well-apd-aprvd-lu.xhtml",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "Date Posted to Web",
+    "Date Approved",
+    "APD Number",
+    "County",
+    "Operator",
+    "Well Name",
+    "API Number",
+    "Work Type",
+    "Well Type",
+    "Current Status",
+    "Field",
+    "Surface Location",
+    "Qtr Qtr",
+    "Section",
+    "Township",
+    "Range",
+    "UTM Northings",
+    "UTM Eastings",
+    "Latitude",
+    "Longitude",
+    "Elevation",
+    "Planned Depth (MD)",
+    "Proposed Zone",
+    "Directional/ Horizontal",
+    "Confidential Well?"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "DRILL",
+    "DEEPEN",
+    "REENTER"
+   ],
+   "reachable": "ok",
+   "tested": "Page read through the fetch tool (not a request from this machine): 25 result columns and filters (Date Approved with LIKE/EQUALS/BETWEEN, County, Operator, APD Number, API Number, Work Type, Well Type, Field Name); two CSV export icons (Page Only, All Pages). The captured page held no result rows. Only place with Proposed Zone and Date Posted to Web."
+  },
+  {
+   "id": "ut-livedata-expiry",
+   "name": "DOGM LiveData Search: Drilling Permit Expiration",
+   "url": "https://oilgas.ogm.utah.gov/oilgasweb/live-data-search/lds-well/well-apd-expired-lu.xhtml",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "Operator",
+    "API Number",
+    "Well Name",
+    "Work Type",
+    "Date Approved",
+    "Date Permit Will Expire"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "DRILL",
+    "DEEPEN",
+    "REENTER"
+   ],
+   "reachable": "ok",
+   "tested": "Page read through the fetch tool: 6 result columns, filters on Expiration Date and Date Approved, CSV export icons; the page does not say how expiration is defined (Form 3 instructions say an approval is valid 12 months)."
+  },
+  {
+   "id": "ut-apds-by-year",
+   "name": "DOGM statistics: Applications for Permit to Drill (APD) by Year",
+   "url": "https://oilgas.ogm.utah.gov/oilgasweb/statistics/apds-by-year.xhtml",
+   "kind": "report",
+   "format": "html",
+   "grain": "aggregate",
+   "cadence": "daily",
+   "history_from": "1985",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "Year",
+    "Permits"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "APDs by year (all work types)"
+   ],
+   "reachable": "ok",
+   "tested": "Page read through the fetch tool, marked as of 2026-10-31: 2026 = 707, 2025 = 525, 2024 = 439. Matches WellHistory.csv approvals by year (2025: 524 DRILL + 1 REENTER = 525; 2024: 437 + 2 = 439; 2026 to Oct 29: 712 in the file, 5 more than the page)."
+  },
+  {
+   "id": "ut-wellfiles",
+   "name": "DOGM Well File Images (scanned well files, incl. the APD as PDF) and Well Logs search",
+   "url": "https://oilgas.ogm.utah.gov/oilgasweb/live-data-search/lds-files/files-lu.xhtml",
+   "kind": "query",
+   "format": "pdf",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 8.7,
+   "free": true,
+   "login": false,
+   "license": "No license stated; confidential files only for the operator's own registered ePermit users",
+   "columns": [
+    "API Well Number",
+    "File Size",
+    "Modify Date",
+    "Available Files",
+    "Confidential",
+    "Operator",
+    "Well Name",
+    "Well Type",
+    "Well Status",
+    "Field Name",
+    "County",
+    "Location (Twn-Rng)",
+    "Section"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Search page read through the fetch tool. One HEAD from this machine of https://oilgas.ogm.utah.gov/wellfiles/047/4304752228.pdf: HTTP 200, 8.66 MB application/pdf, Last-Modified 2018-12-20. PDF not opened (APD packets hold surface-owner contact details per the APD checklist)."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "WellHistory.csv is a free, login-free daily bulk CSV with one row per APD and work event, an APDApprovedDate, a WorkType (DRILL, REENTER, DEEPEN...) and a Slant; it joins to Wells.csv (location, operator, county, proposed depth, status). Reachable from here; its yearly counts match the DOGM's own published APDs-by-year totals for 2024 and 2025.",
+ "producer_plan": "Source: WellHistory.zip (one row per well-construct and work event) joined to Wells.zip on WellID = first 10 digits of API. Both are plain CSVs, a few MB zipped, free, no login, refreshed daily. Monthly approved permits: keep rows with APDApprovedDate not NULL (format MM/DD/YYYY), group by month of APDApprovedDate and WorkType. New drills are WorkType DRILL (about 30-115 a month in 2025-26; 525 in 2025, 712 to Oct 29 2026 incl. one DEEPEN); REENTER and DEEPEN are a handful a year. Horizontal vs vertical from Slant (blank on 35% of rows; falls back to Wells.Dir_Horiz). Operator, county, lat/long, field, lease type, proposed depth and current status come from Wells.csv. Other activity (RECOMP, REPERF, CONVERT, PLUG) has no APD: count it by SundryIntentApprovedDate (sundry notices, a different measure; PLUG about 200-280 a year). APDReceivedDate is filled from about 2000 on (27,431 of 52,897 rows have one), so filing-date counts start there. Approval counts equal the DOGM's own APDs-by-year totals for 2024 and 2025. Caveats: a returned APD (RET, 985 rows) never has an approval date; 130 APD numbers repeat (amendments), so dedupe on APDNumber; Wells.welltype and Operator are the current values, not those at permit time; discard stray dates (one SundryIntentApprovedDate is 2107-10-04); the file has no posting date, so recount the newest weeks on each run.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "recomplete",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "Wells.csv and WellHistory.csv have operator names and account numbers and no phone, e-mail or street-address column (0 of 40,451 operator names contain DBA, but sole proprietors were not otherwise checked). Well names are free text and may carry a landowner's surname on fee land (not checked). The scanned APD PDFs hold surface-owner contact details (checklist item 2) and must not be linked or published.",
+ "unknowns": [
+  "Exact refresh time of the CSVs (Last-Modified was Friday and Saturday mornings, so likely nightly; not checked over days)",
+  "Whether Wells.csv ProposedMD/ProposedTVD are the approved values or are overwritten after drilling",
+  "The ePermit online filing screens (login only); newer APDs may ask more than the 2001 Form 3",
+  "Form 9 Sundry Notice contents (not read), so the fracture plan and pit cells are only checked against Form 3 and the checklist",
+  "APD fee amount and notice/hearing rules for exception locations (not on the form; rules not read)",
+  "Production-by-well zips and operator/bond tables (listed on the data page, one marked 'being rebuilt'; not opened)",
+  "Why WCRCompletionDate has no value after 2023-11-15 in WellHistory.csv"
+ ],
+ "researched": "2026-10-31"
+}

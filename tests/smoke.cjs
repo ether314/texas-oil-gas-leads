@@ -50,6 +50,8 @@ const VIEWS = [
   ['#images', '#images-root .img-stage', async (page) => ((await page.locator('#images-root .img-stage').count()) === 3 ? null : 'the images view should show the three stages of a well')],
   ['#images?d=2026-10-30', '#images-root .img-pack', async (page) => ((await page.locator('#images-root .img-pack').count()) === 3 ? null : 'a day should show its three packs')],
   ['#national', '#national-root button.nat-tile', async (page) => ((await page.locator('#national-root button.nat-tile').count()) === 35 ? null : 'the national tile map should have one button for each of the 35 jurisdictions')],
+  ['#fields', '#fields-root button.fx-c', async (page) => ((await page.locator('#fields-root tr[data-m]').count()) === 48 ? null : 'the matrix should have a row for each of the 48 metrics')],
+  ['#fields?s=BL&g=when', '#fields-root .nat-panel h3', async (page) => (/Federal onshore/.test(await page.locator('#fields-root .nat-panel h3').first().innerText()) && (await page.locator('#fields-root tr[data-m]').count()) === 6 ? null : 'an address naming an agency and a group should open its panel and filter the rows')],
   ['#national?s=NM&m=spuds', '#national-root .nat-panel h3', async (page) => (/New Mexico/.test(await page.locator('#national-root .nat-panel h3').first().innerText()) ? null : 'an address naming New Mexico should open its panel')],
 ];
 const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
@@ -895,6 +897,38 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the Texas images view: ' + e.message.split('\n')[0].slice(0, 200));
     }
     check(!errs.length, 'the Texas images view loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // the permit-data matrix: a cell, an agency and a metric each open their panel; the group tabs filter; no NaN
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    try {
+      await page.goto(base + '#fields', { waitUntil: 'load' });
+      await page.waitForSelector('#fields-root button.fx-c', { timeout: 25000 });
+      check((await page.locator('#fields-root button.fx-h').count()) >= 1, 'the matrix has a column for each agency researched');
+      await page.click('#fields-root button.fx-c >> nth=0');
+      check(/:/.test(await page.locator('#fields-root .nat-panel h3').first().innerText()) && (await page.locator('#fields-root button.fx-c[aria-pressed="true"]').count()) === 1, 'a cell opens its panel (agency: metric) and is the one pressed');
+      check(/s=/.test(await page.evaluate(() => location.hash)) && /m=/.test(await page.evaluate(() => location.hash)), 'the cell is kept in the address');
+      await page.click('#fields-root button.fx-h >> nth=0');
+      check(/Grade [ABCD]/.test(await page.locator('#fields-root .nat-panel').innerText()), 'an agency\'s code opens its panel with its grade');
+      await page.click('#fields-root button.fx-m >> nth=0');
+      check(/as data/.test(await page.locator('#fields-root .nat-panel').innerText()), 'a metric opens the list of agencies');
+      await page.click('#fxg-when');
+      await page.waitForTimeout(200);
+      check((await page.locator('#fields-root tr[data-m]').count()) === 6 && /g=when/.test(await page.evaluate(() => location.hash)), 'the When group shows its six metrics and is kept in the address');
+      const text = await page.locator('#view-fields').innerText();
+      check(!/NaN|undefined|Infinity|\bnull\b/.test(text), 'the matrix shows no NaN, undefined, null or Infinity');
+      check(/Not verified/.test(text), 'the page says what it could not verify');
+    } catch (e) {
+      check(false, 'the permit-data matrix: ' + e.message.split('\n')[0].slice(0, 200));
+    }
+    check(!errs.length, 'the permit-data matrix loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

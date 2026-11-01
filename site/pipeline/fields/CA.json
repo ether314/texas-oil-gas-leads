@@ -1,0 +1,602 @@
+{
+ "state": "CA",
+ "name": "California",
+ "agency": {
+  "name": "California Geologic Energy Management Division (CalGEM), Department of Conservation",
+  "short": "CalGEM",
+  "url": "https://www.conservation.ca.gov/calgem"
+ },
+ "form": {
+  "name": "Notice of Intention (NOI) to drill, rework or abandon a well, filed online in WellSTAR (XML electronic data delivery template also accepted)",
+  "number": "WellSTAR online form 'Notice of Intention'; EDD instructions EICD008 v3.13 (Release 5.0, 4/30/2020; template updated 07-23-20)",
+  "url": "https://www.conservation.ca.gov/calgem/pubs_stats/Documents/Notice-of-Intention-Instructions-EDD-ADA.pdf",
+  "read": true,
+  "notes": "The online form needs a WellSTAR operator login, so the cells come from two agency documents read in full: the NOI instructions for the XML electronic template (field-by-field list, 580 KB, HTTP 200, same size on a fresh HEAD) and the 'Submit NOI' user reference guide (15 steps; screenshots not readable as text). The forms page (HTTP 200) lists 28 WellSTAR forms; the NOI is 'apply for a permit to drill/rework or abandon a well' and is filed before drilling with a general plan showing location and total depth. Notice types: New Drill, Deepen, Sidetrack, Rework, Abandon, Re-Abandon, with a supplementary-notice flag. Steps: organization and notice type; XML upload option; operator contacts; well information (proposed well type, bond, lease, mineral and surface ownership, well name and number, field, area, pool, flags for exploratory, dry hole, confidentiality, well stimulation, H2S, UIC or gas storage project, thermal recovery); depth datum, elevation, MD and TVD, direction, fresh water and USDW zones, geologic markers, BOP and drilling program (mud system, disposal); surface and bottom-hole locations; casing and cement; completion intervals and perforations; proposed work; CEQA; document upload; directional survey. The permit is the NOI approval. A 2024 notice to operators says a permit lapses if work does not start within 24 months. The form was not compared with a live screen, so a newer field may exist."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API in the Notices layer and the weekly lists; CalGEM assigns it, so a new-drill row already carries one"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "NoticePermitNumber (layer 1); PermitNumber (weekly and year-to-date lists)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "WellDesignation, LeaseName, WellNumber; the NOI asks well number and well name"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "LeaseName in the layer 1 schema (blanks not checked); the NOI links a lease record"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "OperatorName in layer 1; Operator Name in the weekly lists"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "OperatorCode (integer) in layer 1; operator is picked from an Organization list on the NOI"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Organizational Questionnaire form not read; the NOI has no such item"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "NOI step 4: link an existing or newly submitted bond; not in the permit layers"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "County in layer 1 (CountyName in the Wells layer); not in the weekly lists"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "District in layer 1 and the weekly lists (Northern, Central, Southern)"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "FieldName, AreaName in layer 1; the NOI also asks the pool(s)"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude, Longitude (NAD83) in layer 1; entered by the operator on the NOI"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Section, Township, Range, BaseMeridian in layer 1; no footages (NOI asks a corner call)"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "NOI asks proposed bottom-hole section, township, range, lat/lon, county, corner call; not in layer"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "NOI steps 12-13: directional survey (XML template or online); required for directional/horizontal"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "Proposed elevation of ground above sea level (required) and depth datum height above ground"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "NOI asks if mineral and surface ownership coincide and the surface owner category (Federal etc.)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "WellType code and WellTypeLabel (Oil & Gas, Cyclic Steam, Water Disposal...); NOI 'Proposed Well Type'"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "file",
+   "n": "NoticeType: NOI - New Drill, Rework, Sidetrack, Deepen, Abandon, Re-Abandon"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells layer isDirectionallyDrilled Y/N (wells only, no horizontal split); NOI asks the direction"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Proposed bottom-hole depth (MD), optional field on the NOI"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Proposed bottom-hole depth (TVD), optional field on the NOI"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "No lateral-length item in the NOI field list; could be derived from the directional survey"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "NOI asks pool(s), intended completion zones and interval formation; layer 1 has field and area only"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "form",
+   "n": "Zones of Significance (fresh water, USDW, markers) with top/bottom TVD and MD, plus a markers text"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Wellbore features: type, top and bottom MD, outside and inside diameter, weight, grade, new or pulled"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Cement segments (top, bottom, inside or outside casing), cement class, volume, yield"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "BOP equipment: annular, pipe, blind and shear rams, rotating head, with pressure ratings"
+  },
+  "h2s": {
+   "s": "form",
+   "e": "form",
+   "n": "H2S anticipated checkbox and concentration; a contingency plan must be uploaded if checked"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Mud system, mud disposal method, cuttings disposal; salt formations, oil or salt-based fluids"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "Asks only whether fresh water or a USDW is present; no water source or volume item in the field list"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Only a checkbox that the NOI accompanies a well stimulation permit request; the plan is on the WST form"
+  },
+  "spacing_unit": {
+   "s": "none",
+   "e": "form",
+   "n": "No spacing, acreage or pooling item in the NOI field list"
+  },
+  "spacing_exception": {
+   "s": "none",
+   "e": "form",
+   "n": "No exception request; critical-well and sensitive-area flags with a distance text only"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Mineral owner category on the lease step (Federal if BLM land); lease record linked"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No fee item in the NOI guide or field list; fee schedule not read"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "CEQA step only: lead agency, local agency contact, CEQA document and notice type; no offset-owner notice"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "NoticeDated (layer 1), SubmittedDate (layer 0), Submitted Date (weekly list)"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "NoticeDateDetermination (layer 1), Date Determination (weekly list); epoch ms in UTC"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "WellSTAR tracks it (24 months after the NOI, per a 2024 notice) but no file or page showing it was seen"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "SpudDate in the Wells layer (text MM/DD/YYYY); sparse for new wells; not on the permit rows"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Well Summary is a separate form; no completion column in the Wells or permit layers"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "NoticeStatus (Approved, Closed, Canceled, Submitted); WellStatus in the Wells layer"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "web",
+   "n": "Forms page: NOI is filed with a general plan showing proposed location and total depth; Maps is an upload type"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Public well records are online (entry page needs a disclaimer click) but contents not checked"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Well Summary form not read; not checked whether public records show it"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Agency page lists production and injection summary reports (SQL Server .BAK); not opened"
+  }
+ },
+ "sources": [
+  {
+   "id": "ca-notices-approved",
+   "name": "WellSTAR Notices map service, layer 1 'Approved Notice of Intention/Permit' (NOIs with a CalGEM determination)",
+   "url": "https://gis.conservation.ca.gov/server/rest/services/WellSTAR/Notices/MapServer/1",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "2024-11",
+   "size_mb": 5,
+   "free": true,
+   "login": false,
+   "license": "no license text seen; CalGEM disclaimer (use at own risk); copyright text 'Geologic Energy Management Division, California Department of Conservation'",
+   "columns": [
+    "OBJECTID",
+    "NoticePermitNumber",
+    "NoticeDated",
+    "NoticeDateDetermination",
+    "NoticeStatus",
+    "NoticeType",
+    "API",
+    "LeaseName",
+    "WellNumber",
+    "WellDesignation",
+    "WellType",
+    "WellTypeLabel",
+    "OperatorName",
+    "OperatorCode",
+    "FieldName",
+    "FieldCode",
+    "AreaName",
+    "AreaCode",
+    "WellisConfidential",
+    "District",
+    "County",
+    "BaseMeridian",
+    "Township",
+    "Range",
+    "Section",
+    "Latitude",
+    "Longitude",
+    "Shape"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "rework",
+    "sidetrack",
+    "deepen",
+    "abandon",
+    "re-abandon"
+   ],
+   "reachable": "ok",
+   "tested": "Fresh query 2026-11-01: layer 1 count where NoticeType = 'NOI - New Drill' returned HTTP 200 {\"count\":472}. Earlier fetches (2026-10-31): service folder, layer schema (maxRecordCount 2000; JSON, GeoJSON, PBF; Query capability), a statistics query by NoticeType and NoticeStatus: Approved 7,350 (Abandon 5,185; Rework 1,076; Sidetrack 498; New Drill 452; Re-Abandon 131; Deepen 8), Closed 1,118, Canceled 51: 8,519 rows in all. Earliest NoticeDateDetermination 2024-11-01, latest 2026-10-31 (current to the day), so the layer looks like a rolling window of about 24 months (not verified). New Drill by determination month: 2025 had 8 in all, 2026 has 464 in the layer (Jan 31, Feb 52, Mar 109, Apr 107, May 33, Jun 13, Jul 36, Aug 27, Sep 19, Oct 37; the year-to-date workbook counts 471 through Oct 24). Dates are epoch milliseconds (UTC). No supplementary-permit flag in the layer."
+  },
+  {
+   "id": "ca-notices-submitted",
+   "name": "WellSTAR Notices map service, layer 0 'Submitted Notice of Intention' (pending queue)",
+   "url": "https://gis.conservation.ca.gov/server/rest/services/WellSTAR/Notices/MapServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "2026-10",
+   "size_mb": 0.1,
+   "free": true,
+   "login": false,
+   "license": "same CalGEM disclaimer as layer 1",
+   "columns": [
+    "OBJECTID",
+    "FormID",
+    "SubmittedDate",
+    "NoticeStatus",
+    "NoticeType",
+    "District",
+    "API",
+    "LeaseName",
+    "WellNumber",
+    "WellDesignation",
+    "WellTypeLabel",
+    "WellType",
+    "WellStatus",
+    "Operator",
+    "Field",
+    "Pool_",
+    "WellSearch",
+    "Latitude",
+    "Longitude",
+    "Shape"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "notices awaiting determination: new drill, rework, sidetrack, deepen, abandon, re-abandon"
+   ],
+   "reachable": "ok",
+   "tested": "Schema fetched 2026-10-31 (HTTP 200, maxRecordCount 2000). A statistics query returned 274 rows, all status 'Submitted', earliest SubmittedDate 2026-10-18: the layer holds only the notices waiting now, not history. Has a Pool_ column (not checked for blanks) that layer 1 lacks."
+  },
+  {
+   "id": "ca-weekly-permit-reports",
+   "name": "CalGEM Weekly Permit Reports, 2026 (Excel and PDF: notices submitted and permits issued each week)",
+   "url": "https://www.conservation.ca.gov/calgem/Pages/permits.aspx",
+   "kind": "report",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2026-01",
+   "size_mb": 0.55,
+   "free": true,
+   "login": false,
+   "license": "none stated (public records page)",
+   "columns": [
+    "PermitNumber",
+    "District",
+    "Permit Type",
+    "Operator Name",
+    "Well Designation",
+    "Well Type",
+    "API #",
+    "Sec.",
+    "Twp.",
+    "Rng.",
+    "Field Name",
+    "Supplementary Permits",
+    "Date Determination",
+    "(notices sheet) District, Notice Type, Operator, Well Designation, Well Type, API #, Sec., Twp., Rng., Field, Supplementary NOI, Submitted Date"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "rework",
+    "sidetrack",
+    "deepen",
+    "abandon",
+    "re-abandon",
+    "supplementary permits (flag)"
+   ],
+   "reachable": "ok",
+   "tested": "Page read (HTTP 200, 105 KB, 2026-10-31): one Excel and one PDF per week from Week 1 (Jan 1-3, 2026) to Week 43 (Oct 18-24), usually posted by Wednesday; 'weekly data prior to January 1, 2026 is available through file request'. Week 43 workbook opened (546 KB): sheet 'List - Permits Issued' 73 permits (Abandon 34, New Drill 20, Rework 12, Re-Abandon 5, Sidetrack 2) and 'List - Notices Submitted' 139 notices; the workbook also holds sheets from earlier weeks and summary sheets by well type. No county, no lat/lon and no operator code in these lists. Column layout differed in a 2023 sheet (Permit # in a different place)."
+  },
+  {
+   "id": "ca-ytd-permits",
+   "name": "CalGEM 2026 Year to Date Permit Report (Excel, updated 10/28/2026)",
+   "url": "https://www.conservation.ca.gov/calgem/Pages/permits.aspx",
+   "kind": "report",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2026-01",
+   "size_mb": 0.2,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "PermitNumber",
+    "District",
+    "Permit Type",
+    "Operator Name",
+    "Well Designation",
+    "Well Type",
+    "API #",
+    "Sec.",
+    "Twp.",
+    "Rng.",
+    "Field Name",
+    "Supplementary Permits"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "rework",
+    "sidetrack",
+    "deepen",
+    "abandon",
+    "re-abandon"
+   ],
+   "reachable": "ok",
+   "tested": "Opened (210 KB, 2026-10-31): 2,813 permits through Oct 24, 2026 (Abandon 1,702; Rework 493; New Drill 471; Re-Abandon 78; Sidetrack 65; Deepen 4); 31 are supplementary; Central 2,014, Northern 538, Southern 261. No date column, so it gives year totals only, not months."
+  },
+  {
+   "id": "ca-wells-layer",
+   "name": "WellSTAR Wells map service, layer 0 'Well' (statewide well inventory; also shapefile and CSV per the agency metadata)",
+   "url": "https://gis.conservation.ca.gov/server/rest/services/WellSTAR/Wells/MapServer/0",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "CalGEM disclaimer (use at own risk)",
+   "columns": [
+    "Place",
+    "OBJECTID",
+    "API",
+    "LeaseName",
+    "WellNumber",
+    "WellDesignation",
+    "WellStatus",
+    "WellType",
+    "WellTypeLabel",
+    "OperatorCode",
+    "OperatorName",
+    "FieldName",
+    "AreaName",
+    "District",
+    "CountyName",
+    "Section",
+    "Township",
+    "Range",
+    "BaseMeridian",
+    "Latitude",
+    "Longitude",
+    "GISSource",
+    "isConfidential",
+    "isDirectionallyDrilled",
+    "SpudDate",
+    "inHPZ",
+    "WellSymbol",
+    "Shape"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells by status: Permitted, Active, Idle, Plugged, Canceled"
+   ],
+   "reachable": "ok",
+   "tested": "Statistics query 2026-11-01: HTTP 200, 242,598 wells. SpudDate is a text field (MM/DD/YYYY, with 1801 placeholders). Query for SpudDate ending '/2026': 33 wells, a four-row sample showed dates from Feb to Jun 2026 with status Idle or Plugged, so spud dates are sparse and late against about 465 new-drill permits in 2026. The agency metadata sheet (21 attributes, shapefile, CSV and REST, 'updated on a daily basis') defines Well Status 'Permitted' as recently permitted wells and 'Canceled' as permits canceled before drilling."
+  },
+  {
+   "id": "ca-wst-permits",
+   "name": "WellSTAR Notices service, layers 2-4 'Well Stimulation Permit' (hydraulic fracturing permits)",
+   "url": "https://gis.conservation.ca.gov/server/rest/services/WellSTAR/Notices/MapServer",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "same CalGEM disclaimer",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "well stimulation permits"
+   ],
+   "reachable": "not-tested",
+   "tested": "Seen only in the service listing (a group layer with two sub-layers, point geometry); fields not read. A separate WellSTAR public page also offers WST permit and disclosure data."
+  },
+  {
+   "id": "ca-drill-tracker",
+   "name": "CalGEM Central District Drill Tracker and SB 237 weekly report for Kern County (Excel)",
+   "url": "https://www.conservation.ca.gov/calgem/Pages/permits.aspx",
+   "kind": "report",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "weekly",
+   "history_from": "2026",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated; page disclaimer says drill dates are provided by operators and may change",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "drilling dates by operator (Central District)"
+   ],
+   "reachable": "not-tested",
+   "tested": "Listed on the permits page with update dates of 10/27/2026 (both files); not opened, so columns are unknown. Likely the best fragment for actual drilling dates."
+  },
+  {
+   "id": "ca-wellstar-public",
+   "name": "WellSTAR public well record search, Well Finder and data dashboard",
+   "url": "https://wellstar-public.conservation.ca.gov/Well/Well/Index",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Conditions of Use and disclaimer accepted by a click",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "One GET 2026-11-01: HTTP 200, redirected to a public entry page (8.5 KB, build R5.1.16) that asks the visitor to accept a data disclosure; no login. Well detail pages were not opened. The agency's online-data page says the dashboard updates nightly and Well Finder shows well records and permits."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "The Notices map service (layer 1) is free, needs no login, answered HTTP 200 today, has one row per approved notice or permit with a determination (approval) date, a work-type column (NoticeType) and a well-type column, and is current to the day. Limits: the layer begins in November 2024 (about 24 months), and older weeks are only by file request.",
+ "producer_plan": "Source: layer 1 of the WellSTAR Notices service, queried with where=1=1, outFields=NoticeType,NoticeStatus,NoticeDateDetermination,WellTypeLabel,County,OperatorCode,API, returnGeometry=false, in pages of 2,000 using resultOffset (about 8,500 rows, five requests, a pause between each; a full rebuild takes under a minute). Convert NoticeDateDetermination from epoch milliseconds to a California (Pacific) calendar date before counting months, because an approval at 00:12 UTC is the evening before. Keep NoticeStatus Approved and Closed (Closed means the work was reported); decide separately on Canceled (51 rows: approved and later canceled or withdrawn; the layer does not say which). Bands: new = NOI - New Drill; reentry = Rework, Sidetrack, Deepen (Rework covers all re-entry for secondary work, including recompletions and conversions, so recomplete cannot be split out); injection = any of these on a well whose WellType is an injector (Water Disposal, Waterflood, Steamflood, Injection, Air Injection, Gas Disposal, Pressure Maintenance; Cyclic Steam wells are producers); other = Abandon and Re-Abandon (plugging, about 70 percent of rows). Amendments: the layer has no supplementary flag; only the 2026 weekly workbooks do (31 of 2,813 permits), so amend counts would need those files and cover 2026 only. History: months before 2024-11 are not in the layer; the weekly workbooks (2026 on the page) and file-request archives (older) would be needed. Caveats: New Drill permits were almost absent in 2025 (8 in the layer) and surged in 2026 (about 465), so a trend line is dominated by policy, not demand; spud dates (Wells layer, text field) are sparse and late, so use permits, not spuds. For a freshness check, compare the layer's newest determination date with the latest weekly report.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "injection",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The permit layers and weekly lists carry operator organization names, an operator code, well names, API numbers and well coordinates; no contact names, phone numbers or e-mails were seen in them (checked column names and sample rows). The NOI itself collects contact name, phone and e-mail for the filing, but these are not published. Some small operators may be individuals; names were not screened.",
+ "unknowns": [
+  "Whether older permits (before November 2024) exist in the ArcGIS layer or only in file-request archives, and what the file-request weekly archive holds",
+  "Whether the Notices layer is a rolling 24-month window or a migration cut-off",
+  "Whether Canceled rows were approved first",
+  "Operator business type, fee, permit expiration date, completion date, form images, logs and completion reports in public records",
+  "Columns of the Drill Tracker, SB 237 report and the well stimulation layers (not opened)",
+  "License terms of the data (only a disclaimer was seen)",
+  "Whether the live online NOI has fields beyond the 2020 EDD list and the user guide"
+ ],
+ "researched": "2026-10-31"
+}

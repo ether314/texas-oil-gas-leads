@@ -1108,6 +1108,50 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .img-files small { color: var(--ink-2); }
 .nat-bar-seg.on { stroke: var(--ink); stroke-width: 1.5; }
 @media (max-width: 860px) { .img-life { grid-template-columns: minmax(0, 1fr); } }
+/* ---------- permit data (the matrix) ---------- */
+.fx-tools { margin: 0 0 var(--sp-3); max-width: 100%; }
+.fx-legend { margin: var(--sp-2) 0 var(--sp-4); gap: var(--sp-2) var(--sp-5); }
+.fx-legend .nat-key { align-items: flex-start; max-width: 34ch; }
+.fx-legend .nat-key .fx-dot { margin-top: 3px; }
+.fx-wrap { margin-top: var(--sp-2); }
+table.fx { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: var(--fs-sm); }
+table.fx th, table.fx td { padding: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+table.fx thead th { position: sticky; top: 0; z-index: 3; }
+table.fx thead tr.fx-score td { position: sticky; top: 31px; z-index: 3; }
+.fx-corner { position: sticky; left: 0; z-index: 4; min-width: 200px; max-width: 240px; padding: 6px 10px !important; text-align: left; font-size: var(--fs-xs); font-weight: 650; color: var(--ink-2); }
+.fx-rh { position: sticky; left: 0; z-index: 2; min-width: 200px; max-width: 240px; padding: 0 10px !important; text-align: left; font-weight: 500; }
+.fx-m { display: inline-flex; align-items: center; min-height: 30px; font-size: var(--fs-sm); font-weight: 560; text-align: left; line-height: 1.25; }
+.fx-m[aria-pressed="true"], .fx-h[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; }
+.fx-col { width: 36px; min-width: 36px; }
+.fx-h { width: 100%; min-height: 30px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.02em; color: var(--ink); cursor: pointer; }
+.fx-h:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.fx-tot { padding: 6px 10px !important; font-size: var(--fs-xs); font-weight: 650; color: var(--ink-2); white-space: nowrap; }
+.fx-cell { text-align: center; }
+.fx-c { display: grid; place-items: center; width: 100%; min-height: 30px; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; }
+.fx-c:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.fx-c.in-line { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.fx-c[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+.fx-n { padding: 4px 8px !important; font-size: var(--fs-xs); color: var(--ink-2); text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fx-group th { position: sticky; left: 0; padding: 6px 10px !important; background: var(--surface-2) !important; font-size: var(--fs-2xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; text-align: left; color: var(--ink-2); }
+/* one hue, from a full dot (a field in a download) to a ring (asked on the form only) to a dash (not captured) to a question mark (not verified): the shape says it without the color */
+.fx-dot { display: inline-grid; place-items: center; flex: none; box-sizing: border-box; width: 13px; height: 13px; border-radius: 50%; font-size: 11px; font-weight: 700; line-height: 1; color: var(--ink-2); }
+.fx-dot.s-data { background: var(--s1); }
+.fx-dot.s-query { border: 2px solid var(--s1); background: conic-gradient(from 180deg, var(--s1) 0 50%, transparent 0); }
+.fx-dot.s-form { border: 2px solid var(--s1); }
+.fx-dot.s-none { width: 10px; height: 2px; border-radius: 1px; background: var(--ink-2); opacity: 0.7; }
+.fx-seg.s-data { background: var(--s1); }
+.fx-seg.s-query { background: color-mix(in srgb, var(--s1) 62%, var(--surface)); }
+.fx-seg.s-form { background: color-mix(in srgb, var(--s1) 34%, var(--surface)); }
+.fx-seg.s-none { background: var(--axis); }
+.fx-seg.s-unknown { background: color-mix(in srgb, var(--ink) 8%, var(--surface)); box-shadow: inset 0 0 0 1px var(--border-2); }
+.fx-sources, .fx-unk { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-3); }
+.fx-sources li { display: grid; gap: 2px; }
+.fx-sources small { color: var(--ink-2); font-size: var(--fs-xs); }
+.fx-unk { list-style: disc; padding-left: 1.2em; gap: 4px; font-size: var(--fs-sm); color: var(--ink-2); }
+.fx-chips { display: flex; flex-wrap: wrap; gap: 0 var(--sp-4); margin: 0; padding: 0; list-style: none; }
+.fx-chips .link { display: inline-flex; align-items: center; min-height: 24px; }
+.fx-panel-slot .nat-panel { background: var(--surface-2); }
+@media (max-width: 640px) { .fx-corner, .fx-rh { min-width: 144px; max-width: 150px; } .fx-m { font-size: var(--fs-xs); } }
 
 @media print {
   :root, :root[data-theme="dark"] { color-scheme: light; }

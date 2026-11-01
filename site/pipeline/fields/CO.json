@@ -1,0 +1,527 @@
+{
+ "state": "CO",
+ "name": "Colorado",
+ "agency": {
+  "name": "Colorado Energy and Carbon Management Commission (ECMC), formerly the Oil and Gas Conservation Commission (COGCC), in the Department of Natural Resources",
+  "short": "ECMC",
+  "url": "https://ecmc.colorado.gov/"
+ },
+ "form": {
+  "name": "Form 2, Application for Permit to Drill (APD): drill, deepen, recomplete or re-enter a well; the surface location is permitted separately on Form 2A (Oil and Gas Location Assessment)",
+  "number": "Form 2 (version not seen); a Form 2 checklist is revised 08/16/2022 per its file name",
+  "url": "https://ecmc.colorado.gov/forms/form-2-application-for-permit-to-drill",
+  "read": false,
+  "notes": "NOT read. The agency site answered 403 (a HEAD earlier from this machine, a WebFetch of the downloads page in this pass); no retry and no way round. Form cells come only from search-result summaries of the Form 2 instructions, a Form 2 checklist, operator guidance and Rule 308 text, so most are unknown. The instructions, checklist and attachment guidance also sit on the agency's older website host, which surfaced in search but was deliberately not fetched; the caller can authorize one fetch. Form 2 is filed online in the agency's eForm system (per the guidance titles); the paper layout is not known."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Legacy wells layer fields API, API_County, API_Seq, API_Label"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Pending-permits layer doc_num (Form 2 document number); the wells layer has none"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells layer Well_Name, Well_Num, Well_Title; pending layer well_name, well_num"
+  },
+  "lease_name": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No lease or unit field in the layers read; Form 2 not read"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells layer Operator; pending layer company_name"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "Wells layer Operat_Num; pending layer operator_num"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the layers read; Form 2 not read"
+  },
+  "bond": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Financial assurance not seen in any layer; Form 2 not read"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "Legacy wells layer API_County is a 3-digit code; no county-name field seen"
+  },
+  "district": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No district field in the layers read"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Legacy wells layer Field_Code and Field_Name"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude, Longitude, Utm_X, Utm_Y (wells layer); lat, long (pending layer)"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Qtr_Qtr, Section, Township, Range, Meridian and footages (Dist_N_S, Dir_N_S, Dist_E_W, Dir_E_W)"
+  },
+  "bottom_hole_loc": {
+   "s": "unknown",
+   "e": "none",
+   "n": "A 'Directional Well Data' download is listed; its columns were not seen"
+  },
+  "lateral_path": {
+   "s": "unknown",
+   "e": "none",
+   "n": "A 'Directional Well Data' download is listed; its contents were not seen"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "Legacy wells layer Ground_Ele"
+  },
+  "surface_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the layers read; Form 2 not read"
+  },
+  "well_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Wells layer has Facil_Type and Citing_Typ, undefined in the page read; oil/gas/injection not verified"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "doc",
+   "n": "Form 2 permit types: drill, deepen, recomplete, re-enter (checklist, via search); pending layer permit_type unseen"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "doc",
+   "n": "Directional wells must attach a deviated drilling plan (Form 2 instructions, via search); no data field seen"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "Pending layer proposed_depth (MD or TVD unlabeled); wells layer Max_MD, Max_TVD not labeled proposed"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not labeled in any layer read; Form 2 not read"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen in any layer; Form 2 not read"
+  },
+  "target_formation": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen in any layer; Form 2 not read"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not seen in any layer; Form 2 not read"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Rule 308 text: the Form 2 covers the casing and cementing plan (via search summary); not in the layers"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "doc",
+   "n": "Rule 308 text: the Form 2 covers the casing and cementing plan (via search summary); not in the layers"
+  },
+  "pressure_control": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "pit_waste": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read; pits belong to the separate Form 2A location assessment"
+  },
+  "water": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "fracture_plan": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "spacing_unit": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read; no spacing-unit field in the layers read"
+  },
+  "spacing_exception": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "mineral_owner": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "fee": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 not read"
+  },
+  "notice_hearing": {
+   "s": "query",
+   "e": "doc",
+   "n": "A COGIS guide (2013 title) covers viewing and commenting on a pending permit; current rule text not read"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "Pending layer receive_date (text, 10 characters); pending permits only"
+  },
+  "date_approved": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the legacy wells or pending layers; Well Permits file columns not seen (host blocked)"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "An older metadata record says permits last two years (not current rules); no expiry field seen"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Legacy wells layer Spud_Date"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not in the legacy wells layer; completion forms not read"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Legacy wells layer Facil_Stat (2-letter code) and Stat_Date (date of last status change)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "doc",
+   "n": "Form 2 instructions refer to a location plat attachment; whether images are online not checked"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Document numbers exist (doc_num); whether scanned forms are public online not checked"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not checked; the ECMC host was blocked"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not checked; the ECMC host was blocked"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "doc",
+   "n": "Annual production CSVs from 1999 on a downloads page (via search); by-well grain not verified"
+  }
+ },
+ "sources": [
+  {
+   "id": "co-ecmc-well-permits-zip",
+   "name": "Well Permits shapefile (zipped; the download page lists it as active and expired well permits, about 300 KB)",
+   "url": "https://ecmc.colorado.gov/data-maps-reports/downloadable-data-documents",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0.3,
+   "free": true,
+   "login": false,
+   "license": "Not seen (page not readable from here)",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "The agency's downloads page answered HTTP 403 to a WebFetch in this pass, and the caller reported 403 to a HEAD request from this machine earlier; not retried and no way round tried. Facts come from search-result summaries only: the page lists Well Surface Location, Well Spots, Well Permits, Pending Well Permits and Directional Well Data, each with a metadata link; the file is named PERMITS_SHP.ZIP in third-party references; an older metadata record says 'over 6800' permit locations. Columns, approval-date presence, free/no-login status and size are NOT verified (the booleans below mean 'not verified', not 'absent')."
+  },
+  {
+   "id": "co-ecmc-pending-well-permits-zip",
+   "name": "Pending Well Permits shapefile (zipped; permits in process and not yet approved, about 20 KB)",
+   "url": "https://ecmc.colorado.gov/data-maps-reports/downloadable-data-documents",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0.02,
+   "free": true,
+   "login": false,
+   "license": "Not seen (page not readable from here)",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permits pending approval"
+   ],
+   "reachable": "blocked-403",
+   "tested": "Same page and same 403 as the Well Permits file; description from a search-result summary only. A legacy map service with the same content was read (see the pending-permits layer source), so its columns are probably similar, which is not verified (booleans below mean 'not verified', not 'absent')."
+  },
+  {
+   "id": "co-ecmc-well-spots-zip",
+   "name": "Well Spots and Well Surface Location shapefiles (zipped, API point per well)",
+   "url": "https://ecmc.colorado.gov/data-maps-reports/downloadable-data-documents",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not seen (page not readable from here)",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "blocked-403",
+   "tested": "Same page and same 403; only a search-result summary was available. A 'Directional Well Data' file is listed beside these; its columns were not seen (booleans below mean 'not verified', not 'absent')."
+  },
+  {
+   "id": "co-ecmc-wells-service",
+   "name": "ECMC Wells (API Spots) map service on the state DNR GIS server (layers: Wells API Spots, Well Status)",
+   "url": "https://gisdnr.state.co.us/arcgis/rest/services/ECMC_Public/ECMC_Wells/MapServer/0",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not seen",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "No request made from this machine (instructed to rely on documentation for Colorado after the 403). WebFetch of the FeatureServer/0 and MapServer/0 pages returned HTTP 404 although search results list both; not retried. A search summary says the service was updated Feb 2026 and describes well API, operator, status and classifications; field names were not read (booleans below mean 'not verified', not 'absent')."
+  },
+  {
+   "id": "co-legacy-ogcc-wells-layer",
+   "name": "Legacy OGCC Wells map service (DNR_Public, one point layer 'wells')",
+   "url": "https://data.dnrgis.state.co.us/arcgis/rest/services/DNR_Public/OGCC_Wells/MapServer/layers",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not seen",
+   "columns": [
+    "OBJECTID",
+    "API",
+    "API_County",
+    "API_Seq",
+    "API_Label",
+    "Operat_Num",
+    "Operator",
+    "Well_Num",
+    "Well_Name",
+    "Well_Title",
+    "Citing_Typ",
+    "Spud_Date",
+    "Ground_Ele",
+    "Max_MD",
+    "Max_TVD",
+    "Field_Code",
+    "Field_Name",
+    "Facil_Id",
+    "Facil_Type",
+    "Facil_Stat",
+    "Stat_Date",
+    "Loc_Qual",
+    "Loc_ID",
+    "Loc_Name",
+    "Dist_N_S",
+    "Dir_N_S",
+    "Dist_E_W",
+    "Dir_E_W",
+    "Qtr_Qtr",
+    "Section",
+    "Township",
+    "Range",
+    "Meridian",
+    "Latitude",
+    "Longitude",
+    "Utm_X",
+    "Utm_Y"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells by facility status (code values not seen)"
+   ],
+   "reachable": "not-tested",
+   "tested": "Layer page read through WebFetch (HTTP 200 for the fetch tool, not a request from this machine): one layer, point, max 200,000 records per query, UTM zone 13 coordinates, no update date on the page. Fields: only Spud_Date and Stat_Date are dates; no permit number, permit type or approval date. The 'OGCC' name is the pre-2023 agency name, so how current this service is is unknown."
+  },
+  {
+   "id": "co-legacy-permits-pending-layer",
+   "name": "Legacy OGCC Permits Pending map service (one point layer 'permits_pending')",
+   "url": "https://data.dnrgis.state.co.us/arcgis/rest/services/DNR_Public/OGCC_Permits_Pending/FeatureServer/layers",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not seen",
+   "columns": [
+    "OBJECTID",
+    "featid",
+    "doc_num",
+    "operator_num",
+    "company_name",
+    "well_name_num",
+    "well_name",
+    "well_num",
+    "permit_type",
+    "proposed_depth",
+    "receive_date",
+    "lat",
+    "long",
+    "name",
+    "utm_x",
+    "utm_y",
+    "Key_"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permits pending approval (permit_type 2-letter code, values not seen)"
+   ],
+   "reachable": "not-tested",
+   "tested": "Layer page read through WebFetch (HTTP 200 for the fetch tool, not a request from this machine): one point layer, display field Well_Name, no description; the only date is receive_date as text. It holds permits still pending, so it is a snapshot, not a history. Whether permit_type is the Form 2 work type was not verified. How current this service is is unknown."
+  },
+  {
+   "id": "co-ecmc-daily-activity-dashboard",
+   "name": "ECMC Daily Activity Dashboard (DAD): nine categories incl. well status, pending permits by county, notifications such as spud notices",
+   "url": "https://ecmc.colorado.gov/data-dashboard",
+   "kind": "query",
+   "format": "html",
+   "grain": "aggregate",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not seen",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "pending Form 2A applications by county",
+    "spud notices",
+    "well status"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not fetched. The agency host answered 403 to the downloads page and earlier to a HEAD from this machine, so no request was made here. Description from search-result summaries (including a one-page handout); export from the dashboard was said to be unavailable. No monthly approved-permit chart was found (booleans below mean 'not verified', not 'absent')."
+  },
+  {
+   "id": "co-cogis-database",
+   "name": "COGIS, the commission's online well, permit and document database (record pages one well at a time)",
+   "url": "https://ecmc.colorado.gov/backup-cogis-database",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not seen",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not fetched (the agency host refused the downloads page and an earlier HEAD, so no request was made here). The page address came from a search result and was not read; COGIS is described there and in a handout as the central database for detailed data. Record-page fields were not seen (booleans below mean 'not verified', not 'absent')."
+  }
+ ],
+ "grade": "D",
+ "grade_reason": "Blocked from here: the agency's site refused this machine (HTTP 403 on a HEAD and on a page fetch), so no data file could be read and the key Well Permits file's columns are unknown. Content looks better than D: the agency lists free downloads (Well Permits, Pending Well Permits, Well Spots, Directional Well Data) and a legacy map service has a spud date (wells) and a received date (pending permits). Provisional: B at best from what was read (spud dates; filing dates for pending permits only), A only if the Well Permits file has an approval date and answers from a runner.",
+ "producer_plan": "Nothing buildable from what was verified. Step 1, from the machine that will run the producer (the GitHub runner), make one HEAD or one ?f=json request each to: the agency downloads page and its zipped Well Permits and Pending Well Permits files; the ECMC Wells service on the state DNR GIS server; and the two legacy DNR services read here. Record the status; do not retry a refusal. Step 2, if the Well Permits file answers, read its column names and look for an approval or issue date, a permit type and a document number; if it has them, monthly approved permits by type is a filter and a count (grade A). Step 3, if only the map services answer: spuds by month from Spud_Date in the wells layer (point per well, Stat_Date is the last status change, a snapshot not a history), and filing dates only for permits still pending (receive_date in the pending layer; permits leave it once approved, so it cannot give a monthly history unless captured often and kept). Note Colorado also permits multi-well development plans, so a count of wells may not equal a count of Form 2 permits. Work types may come from permit_type (2-letter codes, meaning not verified) or from COGIS record pages (one well at a time, not bulk).",
+ "activity_bands_possible": [],
+ "privacy_notes": "The two legacy layers read hold operator numbers and company names and well names only; I saw no individual's name, but an operator can be a person, so apply the project's name rule. The agency's download page names GIS staff contacts (not copied). Form 2 was not read, so whether it asks for surface or mineral owner details is unknown.",
+ "unknowns": [
+  "Columns of the Well Permits and Pending Well Permits shapefiles, and whether they carry an approval date, an expiration date or a work type",
+  "Whether the agency host is blocked for the GitHub runner or only for this machine (it answered 403 here to both a HEAD and a page fetch)",
+  "Fields of the current ECMC Wells (API Spots) service (the fetch returned 404)",
+  "How current the legacy OGCC map services are (named for the pre-2023 agency)",
+  "Meaning of permit_type codes in the pending layer, and Facil_Stat, Facil_Type and Citing_Typ codes in the wells layer",
+  "All of Form 2: version, boxes, attachments, fee, bond, surface and mineral owner, spacing unit, pits, water, H2S, BOP, fracturing",
+  "What COGIS record pages show per permit (approval date, expiration, images) and whether document images are public",
+  "Contents of the Directional Well Data download",
+  "Whether the production CSVs are by well"
+ ],
+ "researched": "2026-10-31"
+}

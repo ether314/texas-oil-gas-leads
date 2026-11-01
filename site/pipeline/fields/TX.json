@@ -1,0 +1,739 @@
+{
+ "state": "TX",
+ "name": "Texas",
+ "agency": {
+  "name": "Railroad Commission of Texas (Oil and Gas Division)",
+  "short": "RRC",
+  "url": "https://www.rrc.texas.gov/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Recomplete or Re-Enter",
+  "number": "Form W-1 (Rev. 12/20)",
+  "url": "https://www.rrc.texas.gov/media/ixxffswc/form-w-1-fillable.pdf",
+  "read": true,
+  "notes": "Read the blank two-page form (Rev. 12/20, 35 numbered items), its instructions (Rev. 12/20), the supplements W-1D (directional bottom hole) and W-1H (horizontal take points and terminus), both Rev. 02/2021, and the RRC's online W-1 filing guide (v3.3, June 2022), which mirrors the paper form. Filing is online (RRC Online System login) or on paper in Austin. The package is the W-1, the fee (SWR 3.78: by true vertical depth, plus $200 for a statewide-rule exception and $150 expedited, plus surcharge), and a plat. The plat must be legible, at 1 inch = 1,000 or 2,000 feet, show the lease or pooled-unit line nearest the location and the nearest survey lines, give surface latitude and longitude or X/Y with the datum, a scale bar and north arrow, and for vertical wells the line-perpendicular distances and the nearest well; horizontal wells add the penetration point, first and last take points and terminus. Other attachments when they apply: P-12 pooling certificate, W-1A substandard acreage, SWR 37/38/40 notice papers. The certificate block takes a representative's name, phone and an optional e-mail that becomes public if given."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Daily file and rows carry the 8-digit API; the W-1 box is blank for a new drill (RRC assigns it)"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit = status number, seven digits; the W-1 box is filled only when amending a permit"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "doc",
+   "n": "No free-text name: lease (item 4) plus well no. (item 5), both in the permit file; tracker never publishes them"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "doc",
+   "n": "Item 4; permit file lease name and pending DEFAULT_LEASE_NAME; the tracker does not publish it"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 2 as on the P-5; the tracker names an operator only if the P-5 type is corporation, LLC or LP"
+  },
+  "operator_id": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 1, the RRC operator (P-5) number, six digits"
+  },
+  "operator_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Not on the W-1: from the P-5 Organization file, joined by operator number"
+  },
+  "bond": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; instructions make a current P-5 and financial assurance on file a precondition of filing"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 13; three-digit county code in the permit file (odd codes onshore)"
+  },
+  "district": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 12; the permit file stores an internal code (07 = 6E, 08 = 7B, 10 = 08) that the tracker maps"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "doc",
+   "n": "Items 28-30, one zone per line; the permit file holds the field number, not the name"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 15 is required; record 14 covers only part of permits, the RRC map layer gives a point for all"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "doc",
+   "n": "Items 16-19, 22-24: section, block, survey, abstract, lease and survey line footages; in record 02"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "doc",
+   "n": "W-1D (bottom hole) and W-1H (terminus, take points); records 10 and 15 hold it; tracker reads surface only"
+  },
+  "lateral_path": {
+   "s": "data",
+   "e": "file",
+   "n": "Measured only: directional-survey filings (nightly zip, PDF per well plus CSV index); W-1D/W-1H hold planned points"
+  },
+  "elevation": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the W-1, W-1D or W-1H"
+  },
+  "surface_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "No surface-owner or surface-use item; item 11 asks only the right to develop minerals under a right of way"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "doc",
+   "n": "Item 31 codes (O, G, B, I, R, S, V, C, T) per field; record 03 and pending WELL_TYPE_CODE; tracker does not read it"
+  },
+  "work_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 6 purpose of filing; permit file application type (01 drill, 07 re-enter, 14 recomplete, 15 reclass, 09 transfer)"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 7 vertical, horizontal, directional, sidetrack; flags in the permit file (tracker reads horizontal and directional)"
+  },
+  "proposed_depth_md": {
+   "s": "none",
+   "e": "form",
+   "n": "Item 10 asks true vertical depth only; its instructions say not the measured depth"
+  },
+  "proposed_depth_tvd": {
+   "s": "data",
+   "e": "file",
+   "n": "Item 10; the permit file depth the tracker reads (pending file TOTAL_DEPTH is defined as true vertical depth)"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; W-1H asks take-point and terminus distances to lease lines, not a length"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "Only through the field of completion (items 28-30); there is no formation box"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the W-1; SWR 3.13 formation data are an RRC county lookup the operator reads, not files"
+  },
+  "casing_program": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the W-1; casing is reported after drilling (W-2, and W-15 cementing reports in the completion pack)"
+  },
+  "cement_program": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on the W-1; W-15 cementing reports appear in the completion image pack"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No blowout-preventer or well-control item on the W-1"
+  },
+  "h2s": {
+   "s": "data",
+   "e": "doc",
+   "n": "Flag only: pending SWR_36_FLAG, permit-file Rule 36 and H-9 flags; the form has a notice, no H2S box"
+  },
+  "pit_waste": {
+   "s": "none",
+   "e": "form",
+   "n": "No pit or drilling-waste item on the W-1"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "No water source or volume item; instructions only require surface casing to protect usable-quality water"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "No stimulation item on the W-1 or W-1H"
+  },
+  "spacing_unit": {
+   "s": "data",
+   "e": "doc",
+   "n": "Item 21 acres; items 25-27 pooled unit, unitization docket, substandard acreage; P-12 flag and acres in the files"
+  },
+  "spacing_exception": {
+   "s": "data",
+   "e": "doc",
+   "n": "Item 35 SWR 37/38/40 requests; pending SWR_LIST and docket numbers, permit-file Rule 37 and 38 numbers"
+  },
+  "mineral_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; item 11 and the P-12 pooling certificate do not name an owner"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Paid with the application (SWR 3.78); the permit file has check-register date and number, no amount"
+  },
+  "notice_hearing": {
+   "s": "data",
+   "e": "doc",
+   "n": "Items 8c and 35: own offset, waiver, service list, publication, hearing; pending SWR_RESLTN_CODE and REX_OLPP flags"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit-file received date; the tracker uses it for days from filing to approval"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit issue date; the basis of the tracker's monthly and daily counts"
+  },
+  "date_expires": {
+   "s": "data",
+   "e": "doc",
+   "n": "Permit-file expired date and pending EXPIRATION_DATE; not on the W-1, set by the RRC"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Permit-file spud date (reported later by the operator); the tracker counts spuds per operator from it"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "doc",
+   "n": "Field completion date in the permit file (record 03); completion packets are a separate nightly zip"
+  },
+  "status": {
+   "s": "data",
+   "e": "doc",
+   "n": "Application status flag (pending, approved, withdrawn, denied...) and a well status code in the permit file"
+  },
+  "plat_image": {
+   "s": "data",
+   "e": "file",
+   "n": "Nightly W-1 image pack holds each permit's plat as PDF or TIFF; the tracker links the plats"
+  },
+  "form_image": {
+   "s": "data",
+   "e": "file",
+   "n": "Nightly W-1 image pack holds the approved W-1 letter for each permit; the tracker links it"
+  },
+  "completion_report": {
+   "s": "data",
+   "e": "file",
+   "n": "Nightly completion data (W-2 and G-1 packets) and the completion image pack"
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "Well logs sit in the nightly completion-image pack as attachments (87 logs on one sample day)"
+  },
+  "production_link": {
+   "s": "data",
+   "e": "file",
+   "n": "Same agency: Production Data Query dump (monthly CSV); the tracker reads it for county and operator totals"
+  }
+ },
+ "sources": [
+  {
+   "id": "rrc-daf420-daily",
+   "name": "Drilling Permit Master and Trailer, Daily File and End of Month files (includes latitudes and longitudes)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "txt",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "2017-06",
+   "size_mb": 3,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated on the data-sets page",
+   "columns": [
+    "RRC-TAPE-RECORD-ID",
+    "DA-STATUS-NUMBER",
+    "DA-STATUS-SEQUENCE-NUMBER",
+    "DA-COUNTY-CODE",
+    "DA-LEASE-NAME",
+    "DA-DISTRICT",
+    "DA-OPERATOR-NUMBER",
+    "DA-DATE-APP-RECEIVED",
+    "DA-OPERATOR-NAME",
+    "DA-STATUS-OF-APP-FLAG",
+    "DA-PERMIT",
+    "DA-ISSUE-DATE",
+    "DA-WITHDRAWN-DATE",
+    "DA-WELL-NUMBER",
+    "DA-ECAP-FILING-FLAG",
+    "DA-PERMIT-TOTAL-DEPTH",
+    "DA-TYPE-APPLICATION",
+    "DA-OTHER-EXPLANATION",
+    "DA-RECEIVED-DATE",
+    "DA-PERMIT-ISSUED-DATE",
+    "DA-PERMIT-AMENDED-DATE",
+    "DA-PERMIT-EXTENDED-DATE",
+    "DA-PERMIT-SPUD-DATE",
+    "DA-PERMIT-SURFACE-CASING-DATE",
+    "DA-WELL-STATUS",
+    "DA-PERMIT-WELL-STATUS-DATE",
+    "DA-PERMIT-EXPIRED-DATE",
+    "DA-PERMIT-CANCELLED-DATE",
+    "DA-P12-FILED-FLAG",
+    "DA-SUBSTANDARD-ACREAGE-FLAG",
+    "DA-RULE-36-FLAG",
+    "DA-H9-FLAG",
+    "DA-RULE-37-CASE-NUMBER",
+    "DA-RULE-38-DOCKET-NUMBER",
+    "DA-SURFACE-SECTION",
+    "DA-SURFACE-BLOCK",
+    "DA-SURFACE-SURVEY",
+    "DA-SURFACE-ABSTRACT",
+    "DA-SURFACE-LEASE-FEET-1",
+    "DA-SURFACE-LEASE-DIRECTION-1",
+    "DA-SURFACE-LEASE-FEET-2",
+    "DA-SURFACE-LEASE-DIRECTION-2",
+    "DA-SURFACE-SURVEY-FEET-1",
+    "DA-SURFACE-SURVEY-FEET-2",
+    "DA-DIRECTIONAL-WELL-FLAG",
+    "DA-SIDETRACK-WELL-FLAG",
+    "DA-HORIZONTAL-WELL-FLAG",
+    "DA-NEAREST-LEASE-LINE",
+    "API-NUMBER",
+    "DA-FIELD-NUMBER",
+    "DA-FIELD-APPLICATION-WELL-CODE",
+    "DA-FIELD-COMPLETION-DATE",
+    "DA-FIELD-TOTAL-DEPTH",
+    "DA-FIELD-ACRES",
+    "DA-PMT-BHL-SECTION",
+    "DA-PMT-BHL-BLOCK",
+    "DA-PMT-BHL-SURVEY",
+    "DA-PMT-BHL-COUNTY",
+    "DA-CHECK-REGISTER-DATE",
+    "DA-CHECK-REGISTER-NUMBER",
+    "DA-SURF-LOC-LATITUDE",
+    "DA-SURF-LOC-LONGITUDE",
+    "DA-BOTTOM-HOLE-LATITUDE",
+    "DA-BOTTOM-HOLE-LONGITUDE"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "re-entry",
+    "recompletion",
+    "reclass",
+    "field transfer",
+    "amended",
+    "other"
+   ],
+   "reachable": "ok",
+   "tested": "Data-sets page and the daily share listing were fetched from this machine on 2026-10-31 (22:13-22:14 UTC): 250 rows, newest daf420.dat 2.98 MB listed 10/31/26 9:45 AM Central; the tracker reads it nightly. Fixed-width records (record 01 root, 02 permit, 03-13 trailer, 14/15 coordinates); column names are from the layout manual (OGA049M, 2004), the tracker's offsets match it. The daily file is the current month plus stragglers; month-end files go back to 2017-06 (110 files)."
+  },
+  {
+   "id": "rrc-daf802-monthly",
+   "name": "Drilling Permit Master and Trailer (monthly, daf802)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "txt",
+   "grain": "permit",
+   "cadence": "monthly",
+   "history_from": "2019-01",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated on the data-sets page",
+   "columns": [
+    "Same records as the daily file without latitudes and longitudes (records 01 to 13)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "new drill",
+    "re-entry",
+    "recompletion",
+    "reclass",
+    "field transfer",
+    "amended",
+    "other"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested by this researcher (the RRC refuses callers that repeat requests). Listed on the data-sets page as monthly, available by the 7th working day; the tracker builds series-permits.json from it (new drills by issue month from 2019-01). Size not recorded here (gzip)."
+  },
+  {
+   "id": "rrc-pending-approval",
+   "name": "Drilling Permits Pending Approval (includes latitudes and longitudes), 11 delimited files per set",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "txt",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "2026-08",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated on the data-sets page",
+   "columns": [
+    "UNIVERSAL_DOC_NO",
+    "STATUS_NUMBER",
+    "STATUS_SEQ_NO",
+    "TOTAL_DEPTH",
+    "IS_AMENDMENT",
+    "SWR_36_FLAG",
+    "DEVELOP_MINERALS_FLAG",
+    "CASE_DOCKET_NO",
+    "SPUD_DT",
+    "EXPEDITE_FLAG",
+    "FILING_PURPOSE_CODE",
+    "DEFAULT_LEASE_NAME",
+    "DEFAULT_WELL_NUMBER",
+    "DEFAULT_VERTICAL",
+    "DEFAULT_HORIZONTAL",
+    "DEFAULT_SIDETRACK",
+    "DEFAULT_DIRECTIONAL",
+    "STATUS_CODE",
+    "EXPIRATION_DATE",
+    "SWR_LIST",
+    "SUBMIT_DATE",
+    "OPERATOR_NAME",
+    "OPERATOR_NUMBER",
+    "DISTRICT",
+    "COUNTY_CODE",
+    "SURFACE_LOCATION_CODE",
+    "LATITUDE",
+    "LONGITUDE",
+    "LOCATION_TYPE",
+    "API_SEQUENCE_NUMBER",
+    "NEAREST_TOWN",
+    "NEAREST_TOWN_DISTANCE",
+    "SECTION",
+    "BLOCK_NUMBER",
+    "ABSTRACT_NUMBER",
+    "SURVEY_NAME",
+    "SECTION_LINE1_DISTANCE",
+    "SECTION_LINE2_DISTANCE",
+    "FIELD_ID",
+    "WELL_TYPE_CODE",
+    "COMPLETION_DEPTH",
+    "NEAREST_WELL_DISTANCE",
+    "NEAREST_LEASE_DISTANCE",
+    "TOTAL_ACRES",
+    "POOLED_UNIT_FLAG",
+    "UNITIZED_DOCKET_NO",
+    "SWR_RESLTN_CODE",
+    "RESTRICTION_CODE",
+    "RESTRICTION_TEXT",
+    "PROFILE_CODE",
+    "OFF_LEASE_SURF_LOC_FLAG",
+    "OFF_LEASE_PNTRN_PT_FLAG",
+    "REX_OLPP_NOTICE_YN",
+    "REX_OLPP_HEARING_REQUEST_YN",
+    "HORIZ_WELLBORE_TYPE_CODE",
+    "PSA_FLAG",
+    "ALLOCATION_FLAG",
+    "STACKED_LATERAL_FLAG",
+    "WELLBORE_ID",
+    "PERMITTED_FIELD_ID",
+    "ADDRESS_LINE1",
+    "OPERATOR_PHONE"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "new drill",
+    "re-entry",
+    "recompletion",
+    "reclass",
+    "field transfer",
+    "amended as drilled"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested here. Two sets a day (about 11:00 and 17:00 Central, listed 11:30 and 5:30); '}' delimited. Column names are from the RRC's data dictionary (v2.2, May 2020: 47 columns in the main file); the tracker reads UNIVERSAL_DOC_NO, OPERATOR_NUMBER, DISTRICT, SUBMIT_DATE and COUNTY_CODE. Applications still pending only, so no approval date; the tracker's pending cards come from it (since 2026-08). Some columns hold operator mailing address and phone (company data); the tracker does not read them."
+  },
+  {
+   "id": "rrc-completions",
+   "name": "Completion Information in Data Format (nightly zip of packets)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0.2,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated on the data-sets page",
+   "columns": [
+    "OPERATOR_NO",
+    "PURPOSE_OF_FILING",
+    "COMPLETION_TYPE",
+    "DISTRICT",
+    "COUNTY",
+    "CMPL_PACKET_TYPE",
+    "WELLBORE_PROFILE"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "completion packet: initial potential, retest, reclass"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested here; the tracker's nightly read of the 156 KB zip for day 2026-10-28 reports 59 approved and 89 submitted packets. Only the seven columns the tracker reads are listed; the rest of the layout, and whether a spud date is in it, were not checked. Approved and Submitted packets are separate files by district; not permits."
+  },
+  {
+   "id": "rrc-w1-images",
+   "name": "Drilling Permit (W-1) Imaged Files (nightly zip of approved W-1 letters and plats)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 57,
+   "free": true,
+   "login": false,
+   "license": "Public records; documents may hold names and phone numbers of individuals (see privacy_notes)",
+   "columns": [
+    "<permit>_W1_* (approved W-1 letter)",
+    "<permit>_Plat_* (plat)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "new drill",
+    "amended"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested here. The listing showed 56.7 MB for the day of 2026-10-28; the tracker's nightly capture opened one pack (31 MB, 168 files, 74 approved W-1 letters and 94 plats for 2026-10-29). No packs on Sundays and Mondays. PDF and TIFF scans: no columns."
+  },
+  {
+   "id": "rrc-dir-surveys",
+   "name": "Directional Survey Applications (nightly zip: one PDF per well plus a CSV index)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 44,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated on the data-sets page",
+   "columns": [
+    "API",
+    "county",
+    "survey type (MWD or other)",
+    "from ft",
+    "to ft",
+    "start",
+    "end",
+    "lateral",
+    "attachment id"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "directional survey filed after drilling"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested here. 43.6 MB listed for 2026-10-28; the tracker's capture of 2026-10-29 opened 57 survey PDFs and one CSV. The listed names are the tracker's labels for the CSV fields, not verified column headers. Surveys come after the well is drilled, so they rarely match that day's permits."
+  },
+  {
+   "id": "rrc-completion-images",
+   "name": "Imaged Completion Files (nightly zip of completion forms, logs, plats and attachments)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 379,
+   "free": true,
+   "login": false,
+   "license": "Public records; documents may hold names and phone numbers of individuals (see privacy_notes)",
+   "columns": [
+    "<district>/trackingNo_<n>_Images_Submitted/ folders of PDF and TIFF files (W-2, P-4, L-1, G-1, W-15, logs, plats, surveys)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "completion filings"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not requested here (379 MB listed for 2026-10-28, over the 100 MB limit). The tracker opened the 306 MB pack of 2026-10-29: 908 files in 123 folders (87 W-2, 71 P-4, 63 L-1, 36 G-1, 87 well logs, 89 W-15 cementing reports, 49 plats). Scans: no columns."
+  },
+  {
+   "id": "rrc-p5-org",
+   "name": "P-5 Organization (orf850.txt.gz: operators, officers, activity)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "txt",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public records; holds names and addresses of operators and officers (the tracker reads only the type)",
+   "columns": [
+    "operator number",
+    "name",
+    "organization type (A corporation, B limited partnership, C sole proprietor, D partnership...)",
+    "activity codes"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested here. The tracker read the 2026-10-22 file (5,938 registered operators); layout is the 350-character records its rrc_operators.py reads. Source of operator type and of the naming rule. One row per operator, not per permit."
+  },
+  {
+   "id": "rrc-gis-well-locations",
+   "name": "RRC public map service, layer 1 Well Locations (ArcGIS REST, permitted and surveyed points by API)",
+   "url": "https://gis.rrc.texas.gov/server/rest/services/rrc_public/RRC_Public_Viewer_Srvs/MapServer/1",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated",
+   "columns": [
+    "API",
+    "GIS_LAT83",
+    "GIS_LONG83",
+    "GIS_SYMBOL_DESCRIPTION"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested here; the tracker queries it by API in batches of 100 each night. On 2026-10-29 all 36 new-drill permits had a Permitted Location point there, while the permit file's own record 14 had 0 to 12 of a day's 40 to 80. The four field names are the ones the tracker's code requests."
+  },
+  {
+   "id": "rrc-w1-query",
+   "name": "Drilling Permit (W-1) Query, public web form",
+   "url": "https://webapps2.rrc.state.tx.us/EWA/drillingPermitsQueryAction.do",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Public records",
+   "columns": [],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "new drill",
+    "re-entry",
+    "recompletion",
+    "reclass",
+    "field transfer",
+    "amended"
+   ],
+   "reachable": "not-tested",
+   "tested": "Not opened. Named in the RRC's pending-file dictionary and its online filing guide (v3.3, June 2022), which says the public query is updated nightly and filers can search by permit number, depth, date, county, district and filing purpose. What a result page shows was not seen, so no cell relies on it."
+  },
+  {
+   "id": "rrc-pdq-dump",
+   "name": "Production Data Query Dump (PDQ_DSV.zip, monthly CSV)",
+   "url": "https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/",
+   "kind": "bulk",
+   "format": "zip",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "unknown",
+   "size_mb": 3700,
+   "free": true,
+   "login": false,
+   "license": "Public records; no license stated on the data-sets page",
+   "columns": [
+    "(not read here)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested here (3.7 GB, per the tracker's notes). Listed as last Saturday of each month. Columns were not read; the tracker builds county and operator production from it by hand (backlog item 4)."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "Bulk, free, no login. The nightly Drilling Permit Master and Trailer file has one record per permit and amendment with the issue (approval) date, received date, application type, depth, county, district, operator number and spud date; the monthly and End of Month files give the history. The tracker already builds monthly and daily permit counts from it.",
+ "producer_plan": "Already built (d1 monthly, d7 daily). Monthly: read the Drilling Permit Master and Trailer (daf802), keep record 02 per permit number, count by issue month; new drill is application type 01 (first record per permit number with a valid issue date). Other bands by the same type code: 07 re-enter, 14 recomplete, 15 reclass, 09 field transfer; amendments are the records with a sequence number below 99 or an amended date. Injection and disposal appear only as W-1s whose field well code is I or D (record 03); permits for injection wells on other UIC forms were not examined. Daily: the plain daf420.dat (current month, lags one business day) plus month-end files for earlier months, and the twice-daily pending sets for the queue. Caveats: the permit file stores an internal district code; coordinates in the file cover only part of recent permits (4 to 39 percent in several months of 2026), so counts never come from the dots (the RRC map layer fills them in); the dated snapshots turn to a new month on the 3rd; a file holds one month plus earlier permits touched that month.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "recomplete",
+  "injection",
+  "amend",
+  "other"
+ ],
+ "privacy_notes": "The permit files hold operator names and numbers (some operators are individuals, so the tracker names only P-5 corporations, LLCs and limited partnerships), an alternate-address record, and in the pending set the operator's mailing address and phone columns. The W-1 certificate asks for a representative's name, phone and optional e-mail; W-1 letters and plats and completion attachments can carry names, phones and addresses of individuals. The tracker reads none of those columns; the owner decided on 2026-10-31 to link W-1 letters and plats readable. Nothing personal is copied here.",
+ "unknowns": [
+  "Whether the daily file's layout still matches the 2004 tape manual for fields the tracker does not read (field and restriction records)",
+  "What the public W-1 Query page shows for one permit (web form, not opened)",
+  "Field name: the permit file carries only the field number",
+  "Whether the directional-survey CSV holds path stations or only the surveyed interval",
+  "Completion packet columns beyond the seven the tracker reads, and whether they carry spud dates",
+  "Permits for injection and disposal wells filed on forms other than the W-1 were not examined",
+  "Paper-form items were checked against the online guide of June 2022; later screen changes were not seen"
+ ],
+ "researched": "2026-11-01"
+}

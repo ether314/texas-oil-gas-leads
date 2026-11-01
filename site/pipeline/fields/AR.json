@@ -1,0 +1,403 @@
+{
+ "state": "AR",
+ "name": "Arkansas",
+ "agency": {
+  "name": "Arkansas Oil and Gas Commission",
+  "short": "AOGC",
+  "url": "https://dataexplorer.aogc.arkansas.gov/"
+ },
+ "form": {
+  "name": "Application for a Permit to Drill",
+  "number": "Form 2 (revised 5/24; the forms page lists 01-06-2022)",
+  "url": "https://dataexplorer.aogc.arkansas.gov/rules/Forms/pdf/Form%202.pdf",
+  "read": true,
+  "notes": "Two-page PDF read in full. Purpose: Original, Amendment, Renewal, Re-entry. Type of well: crude oil, natural gas, CBM, brine supply, Class II, Class V, UNGS, other. Frac-related items (casing, cement, treating pressure, water source) are asked only if the completion will be fractured. Needs a certified lease plat by a land surveyor. Companion forms: 1 Organization Report, 2A pits notice, 2B pits closure, 3 completion, 3A frac report. Agency-use box: issue date, expiration date, permit no., API no."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "GIS layer wellid, 9 digits (looks like API 03-... minus the leading 0); Form 2 has an API No. box"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "permitnumberstring; also Permit No. box on Form 2"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "wellname and wellnumber"
+  },
+  "lease_name": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: \"Description of Drilling Unit or Lease (if uncontrolled or wildcat)\""
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "operatorname"
+  },
+  "operator_id": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 asks the name only; Form 1 Organization Report not read"
+  },
+  "operator_type": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 1 Organization Report not read"
+  },
+  "bond": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on Form 2; financial assurance rules not read"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "countyname; Form 2 asks County"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "Not a Form 2 field (form is mailed to the El Dorado Regional Office)"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "fieldname and poolnamestring"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "coordinates_latitude, coordinates_longitude; Form 2 asks Lat/Lon (dd.dddd)"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "section, township, range and coordinates_footage_n_s / _e_w"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2 asks PBHL footages; layer coordinates_type not checked for bottom-hole rows"
+  },
+  "lateral_path": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 asks no survey or path"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "Only for Fayetteville Shale wells: lowest ground elevation within 1 mile; layer has no value"
+  },
+  "surface_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 2"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "welltype, welltypedescription (OIL, GAS, SWD...); Form 2 type-of-well boxes"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2 Purpose: Original, Amendment, Renewal, Re-entry; not in the GIS layer"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: proposed well Vertical, Directional or Horizontal"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2 \"Depth to be drilled\" MD; layer depthbottom is not labeled proposed"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2 \"Depth to be drilled\" TVD"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; only derivable from SHL and PBHL footages"
+  },
+  "target_formation": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: \"Formation you propose to complete in\""
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 2"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Casing depth TVD/MD and API grade, but only if the completion will be fractured"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Top of production casing cement and compressive strength, only if fractured"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP item on Form 2"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No H2S item on Form 2"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2A (pits notice) and Form 2B (closure); Form 2 asks if oil-based mud will be used"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: proposed source of frac water; no volume asked"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: will completion be fractured, max surface treating pressure; Form 3A report later"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: acres in lease, acres in drilling unit, distances to unit and lease boundary"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 2: attach exceptional location permit or application"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Certificate says operator holds a valid lease, farmout or agreement; no owner named"
+  },
+  "fee": {
+   "s": "form",
+   "e": "doc",
+   "n": "Rule 15 CAR 275-201 (search summary) says a permit fee goes with the application; amount not seen"
+  },
+  "notice_hearing": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "date_approved": {
+   "s": "form",
+   "e": "form",
+   "n": "Issue Date box (agency use) on Form 2; weekly PDF reports list permits by week, not opened"
+  },
+  "date_expires": {
+   "s": "form",
+   "e": "form",
+   "n": "Expiration Date box (agency use) on Form 2"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 2 asks only the planned start date; layer has no spud date"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "wellstatus, wellstatusdescription, wellstatusdate (PR, PA, EX, PW...)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Certified lease plat is required; a Well File Cabinet (DocuWare) is listed on the site, not opened"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": ""
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "Well Log Search and Well Log Cabinet pages exist on the site; not opened"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Well lookup has a Production tab; exports to Excel; Build-a-Query production report"
+  }
+ },
+ "sources": [
+  {
+   "id": "ar-geostor-wells",
+   "name": "Arkansas Oil and Gas Wells (OIL_AND_GAS_WELLS_AOGC), GeoStor FeatureServer layer 5",
+   "url": "https://geostor.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Utilities/FeatureServer/5",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Arkansas GIS Office; accuracy varies, no warranty",
+   "columns": [
+    "objectid",
+    "permitnumberstring",
+    "wellid",
+    "operatorname",
+    "wellname",
+    "wellnumber",
+    "welltype",
+    "welltypedescription",
+    "countyname",
+    "wellstatus",
+    "wellstatusdescription",
+    "wellstatusdate",
+    "poolnamestring",
+    "section",
+    "township",
+    "townshipdir",
+    "range",
+    "rangedir",
+    "depthbottom",
+    "elevationtype",
+    "fieldname",
+    "wellkey",
+    "coordinates_type",
+    "coordinates_county",
+    "coordinates_sec",
+    "coordinates_twp",
+    "coordinates_twp_dir",
+    "coordinates_rng",
+    "coordinates_rng_dir",
+    "coordinates_meas_type",
+    "coordinates_meas_ref",
+    "coordinates_latitude",
+    "coordinates_longitude",
+    "coordinates_footage_n_s",
+    "coordinates_n_s",
+    "coordinates_footage_e_w",
+    "coordinates_e_w",
+    "coordinates_q",
+    "coordinates_qq",
+    "coordinates_qqq",
+    "coordinates_depthbottom",
+    "coordinates_elevationtype",
+    "coordinates_pkey",
+    "coordinates_wpkey",
+    "globalid"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "well status only (Producing, Plugged and Abandoned, Permitted Well, Spudded, Expired Permit...)"
+   ],
+   "reachable": "ok",
+   "tested": "layer?f=json: HTTP 200, 14.8 KB, 49 fields, point geometry, max 500 records per query, formats JSON/geoJSON/PBF. One statistics query: 38,245 wells (16,570 PR, 16,061 PA, 3,385 A, 1,233 EX, 8 PW, 7 SP). One 8-row sample. wellstatusdate is a text field (m/d/yyyy) and there is no permit-issue or spud date, so permits cannot be counted by month from it. Source note says it is extracted from the AOGC online database."
+  },
+  {
+   "id": "ar-weekly-permit-reports",
+   "name": "Permit and Completion Reports (weekly PDF: Form 2 permits, Form 3 completions, Form 11 and 12 plugging)",
+   "url": "https://dataexplorer.aogc.arkansas.gov/data/completion.aspx",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2019",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "drilling permit (Form 2)",
+    "completion, recompletion, workover (Form 3)",
+    "application to plug (Form 11)",
+    "plugging report (Form 12)"
+   ],
+   "reachable": "ok",
+   "tested": "Page GET: HTTP 200, 49 KB. It offers year folders 2019 to 2026 (an ASP.NET postback tree: year, month folder, weekly PDF). No PDF was opened, so columns and per-row dates are unknown (the report is grouped by calendar week, so a week-level count is likely). Flags above are false because not verified. Newspaper reprints of these reports ran 2014-2021."
+  },
+  {
+   "id": "ar-well-lookup",
+   "name": "Lease & Well Data lookup (search by permit/API, field, county, well name or operator) and Build-a-Query production report",
+   "url": "https://dataexplorer.aogc.arkansas.gov/welldata/wells.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [],
+   "reachable": "ok",
+   "tested": "Page GET: HTTP 200, 56 KB (an ASP.NET form, no search run). Page says each well shows Location details, History, Perforations, Stimulations, Production, IMIT and Inspections tabs, and every report exports to Excel (.xls). The Build-a-Query page (data/querybuild.aspx, 200) filters production by year, company, county, field, section, well status, well type and zone. Date fields of the History tab not verified."
+  }
+ ],
+ "grade": "C",
+ "grade_reason": "No bulk file with an issue date was found. The GIS wells layer is reachable and rich but has only a status date (text), no permit or spud date. The dated permit record is a weekly PDF report (2019-2026) reached through an ASP.NET folder tree, and a per-well lookup with Excel export. Both are fragile to scrape.",
+ "producer_plan": "Best fragment: the weekly Permit and Completion Reports. Drive the year/month tree (postbacks with the page viewstate, a few requests a week at most), download each weekly PDF, extract the Form 2 section with pdftotext and count permits by week, then sum by month; split by Purpose (Original, Amendment, Renewal, Re-entry) if the PDF shows it. Test one PDF first: its layout is not known. Cross-check with the GIS layer (permitnumberstring sequence, count of PW and SP statuses) and add well type, county, operator and coordinates by joining on permit number. Backfill is 2019 onward only. A cheaper start: poll the GIS layer weekly and diff permitnumberstring to date new permits by first sighting.",
+ "activity_bands_possible": [
+  "new",
+  "reentry",
+  "amend",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "Form 2 asks the send-to street address, e-mail and phone; none of these are in the GIS layer. The layer lists operator names (companies expected); check for individuals before publishing.",
+ "unknowns": [
+  "Columns and layout of the weekly permit PDFs",
+  "Whether they carry per-permit issue dates and work type",
+  "Update cadence of the GIS layer",
+  "History tab and Well File Cabinet contents",
+  "Form 1 Organization Report fields (operator ID, entity type)",
+  "Permit fee amount",
+  "Bond requirements"
+ ],
+ "researched": "2026-10-31"
+}

@@ -1,0 +1,407 @@
+{
+ "state": "IL",
+ "name": "Illinois",
+ "agency": {
+  "name": "Illinois Department of Natural Resources, Office of Oil and Gas Resource Management (data held by the Illinois State Geological Survey, ILOIL)",
+  "short": "IDNR OOGRM",
+  "url": "https://dnr.illinois.gov/oilandgas.html"
+ },
+ "form": {
+  "name": "OG-10 Permit Application to Drill, Deepen, or Convert a Well",
+  "number": "DNR OOGRM Form IL OG-10 (Rev. 01/2025)",
+  "url": "https://dnr.illinois.gov/content/dam/soi/en/web/dnr/oilandgas/documents/oilandgasfillableforms/OGF-OG-10PermitApplicationForm.pdf",
+  "read": true,
+  "notes": "5-page fillable PDF read in full: 40 numbered items. Well use; well name/number; type of work; ground elevation, footages, quarter calls and 6-decimal lat/lon; lease/unit map with surveyor certification; municipal, mine, coal-rights and gas-storage questions; proposed depth; lowest formation; bond forfeiture history; directional and horizontal plans; frac questions; spacing units and exceptions; state surface/mineral interest; bond and OG-01 status; $400 fee; applicant and technical contact. Class II injection wells use OG-03 (not read). No casing, cement, BOP, H2S, pit or water items."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API_NUMBER (12 digits) in ILOIL Wells layer; not asked on OG-10, the state assigns it"
+  },
+  "permit_number": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_NUMBER in layer; also printed in the weekly permit log PDF"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "FARM_NAME + FARM_NUM in layer; OG-10 item 1 asks well name and number"
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "form",
+   "n": "OG-10 has no lease-name field; lease and unit boundaries are drawn on the map (item 3)"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "COMPANY_NAME in layer; weekly log also prints a DBA field"
+  },
+  "operator_id": {
+   "s": "query",
+   "e": "web",
+   "n": "Permittee # on OG-10 (item 38); 'OPER #' printed in weekly permit log PDF, not in layer"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "OG-10 asks applicant name and address only, no business type"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 36: is a bond required with this application (yes/no); bond forms separate"
+  },
+  "county": {
+   "s": "query",
+   "e": "web",
+   "n": "COUNTY printed in weekly permit log PDF; layer has no county column (API digits 3-5 carry it)"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district or region on OG-10 or in the layer"
+  },
+  "field_pool": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 12a: reservoir name if different from the formation; no field name asked"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "LATITUDE and LONGITUDE in layer; OG-10 requires 6-decimal NAD83 lat/lon"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "LOCATION = section-township-range in layer; footages and quarter calls in weekly permit log PDF"
+  },
+  "bottom_hole_loc": {
+   "s": "form",
+   "e": "form",
+   "n": "Items 14-15: bottom hole (GPS and PLSS) for directional and horizontal wells"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 14: directional drilling plan and map; item 15: plat, plan, entry point"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "ELEVATION and EREF_DEF in layer; OG-10 item 2 asks ground-level elevation"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Only asks if surface is state-owned (item 31) and consent if a dwelling is within 200 ft (20)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "STATUS_TEXT mixes type and status ('Oil Producer'); permit-time type in weekly permit log PDF"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 1: new, conversion, deepening, drilled-out plugged hole, renewal; layer lacks it"
+  },
+  "well_direction": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 14 directional (y/n) and item 15 horizontal (y/n)"
+  },
+  "proposed_depth_md": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 11 'proposed depth of the well'; does not say MD or TVD"
+  },
+  "proposed_depth_tvd": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Item 11 does not say MD or TVD; layer TOTAL_DEPTH is the drilled depth"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Horizontal wells give entry point and bottom hole, not a length"
+  },
+  "target_formation": {
+   "s": "query",
+   "e": "web",
+   "n": "Item 12 lowest formation to test; FORMATION(S) printed in weekly permit log PDF"
+  },
+  "formation_tops": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Log prints formations with depth intervals; unclear if tops or zones. Form asks lowest only"
+  },
+  "casing_program": {
+   "s": "none",
+   "e": "form",
+   "n": "No casing section on the 5-page OG-10 (alternate surface casing is a separate notice)"
+  },
+  "cement_program": {
+   "s": "none",
+   "e": "form",
+   "n": "No cement section on OG-10"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP or pressure-control item on OG-10"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "No H2S item on OG-10"
+  },
+  "pit_waste": {
+   "s": "none",
+   "e": "form",
+   "n": "No pit or drilling-waste item on OG-10"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "No water source or volume item on OG-10"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Items 16-19: high-volume frac planned, HVHHF registration and permit, medium-volume report"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Items 21, 25-28: standard 10/20/40/160 acre unit, MDU, SDU, pool-wide unit"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Items 22-24: location exception, change of location, drilling unit exception"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Items 9, 32, 40: coal rights owner, state mineral interest, certified right to drill"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Item 37: non-refundable $400 fee"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Items 5, 8-10, 29: city consent, mine, coal-rights and gas-storage notices, integration order"
+  },
+  "date_received": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not on OG-10; not in layer or log"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "PERMIT_DATE in layer (data in layer ran to 2026-08-28 on Oct 31); DATE ISSUED in log"
+  },
+  "date_expires": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No expiry field seen; log key mentions 'expired undrilled permit' renewals"
+  },
+  "spud_date": {
+   "s": "none",
+   "e": "form",
+   "n": "Not on OG-10 and no spud column in layer; separate OG-05 drilling report not read"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "COMP_DATE in layer"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "STATUS_TEXT: Permit to Drill Issued, Dead Permit, Oil Producer, Plugged, TA..."
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Map and surveyor certification are part of OG-10; online scan not verified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Online availability of filed applications not verified"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "OG-09 completion form exists; layer's DataSummary link not opened"
+  },
+  "logs": {
+   "s": "data",
+   "e": "file",
+   "n": "LOGS, FLAG_LAS, FLAG_LOG, core and sample flags in layer (availability, not files)"
+  },
+  "production_link": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not verified; layer has no production field"
+  }
+ },
+ "sources": [
+  {
+   "id": "il-ilo-wells-layer",
+   "name": "ILOIL Wells (ISGS wells database map service, layer 8 'Wells')",
+   "url": "https://maps.isgs.illinois.edu/arcgis/rest/services/ILOIL/Wells/MapServer/8",
+   "kind": "api",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "weekly",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "copyright Illinois State Geological Survey; bulk data packages are sold separately (a search snippet lists $15,000 for header data)",
+   "columns": [
+    "OBJECTID",
+    "Shape",
+    "DataSummary",
+    "API_NUMBER",
+    "COMP_DATE",
+    "PERMIT_NUMBER",
+    "PERMIT_DATE",
+    "STATUS",
+    "STATUS_TEXT",
+    "COMPANY_NAME",
+    "FARM_NAME",
+    "FARM_NUM",
+    "TOTAL_DEPTH",
+    "TDFORMATION",
+    "TDFMTEXT",
+    "ILSTRAT",
+    "ELEVATION",
+    "EREF_DEF",
+    "LONGITUDE",
+    "LATITUDE",
+    "LOCATION",
+    "LOGS",
+    "FLAG_LAS",
+    "FLAG_CORE_ANALYSIS",
+    "FLAG_CORE",
+    "FLAG_SAMPLES",
+    "FLAG_LOG"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "new well (permit to drill issued)"
+   ],
+   "reachable": "ok",
+   "tested": "GET .../ILOIL/Wells/MapServer?f=pjson 200 (service says updated 10/23/2026, 207,305 wells); layer 8 ?f=pjson 200, 87 KB schema; four small queries 200: distinct STATUS_TEXT (about 95 values, incl. 'Permit to Drill Issued', 'Dead Permit'), PERMIT_DATE stats (110,212 rows with a date; max 2026-08-28 so it lags the weekly log by about 2 months; min is a 1801 placeholder), 192 wells with PERMIT_DATE in 2026, three sample rows (LOCATION is section-township-range, API is 12 digits, DataSummary is a link). Query and Data capabilities, maxRecordCount 2000. One date per well: renewals and conversions are not separate rows."
+  },
+  {
+   "id": "il-dnr-weekly-permit-log",
+   "name": "IDNR Oil & Gas Weekly Permit Log (one PDF per week)",
+   "url": "https://dnr.illinois.gov/oilandgas/oilgasweeklydrilllog.html",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "weekly",
+   "history_from": "2020-12",
+   "size_mb": 0.2,
+   "free": true,
+   "login": false,
+   "license": "public record",
+   "columns": [
+    "DATE ISSUED",
+    "OPER #",
+    "Oper Name",
+    "DBA",
+    "Address",
+    "REF #",
+    "PERMIT #",
+    "WELL NAME",
+    "SEC TWN RNG",
+    "LOCATION (footages and quarter calls)",
+    "COUNTY",
+    "WELL TYPE (O, G, WI, SWD, WS, OBS, CMG)",
+    "WELL STATUS",
+    "ACTION",
+    "SURF-ELEV",
+    "TOOLS",
+    "DRILL-OPER",
+    "FORMATION(S) with depth intervals"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "oil production",
+    "gas production",
+    "water injection",
+    "salt water disposal",
+    "water supply",
+    "observation",
+    "coal mine gas"
+   ],
+   "reachable": "ok",
+   "tested": "Index JSON behind the page (data_table_assets.datatableassets.json) 200, 37 KB: 303 weekly PDFs from 2020-12-29 to 2026-10-19. Latest (log2026_1019.pdf) 200, 201 KB, 3 pages, text extracts: 8 permits (3 O, 3 WI, 1 WS, 1 CMG), all 'ACTION: PERMIT', status A. The key lists ORIG/CONV/DEEP/DOPH/AMEND/RENEW but this week's entries do not use them, so work type is not usable from this week."
+  },
+  {
+   "id": "il-isgs-data-summary",
+   "name": "ISGS per-well data summary page (linked from the layer's DataSummary field)",
+   "url": "https://data.prairie.illinois.edu/GEOPROD/oil_summary.aspx",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "not read"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Only the link pattern (?api10=<10 digits>) was seen in layer rows; page not opened."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "A free, reachable ArcGIS layer (no login) gives one row per well with API number, PERMIT_DATE, status, operator, elevation and lat/lon, so monthly counts of permits to drill can be built directly (192 wells dated in 2026 through Aug 28). Weak points: no work type (new, conversion, deepening, renewal), one date per well so renewals and conversions are invisible, and permit dates lag the DNR weekly PDF log by about 2 months (layer max PERMIT_DATE 2026-08-28 on Oct 31). The weekly PDF log is current and has well type but is not machine-readable, and its ACTION field read 'PERMIT' for every entry in the latest week.",
+ "producer_plan": "Primary: page the ILOIL Wells layer 8 (query, outFields API_NUMBER, PERMIT_NUMBER, PERMIT_DATE, STATUS_TEXT, COMP_DATE, COMPANY_NAME, LATITUDE, LONGITUDE, LOCATION; resultOffset paging at 2000) and count rows by month of PERMIT_DATE, dropping placeholder dates before about 1900 and treating the newest 2 months as incomplete. County comes from API digits 3-5 (state code 12 then a 3-digit county code; verify the code table against the weekly log's COUNTY). Activity type: status text gives new permits ('Permit to Drill Issued', 'Dead Permit') versus drilled and completed wells (COMP_DATE by month), and well type from STATUS_TEXT; conversions and renewals are not visible. Recent weeks: parse the weekly permit-log PDFs (index JSON lists all 303; one polite fetch per new Friday), split on 'DATE ISSUED', and read WELL TYPE (O, G, WI, SWD, WS, OBS), COUNTY and DATE ISSUED, to fill the lag and to separate injection or water-supply permits from oil and gas. Use operator names only for corporations, LLCs and partnerships. Caveats: layer is replaced weekly (counts can be revised); one date per well; Illinois volume is small (8 permits in the week of Oct 19, 192 wells dated in 2026 through Aug).",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The weekly log prints operator name, a DBA field, street address and city for every permit, and many Illinois operators are small family businesses or individuals; the layer's COMPANY_NAME and FARM_NAME columns can name individuals. Apply a corporation/LLC/LP rule before publishing any name; publish counts and county-level data. No personal data copied here.",
+ "unknowns": [
+  "Whether renewals and conversions overwrite PERMIT_DATE in the layer",
+  "County code table for API digits 3-5 (not checked)",
+  "Spud date availability (OG-05 drilling report not read; not in layer)",
+  "Whether the ISGS shapefile download (weekly export of wells and borings) carries more fields than the map service",
+  "Production data link and completion report availability online",
+  "OG-03 (Class II injection) application contents",
+  "Whether the ACTION field in older weekly logs separates new wells from conversions and deepenings"
+ ],
+ "researched": "2026-10-31"
+}

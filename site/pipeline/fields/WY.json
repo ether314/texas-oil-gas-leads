@@ -1,0 +1,602 @@
+{
+ "state": "WY",
+ "name": "Wyoming",
+ "agency": {
+  "name": "Wyoming Oil and Gas Conservation Commission (Office of the State Oil and Gas Supervisor)",
+  "short": "WOGCC",
+  "url": "https://wogcc.wyo.gov/"
+ },
+ "form": {
+  "name": "Form 1, Application for Permit to Drill, Re-enter/Deepen, or Renew/Extend (APD)",
+  "number": "Form 1",
+  "url": "https://pipeline.wyo.gov/downloads/WOGCC_Forms_072426.xlsx",
+  "read": true,
+  "notes": "Read the blank form (sheet 'APD', form dated March 2016, in the agency's WOGCC Forms workbook last modified 24 Jul 2026) and its page-3 instructions. Companion forms: 1A split estate, 1B electrical, 1C baseline water, 14B pit. Filed through the Wyoming eForm (login); the eForm manual could not be fetched. The 2-page paper form is numbered to match the BLM 3160-3. Fee $500 per Form 1."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "Api_Number in the approved-permits export; APINO in the well header. WOGCC assigns it (Form 1 block 9)"
+  },
+  "permit_number": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1 has no permit-number box: the API number is the permit key (blank at filing, WOGCC assigns it)"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_NO (export) / WN (header); Form 1 block 8; horizontal names end in H"
+  },
+  "lease_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Unit_Lease column; Form 1 block 7 asks unit name/number for committed lands only"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Company column (export and header); Form 1 block 2"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 1 asks the operator name only; the Form 23 registration code is not a column in the exports seen"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "No business-type box on Form 1; none in the exports"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 box 20 Type of Bond and No.; not a column in any export seen"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "County column; also Form 1 block 12"
+  },
+  "district": {
+   "s": "none",
+   "e": "form",
+   "n": "No district on Form 1. BASIN in the well header is a geologic basin, not an agency office"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Field column (export) / FIELD_NAME (header); Form 1 block 10 and Reservoir(s)"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Latitude and Longitude columns; Form 1 asks SHL lat/long NAD83"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Qtr1, Qtr2, Lot_Tract, Section, Township, Range, Foot1, Foot2"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "BFoot1/2, BSec, BQtr1/2, BTwp, BRge, Blat, Blon; Form 1 block 4 asks BHL and top productive interval"
+  },
+  "lateral_path": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 attachment box Directional/Horizontal Plan; survey upload through WYSTAR; not published as data"
+  },
+  "elevation": {
+   "s": "data",
+   "e": "file",
+   "n": "Elevation (ground) and Elev_KB columns; Form 1 asks ungraded and graded elevation"
+  },
+  "surface_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 Surface Ownership Fee/State/Fed and Split Estate Yes/No, Form 1A; not a column (LAND_TYPE code undecoded)"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Well_Class code (O, G, I, D, MW, ST...); the export also filters by oil/gas, coal bed, injector/disposal"
+  },
+  "work_type": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 box: Drill / Re-enter-Deepen / Renew-or-extend. No work-type column in the export (checked all 48)"
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "Dir/Hor column (export), HORIZ_DIR (header); Form 1 Directional/Horizontal/Natural Drift boxes"
+  },
+  "proposed_depth_md": {
+   "s": "data",
+   "e": "file",
+   "n": "TD column on a permit with no Comp_Date (7701, 10605 ft) reads as planned depth; not documented. Form 1 box 19 MD"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 box 19 asks TVD beside MD; the files carry TD and MD but no TVD column"
+  },
+  "lateral_length": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Not a Form 1 box; the separate horizontal-well application (sample on Download menu) was not read"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "Bot_Form column (export) / BOTFORM (header); Form 1 Reservoir(s) and Top Productive Interval"
+  },
+  "formation_tops": {
+   "s": "form",
+   "e": "doc",
+   "n": "Rule 3-8(c)(v) asks estimated depths of markers and objective horizons; not a Form 1 box; not in data"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 table: hole size, casing size, lb/ft, API grade, new/used, centralizers, depth (MD)"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 table: sacks of API cement and cement class; Rule 3-8(c)(viii) adds additives, density, excess"
+  },
+  "pressure_control": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 attachment box Drilling & BOP Plans; space 23 must include a blowout prevention plan"
+  },
+  "h2s": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 1 mentions H2S only as an injection/disposal type under Other; no H2S plan box seen; plans not read"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Separate Form 14B (pit) must accompany APDs on State or Fee minerals unless no pit and cuttings are hauled"
+  },
+  "water": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1C baseline water wells must accompany the APD; setback-from-water question; Rule 3-8(c)(iii) and (ix)"
+  },
+  "fracture_plan": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 box Stimulation Completion Plan; stimulation must be approved on Form 1, Form 4 or a fieldwide plan"
+  },
+  "spacing_unit": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 boxes: Well Spacing, conforms to Ch.3 Sec.2, 17 Spacing Docket #; no docket column in the export"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1: is this an exception location (attach approval); separate $75 exception application"
+  },
+  "mineral_owner": {
+   "s": "data",
+   "e": "file",
+   "n": "MineralCode (numeric, key not found) and Lease_No (e.g. a federal lease no.) columns; Form 1 box 16 Fee/State/Fed"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 note: $500 fee with each Form 1 (WOGCC Forms workbook, July 2026); not published per well"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Form 1 Split Estate box and Form 1A; Rule 3-8(f) certified-mail notice for horizontals; no per-well link seen"
+  },
+  "date_received": {
+   "s": "data",
+   "e": "file",
+   "n": "Rcvd.Date column in the approved export (yyyymmdd); RECDATE in the header looks like the same date"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "Approved column (yyyymmdd) in the DumpByApdA export; Form 1 page 2 holds the Approval Date"
+  },
+  "date_expires": {
+   "s": "none",
+   "e": "doc",
+   "n": "Fixed by Rule 3-8(h): two years after issuance; no expiry-date field on Form 1 or in the exports"
+  },
+  "spud_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Spud_Date column (export, mm/dd/yyyy); FIRSTSPUD in the header"
+  },
+  "completion_date": {
+   "s": "data",
+   "e": "file",
+   "n": "Comp_Date column (export); FIRSTCOMP in the header"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Status and Status_Dte columns (codes DP, AP, PO, PG, PA, EP...)"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Survey plat required with every APD (Form 1 checkbox); whether scans are online was not verified"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Whether filed Form 1 images are viewable online was not verified"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "pipeline.wyo.gov has a Completions menu; not opened, so the online record is not verified"
+  },
+  "logs": {
+   "s": "unknown",
+   "e": "none",
+   "n": "pipeline.wyo.gov has Logs and Cores menus; not opened"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Bulk production zip (1978 to Oct 2026) listed on the Down Load menu; Production menu; zip not opened"
+  }
+ },
+ "sources": [
+  {
+   "id": "wogcc-apd-approved-export",
+   "name": "WOGCC Permits to Drill: Download Approved (date-range export, POST form returns an .xls file)",
+   "url": "https://pipeline.wyo.gov/DumpApds.cfm",
+   "kind": "api",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0.01,
+   "free": true,
+   "login": false,
+   "license": "No license stated; page says no warranty and 'scraping of website data is not allowed' (the Down Load menus are the sanctioned route)",
+   "columns": [
+    "Api_Number",
+    "Confid",
+    "Company",
+    "Approved",
+    "Well_NO",
+    "Unit_Lease",
+    "Qtr1",
+    "Qtr2",
+    "Section",
+    "Lot_Tract",
+    "Township",
+    "Range",
+    "Foot1",
+    "Foot2",
+    "Elevation",
+    "Elev_KB",
+    "Latitude",
+    "Longitude",
+    "Lease_No",
+    "Field",
+    "County",
+    "Status",
+    "Status_Dte",
+    "Form2_Stat",
+    "Form2_Date",
+    "Well_Class",
+    "TD",
+    "PB",
+    "Bot_Form",
+    "Spud_Date",
+    "Comp_Date",
+    "Oil",
+    "Gas",
+    "Water",
+    "BFoot1",
+    "BFoot2",
+    "BSec",
+    "BQtr1",
+    "BQtr2",
+    "BTwp",
+    "BT_Dir",
+    "BRge",
+    "BR_Dir",
+    "Dir/Hor",
+    "Blat",
+    "Blon",
+    "Rcvd.Date",
+    "MineralCode"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "all permitted wells",
+    "oil and gas only",
+    "coal bed only",
+    "injector/disposal only",
+    "horizontal only",
+    "waiting on approval"
+   ],
+   "reachable": "ok",
+   "tested": "GET DumpApds.cfm 200 (form: begin/end date mm dd yyyy, well type 1-5 or 9 'waiting on approval', optional point file; posts to DumpByApdA.cfm). One POST for 14-16 Sep 2026 oil and gas: 200, application/xls, attachment APD20260914_20260916.xls, 9.9 KB, an HTML table with 48 columns and 2 rows (both Approved 20260915, status DP). Approved is yyyymmdd, Status_Dte and Spud_Date are mm/dd/yyyy."
+  },
+  {
+   "id": "wogcc-apd-received-export",
+   "name": "WOGCC Permits to Drill: Download Received (same form, by received date)",
+   "url": "https://pipeline.wyo.gov/DumpApdsR.cfm",
+   "kind": "api",
+   "format": "xlsx",
+   "grain": "permit",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 0.01,
+   "free": true,
+   "login": false,
+   "license": "as above",
+   "columns": [
+    "not opened; the approved export already carries Rcvd.Date"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "same well-type choices as the approved export"
+   ],
+   "reachable": "not-tested",
+   "tested": "Linked from the Permits to Drill menu (apdreportsmenu.cfm, 200); not requested."
+  },
+  {
+   "id": "wogcc-well-header-zip",
+   "name": "WOGCC Well Header Data (zipped dBase, all wells and a plugged-wells file)",
+   "url": "https://pipeline.wyo.gov/downloads/100226WH.zip",
+   "kind": "bulk",
+   "format": "dbf",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 19.3,
+   "free": true,
+   "login": false,
+   "license": "No license stated; no-warranty notice on the site",
+   "columns": [
+    "APINO",
+    "COMPANY",
+    "WN",
+    "UNIT_LEASE",
+    "LEASE_NO",
+    "FIELD_NAME",
+    "HORIZ_DIR",
+    "LAND_TYPE",
+    "COUNTY",
+    "COUNTYTXT",
+    "SEC",
+    "TWP",
+    "T_DIR",
+    "RGE",
+    "R_DIR",
+    "QTR1",
+    "QTR2",
+    "LON",
+    "LAT",
+    "FOOT1",
+    "FOOT2",
+    "ELEV",
+    "ELEVKB",
+    "BSEC",
+    "BTWP",
+    "BT_DIR",
+    "BRGE",
+    "BR_DIR",
+    "BQTR1",
+    "BQTR2",
+    "BFOOT1",
+    "BFOOT2",
+    "BLON",
+    "BLAT",
+    "BOTFORM",
+    "WELL_CLASS",
+    "TD",
+    "PB",
+    "RN",
+    "COAL_BED",
+    "STATUS",
+    "STATUSDATE",
+    "CAPINO",
+    "FIRSTSPUD",
+    "FIRSTCOMP",
+    "BASIN",
+    "FORM2STAT",
+    "FORM2MON",
+    "FORM2YEAR",
+    "UNIT_CODE",
+    "RECDATE",
+    "MD",
+    "PBMD",
+    "SYMBOL"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "well header only: one row per well with status and status date"
+   ],
+   "reachable": "ok",
+   "tested": "HEAD then one full GET: 200, 19,297,693 bytes, Last-Modified 2 Oct 2026, zip with 100226WH.DBF (143,534 records, 54 fields, 128 MB) and 100226PA.DBF (59 MB). RECDATE is filled for 17,000 wells, about 250 to 500 a month in 2025-26 (looks like APD received date; not documented). No approved-date field: use the export above."
+  },
+  {
+   "id": "wsgs-wogcc-wells-featureserver",
+   "name": "Wyoming State Geological Survey ArcGIS layer SDE_All_WOGCCWells (a WOGCC well-header copy, no QC)",
+   "url": "https://portal.wsgs.wyo.gov/ags/rest/services/OilGas/SDE_All_WOGCCWells/FeatureServer/5",
+   "kind": "map",
+   "format": "arcgis",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Not stated; copyright text credits WOGCC and says no WSGS corrections applied",
+   "columns": [
+    "MD",
+    "PBMD",
+    "SYMBOL",
+    "GlobalID",
+    "APINO",
+    "COMPANY",
+    "WN",
+    "UNIT_LEASE",
+    "LEASE_NO",
+    "FIELD_NAME",
+    "HORIZ_DIR",
+    "LAND_TYPE",
+    "COUNTY",
+    "COUNTYTXT",
+    "SEC",
+    "TWP",
+    "T_DIR",
+    "RGE",
+    "R_DIR",
+    "QTR1",
+    "QTR2",
+    "LON",
+    "LAT",
+    "FOOT1",
+    "FOOT2",
+    "ELEV",
+    "ELEVKB",
+    "BSEC",
+    "BTWP",
+    "BT_DIR",
+    "BRGE",
+    "BR_DIR",
+    "BQTR1",
+    "BQTR2",
+    "BFOOT1",
+    "BFOOT2",
+    "BLON",
+    "BLAT",
+    "BOTFORM",
+    "WELL_CLASS",
+    "TD",
+    "PB",
+    "RN",
+    "COAL_BED",
+    "STATUS",
+    "STATUSDATE",
+    "CAPINO",
+    "FIRSTSPUD",
+    "FIRSTCOMP",
+    "BASIN",
+    "FORM2STAT",
+    "FORM2MON",
+    "FORM2YEAR",
+    "RECDATE",
+    "UNIT_CODE",
+    "OBJECTID"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "well header only"
+   ],
+   "reachable": "ok",
+   "tested": "layers?f=json 200 (56 fields), returnCountOnly 200 = 207,791 features, one statistics query 200. STALE: newest STATUSDATE is Dec 2024 and newest FIRSTSPUD Jan 2025, so it is a snapshot from about early 2025. STATUSDATE 20990909 is a sentinel."
+  },
+  {
+   "id": "wogcc-apd-counts-by-county",
+   "name": "WOGCC Count of APDs Received / Approved by County, 2010 forward",
+   "url": "https://pipeline.wyo.gov/rcountyapprvdcount.cfm",
+   "kind": "report",
+   "format": "html",
+   "grain": "aggregate",
+   "cadence": "unknown",
+   "history_from": "2010",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "as above",
+   "columns": [
+    "not opened (menu says counts by county, oil, gas and coal bed together)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "oil, gas and coal bed combined"
+   ],
+   "reachable": "not-tested",
+   "tested": "Linked from apdreportsmenu.cfm (rcountyrcvdcount.cfm for received); not requested."
+  },
+  {
+   "id": "wogcc-wyde-explorer",
+   "name": "WOGCC Data Explorer (WYDE), interactive map with CSV export",
+   "url": "https://dataexplorer.wogcc.wyo.gov/",
+   "kind": "map",
+   "format": "other",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [
+    "not enumerated; the page has an export-CSV icon"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "unknown"
+   ],
+   "reachable": "ok",
+   "tested": "GET / 200, 211 KB HTML shell of an OpenLayers/Angular app (title WOGCC Data Explorer); no API call tried."
+  }
+ ],
+ "grade": "A",
+ "grade_reason": "Free, no login, reachable (200). The approved-permits export returns one row per permit/well with an Approved date (yyyymmdd), a received date, well class, horizontal flag, location and spud date, by any date range. Strictly it has no work-type column, so counts mix new drills with re-entries, deepenings and renewals (a B under a strict reading of the rubric).",
+ "producer_plan": "Use the WOGCC approved-permits export (POST https://pipeline.wyo.gov/DumpByApdA.cfm with bmon,bday,byear,emon,eday,eyear and cType: 1 all permitted, 2 oil and gas, 3 coal bed, 4 injector/disposal, 5 horizontal, 9 waiting on approval). One request per month (or one per week for the nightly) returns an .xls that is really an HTML table: parse it with the standard library, header row first, one data row per permit. Month = the Approved column (yyyymmdd). Count rows per month per Well_Class (codes seen in the well header: O, G, GO, OO oil and gas; I and D injection or disposal; MW, ST, M monitor and test; coal bed wells are asked for separately with cType 3 and carry old numeric classes such as 05, so decide whether to include them). Dir/Hor 'H' marks horizontals (seen in the sample); a drilled-but-not-yet-spud permit has a blank Spud_Date. Cross-check with the monthly well-header zip (RECDATE received counts, FIRSTSPUD, STATUS). Caveats: no work-type field, so new, re-entry, deepen and renew cannot be split (renewals keep the API number, so the same API could appear in two months); the source says scraping is not allowed, so use the sanctioned Down Load pages sparingly (one request per run, a pause between, never loop); dates come in two formats; whether a revised permit rewrites Approved is not known.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "Company column holds operator names (some may be individuals; apply the tracker's corporation/LLC/LP rule before naming one). The exports carry no phone, e-mail or street address. Form 1 itself collects a contact person, phone and e-mail, and the surface owner's details go on Form 1A; none of that is in the data files. Nothing copied.",
+ "unknowns": [
+  "Whether Approved is the first approval or is rewritten by a renewal or revision",
+  "Monthly volume: only a 3-day sample was pulled (2 oil and gas approvals on 15 Sep 2026)",
+  "Meaning of MineralCode, LAND_TYPE, Status and Well_Class codes (no data dictionary found)",
+  "Whether scanned forms, plats, completion reports and logs are online per well (menus exist, not opened)",
+  "Contents of the production zip, the Download Received export and the by-county count pages (not opened)",
+  "The eForm filing screens and the horizontal-well application (not fetched)",
+  "Whether H2S, lateral length, operator code or business type appear on any lookup page",
+  "A strict reading of the rubric would make this a B (no work type)"
+ ],
+ "researched": "2026-10-31"
+}

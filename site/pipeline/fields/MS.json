@@ -1,0 +1,513 @@
+{
+ "state": "MS",
+ "name": "Mississippi",
+ "agency": {
+  "name": "Mississippi State Oil and Gas Board",
+  "short": "MSOGB",
+  "url": "https://www.ogb.state.ms.us/"
+ },
+ "form": {
+  "name": "Application for Permit to Drill, Workover, Unit Reformation, Conversion or Change of Operator",
+  "number": "Form 2 (Rev. 8/2023)",
+  "url": "https://www.ogb.state.ms.us/forms/Form2.pdf",
+  "read": true,
+  "notes": "Read both pages. One form covers new drills and re-entries, workovers (recompletion, dual, commingle, horizontal deviation), unit reformation, conversion and change of operator. Fee $600 to drill, convert, or workover to dual or horizontal; $100 to recomplete another zone or change operator; proof of financial responsibility; certified plat; for new drills a reserve pit diagram, mud disposal statement and surface casing and cementing program. Latitude and longitude (NAD83, five decimals) for surface and bottom hole. Permit lapses after 12 months (6 for recompletions) if work not begun. Submitter e-mail, address and phone are on the form but not published as data."
+ },
+ "cells": {
+  "api_number": {
+   "s": "data",
+   "e": "file",
+   "n": "API14 and API10 (well list); API (shapefile); form has an API No. box (assigned or existing)"
+  },
+  "permit_number": {
+   "s": "query",
+   "e": "web",
+   "n": "'Permit #' column in the Permit Search report; also printed in Permit Activity PDFs; not in bulk files"
+  },
+  "well_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Name and Number (well list); DispName (shapefile)"
+  },
+  "lease_name": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 has well name and number, field and reservoir, but no lease or unit name box"
+  },
+  "operator_name": {
+   "s": "data",
+   "e": "file",
+   "n": "Oper and OriginalOperator (well list)"
+  },
+  "operator_id": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 2 asks the company name only, no operator number; registration Form 1 not read"
+  },
+  "operator_type": {
+   "s": "none",
+   "e": "form",
+   "n": "No business-type box on Form 2; registration Form 1 not read"
+  },
+  "bond": {
+   "s": "form",
+   "e": "form",
+   "n": "Proof of financial responsibility must accompany the Form 2 (Rules 4 and 63)"
+  },
+  "county": {
+   "s": "data",
+   "e": "file",
+   "n": "County (well list); CountyName (shapefile); county box on form"
+  },
+  "district": {
+   "s": "form",
+   "e": "form",
+   "n": "Only a 'field inspector information' box (office use); no district column in the data"
+  },
+  "field_pool": {
+   "s": "data",
+   "e": "file",
+   "n": "Field and PoolName (well list, pool filled on 12,090 of 35,218 wells); wildcat yes/no box on form"
+  },
+  "surface_latlon": {
+   "s": "data",
+   "e": "file",
+   "n": "Lat(NAD83), Long(NAD83) on 25,558 of 35,218 wells; form requires NAD83 decimal degrees"
+  },
+  "surface_plss": {
+   "s": "data",
+   "e": "file",
+   "n": "Sec, Twn, TwnDir, Rng, RngDir; form asks section, township, range and a location description"
+  },
+  "bottom_hole_loc": {
+   "s": "data",
+   "e": "file",
+   "n": "BH_Lat and BH_Long, only 598 of 35,218 wells; form asks BHL for directional or horizontal wells"
+  },
+  "lateral_path": {
+   "s": "none",
+   "e": "form",
+   "n": "Form asks only the bottom-hole point; no survey or path"
+  },
+  "elevation": {
+   "s": "form",
+   "e": "form",
+   "n": "Ground elevation (GR) box on Form 2; no elevation column in the files seen"
+  },
+  "surface_owner": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked; the ownership question on the form is about the drilling unit, not the surface"
+  },
+  "well_type": {
+   "s": "data",
+   "e": "file",
+   "n": "Type (OIL, GAS, SWD, EOR, DH, MON, ST...); form boxes Oil, Gas, SWD, EOR, Brine, Monitor, Storage, Strat Test"
+  },
+  "work_type": {
+   "s": "query",
+   "e": "web",
+   "n": "'Permit Types' column in Permit Search (values not seen); form: drill/reentry, workover, conversion, etc."
+  },
+  "well_direction": {
+   "s": "data",
+   "e": "file",
+   "n": "WellSlant (Vertical 32,862, Directional 1,276, Horizontal 1,080)"
+  },
+  "proposed_depth_md": {
+   "s": "query",
+   "e": "web",
+   "n": "'Permit Depth' in Permit Search and Permit Activity PDFs; form asks proposed or actual MD; well list MD is as drilled?"
+  },
+  "proposed_depth_tvd": {
+   "s": "form",
+   "e": "form",
+   "n": "TVD box (proposed or actual); well list TotalVerticalDepth_TVD filled on only 528 wells, meaning not labeled"
+  },
+  "lateral_length": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked"
+  },
+  "target_formation": {
+   "s": "data",
+   "e": "file",
+   "n": "PoolName (pool, not necessarily the target); form asks field and reservoir"
+  },
+  "formation_tops": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked"
+  },
+  "casing_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Proposed surface casing and cementing program attached (new drills); length of surface casing box"
+  },
+  "cement_program": {
+   "s": "form",
+   "e": "form",
+   "n": "Cementing program attached with the casing program (new drills)"
+  },
+  "pressure_control": {
+   "s": "none",
+   "e": "form",
+   "n": "No BOP item on Form 2 or its instructions"
+  },
+  "h2s": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 2"
+  },
+  "pit_waste": {
+   "s": "form",
+   "e": "form",
+   "n": "Reserve pit diagram and statement of mud disposal method attached (new drills)"
+  },
+  "water": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 2"
+  },
+  "fracture_plan": {
+   "s": "none",
+   "e": "form",
+   "n": "Not asked on Form 2 (a link to a chemical disclosure registry is on the home page)"
+  },
+  "spacing_unit": {
+   "s": "query",
+   "e": "web",
+   "n": "Acres ('SIZE') in Permit Activity PDFs; form has drilling-unit acres, distance to unit line, docket and order boxes"
+  },
+  "spacing_exception": {
+   "s": "form",
+   "e": "form",
+   "n": "Instructions: exceptions to statewide rules need a petition to the Board; docket and order number boxes"
+  },
+  "mineral_owner": {
+   "s": "form",
+   "e": "form",
+   "n": "Yes/no statement on separately owned tracts and agreement to develop (state code 53-3-7); no owner names"
+  },
+  "fee": {
+   "s": "form",
+   "e": "form",
+   "n": "$600 to drill, convert or workover to dual or horizontal; $100 recomplete or change operator"
+  },
+  "notice_hearing": {
+   "s": "form",
+   "e": "form",
+   "n": "Docket and order boxes when a Board petition is needed; no notice step on the form"
+  },
+  "date_received": {
+   "s": "form",
+   "e": "form",
+   "n": "Date box next to the submitter; not in the bulk files"
+  },
+  "date_approved": {
+   "s": "data",
+   "e": "file",
+   "n": "Shapefile PermitDate (name only; meaning not labeled); Permit Search shows 'Date Approved'"
+  },
+  "date_expires": {
+   "s": "none",
+   "e": "form",
+   "n": "No date box; instructions say it lapses after 12 months (6 for recompletions) if work not begun"
+  },
+  "spud_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form gives only the approximate start date; Well Date List has an 'Event' filter whose options were not seen"
+  },
+  "completion_date": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Completion is on Form 3; Well Date List 'Event' options were not seen"
+  },
+  "status": {
+   "s": "data",
+   "e": "file",
+   "n": "Status and Active (well list); status description in shapefile; includes expired and cancelled permits"
+  },
+  "plat_image": {
+   "s": "form",
+   "e": "form",
+   "n": "Certified plat to scale attached; not seen online"
+  },
+  "form_image": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Permit Activity PDFs are lists, not the form; online document access not checked"
+  },
+  "completion_report": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Form 3 is the completion report per Form 2 text; online access not checked"
+  },
+  "logs": {
+   "s": "query",
+   "e": "web",
+   "n": "Home page menu shows 'Scout Card & Log Search'; not opened"
+  },
+  "production_link": {
+   "s": "query",
+   "e": "web",
+   "n": "Downloads page lists a daily production CSV (16.6 MB); columns not read"
+  }
+ },
+ "sources": [
+  {
+   "id": "ms-wells-otherfields-shp",
+   "name": "Well shape files with additional fields (wells_otherfields, ESRI shapefile in a zip, daily)",
+   "url": "https://www.ogb.state.ms.us/Downloads/WellShapeFiles/20261031_wells_otherfields.zip",
+   "kind": "bulk",
+   "format": "shp",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "1905-11",
+   "size_mb": 1.4,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "PKey",
+    "API",
+    "type",
+    "typedesc",
+    "status",
+    "statdesc",
+    "ty_st",
+    "FieldName",
+    "CountyName",
+    "DispName",
+    "Descript",
+    "PermitDate",
+    "TD"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permit to drill, by current well type (oil, gas, dry hole, injection, brine disposal, gas storage, monitor...)"
+   ],
+   "reachable": "ok",
+   "tested": "One GET of the 2026-10-31 zip: HTTP 200, 1.4 MB, holds .dbf, .shp, .shx, .prj. DBF has 25,281 records and 13 attributes; PermitDate is a date field (earliest 1905-11-01, six records are 00000000, newest 2026-10-21). Permit dates per year: 2023 48, 2024 22, 2025 29, 2026 18 (to Oct 21), against the Board's own annual totals of 37 for 2025 and 20 for 2026 through August, so the two do not match. The file names carry the day and the listing page keeps about a week of them. A sister zip (Wells.zip, spots and APIs only) was not downloaded."
+  },
+  {
+   "id": "ms-wellinfolist-csv",
+   "name": "Well info list, all wells (CSV, daily)",
+   "url": "https://www.ogb.state.ms.us/Downloads/WellInfoList/20261030_All_WellInfoList.csv",
+   "kind": "bulk",
+   "format": "csv",
+   "grain": "well",
+   "cadence": "daily",
+   "history_from": "unknown",
+   "size_mb": 12.2,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "API14",
+    "API10",
+    "Type",
+    "Status",
+    "Name",
+    "Number",
+    "OriginalWellName",
+    "Oper",
+    "OriginalOperator",
+    "Field",
+    "County",
+    "PoolName",
+    "Sec",
+    "Twn",
+    "TwnDir",
+    "Rng",
+    "RngDir",
+    "Lat(NAD83)",
+    "Long(NAD83)",
+    "DirectURL",
+    "IsThisA16thSectionLocation",
+    "WellSlant",
+    "BH_Lat(NAD83)",
+    "BH_Long(NAD83)",
+    "DrillersTotalDepth_DTD",
+    "MeasuredDepth_MD",
+    "PlugBackMeasuredDepth_PBMD",
+    "TotalVerticalDepth_TVD",
+    "USDW",
+    "Active"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "all wells with current type and status; permit-stage statuses (expired, cancelled, permitted) are included"
+   ],
+   "reachable": "ok",
+   "tested": "One GET of the 2026-10-30 file: HTTP 200, 12.8 MB, header row of 30 columns, 35,218 wells, no date column of any kind. Type values include OIL, GAS, DH, SWD, EOR, EX (expired location); Status values include EX (expired permit) 3,298 and CA (permit cancelled) 329; WellSlant Vertical, Directional or Horizontal; latitude on 25,558 wells."
+  },
+  {
+   "id": "ms-permit-search",
+   "name": "MSOGB Permit Search report (filters by operator, field, county, permit type and date approved)",
+   "url": "https://www.ogb.state.ms.us/permitsearchnomenu.php",
+   "kind": "query",
+   "format": "html",
+   "grain": "permit",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "Date Approved",
+    "Permit #",
+    "API (10)",
+    "Operator Name",
+    "Well Name",
+    "Well Info",
+    "County Name",
+    "FieldName",
+    "Permit Types",
+    "Permit Depth"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": true,
+   "has_location": false,
+   "activity_types": [
+    "permit types (list not seen; the Board has a Well Permit Codes page)"
+   ],
+   "reachable": "ok",
+   "tested": "GET of the form: HTTP 200, 27 KB; filter lists are filled by script. One POST of a date range for 2026: HTTP 200, 106 KB, with the ten-column header row and no data rows (the page builds its query in script; not retried). Page text says export to Excel needs fewer than 3,500 rows. The page's script filters on an ApprovedDate field. Row values not seen."
+  },
+  {
+   "id": "ms-permit-to-drill-monthly",
+   "name": "Permits to Drill, annual PDFs of counts by county and month (1987 to 2026)",
+   "url": "https://www.ogb.state.ms.us/MSOGBDocumentsShared/monthlypermits/Permit%20to%20Drill%20Monthly%202026.pdf",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "monthly",
+   "history_from": "1987",
+   "size_mb": 0.07,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "County",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "June",
+    "July",
+    "Aug",
+    "Sept",
+    "Oct",
+    "Nov",
+    "Dec",
+    "Total"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permits to drill (all well types together)"
+   ],
+   "reachable": "ok",
+   "tested": "Folder listing (HTTP 200, 40 yearly files 1987 to 2026) and the 2026 file: HTTP 200, 66 KB, text PDF. Counties by month; total row Jan to Aug 2026 is 2, 1, 1, 2, 5, 3, 3, 3 (20); the chart caption says Total 2025 = 37, Total 2026 = 20. Newest counted month is August, so the PDF lags the calendar by a month or more."
+  },
+  {
+   "id": "ms-permit-activity-pdfs",
+   "name": "Permit Activity reports (PDF, one per board period, 2009 to 2026)",
+   "url": "https://www.ogb.state.ms.us/MSOGBDocumentsShared/PermitActivity/PermitActivity%202026/20261020.Permit%20Activity.pdf",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "monthly",
+   "history_from": "2009",
+   "size_mb": 0.1,
+   "free": true,
+   "login": false,
+   "license": "none stated",
+   "columns": [
+    "permit number (like 2026-OPD-0011)",
+    "operator and product",
+    "well name and number",
+    "field",
+    "proposed depth",
+    "footages from section lines",
+    "latitude and longitude",
+    "date",
+    "section township range",
+    "API number",
+    "contractor",
+    "unit size in acres and county",
+    "docket number"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permits to drill (OPD series seen); other series not seen"
+   ],
+   "reachable": "ok",
+   "tested": "Tree listing (HTTP 200, 864 links, yearly folders from 2009) and one 2-page file: HTTP 200, 98 KB, text PDF with three permits, no header row, labels are not given for the date. The file named for 2026-10-20 was made in March 2026 and holds permits dated Oct 2025 to Jan 2026, and the listing has names dated after today, so file names do not date the content."
+  },
+  {
+   "id": "ms-msogb-online",
+   "name": "MSOGB Online mapping and reporting (data mining application)",
+   "url": "https://ws.ogb.state.ms.us/MSOGBOnline",
+   "kind": "query",
+   "format": "html",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "unknown",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [],
+   "reachable": "not-tested",
+   "tested": "Not requested. The well list's DirectURL column points each well to this application's details page; its contents were not seen."
+  }
+ ],
+ "grade": "B",
+ "grade_reason": "A free daily shapefile reachable from here has one row per well with a PermitDate back to 1905, and a Permit Search report has Date Approved, permit type and depth, so monthly counts are possible. Held to B because the shapefile has no work type and its counts do not match the Board's own annual totals (29 against 37 for 2025), the meaning of PermitDate is not labeled, and the report that does have permit type is a script-driven page with no stable machine interface. Volume is tiny (about 20 to 60 permits a year).",
+ "producer_plan": "Read the Downloads listing page to find the newest dated wells_otherfields zip (names change daily; one a day is kept for about a week). Unzip into its own folder, read the dBASE file with the standard library (record length 1,025; PermitDate is YYYYMMDD, 00000000 means missing), and count rows by month of PermitDate, dropping future or zero dates. Split by the type code: OIL and GAS as new drill, SWD, EOR and BDW as injection or disposal, GSR, GSC and MON as storage or monitor, ST and CORE as test wells; note the type is the well's current type, so a recent permit later logged as a dry hole (DH) changes band, and months must be recounted each run. Cross-check each year against the annual Permits to Drill PDF (county by month counts, 1987 onward, text extractable) and keep that PDF as the fallback series. Re-entries, workovers, conversions and operator changes are not separate in the bulk files: they would need the Permit Search report (permit type column), which the page builds by script, so test it by hand before relying on it. Expect only a handful of permits a month.",
+ "activity_bands_possible": [
+  "new",
+  "injection",
+  "other"
+ ],
+ "privacy_notes": "The well list and shapefile name company operators only (no phone, e-mail or street address columns); an operator could still be an individual's trade name, so apply the tracker's nameable-operator rule. The Permit Activity PDFs carry a contractor field (N/A in the sample read). The blank form asks for a submitter's e-mail, address and phone, but these are not in the open data.",
+ "unknowns": [
+  "Whether PermitDate is the approval date or another date, and why its yearly counts differ from the Board's totals",
+  "Permit type values (Permit Types column) and whether re-entries and workovers can be counted",
+  "Actual spud and completion dates (Well Date List 'Event' options not seen)",
+  "Column list of the daily production CSV",
+  "Whether permit applications, plats, logs and completion reports are viewable online",
+  "What the Permit Search returns for a date range (the one request returned no rows)",
+  "Whether permits can be filed online",
+  "Meaning of the future-dated Permit Activity file names"
+ ],
+ "researched": "2026-10-31"
+}
