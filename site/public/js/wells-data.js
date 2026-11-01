@@ -60,7 +60,8 @@ export function summary(well) {
 }
 
 // "3 pages · 24 KB" for a document; the page count is unknown for a file poppler could not read, and then it is left out (never 0)
-export const docMeta = (x) => [x.pg ? x.pg + (x.pg === 1 ? ' page' : ' pages') : null, sizeText(x.b / 1e6)].filter(Boolean).join(' · ');
+const smallSize = (b) => (b < 1e6 ? Math.max(1, Math.round(b / 1000)) + ' KB' : sizeText(b / 1e6)); // a form of 30 KB is not "0.0 MB"
+export const docMeta = (x) => [x.pg ? x.pg + (x.pg === 1 ? ' page' : ' pages') : null, smallSize(x.b)].filter(Boolean).join(' · ');
 
 // the wells of a county that match what was typed: an API number or its start, a field, an operator's name or number, or a district (all lower-cased substrings)
 export function matchWells(wells, text) {

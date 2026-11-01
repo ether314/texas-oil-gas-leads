@@ -166,20 +166,20 @@ check(git("status", "--short") == "", "the clone starts clean, as an Actions che
 
 # a good day: a county file and a changed index
 os.makedirs(os.path.join(W, WELLS, "county"), exist_ok=True)
-open(os.path.join(W, WELLS, "county", "283.json"), "w").write("{}")
+open(os.path.join(W, WELLS, "county", "991.json"), "w").write("{}")
 open(os.path.join(W, WELLS, "index.json"), "a").write(" ")
 check(len(git("status", "--short").splitlines()) == 2, "the clone now has a new county file and a changed index")
 code, out = sh(steps[DROP]["run"])
-check(code == 0 and git("status", "--short") == "" and not os.path.exists(os.path.join(W, WELLS, "county", "283.json")) and "::warning title=Well images::" in out,
+check(code == 0 and git("status", "--short") == "" and not os.path.exists(os.path.join(W, WELLS, "county", "991.json")) and "::warning title=Well images::" in out,
       "the drop step puts the index back, removes the new county file, and says so as a warning (exit %d)" % code)
 
 os.makedirs(os.path.join(W, WELLS, "county"), exist_ok=True)
-open(os.path.join(W, WELLS, "county", "283.json"), "w").write("{}")
+open(os.path.join(W, WELLS, "county", "991.json"), "w").write("{}")
 open(os.path.join(W, WELLS, "index.json"), "a").write(" ")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 msg = git("log", "-1", "--format=%s")
 files = sorted(l.split("|")[0].strip() for l in git("show", "--stat", "--format=", "HEAD").splitlines() if "|" in l)
-check(code == 0 and re.fullmatch(r"Well images \d{4}-\d\d-\d\d", msg) and files == sorted([WELLS + "/county/283.json", WELLS + "/index.json"]), "a good day commits the county file and the index: %r %s" % (msg, files))
+check(code == 0 and re.fullmatch(r"Well images \d{4}-\d\d-\d\d", msg) and files == sorted([WELLS + "/county/991.json", WELLS + "/index.json"]), "a good day commits the county file and the index: %r %s" % (msg, files))
 check(git("rev-parse", "main", cwd=ORIGIN) == git("rev-parse", "HEAD"), "and pushes them to origin")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 check(code == 0 and "nothing changed" in out, "with nothing to commit the step says so and succeeds")
@@ -188,7 +188,7 @@ check(code == 0 and "nothing changed" in out, "with nothing to commit the step s
 os.makedirs(os.path.join(W, "dl"), exist_ok=True)
 open(os.path.join(W, "dl", "pack.zip"), "w").write("not a pack")
 open(os.path.join(W, "site", "public", "data", "stray.json"), "w").write("{}")
-open(os.path.join(W, WELLS, "county", "389.json"), "w").write("{}")
+open(os.path.join(W, WELLS, "county", "993.json"), "w").write("{}")
 other = os.path.join(TMP, "other")
 subprocess.run(["git", "clone", "-q", ORIGIN, other], check=True)
 open(os.path.join(other, "NOTE.txt"), "w").write("another workflow pushed first")
@@ -197,7 +197,7 @@ git("commit", "-q", "-m", "someone else", cwd=other)
 git("push", "-q", "origin", "HEAD:main", cwd=other)
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 files = sorted(l.split("|")[0].strip() for l in git("show", "--stat", "--format=", "HEAD").splitlines() if "|" in l)
-check(code == 0 and files == [WELLS + "/county/389.json"] and "stray.json" in git("status", "--short") and git("rev-parse", "main", cwd=ORIGIN) == git("rev-parse", "HEAD"),
+check(code == 0 and files == [WELLS + "/county/993.json"] and "stray.json" in git("status", "--short") and git("rev-parse", "main", cwd=ORIGIN) == git("rev-parse", "HEAD"),
       "it commits only the well files whatever else is lying about, and rebases onto what another run pushed first: %s (exit %d)" % (files, code))
 
 # the last step, rendered as GitHub renders it

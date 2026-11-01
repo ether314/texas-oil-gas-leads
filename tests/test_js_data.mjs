@@ -314,7 +314,7 @@ check(D.STATES === S.STATES && D.parseStates === S.parseStates && D.ck('OK', '00
   check(st.map((x) => x.stage).join() === 'p,d,c' && st[0].docs.length === 1 && st[1].docs.length === 0 && st[2].docs.length === 2 && st[2].docs[0].f === '28337830_c1', 'wells: the stages run permit, drilling, completion; a stage with nothing is an empty list, not missing; a day\'s documents are in a fixed order');
   const sm = Wd.summary(well);
   check(sm.docs === 3 && sm.n.p === 1 && sm.n.d === 0 && sm.n.c === 2 && sm.bytes === 4233000 && sm.newest === '2026-10-29', 'wells: a well\'s summary counts its documents by stage, its bytes and its newest day');
-  check(Wd.docMeta(docs[0]) === '3 pages · 0.0 MB' || /^3 pages · /.test(Wd.docMeta(docs[0])), 'wells: a document says its pages and size');
+  check(Wd.docMeta(docs[0]) === '3 pages · 24 KB' && Wd.docMeta({ pg: 2, b: 300 }) === '2 pages · 1 KB' && Wd.docMeta({ pg: 1, b: 4200000 }) === '1 page · 4.2 MB', 'wells: a document says its pages and size, in KB under a megabyte (never "0.0 MB")');
   check(Wd.docMeta(docs[1]) === Wd.sizeText(4.2) && !/page/.test(Wd.docMeta(docs[1])) && !/ 0 /.test(Wd.docMeta(docs[1])), 'wells: a file whose pages could not be counted says no page count, never 0 pages');
   check(Wd.docMeta({ pg: 1, b: 9000 }).startsWith('1 page · '), 'wells: one page is "1 page"');
   const names = (t) => Wd.matchWells(shard.wells, t).map((w) => w.a).join();
