@@ -248,7 +248,7 @@ net = Net(workbook(ROWS, False))
 doc = OR.build(get=net.get, today=TODAY)
 check(C.validate(doc, TODAY) == [], "what it writes validates: %s" % C.validate(doc, TODAY)[:2])
 check(net.asked == [OR.PAGE, URL], "two requests: the report page, then the spreadsheet (%s)" % net.asked)
-check(doc["state"] == "OR" and doc["measure"] == "permits" and doc["months"][0] == "2019-01" and doc["months"][-1] == "2025-12" and doc["asOf"] == "2026-01-26" and doc["through"] == "2025-12-31",
+check(doc["state"] == "OR" and doc["measure"] == "applications" and doc["months"][0] == "2019-01" and doc["months"][-1] == "2025-12" and doc["asOf"] == "2026-01-26" and doc["through"] == "2025-12-31",
       "from 2019-01 to the file's own last complete month: counts are good to the file's date (2026-01-26), not to the newest application")
 m = dict(zip(doc["months"], range(len(doc["months"]))))
 new, inj, redrill, amend, other = (doc["bands"][b] for b in ("new", "inj", "redrill", "amend", "other"))

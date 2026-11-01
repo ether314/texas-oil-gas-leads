@@ -202,6 +202,10 @@ check(ids == {"ND", "KS", "BL", "AK"} and {g["id"] for g in nat["gaps"]} == {i f
 p12 = {s["id"]: s["p12"] for s in nat["states"]}
 check(nat["totals"]["permits12"] == p12["ND"] + p12["KS"] and nat["totals"]["spuds12"] == p12["AK"] and p12["BL"] > 0,
       "totals add within a measure only, and the BLM's onshore permits are shown but never added into the states' totals")
+# counts of another kind (applications filed, wells drilled by completion date) are valid and are in no total
+other = B.build(dict(docs, OR=fake_state("OR", "applications", 2), VA=fake_state("VA", "drilled", 4)), {}, today)
+check(B.validate(other) == [] and other["totals"] == nat["totals"] and {s["id"]: s["measure"] for s in other["states"] if s["id"] in ("OR", "VA")} == {"OR": "applications", "VA": "drilled"},
+      "an applications-filed state and a wells-drilled state are in the merge and in no total: %s" % other["totals"])
 ak = next(s for s in nat["states"] if s["id"] == "AK")
 check(len(ak["bands"]["new"]) == len(nat["months"]) and ak["bands"]["new"][-1] is None and ak["bands"]["new"][-3] is not None, "a state that ends earlier is padded with null after its last month, never with zero")
 late = C.Tally("BL")
@@ -250,6 +254,7 @@ natdoc = json.load(open(os.path.join(DATA, "national.json")))
 check(B.validate(natdoc) == [], "the committed national.json validates: %s" % B.validate(natdoc)[:2])
 check(C.check_dir(os.path.join(DATA, "nat")) == [], "every committed nat/<ST>.json validates: %s" % C.check_dir(os.path.join(DATA, "nat"))[:3])
 check({"TX", "OK", "NM", "FO"} <= {s["id"] for s in natdoc["states"]}, "Texas, Oklahoma, New Mexico and the federal offshore are in it")
+check({s["id"]: s["measure"] for s in natdoc["states"] if s["id"] in ("OR", "VA")} == {"OR": "applications", "VA": "drilled"}, "committed: Oregon counts applications filed and Virginia wells drilled, each in a measure of its own")
 check(all(s["measure"] == "spuds" for s in natdoc["states"] if s["id"] in ("NM", "FO")) and all(s["measure"] == "permits" for s in natdoc["states"] if s["id"] in ("TX", "OK")),
       "New Mexico and the federal offshore count spuds; Texas and Oklahoma count permits")
 check(B.build(None, None, date.fromisoformat(natdoc["generated"])) == natdoc, "national.json is what the builder makes from the committed files (rebuild it after changing a state file)")

@@ -869,6 +869,24 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         const txt = await page.locator('#national-root .nat-panel').innerText();
         check(/Not read yet/.test(txt) && /never as zero|not available/i.test(txt), 'a state with no data says "Not read yet" and that it is not available, never zero');
       }
+      // a state read with none in the 12 months is drawn apart from one not read yet (dashed), and a count of another kind (applications filed, wells drilled) is dotted, ranked on its own and added to nothing
+      const natDoc = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'national.json'), 'utf8'));
+      const drawn = await page.evaluate(() => { const ids = (q) => [...document.querySelectorAll('#national-root button.nat-tile' + q)].map((t) => t.dataset.id).sort().join(); return { gap: ids('.t0'), zero: ids('.tz'), own: ids('.is-own') }; });
+      const wantZero = natDoc.states.filter((x) => x.p12 === 0).map((x) => x.id).sort().join();
+      const wantOwn = natDoc.states.filter((x) => x.measure === 'applications' || x.measure === 'drilled').map((x) => x.id).sort().join();
+      check(wantZero.length > 0 && drawn.zero === wantZero && drawn.gap === natDoc.gaps.map((g) => g.id).sort().join() && drawn.own === wantOwn && wantOwn === 'OR,VA', 'tiles: a state read with none is outlined (' + drawn.zero + '), apart from the ones not read yet (' + drawn.gap.split(',').length + ' dashed), and Oregon and Virginia are dotted: ' + JSON.stringify(drawn));
+      const tile = (label) => page.evaluate((l) => { const t = [...document.querySelectorAll('#national-root .nat-kpis .dr-tile')].find((x) => x.querySelector('dt').textContent.startsWith(l)); return t ? t.textContent : ''; }, label);
+      const another = await tile('Counted another way'); const spudTile = await tile('Wells spudded');
+      check(/Oregon \(applications filed\)/.test(another) && /Virginia \(wells drilled\)/.test(another) && /^Wells spudded/.test(spudTile) && !/(?<!West )Virginia|Oregon/.test(spudTile) && !/(?<!West )Virginia|Oregon/.test(await tile('Permits approved')), 'the top figures name the two counted another way, and neither is in the permits or the wells spudded figure: ' + JSON.stringify({ another: another.slice(0, 160), spud: spudTile.slice(0, 160) }));
+      const heads = await page.locator('#national-root .nat-rh').allInnerTexts();
+      check(heads.length === 4 && /^Applications filed .*added to nothing$/.test(heads[2]) && /^Wells drilled .*added to nothing$/.test(heads[3]), 'the ranking has a section for each of the four counts, the last two marked as added to nothing: ' + JSON.stringify(heads));
+      await page.click('#national-root button.nat-tile[data-id="AZ"]');
+      const az = await page.locator('#national-root .nat-panel').innerText();
+      check(/None recorded/.test(az) && !/\b0 wells spudded/.test(az), 'Arizona (no spud dated in 24 months) says "None recorded", not a count of 0 wells spudded: ' + az.replace(/\s+/g, ' ').slice(0, 200));
+      const azTile = await page.evaluate(() => { const t = document.querySelector('#national-root button.nat-tile[data-id="AZ"]'); return { n: t.querySelector('.nat-n').textContent, label: t.getAttribute('aria-label') }; });
+      check(azTile.n === '–' && /none recorded in the last 24 months/.test(azTile.label), 'and its tile shows a dash and says so to a screen reader, not a 0: ' + JSON.stringify(azTile));
+      await page.click('#national-root button.nat-tile[data-id="VA"]');
+      check(/Wells drilled/.test(await page.locator('#national-root .nat-panel .badge').innerText()), 'Virginia\'s panel is badged Wells drilled');
       await page.click('#natm-spuds');
       await page.waitForTimeout(300);
       const keys = await page.locator('#national-root .nat-chart-keys').innerText();

@@ -415,7 +415,7 @@ def build(get=C.polite_get, today=None, to_sheets=xls_sheets):
     if undated:
         wait = " %d application%s still waiting (status Application) %s no date in the file and %s not counted." % (undated, "" if undated == 1 else "s", "has" if undated == 1 else "have", "is" if undated == 1 else "are")
     doc = t.document(agency="Oregon Department of Geology and Mineral Industries (DOGAMI)", source_name="Oil & Gas Permits Spreadsheet (DOGAMI, .xls, updated by hand)", source_url=PAGE,
-                     basis="application date (the file has no approval date)", cadence="irregular (a few times a year)", measure="permits", asof=asof, unit="applications filed",
+                     basis="application date (the file has no approval date)", cadence="irregular (a few times a year)", measure="applications", asof=asof, unit="applications filed",
                      note="Oregon permits only a few oil and gas wells a year, almost all gas, gas-storage and observation wells in the Mist field (Columbia County). Counted by the day an application was filed: "
                           "DOGAMI's file has no approval date, no work type and no fluid. A permit number filed again on a later date is an amendment (a renewal: a permit lasts a year). "
                           "The newest application in the file is dated %s; the file is dated %s and DOGAMI updates it by hand.%s" % (newest.isoformat(), asof.isoformat(), wait))

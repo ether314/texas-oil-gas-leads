@@ -6,6 +6,16 @@
 
 export const SPUD = 'spuds';
 export const PERMIT = 'permits';
+// What a state's file can count. Permits approved and wells spudded are each added within their own measure. Applications filed (Oregon: no approval date is published) and wells drilled by the day
+// drilling was completed (Virginia: no permit or spud date is published) are counted another way, so they are shown on their own lines and are in no total and no chart. `family` is only what a tile's
+// shade is compared with (the biggest state counting something like it).
+export const MEASURES = [
+  { id: 'permits', name: 'Permits approved', by: 'by approval or issue date', one: 'new-drill permits', sum: true, family: 'permits' },
+  { id: 'spuds', name: 'Wells spudded', by: 'by spud date', one: 'wells spudded', sum: true, family: 'spuds' },
+  { id: 'applications', name: 'Applications filed', by: 'by the day filed', one: 'applications filed', sum: false, family: 'permits' },
+  { id: 'drilled', name: 'Wells drilled', by: 'by the date drilling was completed', one: 'wells drilled', sum: false, family: 'spuds' },
+];
+export const measureOf = (id) => MEASURES.find((m) => m.id === id) || MEASURES[0];
 export const OVERLAP = new Set(['BL']); // jurisdictions that overlap the states: shown, never summed
 
 // the bands a permit falls in (d11_nat_common.py), in the order they stack
@@ -49,9 +59,11 @@ export const nameOf = (doc, id) => (byId(doc, id) || gapOf(doc, id) || { name: Q
 export const jurisdictions = (doc) => doc.states.length + doc.gaps.length;
 
 // the change of the last 12 complete months against the 12 before, as a fraction; null when the earlier 12 are zero or missing (never infinity)
+// a state whose last 24 months hold nothing: the source dates no record in them, which is not the same as none happening (it is shown as "None recorded", never as a 0 that reads as a count)
+export const noneRecorded = (s) => s.p12 === 0 && s.prev12 === 0;
 export const change = (s) => (s.prev12 > 0 ? (s.p12 - s.prev12) / s.prev12 : null);
 // the states that count this measure and may be added: not the overlapping ones
-export const summable = (doc, measure) => doc.states.filter((s) => s.measure === measure && !OVERLAP.has(s.id));
+export const summable = (doc, measure) => (measureOf(measure).sum ? doc.states.filter((s) => s.measure === measure && !OVERLAP.has(s.id)) : []); // a count of another kind is in no sum
 export const total = (doc, measure) => summable(doc, measure).reduce((n, s) => n + s.p12, 0);
 export const rankBy = (doc, measure) => doc.states.filter((s) => s.measure === measure).sort((a, b) => (b.p12 - a.p12) || a.name.localeCompare(b.name));
 export const newest = (doc) => doc.states.reduce((m, s) => (s.asOf > m ? s.asOf : m), '');
@@ -63,7 +75,11 @@ export function sizeClass(p12, max) {
   const r = p12 / max;
   return r >= CLASS_EDGES[0] ? 5 : r >= CLASS_EDGES[1] ? 4 : r >= CLASS_EDGES[2] ? 3 : r >= CLASS_EDGES[3] ? 2 : 1;
 }
-export const maxOf = (doc, measure) => Math.max(0, ...summable(doc, measure).map((s) => s.p12));
+// the biggest state counting something like this one (permits with applications, wells spudded with wells drilled), for a tile's shade
+export const maxOf = (doc, measure) => {
+  const fam = measureOf(measure).family;
+  return Math.max(0, ...doc.states.filter((s) => !OVERLAP.has(s.id) && measureOf(s.measure).sum && measureOf(s.measure).family === fam).map((s) => s.p12));
+};
 
 // what a tile is: a state with data (its size class), a producing state not read yet (a gap), a federal line, or a place with no oil production in the tables
 export function tileKind(doc, id) {
@@ -117,7 +133,7 @@ export function fluidMix(s) {
 export function coverage(doc, order) {
   return order.map((id) => {
     const s = byId(doc, id);
-    if (s) return { id, name: s.name, status: s.measure === SPUD ? 'spuds' : 'permits', agency: s.agency, through: s.through, asOf: s.asOf, cadence: s.cadence, basis: s.basis, source: s.source };
+    if (s) return { id, name: s.name, status: s.measure, agency: s.agency, through: s.through, asOf: s.asOf, cadence: s.cadence, basis: s.basis, source: s.source };
     const g = gapOf(doc, id);
     return { id, name: g ? g.name : id, status: 'gap', agency: g && g.agency, grade: g && g.grade, why: g && g.why };
   });

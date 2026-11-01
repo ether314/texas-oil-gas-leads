@@ -7,8 +7,10 @@ four jurisdictions built earlier: Texas, Oklahoma, New Mexico, the federal offsh
 
 The shape of nat/<ST>.json (v1):
   state, name, agency            who publishes it
-  measure                        'permits' (counted by the day the agency approved or issued the permit) or 'spuds' (wells counted by their spud date,
-                                 for agencies that publish no approval dates by well); figures of the two measures are never added together
+  measure                        'permits' (counted by the day the agency approved or issued the permit), 'spuds' (wells counted by their spud date, for agencies that
+                                 publish no approval dates by well), 'applications' (applications filed: the agency publishes no approval date) or 'drilled' (wells
+                                 counted by the day drilling was completed: no permit or spud date is published); figures of different measures are never added
+                                 together, and the last two are shown on their own lines, in no total and no chart
   basis                          the date the counts are by, in words: 'approval date', 'issue date', 'filing date', 'spud date'
   source                         {name, url}: the file or service read
   asOf                           the newest record's day; through: the last day of the newest complete month shown (a spud-counting state ends later by its lag)
@@ -61,7 +63,7 @@ BANDS = ("new", "inj", "redrill", "rework", "amend", "other")
 BAND_LABEL = {"new": "New wells", "inj": "Injection and disposal", "redrill": "Re-entries and sidetracks", "rework": "Recompletions and reworks",
               "amend": "Amendments and extensions", "other": "Other filings"}
 FLUIDS = ("oil", "gas", "both", "other", "unknown")
-MEASURES = ("permits", "spuds")
+MEASURES = ("permits", "spuds", "applications", "drilled")  # the last two are counted another way and never added into anything (the report shows them on their own lines)
 log = D8.log
 nameable = D8.nameable
 
