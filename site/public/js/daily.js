@@ -2,13 +2,15 @@
 // how it compares with a typical day, and every well in a table; below, who reported lately. The chart and the slider show 150 days; "Earlier" and "Later" page through them, back to
 // January 2011 (the earlier wells, about 2 MB, are fetched the first time a day before the last two years is asked for); a strip of every month since 2011 above the chart marks those 150 days and opens any month with a click. Everything is drawn from data/newwells/ (FracFocus), the one source with the same facts for
 // every state that reports to it, so nothing here is a figure only some states have. A well is dated by the day of its first fracturing job; operators disclose weeks to months later, so
-// the newest days are still filling in and say so. The permits each agency approves, by its own count, are the National page.
+// the newest days are still filling in and say so. The oil permits and spuds that the agencies publish with a location (Texas, Oklahoma, New Mexico and the federal offshore: the files the Map reads) ride on the
+// same map as hollow rings, so a filled dot is a fracked well and a ring is an oil permit; a switch shows both, the wells or the permits. Every other state's permits, by its own count, are the National page.
 import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, dayLabel, reduced, chartWidth } from './util.js';
 import { icon } from './icons.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import * as G from './usgeo.js';
 import * as D from './newwells-data.js';
 import { createUSMap } from './usmap.js';
+import { segmented } from './ui.js';
 
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
@@ -20,19 +22,22 @@ const MIN_BUSY = 10; // the day the report opens on: the newest with at least th
 
 export function createDailyView({ root }) {
   let dt = null; let raw = null; let started = false; let day = 0; let sel = null; let map = null; let seq = 0; let busy = false;
+  let kinds = 'both'; // what the map shows: 'both', 'wells' (fracked wells only) or 'permits' (oil permits and spuds only); without permit files it is always the wells
+  const flags = () => ({ wells: !dt.Q || kinds !== 'permits', permits: !!dt.Q && kinds !== 'wells' });
   const S = {};
 
   async function data() {
     if (dt) return dt;
-    const [doc, pts, out, nat] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national')]);
-    raw = { doc, pts, nat, outlines: G.buildOutlines(out) };
+    const [doc, pts, out, nat, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
+    // the oil permit files are optional: a page without one still draws the wells
+    raw = { doc, pts, nat, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
     dt = makeDt(D.decode(pts), false);
     return dt;
   }
   // the days the report works on: the last two years (full false) or every day since 2011 (full true: the earlier wells merged in, day numbers counted from Jan 1, 2011)
   function makeDt(P, full) {
     const { doc, outlines, nat } = raw;
-    return { doc, P, outlines, nat, full, settledDay: D.dayOfIso(P, doc.settled), T: D.totals(doc), start: D.lastBusyDay(P, MIN_BUSY) };
+    return { doc, P, outlines, nat, full, settledDay: D.dayOfIso(P, doc.settled), T: D.totals(doc), start: D.lastBusyDay(P, MIN_BUSY), Q: raw.permits.length ? D.decodePermits(raw.permits, D.dayIso(P.t0)) : null };
   }
   async function loadFull() {
     if (dt.full) return;
@@ -55,7 +60,7 @@ export function createDailyView({ root }) {
   /* ---------- the address: #daily?d=2026-08-12&s=TX ---------- */
   function writeHash() {
     const p = new URLSearchParams();
-    p.set('d', iso(day)); if (sel) p.set('s', sel);
+    p.set('d', iso(day)); if (sel) p.set('s', sel); if (dt.Q && kinds !== 'both') p.set('k', kinds);
     const next = '#daily?' + p.toString();
     if (location.hash !== next) history.replaceState(null, '', next);
   }
@@ -74,32 +79,56 @@ export function createDailyView({ root }) {
   }
 
   /* ---------- the day: the map, its summary and the controls ---------- */
+  // a ranked list of states with a bar each: the fracked wells by state, or the oil permits and spuds by state (a ring beside the title)
+  function stateList(title, rows, ring) {
+    const top = rows[0].n;
+    return el('div', { class: 'nat-list dd-by' }, el('h4', {}, ring ? el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }) : null, title), el('ul', {}, rows.map((r) => {
+      const bar = el('i', { class: 'nat-lb' }); bar.style.setProperty('--p', String(r.n / top)); bar.style.setProperty('--c', D.colorOf(r.id));
+      const name = ring ? D.permitStateName(r.id) : (D.byId(dt.doc, r.id) || {}).name || r.id;
+      const pick = allowed(r.id) ? el('button', { type: 'button', class: 'link nat-ln', text: name, title: 'Show only ' + name, onclick: () => choose(r.id) }) : el('span', { class: 'nat-ln', text: name });
+      return el('li', {}, pick, el('span', { class: 'nat-lt' }, bar), el('span', { class: 'nat-lv', text: fmt.format(r.n) }));
+    })));
+  }
+  // whether oil permits can be counted for the day and state shown: before the records' first day, and for a state that publishes no location, a count of none would be a claim; it is "not available"
+  const permitsAvail = () => !!dt.Q && day >= dt.Q.day[0] && (!sel || dt.Q.states.includes(sel));
+  // what the permit rings can and cannot say about a day, in words
+  function permitNote(pn) {
+    const { Q } = dt; const f = Q.states.map((id, k) => ({ id, last: Q.last[k] })).filter((x) => x.last >= 0);
+    if (day < Q.day[0]) return 'Oil permit and spud locations start on ' + fmtDate(iso(Q.day[0])) + ': before it the map shows fracked wells only.';
+    if (sel && !Q.states.includes(sel)) return ((D.byId(dt.doc, sel) || {}).name || sel) + ' publishes no oil permit locations, so it has no ring here. Texas, Oklahoma and New Mexico do.';
+    const tx = raw.permits.find((x) => x.id === 'TX'); const share = tx && tx.pm.coverage ? Math.round(tx.pm.coverage.share12 * 100) : null;
+    return (pn ? '' : 'No oil permit or spud with a location this day. ') + 'A ring is an agency\u2019s own record with a map location: a permit approved (Texas, Oklahoma) or a well spudded (New Mexico, the federal offshore). '
+      + (share != null ? 'About ' + share + '% of Texas\u2019s permits of the last year have one. ' : '') + 'Other states publish none. Records run to: '
+      + f.map((x) => D.permitStateName(x.id) + ' ' + fmtDate(iso(x.last)).replace(/, \d{4}$/, '')).join(', ') + '.';
+  }
   function summary() {
-    const { doc, P } = dt; const box = el('div', { class: 'nat-panel', 'aria-live': 'polite' });
-    const idx = wellsOf(day); const n = idx.length; const late = day > dt.settledDay;
+    const { doc, P, Q } = dt; const box = el('div', { class: 'nat-panel', 'aria-live': 'polite' });
+    const f = flags(); const idx = f.wells ? wellsOf(day) : []; const n = idx.length; const late = day > dt.settledDay;
+    const pAvail = f.permits && permitsAvail(); const pidx = pAvail ? D.permitsOfDay(Q, day, sel) : []; const pn = pidx.length;
     const sName = sel ? (D.byId(doc, sel) || {}).name : null;
-    put(box, el('div', { class: 'nat-ph' }, el('h3', { text: weekday(ms(day)) + ', ' + dayLabel(ms(day)) }), el('span', { class: 'badge', text: late ? 'Still filling in' : 'Settled' })),
-      el('p', { class: 'nat-agency', text: (sName || 'All states') + ' · counted by the day of the first job' }),
-      el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(n) }), el('span', { text: n === 1 ? ' new well' : ' new wells' })));
-    const t = typ(); const tp = t.perDay; const then = n > tp * 1.5 ? '; this one is busier.' : n < tp * 0.5 ? '; this one is quieter.' : '; this one is about typical.';
-    put(box, el('p', { class: 'fine', text: late
-      ? 'A typical settled day has about ' + tp.toFixed(1) + '. This day is still being disclosed, so its count will rise: do not read it as a slow day.'
-      : t.latest ? 'A typical day over the last 12 settled months has about ' + tp.toFixed(1) + then
-        : 'A typical day in the 12 months ' + monthLabel(t.from) + ' to ' + monthLabel(t.to) + ' had about ' + tp.toFixed(1) + then }));
+    const what = [f.wells ? (Q ? 'fracked wells by the day of the first job' : 'counted by the day of the first job') : null, pAvail ? 'oil permits and spuds by their day' : null].filter(Boolean).join(' · ') || 'oil permits and spuds';
+    put(box, el('div', { class: 'nat-ph' }, el('h3', { text: weekday(ms(day)) + ', ' + dayLabel(ms(day)) }), f.wells ? el('span', { class: 'badge', text: late ? 'Still filling in' : 'Settled' }) : null),
+      el('p', { class: 'nat-agency', text: (sName || 'All states') + ' · ' + what }));
+    if (f.wells) put(box, el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(n) }), el('span', { text: Q ? (n === 1 ? ' new fracked well' : ' new fracked wells') : (n === 1 ? ' new well' : ' new wells') })));
+    if (pAvail) put(box, el('div', { class: 'nat-big dd-bigq' }, el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }), el('strong', { text: fmt.format(pn) }), el('span', { text: pn === 1 ? ' oil permit or spud with a location' : ' oil permits and spuds with a location' })));
+    if (f.wells) {
+      const t = typ(); const tp = t.perDay; const then = n > tp * 1.5 ? '; this one is busier.' : n < tp * 0.5 ? '; this one is quieter.' : '; this one is about typical.';
+      put(box, el('p', { class: 'fine', text: late
+        ? 'A typical settled day has about ' + tp.toFixed(1) + '. This day is still being disclosed, so its count will rise: do not read it as a slow day.'
+        : t.latest ? 'A typical day over the last 12 settled months has about ' + tp.toFixed(1) + then
+          : 'A typical day in the 12 months ' + monthLabel(t.from) + ' to ' + monthLabel(t.to) + ' had about ' + tp.toFixed(1) + then }));
+    }
     if (!sel) {
-      const rows = D.perState(P, day, day).slice(0, 8);
-      if (rows.length) {
-        const top = rows[0].n;
-        put(box, el('div', { class: 'nat-list dd-by' }, el('h4', { text: 'By state' }), el('ul', {}, rows.map((r) => {
-          const bar = el('i', { class: 'nat-lb' }); bar.style.setProperty('--p', String(r.n / top)); bar.style.setProperty('--c', D.colorOf(r.id));
-          const name = (D.byId(doc, r.id) || {}).name || r.id;
-          return el('li', {}, el('button', { type: 'button', class: 'link nat-ln', text: name, title: 'Show only ' + name, onclick: () => choose(r.id) }), el('span', { class: 'nat-lt' }, bar), el('span', { class: 'nat-lv', text: fmt.format(r.n) }));
-        }))));
-      }
+      const rows = f.wells ? D.perState(P, day, day).slice(0, 8) : [];
+      if (rows.length) put(box, stateList(f.permits ? 'Fracked wells by state' : 'By state', rows, false));
+      const prows = pAvail ? D.permitsPerState(Q, day, day) : [];
+      if (prows.length) put(box, stateList(f.wells ? 'Oil permits and spuds by state' : 'By state', prows, true));
     }
     const land = idx.filter((i) => P.f[i]).length;
-    if (n) put(box, el('p', { class: 'fine', text: fmt.format(land) + ' of the ' + fmt.format(n) + (n === 1 ? ' well is' : ' wells are') + ' on federal or tribal land. Hover a dot for its well.' }));
-    else put(box, el('p', { class: 'nd', text: 'No well had its first job this day in the registry' + (late ? ' yet.' : '.') + ' It is shown as none, not as a figure the registry lacks.' }));
+    if (n) put(box, el('p', { class: 'fine', text: fmt.format(land) + ' of the ' + fmt.format(n) + (n === 1 ? ' fracked well is' : ' fracked wells are') + ' on federal or tribal land. Hover a dot for its well' + (f.permits ? ', a ring for its permit' : '') + '.' }));
+    else if (pAvail && pn) put(box, el('p', { class: 'fine', text: 'Hover a ring for its permit.' }));
+    if (f.wells && !n) put(box, el('p', { class: 'nd', text: 'No well had its first fracturing job this day in the registry' + (late ? ' yet.' : '.') + ' It is shown as none, not as a figure the registry lacks.' }));
+    if (f.permits) put(box, el('p', { class: 'fine', text: permitNote(pn) }));
     return box;
   }
   function paintDay() {
@@ -160,16 +189,29 @@ export function createDailyView({ root }) {
     if (focusKey && S[focusKey]) S[focusKey].focus({ preventScroll: true });
     busy = false; return true;
   }
+  // 'both', 'wells' or 'permits': the map's layers, the panel and the table follow
+  function setKinds(id, { fromHash = false } = {}) {
+    kinds = id === 'wells' || id === 'permits' ? id : 'both';
+    if (!dt.Q) return;
+    map.setKinds(flags()); if (S.kinds) S.kinds.set(kinds, false);
+    paintDay(); if (!fromHash) writeHash();
+  }
   function choose(id, { fromHash = false } = {}) {
     sel = allowed(id) ? id : null;
     map.select(sel, true);
     drawChart(); paintDay(); if (!fromHash) writeHash();
   }
   function dayCard() {
-    const { doc, P, outlines } = dt;
-    const canvas = el('canvas', { class: 'nw-canvas', role: 'img', 'aria-label': 'Map of the new wells of the chosen day and the two weeks before it; the table below lists the day\'s wells' });
+    const { doc, P, outlines, Q } = dt;
+    const canvas = el('canvas', { class: 'nw-canvas', role: 'img', 'aria-label': 'Map of the new fracked wells' + (Q ? ' (dots) and the oil permits and spuds (rings)' : '') + ' of the chosen day and the two weeks before it; the table below lists the day\'s records' });
     const stage = el('div', { class: 'nw-stage' }, canvas);
-    map = createUSMap({ canvas, host: stage, outlines, P, doc, interactive: true, glowDays: 1, onSelect: (id) => choose(id) });
+    map = createUSMap({ canvas, host: stage, outlines, P, doc, Q, interactive: true, glowDays: 1, onSelect: (id) => choose(id) });
+    if (Q) map.setKinds(flags());
+    // what the map shows: a filled glowing dot is a fracked well, a hollow ring is an oil permit or spud (the legend says so; the switch shows both or either)
+    S.kinds = Q ? segmented({ label: 'What the map shows', tabs: false, prefix: 'ddk', value: kinds, options: [{ id: 'both', label: 'Both' }, { id: 'wells', label: 'Fracked wells' }, { id: 'permits', label: 'Oil permits' }], onChange: (id) => setKinds(id) }) : null;
+    const marks = Q ? el('ul', { class: 'nw-marks', 'aria-label': 'What the marks on the map are' },
+      el('li', {}, el('i', { class: 'dd-dotkey', 'aria-hidden': 'true' }), 'Fracked well: the first fracturing job, every state that reports'),
+      el('li', {}, el('i', { class: 'dd-ringkey', 'aria-hidden': 'true' }), 'Oil permit or spud: an agency\u2019s record with a location')) : null;
     S.prev = el('button', { type: 'button', class: 'btn', 'aria-label': 'The day before', onclick: () => goTo(ms(day) - DAY_MS, 'prev') }, icon('arrow', 16, 'dd-back'));
     S.next = el('button', { type: 'button', class: 'btn', 'aria-label': 'The day after', onclick: () => setDay(day + 1) }, icon('arrow', 16));
     S.date = el('strong', { class: 'dd-date' });
@@ -189,10 +231,10 @@ export function createDailyView({ root }) {
       S.chips.set(x.id, b); return el('li', {}, b);
     }));
     const card = el('section', { class: 'card nw-explore reveal is-in', 'aria-labelledby': 'dd-h' });
-    const head = hdr('The day', 'calendar', 'Where the wells of one day are', 'The chosen day’s wells glow; the two weeks before it are dimmer. Operators disclose weeks to months after a job, so the newest days are still filling in.', el('div', { class: 'card-tools' }, S.pick));
+    const head = hdr('The day', 'calendar', Q ? 'Where the wells and permits of one day are' : 'Where the wells of one day are', Q ? 'The chosen day\u2019s dots and rings glow; the two weeks before it are dimmer. Operators disclose fracturing jobs weeks to months afterwards, so the newest days are still filling in.' : 'The chosen day’s wells glow; the two weeks before it are dimmer. Operators disclose weeks to months after a job, so the newest days are still filling in.', el('div', { class: 'card-tools' }, S.kinds ? S.kinds.el : null, S.pick));
     head.querySelector('h2').id = 'dd-h';
     const nav = el('div', { class: 'dd-nav' }, S.prev, el('div', { class: 'dd-mid' }, S.date, S.range), S.next, dateInput, newest);
-    put(card, head, nav, S.status, el('div', { class: 'nw-grid' }, el('div', { class: 'nw-mapcol' }, stage, keys), S.summary));
+    put(card, head, nav, S.status, el('div', { class: 'nw-grid' }, el('div', { class: 'nw-mapcol' }, stage, marks, keys), S.summary));
     return card;
   }
 
@@ -253,7 +295,7 @@ export function createDailyView({ root }) {
     const { doc } = dt; const W = chartWidth(S.years, 1200);
     if (S.yKey === (sel || '') && Math.abs(W - S.yW) <= 24) return;
     S.yKey = sel || ''; S.yW = W;
-    S.yCap.textContent = 'Every month since ' + monthLabel(doc.months[0]) + (sel ? ' in ' + (D.byId(doc, sel) || {}).name : ', all states') + '. The band is the ' + CHART_DAYS + ' days below; click a month to open it.';
+    S.yCap.textContent = 'Every month since ' + monthLabel(doc.months[0]) + (sel ? ' in ' + (D.byId(doc, sel) || {}).name : ', all states') + '. The band is the ' + CHART_DAYS + ' days below; click a month to open it.' + (dt.Q ? ' Fracked wells only.' : '');
     const months = doc.months; const n = months.length; const names = Object.fromEntries(doc.states.map((s) => [s.id, s.name]));
     const series = sel ? [{ id: sel, name: names[sel], color: D.colorOf(sel), values: D.byId(doc, sel).new }] : D.stack(doc, n).series;
     const totals = months.map((_, i) => series.reduce((t, s) => t + s.values[i], 0));
@@ -290,18 +332,29 @@ export function createDailyView({ root }) {
 
   /* ---------- the wells of the day, as a table (the map's twin) ---------- */
   function drawTable() {
-    const { P, doc } = dt; const idx = wellsOf(day);
-    const name = (id) => (D.byId(doc, id) || {}).name || id;
-    idx.sort((a, b) => name(D.stateOfPoint(P, a)).localeCompare(name(D.stateOfPoint(P, b))) || (D.countyOf(P, a) || '').localeCompare(D.countyOf(P, b) || ''));
-    const shown = idx.slice(0, TABLE_ROWS);
-    const body = shown.map((i) => el('tr', {}, el('td', { text: name(D.stateOfPoint(P, i)) }), el('td', { text: D.countyOf(P, i) || '—' }), el('td', { text: D.operatorOf(P, i) || 'Not named' }),
-      el('td', { class: 'num', text: D.feet(P.tvd[i]) || '—' }), el('td', { class: 'num', text: D.gallons(P.h2o[i]) || '—' }), el('td', { text: P.f[i] ? D.LAND[P.f[i]].replace(/ land$/, '') : '—' })));
-    S.tableHead.textContent = fmt.format(idx.length) + (idx.length === 1 ? ' well' : ' wells') + ' on ' + fmtDate(iso(day)) + (sel ? ' in ' + name(sel) : '');
+    const { P, doc, Q } = dt; const f = flags();
+    const widx = f.wells ? wellsOf(day) : []; const pAvail = f.permits && permitsAvail(); const pidx = pAvail ? D.permitsOfDay(Q, day, sel) : [];
+    const name = (id) => (D.byId(doc, id) || {}).name || D.permitStateName(id);
+    const dash = '—';
+    // one row per well and per permit; with the permit layer the first column says which is which
+    const rows = [
+      ...widx.map((i) => ({ st: name(D.stateOfPoint(P, i)), kind: 0, county: D.countyOf(P, i) || '',
+        cells: ['Fracked well', name(D.stateOfPoint(P, i)), D.countyOf(P, i) || dash, D.operatorOf(P, i) || 'Not named', D.feet(P.tvd[i]) || dash, D.gallons(P.h2o[i]) || dash, P.f[i] ? D.LAND[P.f[i]].replace(/ land$/, '') : dash] })),
+      ...pidx.map((j) => ({ st: name(D.permitState(Q, j)), kind: 1, county: '',
+        cells: [D.permitWord(Q, j), name(D.permitState(Q, j)), dash, D.permitOperator(Q, j) || 'Not named', D.feet(Q.tvd[j]) || dash, dash, dash] })),
+    ];
+    rows.sort((x, y) => x.st.localeCompare(y.st) || x.kind - y.kind || x.county.localeCompare(y.county));
+    const shown = rows.slice(0, TABLE_ROWS); const first = Q ? 0 : 1; // without the permit layer the Kind column is left out
+    const body = shown.map((r) => el('tr', {}, r.cells.slice(first).map((c, k) => el('td', { class: k + first === 4 || k + first === 5 ? 'num' : null, text: c }))));
+    const w = f.wells ? fmt.format(widx.length) + (Q ? (widx.length === 1 ? ' fracked well' : ' fracked wells') : (widx.length === 1 ? ' well' : ' wells')) : null;
+    const q = pAvail ? fmt.format(pidx.length) + (pidx.length === 1 ? ' oil permit or spud' : ' oil permits and spuds') : null;
+    S.tableHead.textContent = ([w, q].filter(Boolean).join(' and ') || 'No oil permit locations') + ' on ' + fmtDate(iso(day)) + (sel ? ' in ' + name(sel) : '');
+    const heads = ['Kind', 'State', 'County', 'Operator', 'Depth', 'Water', 'Land'].slice(first);
     // replaceChildren writes the word "null" for a null child, so the empty ones are dropped first
-    S.table.replaceChildren(...[idx.length ? el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': 'The wells of the chosen day' }, el('table', { class: 'grid' },
-      el('thead', {}, el('tr', {}, ['State', 'County', 'Operator', 'Depth', 'Water', 'Land'].map((h, k) => el('th', { scope: 'col', class: k === 3 || k === 4 ? 'num' : null, text: h })))), el('tbody', {}, body)))
-      : el('p', { class: 'nd', text: 'No well.' }),
-    idx.length > TABLE_ROWS ? el('p', { class: 'fine', text: 'The first ' + TABLE_ROWS + ' of ' + fmt.format(idx.length) + ' are listed; choose a state to see its own.' }) : null,
+    S.table.replaceChildren(...[rows.length ? el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': 'The records of the chosen day' }, el('table', { class: 'grid' },
+      el('thead', {}, el('tr', {}, heads.map((h, k) => el('th', { scope: 'col', class: k + first === 4 || k + first === 5 ? 'num' : null, text: h })))), el('tbody', {}, body)))
+      : el('p', { class: 'nd', text: !Q ? 'No well.' : !f.wells ? (pAvail ? 'No oil permit or spud with a location.' : 'No oil permit locations for this day or state.') : pAvail ? 'No fracked well or oil permit with a location.' : 'No fracked well.' }),
+    rows.length > TABLE_ROWS ? el('p', { class: 'fine', text: 'The first ' + TABLE_ROWS + ' of ' + fmt.format(rows.length) + ' are listed; choose a state to see its own.' }) : null,
     el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships. No API number, well name or lease is published.' })].filter(Boolean));
   }
 
@@ -326,7 +379,7 @@ export function createDailyView({ root }) {
     const dayCardEl = dayCard();
     S.earlier = el('button', { type: 'button', class: 'btn', onclick: () => page(-1) }, icon('arrow', 16, 'dd-back'), 'Earlier');
     S.later = el('button', { type: 'button', class: 'btn', onclick: () => page(1) }, 'Later', icon('arrow', 16));
-    const chartHead = hdr('Day by day', 'chart', 'The last ' + CHART_DAYS + ' days, stacked by state', 'Wells by the day of their first job. Click a month on the strip to go straight there, a day to open it, or page with Earlier and Later, back to ' + monthLabel(raw.doc.months[0]) + '. The newest days are lighter: they are still being disclosed and will rise.', el('div', { class: 'card-tools' }, S.earlier, S.later));
+    const chartHead = hdr('Day by day', 'chart', 'The last ' + CHART_DAYS + ' days, stacked by state', (dt.Q ? 'Fracked wells' : 'Wells') + ' by the day of their first job. Click a month on the strip to go straight there, a day to open it, or page with Earlier and Later, back to ' + monthLabel(raw.doc.months[0]) + '. The newest days are lighter: they are still being disclosed and will rise.', el('div', { class: 'card-tools' }, S.earlier, S.later));
     S.chartTitle = chartHead.querySelector('h2');
     S.years = el('div', { class: 'dd-years' }); S.yStatus = el('p', { class: 'fine nw-status', role: 'status' }); S.yKey = null;
     S.yCap = el('p', { class: 'fine dd-ycap' });
@@ -348,6 +401,7 @@ export function createDailyView({ root }) {
     return true;
   }
 
+  if (/[?&]debug\b/.test(location.search)) window.__dd = { get map() { return map; }, get dt() { return dt; }, D };
   let resizeTimer = null;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
@@ -359,9 +413,11 @@ export function createDailyView({ root }) {
     async activate(params) {
       const mySeq = ++seq;
       const d = params && params.get('d'); const dated = !!d && /^\d{4}-\d\d-\d\d$/.test(d); const s = ((params && params.get('s')) || '').toUpperCase() || null;
+      const k = params && params.get('k'); const wantKinds = k === 'wells' || k === 'permits' ? k : 'both';
       if (!started) { started = true; if (!(await build(dated ? d : null))) { started = false; return; } }
       if (mySeq !== seq) return;
       if (s !== sel) choose(s, { fromHash: true });
+      if (dt.Q && wantKinds !== kinds) setKinds(wantKinds, { fromHash: true });
       if (dated) await goTo(Date.parse(d + 'T00:00:00Z'), null, true);
       else if (!S.shown) setDay(dt.start, { fromHash: true });
       else paintDay();
