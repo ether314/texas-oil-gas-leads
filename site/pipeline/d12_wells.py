@@ -73,6 +73,11 @@ PREVIEW_QUALITY = (60, 46, 34)
 PER_DOC_SECONDS = 25
 WORKERS = 4
 MIN_PACK_BYTES = 2048  # the RRC lists an empty day as a 0.26 KB zip
+# GitHub's quota for the repository's token is shared with everything else in the run, the site's own deploy included: after about 4,500 uploads in 35 minutes (two runs, 2026-11-01) the next
+# Pages deployment was refused ("API rate limit exceeded for installation") and the site stayed on the older build. A run stops starting packs once it has uploaded this many files
+# (the files of a pack, picture and document, are 2 a document); what is left is done by the next run. One ordinary day is about 2,300 files.
+MAX_FILES_PER_RUN = 3400
+EST_FILES = {"w1": 400, "ds": 250, "ci": 2400}  # what a pack of that kind is expected to upload: judged before it is downloaded, from the real days of 2026-10-29 and 30 (336, 114, 1,816 and 322, 206, 2,114)
 
 PACKS = {  # code: (stage letter, the Daily report's dataset id, label)
     "w1": ("p", "w1images", "W-1 permit letters and plats"),
@@ -709,7 +714,7 @@ class Shares:
 # ------------------------------------------------------------------------------------------------ one run
 
 def do_unit(u, io, state, lk, repo, work, upload, perms_cache, log=log):
-    """Download one pack, tie its documents to wells, stage them, upload them and record them. Raises on a failure; nothing is recorded then."""
+    """Download one pack, tie its documents to wells, stage them, upload them and record them; returns the files uploaded. Raises on a failure; nothing is recorded then."""
     day, pack = u["day"], u["pack"]
     folder = tempfile.mkdtemp(prefix="pack-%s-%s-" % (pack, day), dir=work)
     stage_dir = os.path.join(folder, "stage")
@@ -736,13 +741,14 @@ def do_unit(u, io, state, lk, repo, work, upload, perms_cache, log=log):
         if not kept:
             state.remove(day.isoformat(), pack)
             state.units[(day.isoformat(), pack)] = {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": 0, "untied": untied, "rejected": rejected, "wells": 0, "tags": [], "assetBytes": 0}
-            return
+            return 0
         if upload:
             publish_unit(repo, day, pack, stage_dir, kept, log)
         else:
             for d in kept:
                 d["tag"] = tag_name(day, pack, 1)
         state.add(day.isoformat(), pack, {"name": u["name"], "bytes": u["bytes"], "docs": total, "tied": len(kept), "untied": untied, "rejected": rejected}, kept, lk)
+        return sum(2 if d.get("pv") else 1 for d in kept) if upload else 0
     finally:
         shutil.rmtree(folder, ignore_errors=True)
 
@@ -780,14 +786,17 @@ def run(a, io=None, now=None, log=log):
         log(n)
     log("to do: %s" % (", ".join("%s %s" % (u["day"], u["pack"]) for u in todo) or "nothing"))
     work = tempfile.mkdtemp(prefix="d12-", dir=a.dl)
-    failures, cache = 0, {}
+    failures, cache, uploaded = 0, {}, 0
     try:
         for u in todo:
             if time.time() - started > a.budget * 60:
                 log("out of time: %s %s and what follows are left for the next run" % (u["day"], u["pack"]))
                 break
+            if uploaded and uploaded + EST_FILES[u["pack"]] > a.max_files:
+                log("%s %s: about %d files would pass this run's %d (%d uploaded so far), left for the next run" % (u["day"], u["pack"], EST_FILES[u["pack"]], a.max_files, uploaded))
+                continue  # a smaller pack of an older day may still fit
             try:
-                do_unit(u, io, state, lk, repo, work, upload, cache, log)
+                uploaded += do_unit(u, io, state, lk, repo, work, upload, cache, log)
             except Exception as e:  # noqa: BLE001 - one pack must not stop the next; nothing was recorded for it
                 failures += 1
                 log("%s %s FAILED: %s" % (u["day"], u["pack"], privacy_check.clean_error(e)))
@@ -814,6 +823,7 @@ def main(argv=None):
     ap.add_argument("--day", help="do only this filing day (YYYY-MM-DD)")
     ap.add_argument("--repo", help="owner/repo to publish to (default: the origin remote)")
     ap.add_argument("--budget", type=int, default=40, help="minutes after which no new pack or request is started (default 40)")
+    ap.add_argument("--max-files", type=int, default=MAX_FILES_PER_RUN, help="files after which no new pack is started (default %d): GitHub's quota is shared with the site's own deploy" % MAX_FILES_PER_RUN)
     ap.add_argument("--no-upload", action="store_true", help="stage and write the files but upload nothing (needs --out somewhere other than the site's folder)")
     ap.add_argument("--check", action="store_true", help="validate the published files and exit")
     a = ap.parse_args(argv)
@@ -823,8 +833,8 @@ def main(argv=None):
         return 1 if bad else 0
     if a.no_upload and os.path.abspath(a.out) == os.path.abspath(DEFAULT_OUT):
         sys.exit("--no-upload would write entries for files that are not on GitHub into the site's folder; give --out another folder")
-    if not 1 <= a.days <= 10 or not 1 <= a.window <= 120 or not 5 <= a.budget <= 120:
-        sys.exit("--days is 1 to 10, --window 1 to 120 and --budget 5 to 120")
+    if not 1 <= a.days <= 10 or not 1 <= a.window <= 120 or not 5 <= a.budget <= 120 or not 100 <= a.max_files <= 20000:
+        sys.exit("--days is 1 to 10, --window 1 to 120, --budget 5 to 120 and --max-files 100 to 20000")
     if a.day:
         try:
             date.fromisoformat(a.day)
