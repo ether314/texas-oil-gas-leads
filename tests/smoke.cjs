@@ -12,6 +12,7 @@ const { chromium } = require('playwright');
 const previewStub = require('./preview-stub.cjs');
 
 const ROOT = path.join(__dirname, '..', 'site', 'public');
+const permitFields = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'permit-fields.json'), 'utf8')); // the matrix's own data: its counts are read from it, not written here
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 
 // the well archive is served from a fixture (tests/fixtures/wells.json), so these tests do not depend on what the nightly has published
@@ -96,7 +97,7 @@ const VIEWS = [
   ['#about', '#view-about h1'],
   ['#images', '#images-root .img-stage', async (page) => ((await page.locator('#images-root .img-stage').count()) === 3 ? null : 'the images view should show the three stages of a well')],
   ['#images?d=2026-10-30', '#images-root .img-pack', async (page) => ((await page.locator('#images-root .img-pack').count()) === 3 ? null : 'a day should show its three packs')],
-  ['#fields', '#fields-root button.fx-c', async (page) => ((await page.locator('#fields-root tr[data-m]').count()) === 48 ? null : 'the matrix should have a row for each of the 48 metrics')],
+  ['#fields', '#fields-root button.fx-c', async (page) => ((await page.locator('#fields-root tr[data-m]').count()) === permitFields().metrics.length ? null : 'the matrix should have a row for each of the ' + permitFields().metrics.length + ' metrics')],
   ['#fields?s=BL&g=when', '#fields-root .nat-panel h3', async (page) => (/Federal onshore/.test(await page.locator('#fields-root .nat-panel h3').first().innerText()) && (await page.locator('#fields-root tr[data-m]').count()) === 6 ? null : 'an address naming an agency and a group should open its panel and filter the rows')],
   // the National report and the Map were tabs of their own: their old addresses open the Overview, on the state they named (and the address says so)
   ['#national', OV_PANEL, async (page) => (/^#overview$/.test(await hashNow(page)) && /^All states$/.test(await page.locator(OV_PANEL).first().innerText()) ? null : 'an old #national link should open the Overview: ' + (await hashNow(page)))],
@@ -668,9 +669,9 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
         regCells: document.querySelectorAll('#fields-root td.fx-cell.is-reg').length, rows: document.querySelectorAll('#fields-root tr[data-m]').length,
         total: document.querySelector('#fields-root tr[data-m="api_number"] td.fx-n:last-child').textContent, score: document.querySelector('#fields-root tr.fx-score td.fx-n.is-reg').textContent,
         label: document.querySelector('#fields-root tr[data-m="water"] td.fx-cell.is-reg button').getAttribute('aria-label'), kpis: document.querySelector('#fields-root .nat-kpis').innerText.replace(/\s+/g, ' ') }));
-      check(ffm.heads.length === 36 && ffm.heads[0] === 'FracFocus' && ffm.reg === 1 && ffm.regCells === ffm.rows && ffm.rows === 48, 'the matrix has FracFocus as its first column, a cell on each of the 48 rows, and 35 agencies after it: ' + ffm.heads.slice(0, 3).join(','));
-      check(/^\d+ of 35$/.test(ffm.total) && ffm.score === '9' && /published as data/.test(ffm.label) && /Agencies compared 35/.test(ffm.kpis) && /What FracFocus adds 3 metrics/.test(ffm.kpis) && /Hydraulic fracturing plan 0 of 35/.test(ffm.kpis),
-        'FracFocus is not counted as an agency (a row still totals "of 35"), its score is 9 metrics as data and the figures say what it adds: ' + ffm.total + ' / ' + ffm.score + ' / ' + ffm.kpis.slice(0, 200));
+      check(ffm.heads.length === 36 && ffm.heads[0] === 'FracFocus' && ffm.reg === 1 && ffm.regCells === ffm.rows && ffm.rows === permitFields().metrics.length, 'the matrix has FracFocus as its first column, a cell on each of its ' + ffm.rows + ' rows, and 35 agencies after it: ' + ffm.heads.slice(0, 3).join(','));
+      check(/^\d+ of 35$/.test(ffm.total) && ffm.score === String(Object.values(permitFields().states.FF.cells).filter((c) => c[0] === 'data').length) && /published as data/.test(ffm.label) && /Agencies compared 35/.test(ffm.kpis) && /What FracFocus adds \d+ metrics that 7 or fewer of 35 agencies publish as data: /.test(ffm.kpis),
+        'FracFocus is not counted as an agency (a row still totals "of 35"), its score is the number of metrics it publishes as data and the figures say what it adds: ' + ffm.total + ' / ' + ffm.score + ' / ' + ffm.kpis.slice(0, 200));
       await page.goto(base + '#fields?s=FF', { waitUntil: 'load' });
       await page.waitForSelector('#fields-root .nat-panel', { timeout: 25000 });
       const ffp = await page.locator('#fields-root .fx-panel-slot').innerText();
@@ -678,7 +679,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/What a disclosure captures/i.test(ffp) && /The disclosure/i.test(ffp) && !/The permit form/i.test(ffp) && /one row a disclosure/.test(ffp) && /one well at a time/.test(ffp) && ffHref === '#overview', 'FracFocus\'s panel speaks of a disclosure, not a permit, says what each file holds and links to the map: ' + ffHref);
       const card = await page.evaluate(() => ({ groups: document.querySelectorAll('#fx-registry .fx-rg').length, rows: document.querySelectorAll('#fx-registry li.fx-rf').length, text: document.querySelector('#fx-registry').innerText,
         links: [...document.querySelectorAll('#fx-registry .fx-rf-link button')].length, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
-      check(card.groups === 5 && card.rows === 34 && /CASNumber/.test(card.text) && /TotalBaseWaterVolume/.test(card.text) && /JobStartDate/.test(card.text) && /1 of 35 agencies publish it as data/.test(card.text) && /Not one of the permit metrics/.test(card.text) && card.links >= 15 && !card.sideways,
+      check(card.groups === 5 && card.rows === 34 && /CASNumber/.test(card.text) && /TotalBaseWaterVolume/.test(card.text) && /JobStartDate/.test(card.text) && /1 of 35 agencies publish it as data/.test(card.text) && /Not one of the metrics above/.test(card.text) && card.links >= 15 && !card.sideways,
         'the card lists the registry\'s 34 fields in five groups, the permit metric each matches with how many agencies publish it, and the page does not scroll sideways: ' + card.rows + ' rows');
       await page.click('#fx-registry .fx-rf-link button >> nth=0');
       await page.waitForTimeout(200);

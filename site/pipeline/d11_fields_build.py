@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """D11: the matrix of what each agency's permit captures: site/pipeline/fields/<ST>.json (researched by hand, one file per jurisdiction) -> site/public/data/permit-fields.json.
 
-The research asks, for every producing state (and the BLM and the federal offshore), the same 48 questions (`fields/metrics.json`): is this metric asked for on the permit
+The research asks, for every producing state (and the BLM and the federal offshore), the same questions (52 today, `fields/metrics.json`): is this metric asked for on the permit
 application, and is it published, as a downloadable data field, in a one-well-at-a-time lookup, or not at all? Each answer is a cell:
 
   s   data      a field in a downloadable open data file or API (bulk, machine-readable)

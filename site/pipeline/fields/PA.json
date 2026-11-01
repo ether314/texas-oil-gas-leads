@@ -178,6 +178,26 @@
    "e": "form",
    "n": "Conventional form asks Y/N about enhanced completion technology; no plan on forms read"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "form",
+   "n": "Unconventional completion report asks the date each stage was stimulated; DEP's reports and map layers hold none"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "form",
+   "n": "Completion report lists chemicals by name and CAS number, and operators also post to FracFocus; not in DEP data"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "form",
+   "n": "Completion report asks each additive's trade name, supplier and purpose; DEP's reports and map layers hold none"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "form",
+   "n": "Completion report asks each chemical's percent by mass in the fluid; DEP's reports and map layers hold none"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -526,7 +546,9 @@
   "Total download size of the layer and the inventory CSV (about 225,000 wells).",
   "Casing, cementing, BOP, water source and plat contents: the checklist, instructions and plat were not read.",
   "Operator entity type, DEP region, date received, completion date, logs and completion reports in public data.",
-  "Whether the public map app lets a visitor open the filed application and plat."
+  "Whether the public map app lets a visitor open the filed application and plat.",
+  "Whether DEP's public Oil and Gas Electronic Submissions viewer shows completion reports with their stimulation records (the viewer did not answer); if it does, these cells would be a lookup.",
+  "Whether the per-stage stimulation date is the start of that stage only; the form has no end date, and the 2018 conventional form has no stimulation date at all."
  ],
  "researched": "2026-10-31"
 }

@@ -174,6 +174,26 @@
    "e": "none",
    "n": "Form 2 not read"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Well record page shows treatment start and end dates, one well at a time; not in the bulk wells layer"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Agency's public list gives chemical names and CAS numbers by well pad, with CSV export; no bulk file seen"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Operators report product trade names (Form 46A); state law keeps trade names off the public list"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Product quantities go to the agency but stay off the public list; the well page shows only totals"
+  },
   "spacing_unit": {
    "s": "unknown",
    "e": "none",
@@ -684,7 +704,9 @@
   "Columns of the Directional Well Data download",
   "All of Form 2: version, boxes, attachments, fee, bond, surface and mineral owner, spacing unit, pits, water, H2S, BOP, fracturing",
   "What COGIS record pages show per permit (approval date, expiration, images) and whether document images are public",
-  "Whether the production CSVs are by well"
+  "Whether the production CSVs are by well",
+  "Whether the agency offers one bulk file of all chemical disclosures; its downloads page and the HB22-1348 page refused automated requests",
+  "Exact fields of Form 46 and Form 46A (supplier, purpose, amounts); both form pages refused automated requests"
  ],
  "researched": "2026-10-31"
 }

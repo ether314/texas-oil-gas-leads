@@ -174,6 +174,26 @@
    "e": "doc",
    "n": "4VAC25-150-80 C: list of anticipated hydraulic fracturing ingredients"
   },
+  "frac_dates": {
+   "s": "data",
+   "e": "file",
+   "n": "Chemical Disclosure Report Excel export has Job Start Date and Job End Date columns (seen in an export with no rows)"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Chemical Disclosure Report on the agency's lookup lists chemical names and CAS numbers and filters by CAS number"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule 365 requires trade name, supplier and function; completion reports are to be posted online, not opened"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule 365 requires each ingredient's percent by mass; completion reports are to be posted online, not opened"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "doc",
@@ -344,6 +364,31 @@
    ],
    "reachable": "not-tested",
    "tested": "Page read through WebFetch only (no curl request): lists the report names above; coordinates are State Plane feet, Virginia South, NAD83; the reports themselves were not opened, so whether 'Permit Issuance' carries issue dates is unverified (has_approval_date left false for that reason)."
+  },
+  {
+   "id": "va-dgo-chemical-disclosure",
+   "name": "Gas and Oil Data Information System, Chemical Disclosure Report (Excel or PDF export by date range; the export seen had the seven columns below and no rows)",
+   "url": "https://www.energy.virginia.gov/DgoInquiry/",
+   "kind": "report",
+   "format": "xls export",
+   "grain": "disclosure",
+   "free": true,
+   "login": false,
+   "reachable": "ok",
+   "columns": [
+    "File #",
+    "Company Name",
+    "API/US Well #",
+    "Job Start Date",
+    "Job End Date",
+    "County",
+    "Operation Type"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false
   }
  ],
  "grade": "B",
@@ -367,7 +412,9 @@
   "bottom-hole location for horizontal wells",
   "operator ID and entity type",
   "spud date",
-  "license"
+  "license",
+  "Wider Chemical Disclosure exports timed out, so no row with chemicals, trade names or percentages was seen.",
+  "Whether the posted completion reports and their attachments show trade name, supplier, purpose and percent by mass for a well."
  ],
  "researched": "2026-10-31"
 }

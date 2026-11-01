@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Assertion 4 asks only 'Will this well be hydraulically fractured?'; no ITD column; completions has Frac_Completion"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "web",
+   "n": "Start and end dates go to FracFocus within 60 days (OAC 165:10-3-10); no frac date in the OCC's data files"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Chemical identity and CAS go to FracFocus within 60 days (OAC 165:10-3-10); none in the OCC's data files"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Trade name, supplier and purpose go to FracFocus (OAC 165:10-3-10); the OCC's own files hold none"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Percent by mass per ingredient goes to FracFocus; the completions file text has only fluid and proppant totals"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "file",
@@ -667,7 +687,9 @@
   "Whether filed well logs are online (the form lists proposed logs; the completions file has only a yes-no flag and a date)",
   "UIC applications and UIC well lists exist on the data page (open applications file, all UIC wells) and were not opened; injection permits may use other forms",
   "The OCC Well Data Finder and Well Browse lookups were not opened, so no cell uses a query page",
-  "Operator list columns (the OCC's registrant file holds names, phones and addresses and was not read)"
+  "Operator list columns (the OCC's registrant file holds names, phones and addresses and was not read)",
+  "The Commission's hydraulic fracturing page returned not found, so whether the OCC itself posts or links disclosures was not seen",
+  "Contents of Form 6000NHF (the 48-hour pre-frac notice) were not seen, so whether it holds a planned start date is unknown"
  ],
  "researched": "2026-11-01"
 }

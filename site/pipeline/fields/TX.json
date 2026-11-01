@@ -174,6 +174,26 @@
    "e": "form",
    "n": "No stimulation item on the W-1 or W-1H"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule 3.29 requires the treatment's completion date at FracFocus; the agency's own data holds no frac date"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus (Rule 3.29); the agency's completion data holds only a yes/no 'disclosure filed' flag"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus: trade name, supplier and purpose of each additive; not in the agency's own data"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus in percent by mass; the completion data has only a free-text material line per interval"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "doc",
@@ -733,7 +753,9 @@
   "Whether the directional-survey CSV holds path stations or only the surveyed interval",
   "Completion packet columns beyond the seven the tracker reads, and whether they carry spud dates",
   "Permits for injection and disposal wells filed on forms other than the W-1 were not examined",
-  "Paper-form items were checked against the online guide of June 2022; later screen changes were not seen"
+  "Paper-form items were checked against the online guide of June 2022; later screen changes were not seen",
+  "Whether FracFocus reports are attached to the completion images in the Commission's well-records lookup; no filled-in completion was opened.",
+  "What operators write in the free-text 'material used' lines of a real completion; the layout was read, not a real data file."
  ],
  "researched": "2026-11-01"
 }

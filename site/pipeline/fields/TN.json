@@ -174,6 +174,26 @@
    "e": "doc",
    "n": "Application states whether the well will be fractured and an estimated fluid volume"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule asks the date of the fracture (one date) on a state filing and a registry; TDEC's permit data holds none"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule asks chemicals with CAS numbers; fractures over 200,000 gallons also post to a registry; TDEC data holds none"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule asks each additive's trade name, vendor and function; filed with the state and a registry"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule asks the maximum percent by mass of each chemical added; filed with the state and a registry"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "web",
@@ -367,7 +387,9 @@
   "Whether 'Permit Date' is the issue date or the filing date (no TDEC definition seen; permits are valid 365 days from issuance)",
   "Whether completion paperwork, plats and scanned forms are online",
   "Whether TDEC's servers answer GitHub's addresses (they refused a generic agent string, not the research machine)",
-  "What 'NCG - Domestic' means in Purpose of Well"
+  "What 'NCG - Domestic' means in Purpose of Well",
+  "The current text of rule 0400-53-01-.03: the agency's and the Secretary of State's sites refused automated requests, so the items rest on a 2019 summary and search excerpts.",
+  "What the well history or completion form asks for fractures under 200,000 gallons, and whether the permit application (CN-0211) or a later form shows any frac dates."
  ],
  "researched": "2026-10-31"
 }

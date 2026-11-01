@@ -4,6 +4,7 @@
   {"id": "where", "label": "Where"},
   {"id": "what", "label": "What will be drilled"},
   {"id": "safety", "label": "Design, safety and environment"},
+  {"id": "frac", "label": "The fracturing job"},
   {"id": "rules", "label": "Spacing, ownership and process"},
   {"id": "when", "label": "When"},
   {"id": "docs", "label": "Documents and links"}
@@ -41,6 +42,10 @@
   {"key": "pit_waste", "group": "safety", "label": "Pit and drilling-waste plan", "help": "Pits, closed loop, cuttings and fluid disposal."},
   {"key": "water", "group": "safety", "label": "Water source or volume", "help": "Where drilling and frac water comes from, and how much."},
   {"key": "fracture_plan", "group": "safety", "label": "Hydraulic fracturing plan", "help": "Planned stimulation or chemical disclosure at permit time."},
+  {"key": "frac_dates", "group": "frac", "label": "Fracturing job dates", "help": "The day the fracturing job started and ended, as dates of their own (not the spud or completion date)."},
+  {"key": "frac_chemicals", "group": "frac", "label": "Fracturing chemicals", "help": "Which chemicals were pumped, by name or CAS number."},
+  {"key": "frac_additives", "group": "frac", "label": "Additives: trade name, supplier and purpose", "help": "The products used, who supplied them and why."},
+  {"key": "frac_amounts", "group": "frac", "label": "Amount of each ingredient", "help": "How much of each chemical was used, in percent or pounds."},
   {"key": "spacing_unit", "group": "rules", "label": "Spacing unit, acreage or pooling", "help": "Drilling or spacing unit, acres assigned, pooling or unitization order."},
   {"key": "spacing_exception", "group": "rules", "label": "Exception to spacing or setback rules", "help": "A request for an exception, with its basis."},
   {"key": "mineral_owner", "group": "rules", "label": "Mineral or lease ownership", "help": "Who owns the minerals or holds the lease."},

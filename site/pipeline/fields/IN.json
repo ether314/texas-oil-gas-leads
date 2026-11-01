@@ -174,6 +174,26 @@
    "e": "form",
    "n": "No frac plan on form; layer has a HydroFrac flag and frac reports are filed later"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned Hydraulic Fracturing Report (date stimulated) is posted per well; scans only, not in the data tables"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "form",
+   "n": "Report names products, not chemicals; the agency posts product safety data sheets, not a chemical list per well"
+  },
+  "frac_additives": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned report lists each product's name, type and maker per well; scans only, not in the data tables"
+  },
+  "frac_amounts": {
+   "s": "query",
+   "e": "web",
+   "n": "Scanned report gives each product's rate or concentration, not each chemical's; scans only"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -570,7 +590,9 @@
   "Whether per-well production is published (monthly report shows only statewide totals)",
   "Permit expiration and spud dates (not on the form or in the layer)",
   "Whether the 'proposed measured length' on the form means lateral length or total measured depth",
-  "IGWS PDMS bulk download (host reset the connection)"
+  "IGWS PDMS bulk download (host reset the connection)",
+  "Whether the DNR's additive sheet list is tied to wells, and whether the safety data sheets name chemicals and CAS numbers; the sheets were not opened",
+  "Whether FracFocus is accepted or required in Indiana; neither the form nor the agency pages mention it"
  ],
  "researched": "2026-10-31"
 }

@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Items 16-19: high-volume frac planned, HVHHF registration and permit, medium-volume report"
   },
+  "frac_dates": {
+   "s": "unknown",
+   "e": "none",
+   "n": "No frac date item seen on OG-10 or the HVHHF-10 chemical report; the completion report rule was not read"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "HVHHF-10 asks planned chemicals with CAS; only one application (2017, withdrawn) is posted, as a scan"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "HVHHF-10 asks trade name, vendor and planned use; only one application (2017, withdrawn) is posted, as a scan"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "HVHHF-10 asks planned pounds and percent per ingredient; only one application (2017, withdrawn) is posted"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -401,7 +421,9 @@
   "Whether the ISGS shapefile download (weekly export of wells and borings) carries more fields than the map service",
   "Production data link and completion report availability online",
   "OG-03 (Class II injection) application contents",
-  "Whether the ACTION field in older weekly logs separates new wells from conversions and deepenings"
+  "Whether the ACTION field in older weekly logs separates new wells from conversions and deepenings",
+  "Text of 62 Ill. Adm. Code 245.860 (completion report within 60 days with a per-stage chemical report): the state rules site refused automated requests; only a search summary was seen",
+  "Whether any completion report or after-the-job chemical report is posted online: only the withdrawn 2017 application packet was seen"
  ],
  "researched": "2026-10-31"
 }
