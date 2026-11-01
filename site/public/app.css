@@ -1110,6 +1110,65 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .img-files small { color: var(--ink-2); }
 .nat-bar-seg.on { stroke: var(--ink); stroke-width: 1.5; }
 @media (max-width: 860px) { .img-life { grid-template-columns: minmax(0, 1fr); } }
+/* the well finder: an API number or a county, then one well's documents with their pictures */
+#wells-find { scroll-margin-top: 76px; }
+.wells-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--sp-2); margin: var(--sp-3) 0 0; color: var(--ink-2); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.wells-sep { opacity: 0.6; }
+.well-key { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-3); margin: 0; }
+.well-key span { display: inline-flex; align-items: center; gap: 5px; }
+.well-key i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.wells-form { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin: var(--sp-4) 0 var(--sp-2); }
+.wells-form .wells-q { flex: 1 1 260px; min-width: 0; }
+.wells-form .wells-county { flex: 0 1 250px; min-width: 0; }
+.wells-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-4); margin: var(--sp-4) 0 var(--sp-3); }
+.wells-head .fine:last-child { margin-left: auto; }
+.wells-head h3 { font-size: var(--fs-lg, 1.05rem); }
+.wells-head .fine { margin: 0; }
+.wells-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
+.wells-chips a { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 3px 12px; border-radius: var(--r-pill); border: 1px solid var(--border-2); background: var(--surface); color: var(--ink); font-size: var(--fs-sm); font-weight: 620; text-decoration: none; transition: border-color var(--dur-2), background var(--dur-2); }
+.wells-chips a:hover { border-color: var(--ink-2); background: color-mix(in srgb, var(--ink) 5%, var(--surface)); }
+.wells-chips small { color: var(--ink-2); font-weight: 500; font-variant-numeric: tabular-nums; }
+.wells-list { margin: 0 0 var(--sp-4); padding: 0; list-style: none; display: grid; gap: var(--sp-2); }
+.well-row { display: grid; grid-template-columns: minmax(120px, auto) minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; min-height: 48px; padding: 10px 14px; border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); color: var(--ink); text-decoration: none; transition: box-shadow var(--dur-2); }
+.well-row:hover { box-shadow: inset 0 0 0 1px var(--ink-2); }
+.well-api { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
+.well-what { min-width: 0; color: var(--ink-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.well-counts { display: inline-flex; gap: var(--sp-3); font-size: var(--fs-sm); font-weight: 650; font-variant-numeric: tabular-nums; }
+.well-counts > span { display: inline-flex; align-items: center; gap: 5px; }
+.well-counts i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.well-one { margin-top: var(--sp-3); }
+.wells-back { margin: 0 0 var(--sp-3); }
+.well-title { font-size: var(--fs-xl); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.well-title:focus { outline: none; }
+.well-one .sub { margin-bottom: var(--sp-1); }
+.well-docs { margin: var(--sp-3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--sp-3); }
+.well-doc { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--r-sm); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
+.well-thumb { display: block; width: 84px; height: 109px; padding: 0; border: 0; border-radius: var(--r-xs); overflow: hidden; background: #fff; box-shadow: 0 0 0 1px var(--border); cursor: zoom-in; transition: box-shadow var(--dur-2), transform var(--dur-2) var(--ease); }
+.well-thumb:hover { box-shadow: 0 0 0 2px var(--ink-2); transform: translateY(-1px); }
+.well-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.well-thumb.none { display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-sm); font-weight: 700; cursor: default; }
+.well-thumb.none:hover { transform: none; box-shadow: 0 0 0 1px var(--border); }
+.well-doc-body { display: grid; align-content: start; gap: 2px; min-width: 0; }
+.well-doc-body strong { font-size: var(--fs-md); overflow-wrap: anywhere; }
+.well-doc-body small { color: var(--ink-2); font-size: var(--fs-xs); }
+.well-doc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.well-lookups { margin-top: var(--sp-5); }
+.img-stage .nd { font-size: var(--fs-sm); margin: var(--sp-2) 0 0; }
+dialog.well-viewer { width: min(920px, calc(100vw - 24px)); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--border-2); border-radius: var(--r-md); background: var(--surface); color: var(--ink); box-shadow: var(--elev-3); overflow: hidden; }
+dialog.well-viewer[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+dialog.well-viewer::backdrop { background: rgb(8 10 14 / 0.62); }
+.well-viewer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.well-viewer-head h3 { font-size: var(--fs-lg, 1.05rem); }
+.well-viewer-head .fine { margin: 2px 0 0; }
+.well-viewer-page { overflow: auto; padding: var(--sp-4); background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
+.well-viewer-page img { display: block; margin: 0 auto; max-width: 100%; height: auto; background: #fff; box-shadow: 0 0 0 1px var(--border), 0 10px 30px -12px rgb(0 0 0 / 0.5); }
+.well-viewer-foot { display: grid; gap: var(--sp-2); padding: 12px 16px; border-top: 1px solid var(--border); }
+.well-viewer-foot .fine { margin: 0; }
+@media (max-width: 560px) {
+  .well-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .well-what { grid-column: 1 / -1; order: 3; }
+  .well-viewer-page { padding: var(--sp-2); }
+}
 /* ---------- permit data (the matrix) ---------- */
 .fx-tools { margin: 0 0 var(--sp-3); max-width: 100%; }
 .fx-legend { margin: var(--sp-2) 0 var(--sp-4); gap: var(--sp-2) var(--sp-5); }
@@ -1213,11 +1272,3 @@ body:has(.pv-dialog[open]) { overflow: hidden; }
   .lchip input:checked + .lchip-body, .theme button[aria-pressed="true"], .seg button[aria-selected="true"] { outline: 2px solid Highlight; }
   .card, .tchip { border-color: CanvasText; background: Canvas; }
 }
-
-/* completion filings in the Images view (2026-11-01): a district and a kind to choose, then packets of page-one previews, a few at a time */
-.cm-tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0; }
-.cm-tools .input { min-height: 32px; max-width: 100%; }
-.cm-packet { margin: var(--sp-3) 0; }
-.cm-packet h5 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); }
-.cm-packet h5 small { font-weight: 500; color: var(--ink-2); }
-.cm-more { margin: var(--sp-2) 0; }

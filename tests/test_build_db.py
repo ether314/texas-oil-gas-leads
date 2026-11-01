@@ -145,27 +145,51 @@ t.commit()
 t.close()
 check(any("national_months" in x for x in B.check(tampered)), "--check notices a table that no longer matches national.json")
 
+# ------------------------------------------------------------------------------------------------ the well-image archive
+wi = J("wells/index")
+n_w = sum(len(json.load(open(f))["wells"]) for f in glob.glob(os.path.join(DATA, "wells", "county", "*.json")))
+check(one("SELECT COUNT(*) FROM wells") == n_w == wi["totals"]["wells"] and one("SELECT COUNT(*) FROM well_documents") == wi["totals"]["docs"] and one("SELECT COUNT(*) FROM well_packs") == len(wi["units"]),
+      "the committed well archive is loaded: %d wells, %d documents, %d packs" % (n_w, wi["totals"]["docs"], len(wi["units"])))
+fx = json.load(open(os.path.join(HERE, "fixtures", "wells.json")))
+wd = os.path.join(tmp, "wells-data")
+os.makedirs(os.path.join(wd, "wells", "county"))
+json.dump(fx["index"], open(os.path.join(wd, "wells", "index.json"), "w"))
+for fips, c in fx["counties"].items():
+    json.dump(c, open(os.path.join(wd, "wells", "county", fips + ".json"), "w"))
+wdb = os.path.join(tmp, "wells.sqlite")
+B.build(wdb, wd)
+w = sqlite3.connect(wdb)
+wq = lambda sql, *a: w.execute(sql, a).fetchall()  # noqa: E731
+check(wq("SELECT COUNT(*) FROM wells")[0][0] == 3 and wq("SELECT COUNT(*) FROM well_documents")[0][0] == 8 and wq("SELECT COUNT(*) FROM well_packs")[0][0] == 3 and B.check(wdb) == [], "the fixture archive loads as 3 wells, 8 documents and 3 packs, and passes the check")
+check(wq("SELECT documents FROM wells WHERE api = '28337830'")[0][0] == 6 and wq("SELECT COUNT(*) FROM well_documents WHERE api = '28337830'")[0][0] == 6, "a well's document count is the documents tied to it")
+check(wq("SELECT operator, operator_num FROM wells WHERE api = '28300001'")[0] == (None, "999999") and wq("SELECT operator FROM wells WHERE api = '28337830'")[0][0] == "VERDUN OIL EF II LLC", "an operator that may not be named has its number and no name")
+row = wq("SELECT stage, kind, pages, ext, release_tag, has_preview, url, preview_url FROM well_documents WHERE file = '28337830_c3'")[0]
+check(row == ("completion", "W-2 form", 3, "pdf", "wells-2026-10-29-ci-01", 1, "https://github.com/o/r/releases/download/wells-2026-10-29-ci-01/28337830_c3.pdf", "https://github.com/o/r/releases/download/wells-2026-10-29-ci-01/28337830_c3.jpg"), "a document carries its stage, kind, pages, release and the addresses of the file and its picture")
+none = wq("SELECT pages, has_preview, preview_url FROM well_documents WHERE file = '28337830_c2'")[0]
+check(none == (None, 0, None), "a document whose pages could not be counted and that has no picture says so with nulls, never 0 pages or a dead address")
+check(wq("SELECT COUNT(*) FROM well_documents d JOIN wells w ON w.api = d.api")[0][0] == 8, "every document joins to its well")
+w.close()
+# a tampered county file is noticed
+tampered = os.path.join(tmp, "tampered.sqlite")
+B.build(tampered, wd)
+tdb = sqlite3.connect(tampered)
+tdb.execute("DELETE FROM well_documents WHERE file = '28337830_c1'")
+tdb.commit()
+check(any("well_documents" in x for x in B.check(tampered)), "a missing well document is noticed by --check")
+tdb.close()
+
 # ------------------------------------------------------------------------------------------------ odd shapes
 mini = os.path.join(tmp, "mini-data")
 os.makedirs(os.path.join(mini, "daily"))
 json.dump({"v": 1, "state": "TX", "date": "2026-10-29", "kind": "live", "status": "ok", "permits": {"total": 2, "newDrill": 1, "rows": [["0919749", "301", "08", "020528", None, 12000, "H"], ["0919750", "301", "08", "1", "ACME LLC", 9000, "V", "4230100000", 31.0, -103.0, ["W1.pdf"]]]},
           "images": {"w1images": None, "dirsurveys": {"day": "2026-10-28", "bytes": 5, "modified": "2026-10-29T10:00:00", "empty": False, "docs": None}}}, open(os.path.join(mini, "daily", "2026-10-29.json"), "w"))
 json.dump({"months": ["2026-01", "2026-02", "2026-03"], "wti": [70.0, None, 72.5], "label": ["a", "b", "c"]}, open(os.path.join(mini, "series-markets.json"), "w"))
-os.makedirs(os.path.join(mini, "daily-cm"))
-json.dump({"v": 1, "day": "2026-10-29", "packDay": "2026-10-28", "repo": "o/r", "per": 2, "parts": 2, "kinds": ["W-2 form", "Well log"], "docs": 3, "previews": 2, "builtAt": "2026-10-30T03:30Z",
-           "packets": [["08", "111", [[0, 0, 1], [1, 1, 0]]], ["7C", "222", [[1, 0, 1]]]]}, open(os.path.join(mini, "daily-cm", "2026-10-29.json"), "w"))
-json.dump({"v": 1, "days": ["2026-10-29"]}, open(os.path.join(mini, "daily-cm", "index.json"), "w"))
 mdb = os.path.join(tmp, "mini.sqlite")
 B.build(mdb, mini)
 m = sqlite3.connect(mdb)
 check(m.execute("SELECT COUNT(*) FROM daily_permits").fetchone()[0] == 2 and m.execute("SELECT permit, documents FROM daily_permits WHERE operator IS NULL").fetchone()[1] is None, "a permit row shorter than the rest is loaded with blanks, not dropped")
 check(m.execute("SELECT COUNT(*) FROM tx_image_packs").fetchone()[0] == 1, "a pack with no entry for a day is skipped, one with no documents is kept")
 check(m.execute("SELECT COUNT(*) FROM series").fetchone()[0] == 2 and m.execute("SELECT COUNT(*) FROM jurisdictions").fetchone()[0] == 0, "a series with a gap loads only its real points; missing optional files load nothing")
-rows = m.execute("SELECT district, tracking, seq, kind, folder, has_preview, release_tag, file FROM tx_completion_docs ORDER BY district, tracking, seq").fetchall()
-check(rows == [("08", "111", 1, "W-2 form", "plain", 1, "daily-2026-10-29-cm1", "cm_08_111_1.jpg"), ("08", "111", 2, "Well log", "submitted", 0, None, None), ("7C", "222", 1, "Well log", "plain", 1, "daily-2026-10-29-cm2", "cm_7C_222_1.jpg")],
-      "every completion document is a row, with its release by its place in the day's list and no file name where it has no preview: %s" % rows)
-check(m.execute("SELECT COUNT(*) FROM documents WHERE path LIKE 'daily-cm/%'").fetchone()[0] == 2 and B.check(mdb) == [], "the completion files are documents too, and --check counts the Daily reports without them: %s" % B.check(mdb))
-check(one("SELECT COUNT(*) FROM tx_completion_docs") == sum(len(pk[2]) for f in glob.glob(os.path.join(DATA, "daily-cm", "????-??-??.json")) for pk in json.load(open(f))["packets"]), "every document of the committed completion files is a row (none until the first nightly step has run)")
 m.close()
 
 # ------------------------------------------------------------------------------------------------ mutants

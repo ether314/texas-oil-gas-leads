@@ -27,7 +27,6 @@ import time
 from datetime import datetime
 
 TAG = re.compile(r"daily-(\d{4}-\d\d-\d\d)")
-CM_TAG = re.compile(r"daily-(\d{4}-\d\d-\d\d)-cm(\d{1,2})")  # the releases of a day's completion previews (d7_completions.py): a day's ~1,060 files need two
 BATCH = 40  # files per `gh release upload`
 ASSET_LIMIT = 1000  # GitHub's limit of files on one release: the optional files (previews) are cut back to what the documents leave room for
 ATTEMPTS = 3
@@ -40,10 +39,6 @@ class ReleaseError(RuntimeError):
 
 def tag_for(day):
     return "daily-" + day.isoformat()
-
-
-def cm_tag_for(day, part):
-    return "daily-%s-cm%d" % (day.isoformat(), part)
 
 
 def base_url(repo, tag):
@@ -142,46 +137,20 @@ def publish(repo, day, folder, names, log=print, optional=(), confirmed=None):
     return tag
 
 
-def publish_files(repo, tag, title, notes, folder, names, log=print):
-    """Create the release `tag` if it is not there (a pre-release, never the repository's "latest") and upload `names` (files of `folder`)
-    in batches. Returns the sorted names the release's own listing then confirms. A batch that fails after its retries ends the uploading
-    (the rest would fail the same way); what is confirmed is what counts, so the caller never links a file the release does not hold.
-    Raises ReleaseError only when the release cannot be made or listed."""
-    names = sorted(set(names))
-    try:
-        _gh(["release", "view", tag, "--repo", repo, "--json", "tagName"], retry=False)
-    except ReleaseError:
-        _gh(["release", "create", tag, "--repo", repo, "--prerelease", "--latest=false", "--title", title, "--notes", notes])
-        log("release %s created" % tag)
-    for i in range(0, len(names), BATCH):
-        try:
-            _gh(["release", "upload", tag, "--repo", repo, "--clobber", *[os.path.join(folder, n) for n in names[i:i + BATCH]]], timeout=900)
-        except ReleaseError as e:
-            log("release %s: uploading stopped after %d of %d files (%s)" % (tag, i, len(names), e))
-            break
-    have = assets_of(repo, tag)
-    there = [n for n in names if n in have]
-    log("release %s: %d of %d files confirmed" % (tag, len(there), len(names)))
-    return there
-
-
-def prune(repo, oldest_kept, log=print, cm_oldest_kept=None):
+def prune(repo, oldest_kept, log=print):
     """Delete the releases (and their tags) of days older than `oldest_kept`: the days that have left the archive, whose pages no
-    longer link to them. The completion previews' releases (daily-YYYY-MM-DD-cm<N>) are bulky, so they go at `cm_oldest_kept` (a
-    month, when given; else the same day). Only tags that are exactly daily-YYYY-MM-DD or daily-YYYY-MM-DD-cm<N> are ever touched.
-    Returns the tags deleted."""
+    longer link to them. Only tags that are exactly daily-YYYY-MM-DD are ever touched. Returns the tags deleted."""
     out = _gh(["release", "list", "--repo", repo, "--limit", "400", "--json", "tagName"])
     gone = []
     for row in json.loads(out):
-        tag = row.get("tagName") or ""
-        m = TAG.fullmatch(tag) or CM_TAG.fullmatch(tag)
+        m = TAG.fullmatch(row.get("tagName") or "")
         if not m:
             continue
         try:
             d = datetime.strptime(m.group(1), "%Y-%m-%d").date()
         except ValueError:
             continue
-        if d < (cm_oldest_kept if CM_TAG.fullmatch(tag) and cm_oldest_kept else oldest_kept):
+        if d < oldest_kept:
             _gh(["release", "delete", row["tagName"], "--repo", repo, "--yes", "--cleanup-tag"])
             gone.append(row["tagName"])
     if gone:

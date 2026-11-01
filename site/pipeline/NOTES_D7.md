@@ -80,7 +80,7 @@ request returns the whole file with status 200), so a pack can only be read whol
 | directional surveys (28 MB) | 57 PDFs `dir_survey_<id>.pdf` and one CSV | directional survey 57 |
 | completion images (306 MB) | 908 files in 123 `<district>/trackingNo_<n>_Images_Submitted/` folders: the forms the system makes (`cmpl_<Form>Form_PID_<n>.pdf`) and whatever the operator attached | W-2 87, P-4 71, L-1 63, G-1 36, other forms 43; well logs 87, W-15 cementing reports 89, plats 49, P-16 43, surveys 60, other attachments 274 |
 
-**What is published, and what is not.** `images[<pack>].docs` is the document count, the counts by kind (`types`, largest
+**What the Daily report publishes, and what it does not** (the documents themselves are `NOTES_D12.md`'s). `images[<pack>].docs` is the document count, the counts by kind (`types`, largest
 first, `Other` last, adding up to `n`) and, for completions, the number of packets. `images[<pack>].sheet` names one JPEG,
 `img/<day>-<pack>.jpg`: page one of up to 16 documents, one kind after another (chosen by a hash of the name, so the same
 whatever the zip's order), each tile **112 px wide and blurred (Gaussian radius 1.2)**, 22-29 KB, 1-3 s to draw. The layout
@@ -136,7 +136,7 @@ than the oldest kept day).
 a local run with an authenticated gh never publishes by accident. Only the live day gets files (a pack is 30-450 MB, and a rebuilt
 day would be 92 of them). Staging copies a member only if it is under 40 MB and starts with the PDF or TIFF signature, under a name
 this code makes up, never the pack's. Only permits in the report's rows are uploaded (36 of the pack's 74 on 2026-10-29; the
-others are amendments with no page). Completion images are not part of this staging: see "Completion previews" at the end (page one only).
+others are amendments with no page). Completion images are not published here: from 2026-11-01 `d12_wells.py` publishes every document of all three packs, completion images included, under its well (`NOTES_D12.md`).
 
 **The privacy decision.** The filings are the RRC's public records, but a W-1 letter and a plat can carry the names, phone numbers
 and addresses of individuals, which the README's rule used to exclude. The repository's owner chose on 2026-10-31 to publish them
@@ -154,7 +154,7 @@ and a zoomed one takes the drag. Checked in a browser: 36 dots and 57 diamonds, 
 ## Readable previews (added 2026-11-01)
 
 **Decision.** The owner widened the privacy exception on 2026-11-01 (README, Privacy; CLAUDE.md, Guardrails): the Texas W-1 letters, plats and directional surveys that are already published readable are also *shown*, as a readable JPEG of page one.
-The page's Content-Security-Policy allows `https://github.com` and `https://*.githubusercontent.com` in `img-src` for it (and nothing else changed). Completion images follow in their own section below ("Completion previews", page one only); Oklahoma's documents are never published.
+The page's Content-Security-Policy allows `https://github.com` and `https://*.githubusercontent.com` in `img-src` for it (and nothing else changed). Completion images are not part of this: `d12_wells.py` publishes them, and every other document of the three packs, under their wells (`NOTES_D12.md`); Oklahoma's documents are never published.
 
 **Drawing (`d7_packs.py`).** `render_preview(src, dest)` draws page one of a staged document: `pdftoppm -f 1 -l 1 -scale-to-x 900` (a TIFF through Pillow), grayscale unless the page has color in it (more than 0.1% of its pixels with channels over 24 apart: a red stamp keeps its color),
 progressive JPEG at quality 60 with no metadata, recompressed (quality 52, 44, 36, then widths 750 and 600) until it is at most 200 KB, and refused with no half-written file when nothing fits. The safe machinery is the contact sheet's: the document was already copied
@@ -399,28 +399,3 @@ It then commits and publishes like a night's run. Good to know:
 Known limits: a rebuilt day has no catalog check, file states or monthly watch; the pending queue is only as old as the
 share keeps it; rebuilt days show image pack sizes only (the previews are for days captured live); permit coordinates are ignored here (only part of recent permits have
 them).
-
-## Completion previews (added 2026-11-01)
-
-**Decision.** The owner decided on 2026-10-31 that every document of the Texas packs may be published readable, and on 2026-11-01 asked for the completion images next (README, Privacy; CLAUDE.md, Guardrails). What is published is **page one of each document as a JPEG, and nothing else**: a day's pack
-(10-30: 1,060 documents, 951 PDF and 109 TIF, 559 MB unpacked, none over 6 MB; 152 packets in 12 districts) would be 560 MB of originals a day, 50 GB a quarter, and a release holds 1,000 files. The Commission keeps the originals.
-
-**What was measured on the real pack** (the 10-30 completion images, downloaded once from this project, 468 MB in 21 s): `d7_packs.render_preview` takes 0.13 s a document (median, 0.61 s at most), previews average 105 KB (a cap of 150 KB for these) and a pack takes 54 s with four drawn at a time. Three `.tif` members were PNG files:
-completions accept PNG content under a `.tif` name (`CM_MAGIC`; the W-1 and survey checks are unchanged). Folders are `<district>/trackingNo_<n>` and `<district>/trackingNo_<n>_Images_Submitted` (what the two mean is not stated by the Commission, so neither is named on the page; the data keeps which one a document sat in).
-
-**The step (`d7_completions.py`).** Its own step in the nightly workflow after a good Texas capture and check (`Publish previews of the completion images`, 18 minutes, `continue-on-error`, with its own drop step), not part of the capture: the capture's 19-minute limit and its restore logic stay as they were,
-and a failure here costs only the previews. It picks the newest live day whose pack landed and that has no file in `site/public/data/daily-cm/` yet, downloads that pack again (about 20 s: the capture deletes its own copy, and a retry of a failed night needs one anyway), draws every document
-(`d7_packs.stage_completions`, four at a time, stops after 8 failures in a row or when its 10-minute budget is spent), uploads to `daily-YYYY-MM-DD-cm1`, `-cm2` (800 files each, `d7_release.publish_files`), and writes `daily-cm/<day>.json` and `daily-cm/index.json`. Nothing is written unless the releases' own listing confirms at least half the previews,
-so a night that broke leaves nothing to commit, and the 04:20 backup run (or the next night) tries the day again. `--check` runs before the commit. Old files and releases go after 31 days (about 100 MB a day of previews).
-
-**Names and privacy.** A preview is named `cm_<district>_<tracking>_<n>.jpg` from the folder and the document's place in it: nothing in a name, the data file or a log line comes from the pack's own file names, which operators type (lease names, well numbers, sometimes people). The file holds only codes and digits (`problems_of`, the privacy gate's scan, and a test with
-names from a synthetic pack that must reach nothing). The pictures are readable: a well log's header page, for example, can name a field hand. The page says so beside every preview.
-
-**The file** (`daily-cm/<day>.json`): `v`, `day`, `packDay`, `repo`, `per` (files on a release, 800), `parts`, `kinds` (the 12 labels of `kind_comp`), `docs`, `previews`, `builtAt`, and `packets`: `[district, tracking, [[kind index, 0 or 1 (which folder), 1 if its preview is on the release], ...]]` in the order the previews are numbered.
-A document's release is by its place in the whole list, drawn or not, so it never depends on which others have previews; the page counts the same way (`cmDocs` in `images-data.js`). `index.json` lists the days that have a file: the page asks for a day's file only then, because a request for a missing file is a failed request.
-
-**The page.** On the Texas images tab, for a day the index lists: a district and a kind to choose, packets of previews eight at a time, a click enlarges one (no link to an original: only page one is published). A day the index does not list says previews are published for the newest 31 days and not for it.
-
-**Tests.** `tests/test_d7_completions.py` (92 checks, synthetic packs built with Pillow, gh and the share faked): layout and numbering, made-up names, every failure (a file that is not what its name says, a truncated PDF, a size cap, a broken tool, a spent budget, missing tools), the file's validator with 16 broken variants, the day's choice, the releases (batches, a failing upload, the listing, pruning that touches only `daily-<day>` and `daily-<day>-cm<N>` tags),
-whole runs (a refusing share, a damaged zip, half the uploads lost, a few lost, no gh, no documents), and six mutants that each make a check fail. `tests/test_workflow.py` covers the step's condition, its drop step and the red-run rule; `test_build_db.py` the `tx_completion_docs` table; `smoke.cjs` block 19 and `a11y.cjs` the page.
-**Not proven:** the step has not run in Actions yet (its first run is the nightly after the merge): read its log lines (`completion previews: ...`), the two releases, and the Images tab for that day.
