@@ -21,7 +21,8 @@ address keep their first name, `texas-oil-gas-leads`.)
   cement, H2S, water and pit plans, spacing and ownership, which dates and documents the agency keeps. Each answer says whether the metric is published as data (a field in a downloadable file or API), shown only in a one-well lookup, asked for only on
   the form, not captured, or **not verified** (said so, never guessed), with the evidence named (a real data file, the agency's documentation, the form, a web page). Click a cell, an agency (its form, its open data, a grade from A, bulk data with
   approval dates, to D, nothing public or blocked, and how a monthly count could be built) or a metric. Researched by hand, one file per agency in `site/pipeline/fields/`, built by `d11_fields_build.py`; see `NOTES_D11.md`.
-- **Texas images**: what a Texas well leaves behind as scanned filings (`#images`), from the Railroad Commission's three packs a business day: a well's life in three stages (the permit letter and plat, the directional survey,
+- **Texas images**: **find a well by its API number** (or choose a county) and read every scanned document the Railroad Commission filed about it: the permit letter and plat, the directional survey, the completion forms and logs,
+  each tied to its well, shown as a readable picture of page one and downloadable whole, exactly as filed (`#images?well=28337830`, `#images?c=283`; built by `site/pipeline/d12_wells.py`, `NOTES_D12.md`). Below it, what a Texas well leaves behind as scanned filings, from the Commission's three packs a business day: a well's life in three stages (the permit letter and plat, the directional survey,
   the completion forms and logs) with each kind of document explained and counted, how much arrives each day over the 92-day archive (a day with no pack listed is a gap, never zero), and for any day what its packs hold
   (size, size by RRC district, documents by kind for days captured live, the blurred contact sheets, and the permits whose filings are published, each linking to its drill page). It reads only the Daily archive's own files.
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
@@ -60,7 +61,7 @@ outlook, refinery capacity), BLS (QCEW, state employment), Census (county bounda
 centroids), EPA facility data and Baker Hughes rig counts (through Internet Archive copies of its public workbooks).
 Exact files, vintages and caveats are in `site/DATA_CONTRACT.md`, `site/DATA_CONTRACT_V3.md` and
 `site/pipeline/NOTES_*.md`. The Daily report reads the six datasets the RRC lists as nightly or twice daily (permits, pending
-applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`. Oklahoma's half of the Daily report reads four files from the
+applications, completions and three image packs); see `site/pipeline/NOTES_D7.md`; the packs' documents themselves, tied to wells, are `site/pipeline/NOTES_D12.md`. Oklahoma's half of the Daily report reads four files from the
 Oklahoma Corporation Commission (intents to drill, completions and well transfers daily; the well inventory nightly), the
 Census outlines of Oklahoma's 77 counties and, for its monthly card, EIA's Oklahoma crude oil production beside the oil and gas
 prices above; see `site/pipeline/NOTES_D8.md`.
@@ -69,11 +70,17 @@ prices above; see `site/pipeline/NOTES_D8.md`.
 Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
 individuals. Operators are named only when they are corporations, LLCs or limited partnerships.
 
-**One deliberate exception (decided 2026-10-31).** The Daily report's drill pages link to the Railroad Commission's scanned
-W-1 permit letters, permit plats and directional surveys, published readable and unmodified as GitHub release files. They are
-public records, but they can carry the names, phone numbers and street addresses of individuals, and nothing is redacted. This
-repository and its site are public. Completion images stay blurred and unpublished. To go back, remove `--publish-docs` from
-`.github/workflows/daily-rrc-report.yml` and delete the `daily-*` releases; details are in `site/pipeline/NOTES_D7.md`.
+**Deliberate exceptions (decided by the owner on 2026-10-31 and 2026-11-01).** The Railroad Commission's scanned filings are public records, but they can carry the names, phone numbers and street addresses of individuals (a landowner on a plat,
+an operator's contact on a completion form). This repository and its site are public, and two things publish those scans **readable and unmodified, nothing redacted**, as files of GitHub releases:
+1. the Daily report's drill pages link to the day's W-1 permit letters, plats and directional surveys (`--publish-docs` in `.github/workflows/daily-rrc-report.yml`, releases `daily-YYYY-MM-DD`);
+2. **every document of the Commission's three image packs, completion images included, is published under the well (API number) it is about** on the Texas images page, each with a picture of its first page
+   (`.github/workflows/well-images.yml`, `site/pipeline/d12_wells.py`, releases `wells-YYYY-MM-DD-<pack>-NN`; about 0.9 GB a day, kept for 92 days). The page loads those pictures from GitHub's image hosts, which the
+   Content-Security-Policy allows for `img-src` and nothing else.
+
+The data files beside them stay at the business and place level: a well is its API number, county, district, field and operator (named only when it is a corporation, LLC or limited partnership); **lease names, well numbers and landowner names are not
+read into any data file and no file name from a pack is used** (names are made up). Oklahoma's documents and any contact list are never published. To go back: remove `--publish-docs` and delete the `daily-*` releases, and disable `well-images.yml` and delete
+the `wells-*` releases; details are in `site/pipeline/NOTES_D7.md` and `NOTES_D12.md`. To take one document down, delete its release file and its entry in `site/public/data/wells/county/<fips>.json`.
+The Commission has no address that opens a single document (its look-up pages need a session and an internal document number), which is why the files are kept here; each well page links its look-up forms.
 
 **A gate before anything is published.** Each Daily producer's `--check` runs in the nightly before the commit: every day file is scanned for an e-mail address, a web address and a phone number (and, for Oklahoma and New Mexico, a run of ten digits, since they publish
 no API numbers), and every operator name it publishes must pass the state's rule. A night that fails is dropped, not published (`site/pipeline/privacy_check.py`, `tests/test_privacy_gate.py`, which also scans every published data file).
@@ -92,6 +99,10 @@ Then open http://localhost:8000. Any static host works.
 loads every view in a real browser at desktop and phone width and `node tests/a11y.cjs` checks text contrast in both themes, keyboard focus and that nothing is cut off at 360 px;
 `.github/workflows/ci.yml` runs them on every pull request. See `tests/README.md`.
 
+Every day at 18:07 UTC `.github/workflows/well-images.yml` runs `site/pipeline/d12_wells.py`: it reads the newest packs the Commission has listed (W-1 images, directional surveys and completion images, with the completion data zip that says which
+well each completion document belongs to), ties every document to its well, publishes it as files of GitHub releases, commits `site/public/data/wells/` (an index and one file per county) and publishes the site. It is separate from the nightly capture, shares its
+concurrency group, and a pack that fails is simply done again the next day; by hand, `days` and `window` reach further back (about 0.9 GB per day).
+
 Every Monday at 06:20 UTC `.github/workflows/refresh-national.yml` runs each state's producer isolated (`site/pipeline/d11_nat_run.py`: a failed producer's file is put back as committed, a server's refusal is an answer and not an error) and rebuilds
 `national.json`; `refresh-monthly.yml` rebuilds it too after refreshing Oklahoma's, New Mexico's and the offshore's files.
 
@@ -102,7 +113,7 @@ The national report's files are `site/public/data/nat/<ST>.json` (one per state,
 Everything the site publishes can be loaded into one SQLite file you keep on your own machine (standard library only, a few seconds, built from the committed files and never fetched):
 `python3 -I site/pipeline/build_db.py` writes `db/oil-tracker.sqlite` (about 13 MB; `db/` and `*.sqlite` are kept out of git), `--check` verifies an existing file. Every data file is stored verbatim in
 `documents`, and the main entities are tables you can query and join: jurisdictions, national_months (permits or spuds by state, month and kind of permit), series (prices, crude production, rigs, jobs,
-tax), county_permits, operators, permit_points, companies, daily_reports and daily_permits, tx_image_packs and, once the matrix exists, metrics, field_states, field_cells and field_sources. Permits approved
+tax), county_permits, operators, permit_points, companies, daily_reports and daily_permits, tx_image_packs, wells, well_documents (every scanned document tied to its well, with the address of the file and of its picture) and well_packs and, once the matrix exists, metrics, field_states, field_cells and field_sources. Permits approved
 and wells spudded are different measures (`jurisdictions.measure` says which) and nothing in the database adds them. See the top of `site/pipeline/build_db.py`.
 
 ## Rebuild the data

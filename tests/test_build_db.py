@@ -138,6 +138,39 @@ t.commit()
 t.close()
 check(any("national_months" in x for x in B.check(tampered)), "--check notices a table that no longer matches national.json")
 
+# ------------------------------------------------------------------------------------------------ the well-image archive
+wi = J("wells/index")
+n_w = sum(len(json.load(open(f))["wells"]) for f in glob.glob(os.path.join(DATA, "wells", "county", "*.json")))
+check(one("SELECT COUNT(*) FROM wells") == n_w == wi["totals"]["wells"] and one("SELECT COUNT(*) FROM well_documents") == wi["totals"]["docs"] and one("SELECT COUNT(*) FROM well_packs") == len(wi["units"]),
+      "the committed well archive is loaded: %d wells, %d documents, %d packs" % (n_w, wi["totals"]["docs"], len(wi["units"])))
+fx = json.load(open(os.path.join(HERE, "fixtures", "wells.json")))
+wd = os.path.join(tmp, "wells-data")
+os.makedirs(os.path.join(wd, "wells", "county"))
+json.dump(fx["index"], open(os.path.join(wd, "wells", "index.json"), "w"))
+for fips, c in fx["counties"].items():
+    json.dump(c, open(os.path.join(wd, "wells", "county", fips + ".json"), "w"))
+wdb = os.path.join(tmp, "wells.sqlite")
+B.build(wdb, wd)
+w = sqlite3.connect(wdb)
+wq = lambda sql, *a: w.execute(sql, a).fetchall()  # noqa: E731
+check(wq("SELECT COUNT(*) FROM wells")[0][0] == 3 and wq("SELECT COUNT(*) FROM well_documents")[0][0] == 8 and wq("SELECT COUNT(*) FROM well_packs")[0][0] == 3 and B.check(wdb) == [], "the fixture archive loads as 3 wells, 8 documents and 3 packs, and passes the check")
+check(wq("SELECT documents FROM wells WHERE api = '28337830'")[0][0] == 6 and wq("SELECT COUNT(*) FROM well_documents WHERE api = '28337830'")[0][0] == 6, "a well's document count is the documents tied to it")
+check(wq("SELECT operator, operator_num FROM wells WHERE api = '28300001'")[0] == (None, "999999") and wq("SELECT operator FROM wells WHERE api = '28337830'")[0][0] == "VERDUN OIL EF II LLC", "an operator that may not be named has its number and no name")
+row = wq("SELECT stage, kind, pages, ext, release_tag, has_preview, url, preview_url FROM well_documents WHERE file = '28337830_c3'")[0]
+check(row == ("completion", "W-2 form", 3, "pdf", "wells-2026-10-29-ci-01", 1, "https://github.com/o/r/releases/download/wells-2026-10-29-ci-01/28337830_c3.pdf", "https://github.com/o/r/releases/download/wells-2026-10-29-ci-01/28337830_c3.jpg"), "a document carries its stage, kind, pages, release and the addresses of the file and its picture")
+none = wq("SELECT pages, has_preview, preview_url FROM well_documents WHERE file = '28337830_c2'")[0]
+check(none == (None, 0, None), "a document whose pages could not be counted and that has no picture says so with nulls, never 0 pages or a dead address")
+check(wq("SELECT COUNT(*) FROM well_documents d JOIN wells w ON w.api = d.api")[0][0] == 8, "every document joins to its well")
+w.close()
+# a tampered county file is noticed
+tampered = os.path.join(tmp, "tampered.sqlite")
+B.build(tampered, wd)
+tdb = sqlite3.connect(tampered)
+tdb.execute("DELETE FROM well_documents WHERE file = '28337830_c1'")
+tdb.commit()
+check(any("well_documents" in x for x in B.check(tampered)), "a missing well document is noticed by --check")
+tdb.close()
+
 # ------------------------------------------------------------------------------------------------ odd shapes
 mini = os.path.join(tmp, "mini-data")
 os.makedirs(os.path.join(mini, "daily"))

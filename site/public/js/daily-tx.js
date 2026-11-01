@@ -87,7 +87,7 @@ export function texasParts(ctx) {
       return el('div', { class: 'dr-pack' }, info, fig);
     });
     if (!rows.length) return null;
-    return card('dr-sec', head('layers', 'Inside the packs · Texas', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. These sheets are shrunk and blurred on purpose so that nothing can be read, and the completion images are never published. The W-1 letters and plats of the day\'s new-drill permits and the day\'s directional surveys are different: they are published readable, each on its drill\'s page (GPS map above). Days before previews began show sizes only.'), ...rows);
+    return card('dr-sec', head('layers', 'Inside the packs · Texas', 'What the packs held', 'On the night a day is captured the three zips are opened: documents are counted by kind, and page one of a spread of them is drawn. These sheets are shrunk and blurred on purpose so that nothing can be read. The documents themselves are different: every one is published readable, under the well it is about, on the Texas well images page, and the W-1 letters and plats of the day\'s new-drill permits and the day\'s directional surveys are also on their drill\'s page (GPS map above). Days before previews began show sizes only.'), ...rows);
   }
 
   /* ---------- the GPS map, and a page (a URL) for each well with its filings ---------- */

@@ -24,10 +24,20 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..', 'site', 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 
+// the well archive is served from a fixture (tests/fixtures/wells.json), so these tests do not depend on what the nightly has published
+const WELLS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'wells.json'), 'utf8'));
+function wellsFile(p) {
+  if (p === '/data/wells/index.json') return WELLS.index;
+  const m = /^\/data\/wells\/county\/(\d{3})\.json$/.exec(p);
+  return m ? WELLS.counties[m[1]] || null : null;
+}
+
 function serve() {
   const server = http.createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (p.endsWith('/')) p += 'index.html';
+    const fixture = wellsFile(p);
+    if (fixture) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(fixture)); return; }
     const file = path.normalize(path.join(ROOT, p));
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -56,6 +66,8 @@ const VIEWS = [
   ['national', '#national', '#national-root .nat-tile'],
   ['national, Oklahoma panel', '#national?s=OK', '#national-root .nat-panel h3'],
   ['texas images', '#images', '#images-root .img-pack'],
+  ['texas images, a county', '#images?c=283', '#images-root a.well-row'],
+  ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
   ['permit data', '#fields', '#fields-root button.fx-c'],
   ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
 ];
@@ -222,7 +234,7 @@ function targets() {
       ['daily, verbose', '#daily?v=full', '#daily-root .dr-sec'], ['daily Oklahoma, verbose', '#daily?st=ok&v=full', '#daily-root .dr-sec'], ['daily New Mexico, verbose', '#daily?st=nm&v=full', '#daily-root .dr-sec'],
       ['overview, federal offshore', '#overview?st=fo', '#hot-bars .bar-row'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
-      ['texas images', '#images', '#images-root .img-pack'],
+      ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
       ['permit data', '#fields', '#fields-root button.fx-c'], ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
     ];
     const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light' });

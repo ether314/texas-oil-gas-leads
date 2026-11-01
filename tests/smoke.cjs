@@ -13,10 +13,20 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..', 'site', 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 
+// the well archive is served from a fixture (tests/fixtures/wells.json), so these tests do not depend on what the nightly has published
+const WELLS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'wells.json'), 'utf8'));
+function wellsFile(p) {
+  if (p === '/data/wells/index.json') return WELLS.index;
+  const m = /^\/data\/wells\/county\/(\d{3})\.json$/.exec(p);
+  return m ? WELLS.counties[m[1]] || null : null;
+}
+
 function serve() {
   const server = http.createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (p.endsWith('/')) p += 'index.html';
+    const fixture = wellsFile(p);
+    if (fixture) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(fixture)); return; }
     const file = path.normalize(path.join(ROOT, p));
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -855,6 +865,112 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     }
     check(!errs.length, 'the Texas images view loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
+  }
+
+  // the well finder on the Texas images page (the archive is the fixture tests/fixtures/wells.json; the pictures are files of GitHub releases, answered here by a stub that sends them the way GitHub does:
+  // application/octet-stream, nosniff). An API number or a county opens a list, a well opens its documents by stage, a picture opens large; every address works as a deep link
+  for (const [label, w, h] of [['desktop', 1280, 900], ['phone', 390, 844]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    const asked = [];
+    await ctx.route('https://github.com/**', (route) => { asked.push(route.request().url()); route.fulfill({ status: 200, contentType: 'application/octet-stream', headers: { 'x-content-type-options': 'nosniff', 'content-disposition': 'attachment' }, body: Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCABTAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDsaKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA/9k=', 'base64') }); });
+    const page = await ctx.newPage();
+    const errs = [];
+    const asked404 = [];
+    page.on('response', (r) => { if (r.status() === 404 && /\/data\/wells\//.test(r.url())) asked404.push(r.url()); });
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const tag = 'the well finder, ' + label + ': ';
+    try {
+      await page.goto(base + '#images', { waitUntil: 'load' });
+      await page.waitForSelector('#wells-find .wells-chips a', { timeout: 25000 });
+      const top = await page.locator('#wells-find').innerText();
+      check(/3 wells in 2 counties/.test(top) && /8 documents/.test(top) && /the packs of Oct 29, 2026/.test(top), tag + 'the top says how many wells, documents and which packs are in the archive');
+      check((await page.locator('#wells-find select.wells-county option').count()) === 3 && (await page.locator('#wells-find .wells-chips a').count()) === 2, tag + 'every county with a well is a choice and a link');
+      await page.fill('#wells-find input.wells-q', '42-283-37830');
+      await page.click('#wells-find button[type=submit]');
+      await page.waitForSelector('#wells-find .well-doc', { timeout: 10000 });
+      check(/well=28337830/.test(await page.evaluate(() => location.hash)), tag + 'an API number opens its well and goes in the address');
+      check((await page.locator('#wells-find .img-stage').count()) === 3 && (await page.locator('#wells-find .well-doc').count()) === 6, tag + 'the well shows its three stages and its six documents');
+      const stages = await page.locator('#wells-find .img-stage').allInnerTexts();
+      check(/Permit[\s\S]*2/.test(stages[0]) && /Drilling[\s\S]*1/.test(stages[1]) && /Completion[\s\S]*3/.test(stages[2]), tag + 'the documents are under the stage they belong to');
+      await page.waitForFunction(() => [...document.querySelectorAll('#wells-find .well-thumb img')].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 10000 });
+      const thumbs = await page.evaluate(() => [...document.querySelectorAll('#wells-find .well-thumb img')].map((i) => i.getAttribute('src')));
+      check(thumbs.length === 5 && thumbs.every((s) => /^https:\/\/github\.com\/o\/r\/releases\/download\/wells-2026-10-29-(ci|ds|w1)-01\/28337830_[pdc]\d\.jpg$/.test(s)), tag + 'five of the six documents have a picture, loaded from the repository\'s releases (the page\'s own policy allows it): ' + thumbs.length);
+      const noPic = await page.locator('#wells-find .well-doc', { hasText: 'No picture could be drawn' }).count();
+      check(noPic === 1 && (await page.locator('#wells-find .well-doc', { hasText: 'No picture could be drawn' }).locator('a.btn').getAttribute('href')).endsWith('28337830_c2.tif'), tag + 'a document with no picture says so and offers only the download of the file as filed');
+      const text = await page.locator('#wells-find').innerText();
+      check(/Well 42-283-37830/.test(text) && /La Salle County/.test(text) && /District 01/.test(text) && /VERDUN OIL EF II LLC/.test(text) && /3 pages/.test(text) && !/(^|\D)0 pages|NaN|undefined|Infinity|\bnull\b/.test(text), tag + 'the well names its county, district, field and operator, and no figure is NaN or 0 pages');
+      check((await page.locator('#wells-find .well-lookups a').count()) === 3 && (await page.locator('#wells-find .well-lookups a').evaluateAll((a) => a.every((x) => /^https:\/\/(webapps2?|rrcsearch3)\./.test(x.href) && !/\d{8}/.test(x.href)))), tag + 'the Commission\'s own look-ups are linked, with no API number in their addresses');
+      await page.click('#wells-find .well-thumb >> nth=0');
+      await page.waitForSelector('dialog.well-viewer[open] img', { timeout: 5000 });
+      check(await page.evaluate(() => { const i = document.querySelector('dialog.well-viewer[open] img'); return i.complete && i.naturalWidth > 0; }), tag + 'a document opens large, over the page');
+      check((await page.locator('dialog.well-viewer[open] a.btn').getAttribute('href')).startsWith('https://github.com/o/r/releases/download/') && /public record/.test(await page.locator('dialog.well-viewer[open]').innerText()), tag + 'the large view links the whole document and says what the scan is');
+      await page.keyboard.press('Escape');
+      check((await page.locator('dialog.well-viewer[open]').count()) === 0, tag + 'Escape closes it');
+      const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+      check(dims.sw <= dims.cw, tag + 'no sideways scroll (' + dims.sw + ' of ' + dims.cw + ' px)');
+      // a county, by its chip, and by the start of an API number; a well from the list; back
+      await page.goto(base + '#images?c=283', { waitUntil: 'load' });
+      await page.waitForSelector('#wells-find a.well-row', { timeout: 15000 });
+      const rows = await page.locator('#wells-find a.well-row').allInnerTexts();
+      check(rows.length === 2 && /42-283-37830/.test(rows[0]) && /VERDUN/.test(rows[0]) && /operator 999999/.test(rows[1]), tag + 'a county lists its wells, the one with the most documents first; an operator that is not named shows its number');
+      await page.fill('#wells-find input.wells-q', '283-3');
+      await page.click('#wells-find button[type=submit]');
+      await page.waitForFunction(() => document.querySelectorAll('#wells-find a.well-row').length === 1, null, { timeout: 10000 });
+      check(/q=283/.test(await page.evaluate(() => location.hash)), tag + 'the start of an API number narrows the county and goes in the address');
+      await page.click('#wells-find a.well-row');
+      await page.waitForSelector('#wells-find .well-doc', { timeout: 10000 });
+      await page.goBack();
+      await page.waitForSelector('#wells-find a.well-row', { timeout: 10000 });
+      check(true, tag + 'back returns from a well to its county');
+      await page.goto(base + '#images?well=28337830', { waitUntil: 'load' });
+      await page.waitForSelector('#wells-find .well-doc', { timeout: 15000 });
+      check(true, tag + 'a well\'s address opens it directly');
+      await page.goto(base + '#images?well=28399999', { waitUntil: 'load' });
+      await page.waitForFunction(() => /None of the packs read so far/.test(document.querySelector('#wells-find').innerText), null, { timeout: 15000 });
+      check((await page.locator('#wells-find .well-lookups a').count()) === 3, tag + 'a well with no document in the archive says so, and points at the Commission\'s look-ups rather than saying it has none');
+      await page.goto(base + '#images?c=999', { waitUntil: 'load' });
+      await page.waitForFunction(() => /No document in the archive belongs to a well in county 999/.test(document.querySelector('#wells-find').innerText), null, { timeout: 15000 });
+      check(!asked404.length, tag + 'a county with no file says so, without asking for the file (no 404 in the console)');
+      await page.goto(base + '#images', { waitUntil: 'load' });
+      await page.waitForSelector('#wells-find input.wells-q', { timeout: 15000 });
+      await page.fill('#wells-find input.wells-q', 'x');
+      await page.click('#wells-find button[type=submit]');
+      await page.waitForFunction(() => /Type an API number/.test(document.querySelector('#wells-find').innerText), null, { timeout: 5000 });
+      check(true, tag + 'a search with nothing to go on says what to type');
+      await page.goto(base + '#images', { waitUntil: 'load' });
+      await page.waitForSelector('#images-root .img-pack, #images-root .nat-hit', { timeout: 25000 });
+      await page.waitForFunction(() => /documents are published under|packs of/.test(document.querySelector('#view-images').innerText), null, { timeout: 15000 });
+      check(!asked.some((u) => !/^https:\/\/github\.com\/o\/r\/releases\/download\/wells-\d{4}-\d\d-\d\d-(w1|ds|ci)-\d\d\/\d{8}_[pdc]\d+\.(jpg|pdf|tif)$/.test(u)), tag + 'the only outside addresses the page asked for are files of the repository\'s well releases');
+    } catch (e) {
+      check(false, tag + e.message.split('\n')[0].slice(0, 220));
+    }
+    check(!errs.length, tag + 'it loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // the finder with no archive: an empty one says the first packs are not read yet; one that cannot be loaded says so; the rest of the page still draws
+  {
+    for (const [label, handler] of [['empty', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ v: 1, generated: 'x', repo: 'o/r', keepDays: 92, units: [], counties: [], totals: { wells: 0, docs: 0, bytes: 0, stages: { p: 0, d: 0, c: 0 } } }) })],
+                                    ['missing', (route) => route.fulfill({ status: 404, body: 'not found' })]]) {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+      await ctx.route('**/data/wells/index.json', handler);
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+      try {
+        await page.goto(base + '#images', { waitUntil: 'load' });
+        await page.waitForSelector('#images-root .img-pack', { timeout: 25000 });
+        const t = await page.locator('#wells-find').innerText();
+        check(label === 'empty' ? /archive is empty so far/.test(t) && !/NaN|undefined/.test(t) : /could not be loaded/.test(t), 'the finder with ' + label + ' archive says so, and the rest of the page still draws');
+        check((await page.locator('#wells-find form').count()) === 0, 'and offers no search it cannot answer (' + label + ')');
+      } catch (e) {
+        check(false, 'the finder with ' + label + ' archive: ' + e.message.split('\n')[0].slice(0, 200));
+      }
+      check(!errs.length, 'the finder with ' + label + ' archive throws no error' + (errs.length ? ': ' + errs.join(' | ') : ''));
+      await ctx.close();
+    }
   }
 
   // the permit-data matrix: a cell, an agency and a metric each open their panel; the group tabs filter; no NaN
