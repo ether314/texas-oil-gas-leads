@@ -91,7 +91,7 @@ PACKS = {  # code: (stage letter, the Daily report's dataset id, label)
     "ci": ("c", "complimages", "completion images"),
 }
 STAGE_PACK = {v[0]: k for k, v in PACKS.items()}
-ORDER = ["ci", "ds", "w1"]  # the order a day's packs are done in: the largest tie is read first
+ORDER = ["w1", "ds", "ci"]  # the order a day's packs are done in: the small ones first, so a quota that runs short defers the big completion pack and not the others
 W1_MAIN = re.compile(r"subscriptions_(\d{4})-(\d\d)-(\d\d)\.zip")
 MDY_ZIP = re.compile(r"(\d\d)-(\d\d)-(\d{4})\.zip")
 CI_PATH = re.compile(r"[0-9A-Za-z]+/trackingNo_(\d+)(?:_Images_\w+)?/")
@@ -419,6 +419,39 @@ def quota_line():
         return None
 
 
+CALLS_PER_FILE = 2  # measured on 2026-11-01: 339 files cost 687 of the REST quota (4,995 left before, 4,308 after)
+RESERVE = 500  # calls left for the rest of the run, the site's own deploy included
+
+
+class QuotaLow(RuntimeError):
+    """The REST quota will not last for what is left to send and it does not reset in time: the pack is left for the next run (nothing is recorded for it)."""
+
+
+def quota():
+    """(calls left, reset time) of GitHub's REST quota for this token, or None when gh cannot say."""
+    try:
+        core = json.loads(d7_release._gh(["api", "rate_limit"], timeout=60, retry=False))["resources"]["core"]
+        return int(core["remaining"]), float(core["reset"])
+    except Exception:  # noqa: BLE001 - not knowing is not a reason to stop
+        return None
+
+
+def wait_for_quota(need, log=log):
+    """Returns once `need` calls are left. When fewer are, waits for the hourly reset if that fits the run's time; otherwise raises QuotaLow. Uploads cost about two calls a file and a day is
+    about 2,300 files, so one day alone can use the whole hour's 5,000 (the site's deploy was refused on 2026-11-01 for want of what the uploads had used)."""
+    for _ in range(2):
+        q = quota()
+        if q is None or q[0] >= need:
+            return
+        wait = max(5.0, q[1] - time.time() + 15)
+        room = (d7_release.DEADLINE - time.time() - 150) if d7_release.DEADLINE is not None else 3600
+        if wait > room:
+            raise QuotaLow("%d of GitHub's calls are left and about %d are needed; they reset in %d minutes, past this run's time" % (q[0], need, wait // 60))
+        log("GitHub's quota has %d calls left and about %d are needed: waiting %d minutes for its reset" % (q[0], need, wait // 60 + 1))
+        time.sleep(wait)
+    raise QuotaLow("GitHub's quota is still short after its reset")
+
+
 def tag_name(day, pack, n):
     return "wells-%s-%s-%02d" % (day.isoformat(), pack, n)
 
@@ -466,6 +499,8 @@ def publish_chunk(repo, tag, day, pack, folder, names, log=log):
     have = assets_state(repo, tag) if exists else {}
     new = [n for n in names if n not in have]
     changed = [n for n in names if n in have and not same_file(have[n], os.path.join(folder, n))]
+    if new or changed:
+        wait_for_quota(CALLS_PER_FILE * (len(new) + len(changed)) + RESERVE, log)
     upload_batches(repo, tag, folder, new, clobber=False)
     upload_batches(repo, tag, folder, changed, clobber=True)
     after = assets_state(repo, tag)
@@ -866,7 +901,12 @@ def run(a, io=None, now=None, log=log):
                 log("%s %s: about %d files would pass this run's %d (%d uploaded so far), left for the next run" % (u["day"], u["pack"], EST_FILES[u["pack"]], a.max_files, uploaded))
                 continue  # a smaller pack of an older day may still fit
             try:
+                if upload:
+                    wait_for_quota(RESERVE + 200, log)  # before a download of hundreds of megabytes: is there anything to send it with?
                 uploaded += do_unit(u, io, state, lk, repo, work, upload, cache, log)
+            except QuotaLow as e:  # not a failure: nothing was recorded for this pack, the files already sent stay, and the next run goes on from there
+                log("%s %s deferred: %s; the next run does it" % (u["day"], u["pack"], e))
+                break
             except Exception as e:  # noqa: BLE001 - one pack must not stop the next; nothing was recorded for it
                 failures += 1
                 log("%s %s FAILED: %s" % (u["day"], u["pack"], privacy_check.clean_error(e)))
