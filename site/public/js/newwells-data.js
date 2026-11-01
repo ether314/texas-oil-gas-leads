@@ -180,6 +180,94 @@ export function typicalDay(doc, iso, state = null) {
   const days = months.reduce((t, ym) => t + new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5), 0)).getUTCDate(), 0);
   return { perDay: wells / days, from: months[0], to: months[11], latest: start === si - 11 };
 }
+// ------------------------------------------------------------------------------------------------ what a set of wells looks like
+// The facts every state's disclosures carry for every well: where (a GPS point, a county), how deep (true vertical depth), how much water, whose land (federal or tribal), who drilled
+// (an operator that may be named). profile() reads them for any range of days and one state or all; the Daily report sets a day's profile against the twelve months around it.
+export const PAD_M = 150; // wells fractured the same day this close count as one pad (a point is rounded to about 11 m, and a pad's wellheads are a few meters apart)
+export const HOT_MILES = 10; // the "busiest spot" is the circle of this radius that holds the most of a day's wells
+export const POOL_GAL = 660430; // an Olympic swimming pool, 2,500 cubic meters, in U.S. gallons
+export const DEPTH_BANDS = [[0, 6000, 'Under 6,000'], [6000, 8000, '6,000 to 8,000'], [8000, 10000, '8,000 to 10,000'], [10000, 12000, '10,000 to 12,000'], [12000, Infinity, '12,000 and over']]; // feet, true vertical depth
+const DEG_M = 111320; // meters in a degree of latitude
+const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+// the wells' indexes over [d0, d1] for one state or all
+export function indexesOf(P, d0, d1, state = null) {
+  const si = state ? P.states.indexOf(state) : -1; const out = [];
+  for (let i = firstAtOrAfter(P, d0); i < P.n && P.day[i] <= d1; i++) if (si < 0 || P.s[i] === si) out.push(i);
+  return out;
+}
+// pads among the wells of ONE day (indexes): wells within PAD_M of each other, through any chain of neighbors, are one pad. Returns the number of pads.
+function padsOfDay(P, idx) {
+  const n = idx.length; if (n < 2) return n;
+  const root = idx.map((_, k) => k); const find = (k) => { while (root[k] !== k) { root[k] = root[root[k]]; k = root[k]; } return k; };
+  const lim = PAD_M * PAD_M; let pads = n;
+  for (let a = 0; a < n; a++) {
+    const ia = idx[a]; const cos = Math.cos((P.lat[ia] * Math.PI) / 180);
+    for (let b = a + 1; b < n; b++) {
+      const ib = idx[b]; const dy = (P.lat[ib] - P.lat[ia]) * DEG_M; const dx = (P.lon[ib] - P.lon[ia]) * DEG_M * cos;
+      if (dx * dx + dy * dy <= lim) { const ra = find(a); const rb = find(b); if (ra !== rb) { root[ra] = rb; pads--; } }
+    }
+  }
+  return pads;
+}
+// pads over any range: each day on its own (a pad fractured over several days is a pad each day)
+export function padsOf(P, idx) {
+  let pads = 0; let from = 0;
+  for (let k = 1; k <= idx.length; k++) if (k === idx.length || P.day[idx[k]] !== P.day[idx[from]]) { pads += padsOfDay(P, idx.slice(from, k)); from = k; }
+  return pads;
+}
+// the busiest spot of a set of wells (one day's): the well with the most others within HOT_MILES, as { n, of, county, state } (the county most of those wells are in), or null with under 3 wells
+export function hotSpot(P, idx, miles = HOT_MILES) {
+  const n = idx.length; if (n < 3) return null;
+  const lim = miles * 1609.344; const lim2 = lim * lim; let best = -1; let bestAt = -1;
+  const near = (a) => { const out = []; const cos = Math.cos((P.lat[a] * Math.PI) / 180); for (const b of idx) { const dy = (P.lat[b] - P.lat[a]) * DEG_M; const dx = (P.lon[b] - P.lon[a]) * DEG_M * cos; if (dx * dx + dy * dy <= lim2) out.push(b); } return out; };
+  for (let k = 0; k < n; k++) { const c = near(idx[k]).length; if (c > best) { best = c; bestAt = idx[k]; } }
+  if (best < 2) return null;
+  const counts = new Map(); for (const b of near(bestAt)) if (P.c[b] >= 0) counts.set(P.c[b], (counts.get(P.c[b]) || 0) + 1);
+  const top = [...counts].sort((a, b) => b[1] - a[1] || P.counties[a[0]][1].localeCompare(P.counties[b[0]][1]))[0];
+  return { n: best, of: n, county: top ? P.counties[top[0]][1] : null, state: top ? P.counties[top[0]][0] : stateOfPoint(P, bestAt) };
+}
+// profile(P, d0, d1, { state, hot }): everything the Daily report's numbers card shows, for the wells of the range. Depth and water are counted only over the wells that have one (`n` of each says how many),
+// an operator is named only when it may be (`unnamed` wells have none to name), nothing is a zero where the registry has no figure.
+export function profile(P, d0, d1, { state = null, hot = false } = {}) {
+  const idx = indexesOf(P, d0, d1, state); const n = idx.length;
+  const depths = []; const waters = []; const land = [0, 0, 0, 0]; const ops = new Map(); const cos = new Map(); const sts = new Set(); const band = DEPTH_BANDS.map(() => 0);
+  const weekday = new Array(7).fill(0); let unnamed = 0; let deepest = -1; let wettest = -1;
+  for (const i of idx) {
+    sts.add(P.s[i]); land[P.f[i] & 3]++;
+    if (P.c[i] >= 0) cos.set(P.c[i], (cos.get(P.c[i]) || 0) + 1);
+    if (P.o[i] >= 0) ops.set(P.o[i], (ops.get(P.o[i]) || 0) + 1); else unnamed++;
+    if (P.tvd[i]) { const ft = P.tvd[i] * 100; depths.push(ft); band[DEPTH_BANDS.findIndex(([lo, hi]) => ft >= lo && ft < hi)]++; if (deepest < 0 || P.tvd[i] > P.tvd[deepest]) deepest = i; }
+    if (P.h2o[i]) { waters.push(P.h2o[i] / 10); if (wettest < 0 || P.h2o[i] > P.h2o[wettest]) wettest = i; }
+    weekday[new Date(dayMs(P, P.day[i])).getUTCDay()]++;
+  }
+  const rank = (m, key) => [...m].map(([k, c]) => ({ key: k, n: c })).sort((a, b) => b.n - a.n || key(a.key).localeCompare(key(b.key)));
+  const where = (i) => (i < 0 ? null : { county: countyOf(P, i), state: stateOfPoint(P, i) });
+  const total = waters.reduce((a, b) => a + b, 0);
+  return {
+    n, states: sts.size, counties: cos.size, pads: padsOf(P, idx), hot: hot ? hotSpot(P, idx) : null,
+    depth: { n: depths.length, median: median(depths), max: deepest < 0 ? null : { ft: P.tvd[deepest] * 100, ...where(deepest) }, bands: band },
+    water: { n: waters.length, total, median: median(waters), max: wettest < 0 ? null : { mgal: P.h2o[wettest] / 10, ...where(wettest) }, pools: total * 1e6 / POOL_GAL },
+    land: { counts: land, federalOrTribal: n - land[0] },
+    operators: { named: ops.size, unnamed, top: rank(ops, (k) => P.ops[k]).slice(0, 5).map((r) => ({ label: P.ops[r.key], n: r.n })) },
+    topCounties: rank(cos, (k) => P.counties[k][1]).slice(0, 5).map((r) => ({ label: P.counties[r.key][1], state: P.counties[r.key][0], n: r.n })),
+    weekday,
+  };
+}
+// the months a day is set against, as day numbers inside the points: { d0, d1, from, to (ISO days), clipped } or null when the points hold none of them. `typicalDay` (the counts) names the
+// months; the points may hold fewer (the last two years only), so the range is cut to them and `clipped` says so.
+export function typicalRange(P, doc, iso) {
+  const t = typicalDay(doc, iso); const first = t.from + '-01'; const lastDay = dayIso(Date.UTC(+t.to.slice(0, 4), +t.to.slice(5), 0));
+  const d0 = Math.max(0, dayOfIso(P, first)); const d1 = Math.min(P.span, dayOfIso(P, lastDay));
+  if (d1 < d0) return null;
+  return { d0, d1, from: dayIso(dayMs(P, d0)), to: dayIso(dayMs(P, d1)), clipped: d0 > dayOfIso(P, first) || d1 < dayOfIso(P, lastDay) };
+}
+// how a day's count ranks among the days of a range: the share of those days that had fewer wells (0 to 1), for all states or one
+export function dayRank(P, d, d0, d1, state = null) {
+  const per = perDay(P, d0, d1, state); if (!per.length) return null;
+  const n = perDay(P, d, d, state)[0];
+  return { share: per.filter((v) => v < n).length / per.length, days: per.length, n };
+}
+
 // a state that has had a well since the series began, even if none in the last year (the Daily report can show it for an older day)
 export const drilled = (s) => s.new.some((v) => v > 0);
 // "Texas", "Texas and Ohio", "Texas, Ohio and Utah": the names behind a figure

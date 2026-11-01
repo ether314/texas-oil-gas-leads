@@ -1186,6 +1186,14 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     const head = () => page.locator('#daily-root .nat-panel h3').first().innerText();
     const tableHead = () => page.locator('#dd-table-h').innerText();
     const hash = () => page.evaluate(() => location.hash);
+    // the numbers card describes the wells the table lists: its pad line counts the same wells, its land line the same, and a day with none says so
+    const statsAgree = async (what) => {
+      const n = +(await tableHead()).match(/^([\d,]+) well/)[1].replace(/,/g, '');
+      if (!n) return (await page.locator('#daily-root .dd-stat').count()) === 0 && /nothing to describe/.test(await page.locator('#daily-root .dd-stats').innerText()) ? null : what + ': a day with no well should say there is nothing to describe, not draw six panels';
+      const pads = +(await page.locator('#daily-root .dd-pads .fine').first().innerText()).match(/^([\d,]+) wells? on/)[1].replace(/,/g, '');
+      const land = +(await page.locator('#daily-root .dd-land .fine').first().innerText()).match(/of ([\d,]+)/)[1].replace(/,/g, '');
+      return pads === n && land === n ? null : what + ': the numbers describe ' + pads + ' and ' + land + ' wells but the table lists ' + n;
+    };
     try {
       await page.goto(base + '?debug#daily', { waitUntil: 'load' });
       await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
@@ -1198,11 +1206,18 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(ink > 300, label + ': the map is drawn (' + ink + ' samples of ink)');
       const first = await page.locator('#daily-root .dd-date').innerText();
       const n0 = +(await tableHead()).match(/^([\d,]+) well/)[1].replace(/,/g, '');
+      const titles = await page.locator('#daily-root .dd-stat h3').allTextContents();
+      check(titles.join('|') === 'Where|Pads and spots|How deep|How much water|Whose land|Who drilled', label + ': the day in numbers has its six panels: ' + titles.join(', '));
+      check(!(await statsAgree(label + ' (opening day)')), (await statsAgree(label)) || label + ': the numbers describe the same wells as the table on the opening day');
+      const bars = await page.evaluate(() => [...document.querySelectorAll('#daily-root .dd-stat .nat-lb, #daily-root .dd-hbar')].map((b) => parseFloat(getComputedStyle(b).getPropertyValue('--p')) || 0));
+      check(bars.length >= 8 && bars.every((v) => v >= 0 && v <= 1.0001) && bars.some((v) => v === 1), label + ': the panels draw bars (' + bars.length + ') on a scale of 0 to 1, the longest full');
+      check(/Susquehanna|Lea|Eddy|Pecos|, [A-Z]{2}/.test(await page.locator('#daily-root .dd-where').innerText()) && /Typical/.test(await page.locator('#daily-root .dd-pads').innerText()) && /Olympic swimming pools/.test(await page.locator('#daily-root .dd-water').innerText()) && /federal or tribal/.test(await page.locator('#daily-root .dd-land').innerText()), label + ': the panels name where (county and state), set pads against a typical day, give water in pools and say whose land');
       check(n0 >= 10 && /Still filling in/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()), label + ': it opens on the newest day with ten or more wells (' + first + ', ' + n0 + ' wells), and says that day is still filling in');
       check(/typical settled day has about \d+\.\d/.test(await page.locator('#daily-root .nat-panel').innerText()), label + ': a day still filling in is set against a typical day and not called slow');
       // four ways to choose a day: the arrows, the slider, the date box, a bar of the chart
       await page.click('button[aria-label="The day before"]');
       check((await page.locator('#daily-root .dd-date').innerText()) !== first && /d=\d{4}-\d\d-\d\d/.test(await hash()), label + ': the arrow moves a day and writes it in the address');
+      check(!(await statsAgree(label + ' (day before)')), (await statsAgree(label + ' (day before)')) || label + ': the numbers follow the arrow: they describe the day\'s wells');
       await page.locator('#daily-root .tl-range').fill(await page.evaluate(() => String(document.querySelector('#daily-root .tl-range').min)));
       check(/Jun|May/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': the slider reaches the start of the chart: ' + (await page.locator('#daily-root .dd-date').innerText()));
       await page.fill('#daily-root input[type=date]', '2026-03-10'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
@@ -1215,11 +1230,13 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.waitForFunction(() => /in Texas$/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
       const states = await page.evaluate(() => [...document.querySelectorAll('#daily-root .table-wrap tbody tr td:first-child')].map((t) => t.textContent));
       check(/s=TX/.test(await hash()) && states.length > 0 && states.every((x) => x === 'Texas') && (await page.locator('#daily-root .dd-chartbox .nat-keys li').count()) === 1, label + ': choosing Texas keeps only Texas in the table and the chart (' + states.length + ' wells), and writes s=TX');
+      check(!(await statsAgree(label + ' (Texas)')) && /in Texas/.test(await page.locator('#daily-root .dd-where').innerText()), (await statsAgree(label + ' (Texas)')) || label + ': choosing Texas makes the numbers Texas\'s own');
       // a day with no well says none, rather than a figure the registry lacks
       await page.selectOption('#daily-root select.nw-pick', 'ND');
       await page.fill('#daily-root input[type=date]', '2026-06-24'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
       await page.waitForFunction(() => /^0 wells/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
       check(/No well had its first job this day/.test(await page.locator('#daily-root .nat-panel').innerText()) && /No well/.test(await page.locator('#daily-root #dd-table-h + div').innerText()), label + ': a day with no well in the chosen state says "No well", not a table of blanks');
+      check(!(await statsAgree(label + ' (empty day)')) && (await page.locator('#daily-root .dd-stats.is-empty').count()) === 1, (await statsAgree(label + ' (empty day)')) || label + ': a day with no well in the chosen state: the numbers say there is nothing to describe');
       // freshness: each state's newest well, and the producing states with none in the registry named, not counted as zero
       const fresh = await page.locator('#daily-root .nat-cov, #daily-root table').last().innerText();
       check(/Texas/.test(fresh) && /Days behind the newest/i.test(fresh) && /not counted as zero/.test(await page.locator('#daily-root').innerText()), label + ': the freshness table names each state\'s newest well and the states with none');

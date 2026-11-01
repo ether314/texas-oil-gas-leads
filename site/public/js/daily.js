@@ -9,6 +9,7 @@ import { showTip, hideTip, tipRow } from './tip.js';
 import * as G from './usgeo.js';
 import * as D from './newwells-data.js';
 import { createUSMap } from './usmap.js';
+import { renderStats } from './daily-stats.js';
 
 const put = (node, ...kids) => node.append(...kids.filter((k) => k != null && k !== false));
 const hdr = (eyebrow, ic, title, sub, tools) => el('div', { class: 'card-head' }, el('div', {}, el('p', { class: 'eyebrow' }, icon(ic, 15), eyebrow), el('h2', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null), tools || null);
@@ -81,7 +82,8 @@ export function createDailyView({ root }) {
     put(box, el('div', { class: 'nat-ph' }, el('h3', { text: weekday(ms(day)) + ', ' + dayLabel(ms(day)) }), el('span', { class: 'badge', text: late ? 'Still filling in' : 'Settled' })),
       el('p', { class: 'nat-agency', text: (sName || 'All states') + ' · counted by the day of the first job' }),
       el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(n) }), el('span', { text: n === 1 ? ' new well' : ' new wells' })));
-    const t = typ(); const tp = t.perDay; const then = n > tp * 1.5 ? '; this one is busier.' : n < tp * 0.5 ? '; this one is quieter.' : '; this one is about typical.';
+    const t = typ(); const tp = t.perDay; const rg = D.typicalRange(P, doc, iso(day)); const rk = rg && !late ? D.dayRank(P, day, rg.d0, rg.d1, sel) : null;
+    const then = (n > tp * 1.5 ? '; this one is busier' : n < tp * 0.5 ? '; this one is quieter' : '; this one is about typical') + (rk ? ', busier than ' + Math.round(rk.share * 100) + '% of those ' + fmt.format(rk.days) + ' days.' : '.');
     put(box, el('p', { class: 'fine', text: late
       ? 'A typical settled day has about ' + tp.toFixed(1) + '. This day is still being disclosed, so its count will rise: do not read it as a slow day.'
       : t.latest ? 'A typical day over the last 12 settled months has about ' + tp.toFixed(1) + then
@@ -97,8 +99,7 @@ export function createDailyView({ root }) {
         }))));
       }
     }
-    const land = idx.filter((i) => P.f[i]).length;
-    if (n) put(box, el('p', { class: 'fine', text: fmt.format(land) + ' of the ' + fmt.format(n) + (n === 1 ? ' well is' : ' wells are') + ' on federal or tribal land. Hover a dot for its well.' }));
+    if (n) put(box, el('p', { class: 'fine', text: 'Hover a dot for its well. The numbers below describe them.' }));
     else put(box, el('p', { class: 'nd', text: 'No well had its first job this day in the registry' + (late ? ' yet.' : '.') + ' It is shown as none, not as a figure the registry lacks.' }));
     return box;
   }
@@ -107,12 +108,19 @@ export function createDailyView({ root }) {
     const moved = followDay();
     map.setRange(lo, day);
     S.summary.replaceChildren(summary());
+    paintStats();
     S.date.textContent = weekday(ms(day)) + ', ' + dayLabel(ms(day));
     if (moved) drawChart(); else drawMarker();
     syncSlider();
     S.dateInput.value = iso(day);
     S.prev.disabled = ms(day) <= firstMs(); S.next.disabled = day >= dt.P.span;
     drawTable(); S.chips.forEach((b, id) => b.setAttribute('aria-pressed', String(id === sel))); if (S.pick) S.pick.value = sel || '';
+  }
+  // the numbers card: what the day's wells look like (daily-stats.js), for the chosen day and state
+  function paintStats() {
+    const r = renderStats({ P: dt.P, doc: dt.doc, day, sel, late: day > dt.settledDay });
+    S.statsSub.textContent = r.sub; S.statsSub.hidden = !r.sub;
+    S.stats.className = r.nodes.length > 1 ? 'dd-stats' : 'dd-stats is-empty'; S.stats.replaceChildren(...r.nodes);
   }
   // the chart and the slider hold 150 days: they stay while the chosen day is inside them and move to the 150 around it when it is not
   function followDay() {
@@ -283,8 +291,11 @@ export function createDailyView({ root }) {
     const chartHead = hdr('Day by day', 'chart', 'The last ' + CHART_DAYS + ' days, stacked by state', 'Wells by the day of their first job. Click a day, or page through the days with Earlier and Later, back to ' + monthLabel(raw.doc.months[0]) + '. The newest days are lighter: they are still being disclosed and will rise.', el('div', { class: 'card-tools' }, S.earlier, S.later));
     S.chartTitle = chartHead.querySelector('h2');
     const chartCard = el('section', { class: 'card nat-card reveal is-in' }, chartHead, S.chart, S.chartNote);
+    S.statsSub = el('p', { class: 'sub' }); S.stats = el('div', { class: 'dd-stats' });
+    const statsHead = hdr('The day in numbers', 'layers', 'What the day’s wells look like', null); statsHead.querySelector('h2').id = 'dd-stats-h'; statsHead.firstChild.append(S.statsSub);
+    const statsCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-stats-h' }, statsHead, S.stats);
     const tableCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-table-h' }, el('p', { class: 'eyebrow' }, icon('layers', 15), 'The wells'), S.tableHead, S.table);
-    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job.' })));
+    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, statsCard, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job.' })));
     drawChart();
   }
   // want: the day the address asks for, if any (a day before the last two years loads the earlier wells before the first paint)
