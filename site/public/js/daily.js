@@ -1,9 +1,9 @@
 // The Daily report: the new wells of one day, nationwide. Pick a day (the chart, the slider, the arrows or the date box) and see that day's wells on the map, which states they are in,
 // how it compares with a typical day, and every well in a table; below, who reported lately. The chart and the slider show 150 days; "Earlier" and "Later" page through them, back to
-// January 2011 (the earlier wells, about 2 MB, are fetched the first time a day before the last two years is asked for). Everything is drawn from data/newwells/ (FracFocus), the one source with the same facts for
+// January 2011 (the earlier wells, about 2 MB, are fetched the first time a day before the last two years is asked for); a strip of every month since 2011 above the chart marks those 150 days and opens any month with a click. Everything is drawn from data/newwells/ (FracFocus), the one source with the same facts for
 // every state that reports to it, so nothing here is a figure only some states have. A well is dated by the day of its first fracturing job; operators disclose weeks to months later, so
 // the newest days are still filling in and say so. The permits each agency approves, by its own count, are the National page.
-import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, dayLabel, reduced } from './util.js';
+import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, dayLabel, reduced, chartWidth } from './util.js';
 import { icon } from './icons.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import * as G from './usgeo.js';
@@ -140,14 +140,16 @@ export function createDailyView({ root }) {
     S.win = clampWin((winMs - dt.P.t0) / DAY_MS);
     setDay((dayMs - dt.P.t0) / DAY_MS); drawChart();
   }
+  // the message goes to both places a click can come from: the day card and the strip above the chart (the card may be off the screen)
+  const say = (text) => { for (const n of [S.status, S.yStatus]) if (n) n.textContent = text; };
   async function widen(focusKey) {
     if (dt.full) return true;
     if (busy) return false;
     busy = true;
     const keepDay = iso(day); const keepWin = iso(S.win);
-    if (S.status) S.status.textContent = 'Loading the earlier wells (about 2 MB)…';
+    say('Loading the earlier wells (about 2 MB)…');
     try { await loadFull(); } catch (e) {
-      if (S.status) S.status.textContent = 'Could not load the earlier wells. Check the connection and try again.';
+      say('Could not load the earlier wells. Check the connection and try again.');
       busy = false; return false;
     }
     if (map) map.destroy();
@@ -205,6 +207,7 @@ export function createDailyView({ root }) {
     return { series: [...colored.map((id) => ({ id, name: names[id], color: D.colorOf(id), values: byState.get(id) || new Array(n).fill(0) })), { id: 'other', name: 'Other states', color: D.OTHER_COLOR, values: other }], n };
   }
   function drawChart() {
+    drawYears();
     const { P } = dt; const cd = chartData(); const W = 720; const H = 230; const L = 40; const R = 6; const T = 10; const B = 26;
     const tot = new Array(cd.n).fill(0); cd.series.forEach((s) => s.values.forEach((v, i) => { tot[i] += v; }));
     const tp = typ(); const { top, ticks } = D.niceTop(Math.max(...tot, tp.perDay * 1.1, 1));
@@ -240,6 +243,49 @@ export function createDailyView({ root }) {
     if (!S.marker || !S.chartData) return;
     const i = day - S.win; const { slot, L } = S.chartData;
     S.marker.setAttribute('x', (L + slot * i - (Math.max(3, slot) - slot) / 2).toFixed(1)); S.marker.style.display = i >= 0 && i <= S.chartData.cd.n - 1 ? '' : 'none';
+    markYears();
+  }
+
+  /* ---------- every month since 2011: one bar a month, the chart's 150 days marked, a click opens the month ---------- */
+  // Drawn from summary.json, which holds every month from the start, so the strip costs no download; a click on a month before the last two years fetches the earlier wells like the date box does.
+  // It is drawn at the width the page has and again when the state or the width changes (`yKey`, `yW`); the band and the day line move without redrawing (`markYears`).
+  function drawYears() {
+    const { doc } = dt; const W = chartWidth(S.years, 1200);
+    if (S.yKey === (sel || '') && Math.abs(W - S.yW) <= 24) return;
+    S.yKey = sel || ''; S.yW = W;
+    S.yCap.textContent = 'Every month since ' + monthLabel(doc.months[0]) + (sel ? ' in ' + (D.byId(doc, sel) || {}).name : ', all states') + '. The band is the ' + CHART_DAYS + ' days below; click a month to open it.';
+    const months = doc.months; const n = months.length; const names = Object.fromEntries(doc.states.map((s) => [s.id, s.name]));
+    const series = sel ? [{ id: sel, name: names[sel], color: D.colorOf(sel), values: D.byId(doc, sel).new }] : D.stack(doc, n).series;
+    const totals = months.map((_, i) => series.reduce((t, s) => t + s.values[i], 0));
+    const { top } = D.niceTop(Math.max(...totals, 1));
+    const H = W < 500 ? 78 : 92; const L = 40; const R = 6; const T = 8; const B = 20;
+    const slot = (W - L - R) / n; const bw = Math.max(1, slot * 0.8); const y = (v) => T + (H - T - B) * (1 - v / top);
+    const settledAt = months.indexOf(doc.settled.slice(0, 7));
+    const g = svg('svg', { class: 'nat-chart dd-ychart', viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img', 'aria-label': 'New wells by month, ' + monthLabel(months[0]) + ' to ' + monthLabel(months[n - 1]) + (sel ? ' in ' + names[sel] : ', all states') + '. The band marks the days of the chart below. Click a month to open it, or use the date box, the arrows, Earlier and Later.' });
+    g.append(svg('line', { class: 'grid', x1: L, x2: W - R, y1: y(top), y2: y(top) }), svg('text', { class: 'ax', x: L - 6, y: y(top) + 4, 'text-anchor': 'end', text: stat(top) }),
+      svg('line', { class: 'base', x1: L, x2: W - R, y1: y(0), y2: y(0) }), svg('text', { class: 'ax', x: L - 6, y: y(0) + 4, 'text-anchor': 'end', text: '0' }));
+    const every = Math.max(1, Math.ceil(36 / (slot * 12))); const y0 = +months[0].slice(0, 4); // a year label every `every` years: as many as fit
+    months.forEach((ym, i) => {
+      const x = L + slot * i; let acc = 0; const late = i > settledAt;
+      series.forEach((s) => { const v = s.values[i]; if (!v) return; const seg = svg('rect', { class: 'dd-yseg' + (late ? ' is-late' : ''), x: (x + (slot - bw) / 2).toFixed(1), width: bw.toFixed(1), y: y(acc + v).toFixed(1), height: Math.max(0.5, y(acc) - y(acc + v)).toFixed(1) }); seg.style.setProperty('--c', s.color); g.append(seg); acc += v; });
+      if (ym.slice(5) === '01' && (+ym.slice(0, 4) - y0) % every === 0) g.append(svg('text', { class: 'ax', x: x + slot / 2, y: H - 5, 'text-anchor': 'middle', text: ym.slice(0, 4) }));
+      const hit = svg('rect', { class: 'nat-hit', x: x.toFixed(1), y: T, width: slot.toFixed(1), height: H - T - B });
+      hit.addEventListener('pointermove', (e) => showTip([el('div', { class: 'tip-head', text: monthLabel(ym) }), ...series.filter((s) => s.values[i]).slice().reverse().map((s) => tipRow(fmt.format(s.values[i]), s.name)), series.length > 1 ? tipRow(fmt.format(totals[i]), 'in all') : null, late ? tipRow('Still filling in', 'disclosures arrive late') : null, tipRow('Click to open ' + monthLabel(ym), '')].filter(Boolean), e.clientX, e.clientY));
+      hit.addEventListener('pointerleave', hideTip);
+      hit.addEventListener('click', () => { hideTip(); goTo(Date.parse(ym + '-01T00:00:00Z')); });
+      g.append(hit);
+    });
+    S.yWin = svg('rect', { class: 'dd-ywin', y: T - 3, height: H - T - B + 3 }); S.yDay = svg('line', { class: 'dd-yday', y1: T - 3, y2: H - B });
+    g.append(S.yWin, S.yDay);
+    S.yAxis = { L, slot };
+    S.years.replaceChildren(g);
+  }
+  function markYears() {
+    if (!S.yWin || !S.yAxis || !S.yWin.isConnected) return;
+    const { L, slot } = S.yAxis; const { doc } = dt; const nWin = Math.min(CHART_DAYS, dt.P.span - S.win + 1);
+    const x0 = L + slot * D.monthPos(doc, iso(S.win)); const x1 = L + slot * D.monthPos(doc, D.dayIso(ms(S.win) + nWin * DAY_MS)); const w = Math.max(3, x1 - x0);
+    S.yWin.setAttribute('x', (x0 - (w - (x1 - x0)) / 2).toFixed(1)); S.yWin.setAttribute('width', w.toFixed(1));
+    const xd = (L + slot * D.monthPos(doc, iso(day))).toFixed(1); S.yDay.setAttribute('x1', xd); S.yDay.setAttribute('x2', xd);
   }
 
   /* ---------- the wells of the day, as a table (the map's twin) ---------- */
@@ -280,11 +326,14 @@ export function createDailyView({ root }) {
     const dayCardEl = dayCard();
     S.earlier = el('button', { type: 'button', class: 'btn', onclick: () => page(-1) }, icon('arrow', 16, 'dd-back'), 'Earlier');
     S.later = el('button', { type: 'button', class: 'btn', onclick: () => page(1) }, 'Later', icon('arrow', 16));
-    const chartHead = hdr('Day by day', 'chart', 'The last ' + CHART_DAYS + ' days, stacked by state', 'Wells by the day of their first job. Click a day, or page through the days with Earlier and Later, back to ' + monthLabel(raw.doc.months[0]) + '. The newest days are lighter: they are still being disclosed and will rise.', el('div', { class: 'card-tools' }, S.earlier, S.later));
+    const chartHead = hdr('Day by day', 'chart', 'The last ' + CHART_DAYS + ' days, stacked by state', 'Wells by the day of their first job. Click a month on the strip to go straight there, a day to open it, or page with Earlier and Later, back to ' + monthLabel(raw.doc.months[0]) + '. The newest days are lighter: they are still being disclosed and will rise.', el('div', { class: 'card-tools' }, S.earlier, S.later));
     S.chartTitle = chartHead.querySelector('h2');
-    const chartCard = el('section', { class: 'card nat-card reveal is-in' }, chartHead, S.chart, S.chartNote);
+    S.years = el('div', { class: 'dd-years' }); S.yStatus = el('p', { class: 'fine nw-status', role: 'status' }); S.yKey = null;
+    S.yCap = el('p', { class: 'fine dd-ycap' });
+    const yearsBox = el('div', { class: 'dd-yearsbox' }, S.yCap, S.yStatus, S.years);
+    const chartCard = el('section', { class: 'card nat-card reveal is-in' }, chartHead, yearsBox, S.chart, S.chartNote);
     const tableCard = el('section', { class: 'card nat-card reveal is-in', 'aria-labelledby': 'dd-table-h' }, el('p', { class: 'eyebrow' }, icon('layers', 15), 'The wells'), S.tableHead, S.table);
-    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job.' })));
+    root.replaceChildren(el('div', { class: 'stack' }, figures(), dayCardEl, chartCard, tableCard, lately(), el('p', { class: 'fine', text: 'Public records only: place- and market-level counts, no individuals. Source: the FracFocus registry, read weekly; each well is dated by its first fracturing job. A few wells in a thousand have no usable GPS point: they are in the months and the typical day, but not on the map or in a day\'s count.' })));
     drawChart();
   }
   // want: the day the address asks for, if any (a day before the last two years loads the earlier wells before the first paint)
@@ -299,6 +348,12 @@ export function createDailyView({ root }) {
     return true;
   }
 
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (dt && S.years && S.years.isConnected && S.years.clientWidth) { drawYears(); markYears(); } }, 150);
+  });
+
   return {
     // the address: #daily?d=2026-08-12&s=TX
     async activate(params) {
@@ -311,6 +366,7 @@ export function createDailyView({ root }) {
       else if (!S.shown) setDay(dt.start, { fromHash: true });
       else paintDay();
       S.shown = true;
+      if (S.years && S.years.isConnected) { drawYears(); markYears(); } // the strip is drawn at the width the page has now (the view may have been hidden when it was first drawn)
     },
     deactivate() { hideTip(); },
   };
