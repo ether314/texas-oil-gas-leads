@@ -9,8 +9,9 @@ the day the permit was approved (2026.02.04_... or 20211002_...). This reads the
 What was checked before relying on the file-name date (2026-11-01, by reading the signed permits themselves, and against the Commission's own quarterly reports):
   - for six of the eight permits since 2019 the name's date is the approval letter's date (or the form's own "Approval Date"), to the day or within two days;
   - for two it is NOT: the posted file is the permit as AMENDED (its first pages are the amendment's approval letter, dated Sept 13 and Dec 24, 2021), and the original approval is earlier in the same
-    PDF (June 16 and Nov 17, 2021). The Commission's quarterly "APDs approved" counts agree with the originals (June 2021: 1, Nov 2021: 1). Handwriting cannot be read by a script, so those two
-    dates are written down here (`ORIGINAL_APPROVAL`, keyed by the amended file's date), each held to the page's own creation date (WordPress makes a well's page the day it posts its permit);
+    PDF (June 16 and Nov 17, 2021; the first amendment letter itself says "permitted ... on June 16, 2021"). The Commission's quarterly "APDs approved" counts agree with the originals (June 2021: 1,
+    Nov 2021: 1). A script cannot read those letters, so the two dates are written down here (`ORIGINAL_APPROVAL`, keyed by the amended file's date), each held to the page's own creation date
+    (WordPress makes a well's page the day it posts its permit);
   - a posted file that is a later version (its name or link says revised or amended, or its date is more than 5 days after its page was made or more than 60 before it) with no entry in that
     table FAILS the run, naming the date to look up: a new amended permit must be read by a person, never guessed.
 
@@ -158,7 +159,7 @@ def build(get=C.polite_get, today=None, pause=PAUSE, old_total=None):
     index = get(INDEX, max_bytes=2_000_000).decode("utf-8", "replace")
     urls = parse_index(index)
     edited = re.search(META % "modified", index)
-    permits, dated, undated = [], 0, 0
+    permits, dated = [], 0
     for url in urls:
         time.sleep(pause)
         w = parse_well(get(url, max_bytes=1_000_000).decode("utf-8", "replace"), today)
@@ -170,7 +171,6 @@ def build(get=C.polite_get, today=None, pause=PAUSE, old_total=None):
         if fday is None:
             if w["created"] is None or w["created"] >= IMPORT_END:
                 raise RuntimeError("a new well page links a permit to drill whose file name has no date: it cannot be placed in a month")
-            undated += 1
             continue
         dated += 1
         day = approval_day(fday, revised, w["created"])
@@ -187,14 +187,16 @@ def build(get=C.polite_get, today=None, pause=PAUSE, old_total=None):
     for day, county, operator in permits:
         t.add(day, "new", county=county, operator=operator_name(operator))
     newest = max(d for d, _c, _o in permits)
-    note = ("Permits to drill, by the day the Commission approved each one: the date at the start of the Permit to Drill file linked from each well's page on its Well and Facilities Files list, checked "
-            "against the signed permits and the Commission's own quarterly counts (two permits whose posted file is an amended version are counted at their first approval). Idaho approves only "
-            "about one a year, so a month with none is a real zero. Only permits to drill are counted: amendments, well treatments, seismic permits and injection permits are not available as dated "
-            "records, and a permit that expired before a well was drilled has no page. Pages are posted within days to two weeks of approval, so the last 30 days are not shown.")
+    note = ("Permits to drill, by the day the Commission approved each one: the date at the start of the Permit to Drill file linked from each well's page on its Well and Facilities Files list, "
+            "checked against the signed permits and the Commission's quarterly counts. Two permits whose posted file is an amended version are counted at their first approval. Amendments, well "
+            "treatments, seismic and injection permits are not available as dated records, and a permit that expired before a well was drilled has no page. Pages are posted within days to "
+            "two weeks of approval, so the last 30 days are not shown.")
     doc = t.document(agency="Idaho Department of Lands, Oil and Gas Conservation Commission", source_name="Well and Facilities Files (one page per well, with its Permit to Drill)", source_url=INDEX,
                      basis="approval date", cadence="irregular (a permit is posted within days of its approval)", measure="permits", lag_days=LAG_DAYS, asof=today, note=note)
-    if C.month_of(newest) < doc["through"][:7]:
-        doc["note"] = "The newest permit on the Commission's list was approved %s; every month since is a real zero as the list shows it. " % long_day(newest) + doc["note"]
+    last = C.month_end(doc["months"][-1])
+    lead = "Idaho approves very few: %d permits to drill from January 2019 to %s%s, so a month with none is a real zero. " % (
+        sum(doc["bands"]["new"]), "%s %d" % (last.strftime("%B"), last.year), (", the newest on " + long_day(newest)) if C.month_of(newest) <= doc["through"][:7] else "")
+    doc["note"] = lead + doc["note"]
     if edited:
         e = C.parse_day(edited.group(1), today)
         if e:

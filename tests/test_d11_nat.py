@@ -220,11 +220,11 @@ next(s for s in holey["states"] if s["id"] == "BL")["bands"]["new"][-20] = None
 check(B.validate(holey), "a gap inside a state's months (a null between figures) is refused")
 check(nat["months"][-1] == "2026-09" and ak["through"].startswith("2026-07"), "the axis runs to the newest month any state reaches")
 check(ak["mix12"]["new"] == ak["p12"] and ak["mix12"].get("redrill") is None, "the mix covers only the bands the state can tell")
-research = {"states": {"UT": {"agency": {"name": "DOGM"}, "grade": "D", "grade_reason": "blocked"}, "CO": {"agency": {"name": "ECMC"}, "grade": "D", "grade_reason": "I tried from this machine and it answered 403"}}}
+research = {"states": {"UT": {"agency": {"name": "DOGM"}, "grade": "D", "grade_reason": "blocked"}, "MO": {"agency": {"name": "MoDNR"}, "grade": "B", "grade_reason": "I tried from this machine and it answered 403"}}}
 gaps = {g["id"]: g for g in B.build(docs, research, today)["gaps"]}
 check(gaps["UT"]["agency"] == "DOGM" and gaps["UT"]["grade"] == "D" and gaps["UT"]["why"] == "blocked", "a gap carries the research's agency, grade and reason")
-check(gaps["CO"]["why"] == B.GAP_WHY["CO"] and "machine" not in gaps["CO"]["why"], "a gap with a visitor's reason (GAP_WHY) shows that and not the researchers' account of what they tried")
-check(B.build(docs, {}, today)["hasFields"] is False and B.build(docs, {"states": {"CO": {}}}, today)["hasFields"] is True, "hasFields says whether the matrix file exists")
+check(gaps["MO"]["why"] == B.GAP_WHY["MO"] and "machine" not in gaps["CO"]["why"], "a gap with a visitor's reason (GAP_WHY) shows that and not the researchers' account of what they tried")
+check(B.build(docs, {}, today)["hasFields"] is False and B.build(docs, {"states": {"MO": {}}}, today)["hasFields"] is True, "hasFields says whether the matrix file exists")
 bad = copy.deepcopy(nat)
 bad["totals"]["permits12"] += 1
 check(B.validate(bad), "the merge validator notices totals that do not add")

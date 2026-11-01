@@ -216,7 +216,7 @@ check(all(doc["bands"][b] is None for b in ("inj", "redrill", "rework", "amend",
 check(sum(new[-24:]) == 3 and "zeroOk" not in doc, "three permits in the last 24 months: an ordinary file, no zeroOk")
 check(doc["counties"] == [["Payette", 2], ["Canyon", 1]], "counties of the last 12 months, ranked: %s" % doc["counties"])
 check(doc["operators"] == [["SNAKE RIVER OIL AND GAS LLC", 2], ["INVENTED EXPLORATION LLC", 1]] and doc["namedShare"] == 1.0, "the page's 'Snake River O&G' is counted under the company's name; both operators are named: %s" % doc["operators"])
-check("approved May 22, 2026" in doc["note"] and "real zero" in doc["note"] and "last 30 days" in doc["note"] and "last edited June 4, 2026" in doc["note"], "the note says when the newest permit was approved, that zeros are real, the lag and when the list was edited")
+check("8 permits to drill from January 2019 to September 2026, the newest on May 22, 2026" in doc["note"] and "real zero" in doc["note"] and "last 30 days" in doc["note"] and "last edited June 4, 2026" in doc["note"], "the note says how many permits, when the newest was approved, that zeros are real, the lag and when the list was edited")
 text = json.dumps(doc)
 scrubbed = text.replace("INVENTED EXPLORATION LLC", "")
 check(not re.search(r"(?i)invented|old-|bridge|mineral|11-999|1199900|uswn|\(208\)|idl\.idaho|boise", scrubbed), "no well name, lease, API number, address or phone reaches the output (only the operator's company name)")
@@ -248,7 +248,7 @@ for k in ("invented-20004", "invented-20041", "invented-20042"):
     quiet.pop(slug(n, k))
 dq = run(Net(quiet), today=date(2025, 10, 15))
 check(C.validate(dq, date(2025, 10, 15)) == [] and sum(dq["bands"]["new"][-24:]) == 0 and dq.get("zeroOk") is True, "two years with no permit (to September 2025) are real zeros and the document says so (zeroOk)")
-check(dq["counties"] == [] and dq["operators"] == [] and dq["namedShare"] is None and "approved September 27, 2022" in dq["note"], "no county or operator in the quiet window; the note names the newest permit's day")
+check(dq["counties"] == [] and dq["operators"] == [] and dq["namedShare"] is None and "the newest on September 27, 2022" in dq["note"], "no county or operator in the quiet window; the note names the newest permit's day")
 check(raises(lambda: run(Net({k: v for k, v in list(quiet.items())[:20]})), "cut short"), "but a list cut to 20 wells never gets that far: it fails the run")
 
 # ------------------------------------------------------------------------------------------------ the older wells: no date, no permit, a later page
