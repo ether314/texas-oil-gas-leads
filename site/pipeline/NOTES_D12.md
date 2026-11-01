@@ -35,11 +35,11 @@ Sidetracks are not told apart: the API number of the first ten digits (`42-283-3
 `site/public/data/wells/index.json`: the packs done (`units`: day, pack `w1|ds|ci`, name and size of the zip, documents held, `tied`, `untied`, `rejected`, wells, release tags), the counties
 (`[fips, name, wells, documents]`), the totals and `repo` (which the page builds addresses from). `county/<fips>.json`: `tags` (the releases this county's documents are in) and `wells`: API number
 `a`, field `fl`, district `di`, operator number `o` and name `on` (only a corporation, LLC or limited partnership: `operators.json`'s rule, as everywhere), and `docs`: day `d`, stage `s`
-(`p` permit, `d` drilling, `c` completion), kind `k`, pages `pg` (null when poppler could not count them: never 0), bytes `b`, `x` pdf or tif, file stem `f`, release `t` (an index into `tags`), picture `v`.
+(`p` permit, `d` drilling, `c` completion), kind `k`, pages `pg` (null when poppler could not count them: never 0), bytes `b`, `x` pdf, tif or png, file stem `f`, release `t` (an index into `tags`), picture `v`.
 About 0.3 MB of JSON a day (59 county files for 219 wells on 10-29).
 
-Releases: `wells-<day>-<pack>-<nn>` (pre-release, never "latest"), at most **800 files** each because a release holds 1000: `<api>_<p|d|c><n>.pdf|tif` is the document **as filed** (copied byte for byte, only
-after the PDF or TIFF signature is checked; never renamed from the pack: those names carry lease and well names) and `<api>_<p|d|c><n>.jpg` is page one, 1000 px wide, JPEG quality 60 and lower until it is under
+Releases: `wells-<day>-<pack>-<nn>` (pre-release, never "latest"), at most **800 files** each because a release holds 1000: `<api>_<p|d|c><n>.pdf|tif|png` is the document **as filed** (copied byte for byte, only
+after the PDF or TIFF signature is checked; never renamed from the pack: those names carry lease and well names; a scan the Commission saved as `.tif` that is really a PNG is kept as `.png`, see below) and `<api>_<p|d|c><n>.jpg` is page one, 1000 px wide, JPEG quality 60 and lower until it is under
 330 KB, no EXIF. A day of 1,134 documents is 3 releases and about 0.9 GB (the 10-29 packs: 31 MB W-1, 28 MB surveys, 306 MB completions zipped; 450 MB of documents and about 160 MB of pictures once opened).
 A file GitHub serves from `releases/download/` is `application/octet-stream` with `nosniff` and a download disposition; an `<img>` still draws it (checked in Chromium with those headers on another origin: the `smoke.cjs` stub
 sends them the same way), and a link to the document downloads it.
@@ -72,7 +72,7 @@ county and the index say, totals add up, only nameable operators, no e-mail, web
 
 ## The first real run (2026-11-01, dispatched by hand: run 1 of `well-images.yml`)
 
-Proved against GitHub: the completion pack of 2026-10-30 (1,060 documents: 1,057 tied to 152 wells, 3 refused as not a PDF or TIFF) was uploaded in three releases of 800, 800 and 514 files in about 7 minutes, every file confirmed, the county files
+Proved against GitHub: the completion pack of 2026-10-30 (1,060 documents: 1,057 tied to 152 wells, 3 refused as not a PDF or TIFF: they were PNG files named .tif, kept since 2026-11-01, see the end) was uploaded in three releases of 800, 800 and 514 files in about 7 minutes, every file confirmed, the county files
 committed and the site published; on the live site an `<img>` of those release files draws (1000 px wide, the large view too) under the page's Content-Security-Policy, with no console error.
 Found: **every download after the first failed** (`HTTP 500`, `ViewExpiredException`): a share's page expires after a few minutes idle and the sessions had been opened before the 7-minute upload. `Shares` now opens a new session and
 reads the listing again before every download (`tests/test_d12_wells.py` replays the expiry, and a mutant that reuses the listing's session is caught). The run ended red, as designed: what was uploaded and recorded was committed, and the failed packs
@@ -93,3 +93,13 @@ would pass the cap is left for the next run (a smaller one of an older day may s
 The producer was run on the real packs of 2026-10-29 (downloaded once from the Commission, a few requests): 1,130 documents tied to 219 wells in 54 s, `--check` clean, previews read at 100% (a W-2 form is legible down to its
 fine print). `tests/test_d12_wells.py` (ties, numbering, staging, chunks, whole runs with the network and `gh` faked, a failed upload, aged-out days, the check against 17 faults, mutants),
 `tests/test_workflow_wells.py`, the JS data tests, `smoke.cjs` (the finder with the fixture archive, an empty one and a missing one) and `a11y.cjs` cover it. The first scheduled run, and the first real upload to GitHub, are unproven.
+
+## A PNG saved as .tif (fixed 2026-11-01)
+
+The first real run refused 3 of the 1,060 completion documents of 2026-10-30 (`rejected: 3`): files named `.tif` whose first bytes are a PNG's (the Commission's system saved them under the wrong name). The PDF-or-TIFF signature check is right to refuse a name that does not
+match its content, so the fix keeps the check and teaches it this one case: a `.tif` or `.tiff` member that starts with the PNG signature is kept byte for byte under a `.png` name (`ALLOWED`, `sniff` in `d12_wells.py`; a PNG under a `.pdf` name, or anything else that is not what its name says, is still refused),
+its page one is drawn by Pillow like a TIFF's, and its entry says `x: png` (the check, the page's address builder and the label all accept it). No other member's handling changed, and `d7_packs.copy_member` only gained an optional table of signatures (the drill pages' staging passes none).
+Staged on the real 10-30 pack with the completion ties faked (no download of the data zip): 1,060 kept, 0 refused, 3 PNGs (113,614, 108,654 and 269,120 bytes), every preview drawn, in 76 s.
+
+Packs recorded before the fix with refusals (`rejected > 0`) have no `rules` in their unit, and a unit is `done` only if it refused nothing or was recorded under the current `RULES` (now 2): so the next daily run reads the 10-30 completion pack once more (about 0.5 GB down and the same up, like any pack the Commission replaces) and publishes the three. A pack that still refuses something after that (a document that is genuinely not a document) is
+recorded with `rules: 2` and is not read again. Bump `RULES` when a rule starts accepting something it refused, never otherwise.

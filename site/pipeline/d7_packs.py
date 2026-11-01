@@ -245,11 +245,13 @@ W1_KINDS = {"w1": "W1", "plat": "Plat"}
 ISO_DAY = re.compile(r"\d{4}-\d\d-\d\d")
 
 
-def copy_member(zf, info, dest):
-    """Write one member to dest and return its size, or None (and no file) when it is too big or is not what its extension says.
+def copy_member(zf, info, dest, magic=None):
+    """Write one member to dest and return its size, or None (and no file) when it is too big or is not what its extension says
+    (`magic` maps an extension to the first bytes a file of that name may start with; MAGIC when None).
     Names are made up by the caller, never taken from the pack, so nothing in the pack can pick a path."""
+    magic = MAGIC if magic is None else magic
     ext = os.path.splitext(info.filename)[1].lower()
-    if info.file_size > MAX_ASSET or ext not in MAGIC:
+    if info.file_size > MAX_ASSET or ext not in magic:
         return None
     written, head = 0, b""
     try:
@@ -264,7 +266,7 @@ def copy_member(zf, info, dest):
                 if written > MAX_ASSET:
                     raise ValueError("unpacks past the limit")
                 dst.write(chunk)
-        if head not in MAGIC[ext]:
+        if head not in magic[ext]:
             raise ValueError("not a %s file" % ext)
     except (OSError, ValueError, zipfile.BadZipFile, zlib.error):
         if os.path.exists(dest):

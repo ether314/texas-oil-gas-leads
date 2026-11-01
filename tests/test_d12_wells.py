@@ -627,6 +627,79 @@ with tempfile.TemporaryDirectory() as tmp:
         caught = True
     check(caught, "mutant caught: a download on the session opened for the listing meets the expired view the first real run met")
 
+# ------------------------------------------------------------------------------------------------ a PNG saved as .tif
+# Found on the real completion pack of 2026-10-30: 3 of its 1,060 documents were refused because they are PNG files named .tif. They are now kept, as .png (what their content is).
+
+def png_bytes():
+    b = io.BytesIO()
+    page(w=600, h=800).save(b, "PNG")
+    return b.getvalue()
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    path = os.path.join(tmp, "ci.zip")
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("01/trackingNo_777/ODOM scan saved as a TIF.tif", png_bytes())  # a PNG under a .tif name
+        z.writestr("01/trackingNo_777/Another scan.TIFF", png_bytes())  # and under .tiff, in capitals
+        z.writestr("01/trackingNo_777/Real plat.tif", tif_bytes())  # a real TIFF stays a TIF
+        z.writestr("01/trackingNo_777/cmpl_W2Form_PID_777.pdf", png_bytes())  # a PNG under a .pdf name is still refused
+        z.writestr("01/trackingNo_777/Garbage.tif", b"this is nothing at all")  # so is garbage under a .tif name
+        z.writestr("01/trackingNo_777/cmpl_P4Form_PID_777.pdf", pdf_bytes())
+    ties = {"777": {"api": "28337830", "district": "01", "op": NAMEABLE, "field": None}}
+    for label, table in (("with the table", W.ALLOWED), ("without it (the bug)", dict(W.d7_packs.MAGIC))):
+        saved_allowed = W.ALLOWED
+        W.ALLOWED = table
+        try:
+            with zipfile.ZipFile(path) as z:
+                docs, untied = W.candidates(z, "ci", ties)
+                exts = sorted(d["ext"] for d in docs)
+                out = os.path.join(tmp, "stage-" + label[:4])
+                kept, rejected = W.stage(z, docs, out)
+        finally:
+            W.ALLOWED = saved_allowed
+        if table is W.ALLOWED:
+            check(exts == ["pdf", "pdf", "png", "png", "tif", "tif"], "a PNG saved as .tif or .TIFF is told apart by its first bytes and named .png; the rest keep their extensions: %s" % exts)
+            check(len(kept) == 4 and rejected == 2 and sorted(d["ext"] for d in kept) == ["pdf", "png", "png", "tif"], "kept: the two PNGs, the real TIFF and the PDF; refused: a PNG named .pdf and garbage named .tif (%d kept, %d refused)" % (len(kept), rejected))
+            pngs = [d for d in kept if d["ext"] == "png"]
+            check(all(open(os.path.join(out, d["f"] + ".png"), "rb").read() == png_bytes() and not os.path.exists(os.path.join(out, d["f"] + ".tif")) for d in pngs), "a PNG is kept as filed, byte for byte, under a .png name")
+            check(all(d["pv"] == 1 and d["pg"] == 1 and Image.open(os.path.join(out, d["f"] + ".jpg")).format == "JPEG" and Image.open(os.path.join(out, d["f"] + ".jpg")).width <= W.PREVIEW_W for d in pngs), "and its first page is drawn as a JPEG and counted as one page")
+            check(not any(s in f for f in os.listdir(out) for s in ("ODOM", "Another", "scan", "Garbage")), "no name from the pack is used for it")
+            lk = W.Lookups()
+            for d in kept:
+                d["tag"] = W.tag_name(date(2026, 10, 30), "ci", 1)
+            st = W.State()
+            st.add("2026-10-30", "ci", {"name": "10-30-2026.zip", "bytes": 1, "docs": 6, "tied": len(kept), "untied": 0, "rejected": rejected, "rules": W.RULES}, kept, lk)
+            st.units[("2026-10-30", "ci")]["tags"] = [W.tag_name(date(2026, 10, 30), "ci", 1)]
+            wells_out = os.path.join(tmp, "wells")
+            st.save(wells_out, lk, "2026-11-01T00:00:00Z", "o/r")
+            problems = W.check(wells_out, lk)
+            xs = sorted(x["x"] for w in json.load(open(os.path.join(wells_out, "county", "283.json")))["wells"] for x in w["docs"])
+            check(xs == ["pdf", "png", "png", "tif"] and problems == [], "a published PNG document is written with x = png and the check accepts it: %s %s" % (xs, problems[:2]))
+            bad = json.load(open(os.path.join(wells_out, "county", "283.json")))
+            bad["wells"][0]["docs"][0]["x"] = "gif"
+            open(os.path.join(wells_out, "county", "283.json"), "w").write(json.dumps(bad))
+            check(any("bad document" in p for p in W.check(wells_out, lk)), "but an extension that is not pdf, tif or png is still refused by the check")
+        else:
+            check(rejected == 4 and sorted(d["ext"] for d in kept) == ["pdf", "tif"], "%s the two PNGs are refused, which is what the first real run did (%d refused)" % (label, rejected))
+
+# a pack recorded with refusals under older rules is done once more; one without refusals, or already under the current rules, is not
+st = W.State()
+st.units[("2026-10-29", "ci")] = {"name": "a.zip", "bytes": 5, "docs": 10, "tied": 7, "untied": 0, "rejected": 3}  # written before there were rules
+st.units[("2026-10-29", "ds")] = {"name": "b.zip", "bytes": 5, "docs": 10, "tied": 10, "untied": 0, "rejected": 0}  # nothing refused: nothing to gain
+st.units[("2026-10-28", "ci")] = {"name": "c.zip", "bytes": 5, "docs": 10, "tied": 7, "untied": 0, "rejected": 3, "rules": W.RULES}  # refused under today's rules: genuinely not a document
+st.units[("2026-10-27", "ci")] = {"name": "d.zip", "bytes": 5, "docs": 10, "tied": 8, "untied": 0, "rejected": 2, "rules": W.RULES - 1}
+done = st.done()
+check((date(2026, 10, 29), "ci") not in done and (date(2026, 10, 27), "ci") not in done and (date(2026, 10, 29), "ds") in done and (date(2026, 10, 28), "ci") in done,
+      "done(): a pack with refusals recorded under older rules (or none stated) is not done; one with none refused, or refused under today's rules, is: %s" % sorted((str(d), p) for d, p in done))
+L1 = listed_for(["2026-10-29"], modified=None)
+st2 = W.State()
+st2.units[("2026-10-29", "ci")] = {"name": L1[(date(2026, 10, 29), "ci")]["name"], "bytes": L1[(date(2026, 10, 29), "ci")]["bytes"], "docs": 10, "tied": 7, "untied": 0, "rejected": 3}
+todo, _ = W.plan(L1, st2.done(), NOW, days=1)
+check(("2026-10-29", "ci") in {(str(u["day"]), u["pack"]) for u in todo}, "plan(): such a pack is picked up again by the next run, once")
+st2.units[("2026-10-29", "ci")]["rules"] = W.RULES
+todo, _ = W.plan(L1, st2.done(), NOW, days=1)
+check(("2026-10-29", "ci") not in {(str(u["day"]), u["pack"]) for u in todo}, "and not again once it was done under the current rules, whatever it still refuses")
+
 # ------------------------------------------------------------------------------------------------ the check, against faults
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -671,6 +744,7 @@ with tempfile.TemporaryDirectory() as tmp:
     fault("a document whose file name is not its well's", edit_json("county/283.json", lambda o: o["wells"][0]["docs"][0].update(f="99999999_c1")))
     fault("a document of a day no pack lists", edit_json("county/283.json", lambda o: o["wells"][0]["docs"][0].update(d="2026-01-01")))
     fault("a document naming a release no pack lists", edit_json("county/283.json", lambda o: o.update(tags=["wells-2026-10-29-ci-09"])))
+    fault("a document whose extension is not pdf, tif or png", edit_json("county/283.json", lambda o: o["wells"][0]["docs"][0].update(x="gif")))
     fault("a document with zero pages", edit_json("county/283.json", lambda o: o["wells"][0]["docs"][0].update(pg=0)))
     fault("a well in the wrong county", edit_json("county/283.json", lambda o: o["wells"][0].update(a="38833330")))
     fault("a well listed twice", edit_json("county/283.json", lambda o: o["wells"].append(copy.deepcopy(o["wells"][0]))))
