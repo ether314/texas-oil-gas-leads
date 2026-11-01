@@ -95,6 +95,9 @@ check(C.validate(jump, date(2026, 11, 2)) == [], "a real regime change (1 a mont
 spike = copy.deepcopy(doc)
 spike["bands"]["new"][40] = 99000
 check(any("wildly" in x or "non-negative" in x for x in C.validate(spike, today)), "but one month 1,000 times the rest still is")
+wordy = dict(doc, note="Amendments are not told (null).")
+check(any("programmer" in x for x in C.validate(wordy, today)), "a note that says (null) is refused: on a page it reads as a rendering bug (Kansas's note did, found by the smoke test)")
+check(C.validate(dict(doc, note="Amendments are not told."), today) == [], "the same note without the word passes")
 check(doc["counties"][0][0] == "Williams" and [c[0] for c in doc["counties"]] == ["Mckenzie County", "Williams"] or doc["counties"][0][1] == 12, "counties are ranked place names: %s" % doc["counties"])
 check(doc["fluid"] == {"oil": 12, "gas": 12, "both": 0, "other": 0, "unknown": 0}, "the fluid of the year's new wells: %s" % doc["fluid"])
 check(make(fluid=False)["fluid"] is None, "a state that records no fluid has fluid null")
