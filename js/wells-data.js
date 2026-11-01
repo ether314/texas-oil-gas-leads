@@ -35,7 +35,7 @@ export function parseApi(text) {
 
 // the address of a document or its page-one picture on GitHub, or null when anything in the data is not what the producer writes (a bad file must not build a link)
 export function assetUrl(repo, tag, stem, ext) {
-  if (!REPO.test(repo || '') || !TAG.test(tag || '') || !STEM.test(stem || '') || !/^(pdf|tif|jpg)$/.test(ext || '')) return null;
+  if (!REPO.test(repo || '') || !TAG.test(tag || '') || !STEM.test(stem || '') || !/^(pdf|tif|png|jpg)$/.test(ext || '')) return null;
   return 'https://github.com/' + repo + '/releases/download/' + tag + '/' + stem + '.' + ext;
 }
 
