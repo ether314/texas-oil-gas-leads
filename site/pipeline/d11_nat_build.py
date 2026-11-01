@@ -84,19 +84,22 @@ def adapt(sid, spec):
     ops = load(spec["operators"])
     cols = ops["cols"]
     ni, ci = cols.index("name"), cols.index("new12")
-    rows = sorted(((r[ni], r[ci]) for r in ops["rows"] if r[ci] and C.nameable(r[ni])), key=lambda kv: (-kv[1], kv[0]))[:15]
+    nameable = sorted(((r[ni], r[ci]) for r in ops["rows"] if r[ci] and C.nameable(r[ni])), key=lambda kv: (-kv[1], kv[0]))
+    rows = nameable[:15]
     # counties: the files hold the last 12 months by county code; the geometry file gives the names
     cp, geo = load(spec["county"]), load(spec["geo"])
     names = {f["properties"]["f"]: f["properties"]["n"] for f in geo["features"]}
     cs = sorted(((names.get(k, k), v["p12"]) for k, v in cp["counties"].items() if v.get("p12")), key=lambda kv: (-kv[1], kv[0]))[:15]
-    total12 = sum(new[-12:])
-    named = sum(n for _, n in rows)
+    # the share of permits whose operator may be named: ALL nameable operators (not the 15 listed), over the permits of the same window (the county file's last 12 months:
+    # the operators' own counts and the counties' are the same window, which is not the series' calendar 12 months)
+    window = sum(v.get("p12", 0) for v in cp["counties"].values())
+    named = sum(n for _, n in nameable)
     return {
         "v": 1, "state": sid, "name": C.NAME_OF[sid], "agency": spec["agency"], "measure": spec["measure"], "basis": spec["basis"],
         "source": {"name": spec["source"], "url": spec["url"]}, "asOf": asof, "through": through, "cadence": spec["cadence"],
         "months": months, "bands": {b: (new if b == "new" else None) for b in C.BANDS}, "fluid": None,
         "counties": [[n, c] for n, c in cs], "operators": [[n, c] for n, c in rows],
-        "namedShare": round(min(1.0, named / total12), 3) if total12 else None, "read": sum(new),
+        "namedShare": round(min(1.0, named / window), 3) if window else None, "read": sum(new),
         "note": {"TX": "The monthly files are rebuilt by hand; the Daily report holds the newest days.", "OK": "", "NM": "Spud dates arrive about two months late, so the series ends two months back.",
                  "FO": "About 45 wells a year; spud dates arrive late."}[sid],
     }
