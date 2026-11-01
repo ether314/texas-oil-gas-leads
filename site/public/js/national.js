@@ -158,7 +158,7 @@ export function createNationalView({ root }) {
       s.operators.length && s.namedShare != null ? el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships: ' + Math.round(s.namedShare * 100) + '% of the year’s new wells.' }) : null,
       s.note ? el('p', { class: 'fine', text: s.note }) : null);
     if (OWN_VIEW[id]) links.append(el('a', { class: 'more-link', href: '#map?st=' + OWN_VIEW[id] }, 'Open ' + N.inName(id, s.name) + ' in the Map', icon('arrow', 16)));
-    if (s.operators.length) links.append(el('a', { class: 'more-link', href: '#companies?s=' + id }, OWN_VIEW[id] ? 'Every operator in Companies' : 'Its ' + s.operators.length + ' busiest operators in Companies', icon('arrow', 16)));
+    if (s.operators.length) links.append(el('a', { class: 'more-link', href: '#companies?s=' + id }, OWN_VIEW[id] ? 'Every operator in Companies' : 'Its operators in Companies', icon('arrow', 16)));
     if (f) links.append(el('a', { class: 'more-link', href: '#fields?s=' + id }, 'What its permit captures', icon('arrow', 16)));
     const src = sourceLink(s);
     if (src) links.append(el('a', { class: 'more-link', href: src.href, target: '_blank', rel: 'noopener noreferrer' }, src.text, icon('arrow', 16)));

@@ -556,6 +556,23 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(CD.bandOf(0) === '' && CD.bandOf(1) === 'B' && CD.bandOf(9) === 'B' && CD.bandOf(10) === 'A' && CD.bandOf(641) === 'A'
     && CD.whatOf('spuds') === 'wells spudded' && CD.whatOf('drilled') === 'wells drilled' && CD.whatOf('permits') === 'new-drill permits' && CD.whatOf('nope') === 'new-drill permits' && CD.isPermit('permits') && !CD.isPermit('spuds') && !CD.isPermit('drilled'),
     'companies: bands (10 or more is A, 1 to 9 is B) and what each measure counts, in words');
+  // the full lists of the state files (operatorsAll), once a producer has been run since 2026-11-01
+  const natFiles = {}; for (const q of others) { try { natFiles[q.id] = read('nat/' + q.id); } catch (e) { /* no file */ } }
+  const deep = {}; for (const q of others) { const l = CD.deepList(natFiles[q.id], q.id); if (l) deep[q.id] = l; }
+  const deepRows = CD.listedRows(nat, CD.FULL, deep);
+  const deepWant = others.reduce((t, q) => t + (deep[q.id] ? deep[q.id].length : q.operators.length), 0);
+  check(Object.keys(deep).length >= 20 && deepRows.length === deepWant && deepRows.length > rows.length && deepRows.length >= 500, 'companies: with the state files\' full lists the table has more rows than the National report\'s 15 each (' + deepRows.length + ' against ' + rows.length + ', ' + Object.keys(deep).length + ' states with a full list)');
+  check(others.filter((q) => deep[q.id]).every((q) => same(deep[q.id].slice(0, CD.TOP), q.operators) && deep[q.id].length >= q.operators.length && deep[q.id].every((r, i, a) => i === 0 || a[i - 1][1] >= r[1])), 'companies: every full list begins with the 15 the National report names, and is ranked');
+  check(others.filter((q) => deep[q.id] && q.namedShare != null).every((q) => Math.abs(deep[q.id].reduce((t, r) => t + r[1], 0) / q.p12 - q.namedShare) < 0.0011), 'companies: the operators of a full list hold exactly the state\'s named share of its year (the lists leave out only people and unnamed operators)');
+  check(deepRows.filter((r) => r.st === 'KS').length > 50 && deepRows.filter((r) => r.st === 'KS').every((r) => r.complete === 1 && r.listed === 1 && r.measure === 'permits') && new Set(deepRows.map((r) => r.num)).size === deepRows.length, 'companies: Kansas, which the 15 cut short, has every operator now, each a complete row with its own key');
+  check(rows.filter((r) => r.complete === 1).every((r) => nat.states.find((q) => q.id === r.st).operators.length < CD.TOP) && rows.filter((r) => r.complete === 0).every((r) => nat.states.find((q) => q.id === r.st).operators.length === CD.TOP),
+    'companies: with no full list, a state that names fewer than 15 operators is complete (the cut never bit) and one with 15 is not known to be');
+  const cd = CD.coverage(deepRows.concat(CD.FULL.map((id) => ({ st: id }))));
+  check(cd.top15 === 0 && cd.deep === cd.listed && cd.full === 3 && CD.coverage(rows).top15 > 0 && CD.coverage(rows).deep === CD.coverage(rows).listed - CD.coverage(rows).top15, 'companies: coverage says how many states have every operator and how many only the 15 busiest: ' + JSON.stringify(CD.coverage(rows)) + ' then ' + JSON.stringify(cd));
+  const okFile = { state: 'ND', operatorsAll: [['A LLC', 5], ['B LLC', 1]] };
+  check(CD.deepList(okFile, 'ND') !== null && CD.deepList(okFile, 'KS') === null && CD.deepList(null, 'ND') === null && CD.deepList({ state: 'ND' }, 'ND') === null && CD.deepList({ state: 'ND', operatorsAll: [] }, 'ND') === null
+    && CD.deepList({ state: 'ND', operatorsAll: [['A LLC', 0]] }, 'ND') === null && CD.deepList({ state: 'ND', operatorsAll: [['A LLC', 1.5]] }, 'ND') === null && CD.deepList({ state: 'ND', operatorsAll: [['', 3]] }, 'ND') === null
+    && CD.deepList({ state: 'ND', operatorsAll: [['A LLC']] }, 'ND') === null && CD.deepList({ state: 'ND', operatorsAll: 'A LLC' }, 'ND') === null, 'companies: a state file\'s full list is used only when it is for that state and every row is a name and a whole count above zero (a damaged list falls back to the 15)');
   // the State filter
   const full = CD.FULL.map((id) => ({ st: id, stName: byState.get(id).name }));
   const choices = CD.stateChoices(rows.concat(full), nat);

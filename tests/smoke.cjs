@@ -166,8 +166,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await stateSel.selectOption({ label: 'North Dakota' });
       await page.waitForFunction(() => /North Dakota Industrial Commission/.test(document.querySelector('#ops-root .status').textContent), null, { timeout: 10000 });
       const ndHeads = await heads(); const ndRows = await page.locator('#ops-root tbody tr').count();
-      check(ndRows === 15 && ndHeads.join('|') === 'Band|Operator|New wells (12 mo)' && /15 busiest operators are listed/.test(await page.locator('#ops-root .status').innerText()),
-        'a state with only the 15 busiest listed (North Dakota): 15 rows, only the columns it can fill (band, operator, new wells), and the line says it is the 15 busiest: ' + ndHeads.join(' | '));
+      const natOf = (id) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'nat', id + '.json'), 'utf8'));
+      const ndAll = natOf('ND').operatorsAll.length;
+      check(ndAll > 15 && ndRows === Math.min(ndAll, 100) && ndHeads.join('|') === 'Band|Operator|New wells (12 mo)' && new RegExp('all ' + ndAll + ' operators it named in the last 12 months are listed \\(they hold (all|\\d+%) of its [\\d,]+ wells spudded').test(await page.locator('#ops-root .status').innerText()),
+        'a state that lists every operator it named (North Dakota: ' + ndAll + ', more than the 15 busiest): all of them, only the columns it can fill (band, operator, new wells), and the line says what they hold: ' + ndHeads.join(' | '));
       await stateSel.selectOption({ label: 'Texas' });
       await page.waitForFunction(() => [...document.querySelectorAll('#ops-root label.check')].some((l) => /Top producers/.test(l.textContent) && !l.hidden), null, { timeout: 10000 });
       check((await page.locator('#ops-root label.check', { hasText: 'Top producers' }).isVisible()) && (await page.locator('#ops-root label.check', { hasText: 'New P-5' }).isVisible()), 'Texas alone brings back the filters only its registrations can answer');
@@ -200,6 +202,34 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, 'the states bar: ' + e.message.split('\n')[0].slice(0, 160));
     }
     check(!errs.length, 'the states bar loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 3b. a state's full operator list comes from its own file; when that cannot be loaded the page shows the 15 busiest from the National report, and says so. The 404 is the test's own.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error' && !/status of 404/.test(m.text())) errs.push('console: ' + m.text().slice(0, 160)); });
+    page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+    const natOf = (id) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'nat', id + '.json'), 'utf8'));
+    try {
+      await page.route('**/data/nat/KS.json', (r) => r.fulfill({ status: 404, body: 'not found' }));
+      await page.goto(base + '#companies?s=KS&band=all', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Kansas Corporation Commission/.test((document.querySelector('#ops-root .status') || {}).textContent || ''), null, { timeout: 25000 });
+      const stuck = await page.locator('#ops-root .status').innerText();
+      check((await page.locator('#ops-root tbody tr').count()) === 15 && /its 15 busiest operators are listed/.test(stuck) && /^15 of [\d,]+ rows match/.test(stuck), 'a state whose full list cannot be loaded falls back to the 15 busiest and says so (Kansas with its file missing)');
+      await page.unroute('**/data/nat/KS.json');
+      await page.goto(base + '?fresh=ks2#companies?s=KS&band=all', { waitUntil: 'load' });
+      await page.waitForFunction(() => /all \d+ operators it named/.test((document.querySelector('#ops-root .status') || {}).textContent || ''), null, { timeout: 25000 });
+      const status = await page.locator('#ops-root .status').innerText();
+      check(/all (\d+) operators it named in the last 12 months are listed \(they hold \d+% of its [\d,]+ new-drill permits/.test(status) && Number(/all (\d+) operators/.exec(status)[1]) === natOf('KS').operatorsAll.length && natOf('KS').operatorsAll.length > 15,
+        'and with its file Kansas lists every operator (' + natOf('KS').operatorsAll.length + '), saying they hold ' + (/hold (\d+)%/.exec(status) || [])[1] + '% of the year\'s permits, the rest being people trading under a name');
+    } catch (e) {
+      check(false, 'the full operator lists: ' + e.message.split('\n')[0].slice(0, 160));
+    }
+    check(!errs.length, 'the full operator lists load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 
@@ -357,10 +387,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       const col = (name) => head.indexOf(name);
       const states = new Set(table.slice(1).map((r) => r[0]));
       check(head[0] === 'data_state' && ['TX', 'OK', 'NM', 'FO', 'ND', 'UT', 'PA'].every((x) => states.has(x)) && states.size >= 27, 'the CSV says which state each row is, and holds every state that names operators (' + states.size + '): ' + [...states].sort().join(','));
-      // a state that lists only its 15 busiest operators: what it counts is named, and what only a full file has is blank (never zero)
+      // a state that is listed from its state file, not a full file of its own: what it counts is named, and what only a full file has is blank (never zero)
       const nd = table.slice(1).filter((r) => r[0] === 'ND'); const ut = table.slice(1).filter((r) => r[0] === 'UT');
-      check(nd.length === 15 && nd.every((r) => r.length === head.length && r[col('counts_are_of')] === 'wells spudded' && r[col('all_permits_12m')] === '' && r[col('trend_pct_full_months')] === '' && r[col('top_county_24m')] === '' && Number(r[col('new_well_permits_12m')]) > 0)
-        && ut.length > 0 && ut.every((r) => r[col('counts_are_of')] === 'new-drill permits'), 'North Dakota\'s 15 rows say they count wells spudded and leave the trend and county blank, Utah\'s count permits (' + nd.length + ', ' + ut.length + ' rows)');
+      check(nd.length === JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'nat', 'ND.json'), 'utf8')).operatorsAll.length && nd.length > 15 && nd.every((r) => r.length === head.length && r[col('counts_are_of')] === 'wells spudded' && r[col('all_permits_12m')] === '' && r[col('trend_pct_full_months')] === '' && r[col('top_county_24m')] === '' && Number(r[col('new_well_permits_12m')]) > 0)
+        && ut.length > 0 && ut.every((r) => r[col('counts_are_of')] === 'new-drill permits'), 'North Dakota\'s rows say they count wells spudded and leave the trend and county blank, Utah\'s count permits (' + nd.length + ', ' + ut.length + ' rows)');
       // New Mexico publishes no all-kinds permit count: the cell is empty, not 0
       const nm = table.slice(1).filter((r) => r[0] === 'NM');
       check(nm.length > 0 && nm.every((r) => r.length === head.length && r[col('all_permits_12m')] === '' && r[col('all_permits_24m')] === ''), 'a figure New Mexico does not publish is blank in its rows, not zero (' + nm.length + ' rows)');
@@ -599,7 +629,7 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/not permits|spud/i.test(await page.locator('#national-root .nat-panel').innerText()), 'New Mexico\'s panel says it counts wells spudded');
       check((await page.locator('#national-root .nat-panel a[href="#companies?s=NM"]').count()) === 1 && /Every operator in Companies/.test(await page.locator('#national-root .nat-panel a[href="#companies?s=NM"]').innerText()), 'New Mexico\'s panel links to every one of its operators on the Companies page');
       await page.click('#national-root button.nat-tile[data-id="ND"]');
-      check((await page.locator('#national-root .nat-panel a[href="#companies?s=ND"]').count()) === 1 && /15 busiest operators in Companies/.test(await page.locator('#national-root .nat-panel a[href="#companies?s=ND"]').innerText()), 'and a state that lists only its busiest (North Dakota) says so in the link');
+      check((await page.locator('#national-root .nat-panel a[href="#companies?s=ND"]').count()) === 1 && /^Its operators in Companies$/.test(await page.locator('#national-root .nat-panel a[href="#companies?s=ND"]').innerText()), 'and a state with only a state file (North Dakota) says "Its operators in Companies"');
       // a producing state that has no data yet says so, and never shows a figure
       const gapId = await page.evaluate(() => { const t = document.querySelector('#national-root button.nat-tile.t0'); return t ? t.dataset.id : null; });
       if (gapId) {

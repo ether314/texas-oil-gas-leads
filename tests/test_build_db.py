@@ -63,6 +63,13 @@ check(meas["TX"] == "permits" and meas["OK"] == "permits" and meas["NM"] == "spu
 lt = dict((r[0], r[4]) for r in q("SELECT * FROM v_latest_12_months"))
 check(lt["TX"] == next(s for s in nat["states"] if s["id"] == "TX")["p12"] and lt["NM"] == next(s for s in nat["states"] if s["id"] == "NM")["p12"], "the 12-month view agrees with national.json")
 check(one("SELECT COUNT(*) FROM national_operators") == sum(len(s["operators"]) for s in nat["states"]) and one("SELECT COUNT(*) FROM national_counties") == sum(len(s["counties"]) for s in nat["states"]), "top operators and places are loaded")
+# the full operator lists of the states (nat/<ST>.json `operatorsAll`): every row loaded, the first 15 of a state are its top operators, and a state whose file has no full list has no rows (never the top 15 passed off as everyone)
+natfiles = {os.path.basename(p)[:-5]: json.load(open(p)) for p in glob.glob(os.path.join(DATA, "nat", "*.json"))}
+with_all = {k: v["operatorsAll"] for k, v in natfiles.items() if v.get("operatorsAll")}
+check(bool(with_all) and one("SELECT COUNT(*) FROM national_operators_all") == sum(len(v) for v in with_all.values()), "every operator in a state file's full list is loaded (%d states, %d rows)" % (len(with_all), sum(len(v) for v in with_all.values())))
+check(all(q("SELECT operator, new12 FROM national_operators_all WHERE jurisdiction = ? AND rank <= 15 ORDER BY rank", k) == [tuple(x) for x in with_all[k][:15]] for k in with_all), "the first 15 of each full list are that state's top operators")
+check(not [k for k, v in natfiles.items() if not v.get("operatorsAll") and one("SELECT COUNT(*) FROM national_operators_all WHERE jurisdiction = ?", k)] and one("SELECT COUNT(*) FROM national_operators_all WHERE jurisdiction IN ('TX','OK','NM','FO')") == 0,
+      "a state whose file has no full list has no rows here, and the four jurisdictions with their own operator tables have none")
 
 series_files = sorted(glob.glob(os.path.join(DATA, "series-*.json")))
 expect = 0

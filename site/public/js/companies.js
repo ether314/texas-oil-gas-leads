@@ -1,6 +1,6 @@
 // The Companies page: one tab for who is drilling and who serves them. A switch between two tables, each loaded the first time it is shown:
-//   Operators  every operator the state agencies name, nationally (Texas, Oklahoma, New Mexico and the federal offshore with every operator, the other states with the
-//              15 busiest the National report names), narrowed by a State filter inside the table
+//   Operators  every operator the state agencies name, nationally (Texas, Oklahoma, New Mexico and the federal offshore from their own files, the other states from
+//              their state files' full lists of the year, or the National report's 15 busiest for a state whose file has none yet), narrowed by a State filter inside the table
 //   Directory  the Texas Comptroller's oil and gas companies, with RRC activity where a name matched (Texas only: no other state publishes a list like it)
 // The address is #companies (the operators) or #companies?kind=directory; an older #operators or #companies link is translated (companies-data.js).
 import { $, el, fmtDate } from './util.js';
@@ -39,9 +39,10 @@ export function createCompaniesView({ meta }) {
     const info = lens.operators.info;
     if (!info) { note.textContent = 'Loading the operators of every state…'; moreText.textContent = 'Operators are named only when they are corporations, LLCs or limited partnerships, never a person trading under a name.'; return; }
     const c = info.coverage;
-    note.textContent = fmtN(c.states) + ' states' + (c.offshore ? ' and the federal offshore' : '') + '. Texas, Oklahoma, New Mexico and the federal offshore list every operator with a recent permit or spud; for the other ' + fmtN(c.listed)
-      + ' states, the ' + info.listedMax + ' busiest each.';
-    moreText.replaceChildren('A state counts permits approved or, where it publishes no approval dates by well, wells spudded or drilled (marked beside the number); the two are never added. ' + spudCaveat(STATES.map((x) => x.id)) + ' Only corporations, LLCs and limited partnerships are named, never a person trading under a name. '
+    // every operator the states named in the year, for the states whose files have the full list; the 15 busiest for any that does not yet
+    note.textContent = fmtN(c.states) + ' states' + (c.offshore ? ' and the federal offshore' : '') + ': every operator they name with a new-well permit or spud in the last 12 months'
+      + (c.top15 ? ', except ' + fmtN(c.top15) + ' state' + (c.top15 === 1 ? '' : 's') + ' that list only the 15 busiest' : '') + '.';
+    moreText.replaceChildren('Texas, Oklahoma, New Mexico and the federal offshore also list operators whose newest permit or spud is 12 to 24 months old (band C) and show each operator\u2019s months, trend, depth and top county; the other states give the count for the last 12 months and nothing more. A state counts permits approved or, where it publishes no approval dates by well, wells spudded or drilled (marked beside the number); the two are never added. ' + spudCaveat(STATES.map((x) => x.id)) + ' Only corporations, LLCs and limited partnerships are named, never a person trading under a name. '
       + (info.without.length ? 'No operator list yet for ' + listAnd(info.without) + ': ' : ''), info.without.length ? el('a', { href: '#national', text: 'the National report’s coverage table' }) : '', info.without.length ? ' says why. ' : '',
     info.prodEnd ? 'Oil and gas columns are Texas’s, for the 12 months to ' + info.prodEnd + '.' : '');
   }

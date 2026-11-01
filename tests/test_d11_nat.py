@@ -85,6 +85,34 @@ check(doc["bands"]["inj"] is None and doc["bands"]["redrill"] is None and isinst
       "a band the source cannot tell is null, never a list of zeros")
 check(all(v == 2 for v in doc["bands"]["new"]) and all(v == 1 for v in doc["bands"]["amend"]), "the counts are per month (two new, one amendment a month)")
 check(doc["operators"] == [["ACME OIL & GAS LLC", 12]] and doc["namedShare"] == 0.5, "an individual's name is counted in the share but never named: %s share %s" % (doc["operators"], doc["namedShare"]))
+# the full operator list (what the Companies page lists): every named operator of the last 12 months, in the same ranking, whose first 15 are `operators`
+def tally_doc(mod, n=40):
+    t = mod.Tally("ND", bands=("new",), fluid=False)
+    d = date(2019, 1, 15)
+    while d <= date(2026, 10, 15):
+        t.add(d, "new", county="Williams", operator="ACME OIL & GAS LLC")
+        d = date(d.year + (d.month == 12), d.month % 12 + 1, 15)
+    year = [(2025, 10), (2025, 11), (2025, 12)] + [(2026, m) for m in range(1, 10)]  # the last 12 complete months, so no one month is out of line
+    for i in range(n):
+        y, m = year[i % 12]
+        for _ in range(i % 7 + 1):
+            t.add(date(y, m, 10), "new", county="Williams", operator="OPERATOR %02d LLC" % i)
+    t.add(date(2026, 3, 10), "new", county="Williams", operator="Doe, Jane")  # an individual: in the share's total, never listed
+    t.add(date(2025, 6, 10), "new", county="Williams", operator="STALE OPERATOR LLC")  # more than 12 months before the newest complete month: not in the year
+    return t.document(agency="A Commission", source_name="Permit file", source_url="https://example.gov/permits", basis="approval date", cadence="weekly", asof=date(2026, 10, 15))
+
+
+big = tally_doc(C)
+oa = big["operatorsAll"]
+check(C.validate(big, today) == [] and len(oa) == 41 and big["operators"] == oa[:15] and len(big["operators"]) == 15, "the full list holds every named operator of the year (41), and its first 15 are `operators`: %s" % C.validate(big, today)[:3])
+check([r[1] for r in oa] == sorted((r[1] for r in oa), reverse=True) and oa[0] == ["ACME OIL & GAS LLC", 12] and all(r[1] >= 1 for r in oa) and ["OPERATOR 06 LLC", 7] in oa
+      and not any("DOE" in r[0] or "STALE" in r[0] for r in oa), "ranked, an individual never listed, an operator whose only permit is older than the year not listed")
+total12 = sum(big["bands"]["new"][-12:])
+check(abs(sum(r[1] for r in oa) / total12 - big["namedShare"]) < 0.001 and sum(r[1] for r in oa) < total12, "the listed operators hold exactly the named share of the year's permits (%s of %s)" % (sum(r[1] for r in oa), total12))
+check(C.MAX_OPERATORS >= 500, "the list has room for a state with hundreds of operators (cap %d)" % C.MAX_OPERATORS)
+older = copy.deepcopy(big)
+older.pop("operatorsAll")
+check(C.validate(older, today) == [], "a file written before the full list existed (no operatorsAll) is still good")
 # the named share of Texas, Oklahoma, New Mexico and the offshore counts every nameable operator over the permits of the same window, not the 15 that are listed (Texas read 35%, a top-15 share, for 80%)
 for sid, spec in B.BUILT.items():
     adapted = B.adapt(sid, spec)
@@ -160,6 +188,16 @@ faults = {
     "a fluid dict missing a key": lambda d: d["fluid"].pop("both"),
     "a state this file type does not carry": lambda d: d.__setitem__("state", "TX"),
     "a namedShare above one": lambda d: d.__setitem__("namedShare", 1.4),
+    "an operatorsAll name the rule refuses": lambda d: d["operatorsAll"].append(["JOHN SMITH DBA JOE'S OIL", 1]),
+    "an unranked operatorsAll": lambda d: d.__setitem__("operatorsAll", [["A LLC", 1], ["B LLC", 5]]),
+    "an operator listed twice in operatorsAll": lambda d: d.__setitem__("operatorsAll", [["ACME OIL & GAS LLC", 12], ["ACME OIL & GAS LLC", 12]]),
+    "an operatorsAll that does not begin with the 15 operators": lambda d: d.__setitem__("operatorsAll", [["OTHER OIL LLC", 12]]),
+    "an operatorsAll with more permits than the year had": lambda d: (d.__setitem__("operatorsAll", [["ACME OIL & GAS LLC", 9999]]), d.__setitem__("operators", [["ACME OIL & GAS LLC", 9999]])),
+    "an operatorsAll that disagrees with namedShare": lambda d: d.__setitem__("namedShare", 0.9),
+    "an operatorsAll with a row that is not a pair": lambda d: d["operatorsAll"].append(["ONLY A NAME LLC"]),
+    "an operatorsAll with a zero count": lambda d: d["operatorsAll"].append(["IDLE OIL LLC", 0]),
+    "an operatorsAll that is not a list": lambda d: d.__setitem__("operatorsAll", {"ACME OIL & GAS LLC": 12}),
+    "too many operators in operatorsAll": lambda d: d.__setitem__("operatorsAll", [["OP%04d LLC" % i, 2000 - i] for i in range(C.MAX_OPERATORS + 1)]),
     "not a v1 document": lambda d: d.__setitem__("v", 2),
 }
 for name, fn in faults.items():
@@ -246,7 +284,10 @@ def mutant(name, patch, probe):
     check(probe(m), "mutant '%s' is noticed" % name)
 
 
-mutant("every operator may be named", lambda m: setattr(m, "nameable", lambda n: True), lambda m: m.validate(dict(doc, operators=[["JOHN SMITH", 1]]), today) == [])
+mutant("every operator may be named", lambda m: setattr(m, "nameable", lambda n: True), lambda m: m.validate(dict(doc, operators=[["JOHN SMITH", 1]], operatorsAll=None), today) == [])
+_person = dict(doc, operators=[["JOHN SMITH", 12]], operatorsAll=[["JOHN SMITH", 12]])
+mutant("every operator may be named in the full list", lambda m: setattr(m, "nameable", lambda n: True), lambda m: m.validate(_person, today) == [] and C.validate(_person, today) != [])
+mutant("the full list is cut at 15", lambda m: setattr(m, "MAX_OPERATORS", 15), lambda m: len(tally_doc(m)["operatorsAll"]) != 41)
 mutant("amendments are new wells", lambda m: setattr(m, "band_of", lambda w="", p="": "new"), lambda m: m.band_of("Amended", "") != C.band_of("Amended", ""))
 mutant("a service well is new", lambda m: setattr(m, "fluid_of", lambda t: "oil"), lambda m: m.fluid_of("Disposal") != C.fluid_of("Disposal"))
 mutant("placeholder dates count", lambda m: setattr(m, "parse_day", lambda t, today=None: date(1900, 1, 1)), lambda m: m.parse_day("1900-01-01") != C.parse_day("1900-01-01"))
