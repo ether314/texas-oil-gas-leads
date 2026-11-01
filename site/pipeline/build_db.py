@@ -24,7 +24,7 @@ Two layers, so nothing is lost and common questions are easy:
     operators               every state's published operator table (Texas's joined with its extras); the full row of each in `extra`
     permit_points           one row per permit with a published location (latitude, longitude, day, depth)
     new_wells_arrivals      the wells each daily FracFocus download added (by arrival day and state), and how many a state's daily report had already carried (null: that report lists no wells)
-    new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well since 2011 (the last 24 months and the history file) with its
+    new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well since 2011 (the last 24 months and the history file; with the API number, the job's last day, the exact depth and water, the other base fluid and the datum from the two detail files) with its
                             published GPS point (latitude, longitude, day, county, operator when it may be named, depth, water, land), and each state's top operators
     companies               the Texas Comptroller's company pool as published here
     daily_reports, daily_permits      the Daily reports by state and day, and each Texas permit row of those days
@@ -75,7 +75,8 @@ CREATE TABLE operators(state TEXT, num TEXT, name TEXT, band TEXT, type TEXT, ci
   last_permit TEXT, extra TEXT, PRIMARY KEY(state, num));
 CREATE TABLE permit_points(state TEXT, day TEXT, lat REAL, lon REAL, operator TEXT, operator_num TEXT, depth_ft INTEGER, county_code INTEGER);
 CREATE TABLE new_wells_months(state TEXT, month TEXT, wells INTEGER, PRIMARY KEY(state, month));
-CREATE TABLE new_wells(state TEXT, day TEXT, lat REAL, lon REAL, county TEXT, operator TEXT, depth_ft INTEGER, water_gal INTEGER, land TEXT);
+CREATE TABLE new_wells(state TEXT, day TEXT, lat REAL, lon REAL, county TEXT, operator TEXT, depth_ft INTEGER, water_gal INTEGER, land TEXT,
+  api10 TEXT, job_end TEXT, depth_exact_ft INTEGER, water_exact_gal INTEGER, non_water_gal INTEGER, datum TEXT);
 CREATE TABLE new_wells_operators(state TEXT, rank INTEGER, operator TEXT, wells12 INTEGER, PRIMARY KEY(state, rank));
 CREATE TABLE new_wells_arrivals(day TEXT, state TEXT, found INTEGER, reported INTEGER, PRIMARY KEY(day, state));
 CREATE TABLE companies(fit TEXT, band TEXT, segment TEXT, name TEXT, city TEXT, state TEXT, zip TEXT, naics TEXT, word TEXT, is_new INTEGER, years TEXT, new12 INTEGER,
@@ -231,15 +232,23 @@ def load_points(db, data):
 LAND = {0: "private or state", 1: "federal", 2: "tribal", 3: "federal and tribal"}
 
 
-def newwell_rows(pt, below=None):
-    """The rows of a points file (the last 24 months or the history): state, day, place, county, operator, depth, water, land. `below`: only the days before that day number (the history's overlap with the points file is dropped)."""
+DATUMS = (None, "NAD27", "NAD83", "WGS84")
+
+
+def newwell_rows(pt, below=None, det=None):
+    """The rows of a points file (the last 24 months or the history): state, day, place, county, operator, depth, water, land and, from its detail file (`det`: the same wells in the same order), the API number of the well
+    (ten digits), the job's last day, the exact depth and water, the other base fluid and the datum (NULL where there is no detail or a value is not known). `below`: only the days before that day number (the history's overlap with the points file is dropped)."""
     rows = []
     for i in range(pt["n"]):
         if below is not None and pt["d"][i] >= below:
             break  # the days are in order
         c, o = pt["c"][i], pt["o"][i]
+        extra = (None,) * 6
+        if det is not None:
+            known = lambda col: det[col][i] if det[col][i] >= 0 else None  # noqa: E731
+            extra = ("%010d" % det["api"][i], decode_day(pt["t0"], pt["d"][i] + det["end"][i]) if det["end"][i] >= 0 else None, known("tvd"), known("wg"), known("nw"), DATUMS[det["dat"][i]])
         rows.append((pt["states"][pt["s"][i]], decode_day(pt["t0"], pt["d"][i]), pt["lat"][i] / 1e4, pt["lon"][i] / 1e4, pt["counties"][c][1] if c >= 0 else None,
-                     pt["ops"][o] if o >= 0 else None, pt["tvd"][i] * 100 or None, pt["h2o"][i] * 100000 or None, LAND[pt["f"][i]]))
+                     pt["ops"][o] if o >= 0 else None, pt["tvd"][i] * 100 or None, pt["h2o"][i] * 100000 or None, LAND[pt["f"][i]]) + extra)
     return rows
 
 
@@ -256,11 +265,18 @@ def load_newwells(db, data):
     for s in sm["states"]:
         db.executemany("INSERT INTO new_wells_months VALUES (?,?,?)", [(s["id"], m, v) for m, v in zip(sm["months"], s["new"])])
         db.executemany("INSERT INTO new_wells_operators VALUES (?,?,?,?)", [(s["id"], i + 1, name, n) for i, (name, n) in enumerate(s["operators"])])
-    rows = newwell_rows(pt)
+    pd, pdh = (os.path.join(data, "newwells", f) for f in ("detail.json", "detail-history.json"))
+    detail = jload(pd) if os.path.exists(pd) else None  # the API numbers and the rest the registry says of the same wells: optional, a database made before them has NULLs
+    if detail is not None and detail["n"] != pt["n"]:
+        raise ValueError("newwells/detail.json does not hold the rows of points.json")
+    rows = newwell_rows(pt, det=detail)
     if os.path.exists(ph):  # every earlier well with a point, back to 2011 (the page loads these only on request; here they are rows like the others)
         hist = jload(ph)
-        rows = newwell_rows(hist, history_below(pt, hist)) + rows
-    db.executemany("INSERT INTO new_wells VALUES (?,?,?,?,?,?,?,?,?)", rows)
+        dhist = jload(pdh) if os.path.exists(pdh) else None
+        if dhist is not None and dhist["n"] != hist["n"]:
+            raise ValueError("newwells/detail-history.json does not hold the rows of points-history.json")
+        rows = newwell_rows(hist, history_below(pt, hist), det=dhist) + rows
+    db.executemany("INSERT INTO new_wells VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
     pa = os.path.join(data, "newwells", "arrivals.json")
     if os.path.exists(pa):
         arr = jload(pa)

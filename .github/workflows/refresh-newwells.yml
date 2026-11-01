@@ -1,7 +1,7 @@
-# The national new-wells map (site/public/data/newwells/summary.json, points.json, points-history.json and arrivals.json): every well the FracFocus registry lists as hydraulically
-# fractured, with its GPS point, state, county, day and size. Every day, site/pipeline/d13_newwells.py reads FracFocus's disclosure list (16 MB of a 443 MB zip, by HTTP range requests:
+# The national new-wells map (site/public/data/newwells/summary.json, points.json, points-history.json, detail.json, detail-history.json and arrivals.json): every well the FracFocus registry lists as hydraulically
+# fractured, with its GPS point, state, county, day and size (the two detail files add its API number, the job's last day, the exact depth and water and the datum). Every day, site/pipeline/d13_newwells.py reads FracFocus's disclosure list (16 MB of a 443 MB zip, by HTTP range requests:
 # the zip is never downloaded whole), writes the files after validating them, and this workflow commits what changed and publishes the site. The producer also compares the wells with
-# the list it kept from the last download (one API number a line in Actions' cache, never committed: the site's data files carry no API number) and logs the wells that are new since then,
+# the list it kept from the last download (one API number a line in Actions' cache, never committed) and logs the wells that are new since then,
 # counting apart those a state's daily report had already carried (arrivals.json: counts only; d13_arrivals.py). FracFocus refreshes five days a week and a disclosure is filed weeks after
 # the job; 16 MB a day is a small visit to a free public service. A server that refuses the runner is an answer, not an error (exit 2: the committed files stay and the kept list is not
 # moved); a failed or invalid run leaves them exactly as committed. It shares the nightly capture's concurrency group, so the two never push at once.
@@ -76,7 +76,7 @@ jobs:
         run: |
           git config user.name "refresh-newwells"
           git config user.email "actions@users.noreply.github.com"
-          git add site/public/data/newwells/summary.json site/public/data/newwells/points.json site/public/data/newwells/points-history.json site/public/data/newwells/arrivals.json
+          git add site/public/data/newwells/summary.json site/public/data/newwells/points.json site/public/data/newwells/points-history.json site/public/data/newwells/detail.json site/public/data/newwells/detail-history.json site/public/data/newwells/arrivals.json
           if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
           git commit -m "New wells map $(date -u +%F)"
           git pull --rebase origin "$GITHUB_REF_NAME"

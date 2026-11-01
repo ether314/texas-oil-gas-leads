@@ -58,10 +58,16 @@ export function stack(doc, n = 36, top = 8) {
 // mergePoints(recent, hist): the history (points-history.json: every well with a point from 2011 up to `until`, with county and operator tables of its own) joined to the points file
 // as one document for decode(). The history may reach up to 11 months into the points file's days: its rows from the points' first day on are dropped, the points file's own are kept.
 // Throws when the two are not from one read (a different set of states).
-export function mergePoints(recent, hist) {
-  if (hist.states.length !== recent.states.length || hist.states.some((id, i) => id !== recent.states[i])) throw new Error('the history is not from the same read as the points');
+// how many of the history's wells come before the points file's first day: the history's rows from there on are the points file's again (the two overlap by up to 11 months)
+export function historyCut(recent, hist) {
   const off = Math.round((isoMs(recent.t0) - isoMs(hist.t0)) / DAY); // days from the history's first day to the points file's
   let k = 0; while (k < hist.n && hist.d[k] < off) k++;
+  return k;
+}
+export function mergePoints(recent, hist) {
+  if (hist.states.length !== recent.states.length || hist.states.some((id, i) => id !== recent.states[i])) throw new Error('the history is not from the same read as the points');
+  const off = Math.round((isoMs(recent.t0) - isoMs(hist.t0)) / DAY);
+  const k = historyCut(recent, hist);
   const counties = recent.counties.slice(); const cix = new Map(counties.map((c, i) => [c[0] + '|' + c[1], i]));
   const cmap = hist.counties.map((c) => { const key = c[0] + '|' + c[1]; if (!cix.has(key)) { cix.set(key, counties.length); counties.push(c); } return cix.get(key); });
   const ops = recent.ops.slice(); const oix = new Map(ops.map((o, i) => [o, i]));
@@ -88,6 +94,40 @@ export function decode(points) {
   return P;
 }
 export const dayMs = (P, d) => P.t0 + d * DAY;
+
+/* ---------- the detail files (detail.json, detail-history.json; d13_newwells.py): what the registry also says of the same wells, row i being the points file's row i ---------- */
+export const DATUM = ['', 'NAD27', 'NAD83', 'WGS84']; // the code 0 is "not given"
+// a detail document goes with a points (or history) document when it is the same read: the same rows, the same first day and the same end
+export const detailFits = (detail, pts, history = false) => !!detail && !!pts && detail.v === 1 && detail.n === pts.n && detail.t0 === pts.t0 && (history ? detail.until === pts.until : detail.asOf === pts.asOf);
+// the history's detail up to `cut` rows (historyCut), then the recent one: the columns of mergePoints, for the same merged wells
+export function mergeDetail(recent, hist, cut) {
+  const out = { v: 1, n: cut + recent.n };
+  for (const col of ['api', 'end', 'tvd', 'wg', 'nw', 'dat']) out[col] = hist[col].slice(0, cut).concat(recent[col]);
+  return out;
+}
+// typed columns: api (a number: Alabama's starts with a zero), end (days after the first job day), tvd (feet), wg and nw (gallons of water and of other base fluid), dat (a DATUM index); -1 is not known
+export function decodeDetail(d) {
+  const n = d.n; const out = { n, api: new Float64Array(n), end: new Int16Array(n), tvd: new Int32Array(n), wg: new Int32Array(n), nw: new Int32Array(n), dat: new Uint8Array(n) };
+  for (let i = 0; i < n; i++) { out.api[i] = d.api[i]; out.end[i] = d.end[i]; out.tvd[i] = d.tvd[i]; out.wg[i] = d.wg[i]; out.nw[i] = d.nw[i]; out.dat[i] = d.dat[i]; }
+  return out;
+}
+// 42-317-00001: state, county, well (the first ten digits of the API number, as the registry gives them)
+export const apiText = (v) => { const s = String(Math.round(v)).padStart(10, '0'); return s.slice(0, 2) + '-' + s.slice(2, 5) + '-' + s.slice(5); };
+// every fact the report has about well i: the points' own, and the detail's where P.det is there (null for what is not known: never a zero standing for it)
+export function wellFacts(P, i) {
+  const det = P.det; const start = dayIso(dayMs(P, P.day[i]));
+  return {
+    state: stateOfPoint(P, i), county: countyOf(P, i), operator: operatorOf(P, i), lat: P.lat[i], lon: P.lon[i], start, land: P.f[i],
+    end: det && det.end[i] >= 0 ? dayIso(dayMs(P, P.day[i] + det.end[i])) : null,
+    api: det ? det.api[i] : null,
+    tvd: det && det.tvd[i] >= 0 ? det.tvd[i] : (P.tvd[i] ? P.tvd[i] * 100 : null),
+    water: det && det.wg[i] >= 0 ? det.wg[i] : (P.h2o[i] ? P.h2o[i] * 1e5 : null),
+    nonWater: det && det.nw[i] >= 0 ? det.nw[i] : null,
+    datum: det ? (DATUM[det.dat[i]] || null) : null,
+  };
+}
+export const feetText = (v) => (v == null ? null : new Intl.NumberFormat('en-US').format(v) + ' ft');
+export const gallonsText = (v) => (v == null ? null : v >= 1e6 ? (v / 1e6).toFixed(1) + ' million gal' : new Intl.NumberFormat('en-US').format(v) + ' gal');
 // whole years the points cover (about 16 from 2011)
 export const yearsOf = (P) => Math.round(P.span / 365.25);
 export const dayOfIso = (P, iso) => Math.round((isoMs(iso) - P.t0) / DAY);

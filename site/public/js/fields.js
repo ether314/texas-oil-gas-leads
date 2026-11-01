@@ -175,7 +175,7 @@ export function createFieldsView({ root }) {
     return el('section', { class: 'card nat-card reveal is-in', id: 'fx-registry' },
       hdr(s.name, 'drop', 'What a ' + s.name + ' disclosure holds', total + ' fields in the registry’s download, in plain words. ' + matched + ' of them match a metric above; the rest identify a record or add a note. A disclosure is filed after the job, so it records what was done and is not a permit.'),
       groups.map((g) => el('div', { class: 'fx-rg', key: g.id }, el('h3', { text: g.label }), el('ul', { class: 'fx-rfs' }, g.fields.map(row)))),
-      el('p', { class: 'fine', text: 'From the data dictionary inside the registry’s download and the real column names of its three kinds of file. The site publishes none of the API numbers, well names or chemical lists in it (README, Privacy).' }));
+      el('p', { class: 'fine', text: 'From the data dictionary inside the registry’s download and the real column names of its three kinds of file. The site publishes none of the well names or chemical lists in it, and the API numbers only in the Daily report (README, Privacy).' }));
   }
   function showPanel() {
     slots.panel.replaceChildren(sel.s && sel.m ? cellPanel(sel.s, sel.m) : sel.s ? statePanel(sel.s) : sel.m ? metricPanel(sel.m)

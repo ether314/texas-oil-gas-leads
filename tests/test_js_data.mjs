@@ -404,6 +404,32 @@ check(S.spudCaveat(['TX', 'OK', 'NM']) === '' && S.spudCaveat(['NM']) === '' && 
   check(h1 - h0 > 300 && NW.dayMs(PH, h1) === NW.dayMs(P, d1) && NW.landShare(PH, h0, h1).of === land.of && NW.leaders(PH, h0, h1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join() === NW.leaders(P, d0, d1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join(),
     'newwells: the settled year over the merged points is the same year as over the points alone (the panel and the lists read the same wells either way)');
   check((() => { try { NW.mergePoints(pts, { ...hist, states: hist.states.slice().reverse() }); return false; } catch (e) { return /same read/.test(e.message); } })(), 'newwells: a history from another read than the points (other states) is refused');
+  // the detail files (detail.json, detail-history.json): the API number, the job's last day, the exact depth and water, the other base fluid and the datum of the same wells, row i being the points file's row i
+  const det = read('newwells/detail'); const dhist = read('newwells/detail-history');
+  check(NW.detailFits(det, pts) && NW.detailFits(dhist, hist, true) && !NW.detailFits(dhist, pts) && !NW.detailFits(det, hist, true) && !NW.detailFits(null, pts) && !NW.detailFits({ ...det, n: det.n - 1 }, pts) && !NW.detailFits({ ...det, asOf: '2020-01-01' }, pts) && !NW.detailFits({ ...dhist, until: '2020-01-01' }, hist, true),
+    'newwells detail: a detail file goes with its own points file and no other (the same rows, first day and end)');
+  check(NW.historyCut(pts, hist) === kept && mp.n === kept + pts.n, 'newwells detail: the history is cut at one row for the points and for the detail (historyCut)');
+  const md = NW.mergeDetail(det, dhist, kept);
+  check(md.n === PH.n && md.api.length === PH.n && md.api[0] === dhist.api[0] && md.api[kept - 1] === dhist.api[kept - 1] && md.api[kept] === det.api[0] && md.api[md.n - 1] === det.api[det.n - 1] && md.nw[kept] === det.nw[0], 'newwells detail: the merged detail has the merged points\' rows: the history\'s kept rows, then the recent ones');
+  PH.det = NW.decodeDetail(md);
+  // row i is the same well in both: the API number begins with its state's code, and its next three digits are its county's code, for every well
+  const CODE = { TX: '42', NM: '30', OK: '35', ND: '33', CO: '05', PA: '37', WV: '47', WY: '49', LA: '17', OH: '34', UT: '43', CA: '04', AR: '03', KS: '15', MT: '25', AK: '50', MS: '23', VA: '45' };
+  const pad = (v) => String(Math.round(v)).padStart(10, '0'); let known = 0; let match = 0;
+  for (let i = 0; i < PH.n; i++) { const c = CODE[PH.states[PH.s[i]]]; if (c) { known++; if (pad(PH.det.api[i]).startsWith(c)) match++; } }
+  check(known > 200000 && match / known > 0.9995, 'newwells detail: the API number of every well begins with its state\'s code (' + match + ' of ' + known + ' wells of the 18 states with one to check)');
+  const COUNTY = [['TX', 'Loving', '301'], ['NM', 'Eddy', '015'], ['ND', 'McKenzie', '053'], ['OK', 'Canadian', '017'], ['PA', 'Susquehanna', '115']];
+  const sameCounty = COUNTY.map(([st, name, code]) => { let n = 0; let ok = 0; for (let i = 0; i < PH.n; i++) if (PH.states[PH.s[i]] === st && NW.countyOf(PH, i) === name) { n++; if (pad(PH.det.api[i]).slice(2, 5) === code) ok++; } return [st + ' ' + name, n, ok]; });
+  check(sameCounty.every(([, n, ok]) => n > 100 && ok / n > 0.99), 'newwells detail: the county digits inside the API numbers are the points\' counties\' for 99% or more of each county\'s wells (the registry has a few rows where the two disagree; a detail that is not its points\' wells would score a few percent): ' + sameCounty.map((x) => x.join(' ')).join(', '));
+  const iL = (() => { for (let i = PH.n - 1; i >= 0; i--) if (PH.states[PH.s[i]] === 'TX' && NW.countyOf(PH, i) === 'Loving' && PH.det.tvd[i] > 0 && PH.det.end[i] >= 0) return i; return -1; })();
+  const fl = NW.wellFacts(PH, iL);
+  check(iL > 0 && /^42-301-\d{5}$/.test(NW.apiText(fl.api)) && fl.end >= fl.start && fl.start === NW.dayIso(NW.dayMs(PH, PH.day[iL])) && fl.tvd >= 500 && fl.water >= 1000 && fl.nonWater >= 0 && ['NAD27', 'NAD83', 'WGS84'].includes(fl.datum) && Math.abs(fl.lat - PH.lat[iL]) < 1e-6,
+    'newwells detail: a Loving County well\'s facts: its API number (42-301-...), job days, exact depth and water, other fluid and datum: ' + JSON.stringify({ ...fl, api: NW.apiText(fl.api) }));
+  const f0 = NW.wellFacts({ ...PH, det: null }, iL);
+  check(f0.api === null && f0.end === null && f0.nonWater === null && f0.datum === null && f0.tvd === PH.tvd[iL] * 100 && f0.water === PH.h2o[iL] * 1e5, 'newwells detail: without the detail a well\'s facts are the points\' own (hundreds of feet and of thousands of gallons) and what only the detail knows is null, never a zero');
+  check(NW.apiText(4231700001) === '42-317-00001' && NW.apiText(512300005) === '05-123-00005' && NW.apiText('0512300005') === '05-123-00005' && NW.feetText(12345) === '12,345 ft' && NW.feetText(null) === null && NW.gallonsText(21000000) === '21.0 million gal' && NW.gallonsText(250000) === '250,000 gal' && NW.gallonsText(0) === '0 gal' && NW.gallonsText(null) === null,
+    'newwells detail: an API number is written state-county-well with its leading zero back, depth in feet, water in gallons or millions, and a real 0 gallons is shown, not hidden');
+  const dd = NW.decodeDetail({ n: 3, api: [512300005, 4231700001, 3501500000], end: [-1, 0, 7], tvd: [-1, 9000, 500], wg: [-1, 1000, 150000000], nw: [-1, 0, 5], dat: [0, 2, 3] });
+  check(dd.n === 3 && dd.api[0] === 512300005 && dd.end[0] === -1 && dd.end[2] === 7 && dd.tvd[1] === 9000 && dd.wg[2] === 150000000 && dd.nw[1] === 0 && dd.dat[2] === 3 && NW.DATUM[dd.dat[1]] === 'NAD83', 'newwells detail: the decoded columns keep their values, -1 for not known and 150 million gallons exactly');
 }
 
 /* ---------- oil-day-data.js: the permits the three daily-publishing states approved each day, for the Daily report's chart and summary ---------- */

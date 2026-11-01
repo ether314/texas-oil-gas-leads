@@ -21,8 +21,12 @@ What is published (site/public/data/newwells/):
   points.json   one row per well of the last 24 months that has a usable point, as columns: latitude and longitude in ten-thousandths of a degree,
                 the day (days since t0), the state, county and operator (indexes into tables; -1 for an operator that may not be named), depth in
                 hundreds of feet, water in hundreds of thousands of gallons, and whether the well is on federal or tribal land
-Never published: the API number, the well's name, the lease, a name that is not a corporation, LLC or partnership (the one naming rule,
-`d8_ok_daily.nameable`, plus KNOWN_ORGANIZATIONS below), the registry's own ids.
+  detail.json   the same wells in the same order (row i of the detail is row i of points.json), as columns of whole numbers: the API number of the well
+                (its first ten digits), the job's last day (days after its first), the exact depth in feet, the exact water and the non-water base fluid in gallons,
+                and the datum of the point (NAD27, NAD83, WGS84). By the owner's decision of 2026-11-02 (CLAUDE.md, Privacy, exception (d)) these two files, and no
+                other file of this folder, carry an API number; the Daily report shows and offers them. `detail-history.json` is the same for points-history.json.
+Never published: the well's name, the lease, a name that is not a corporation, LLC or partnership (the one naming rule, `d8_ok_daily.nameable`, plus
+KNOWN_ORGANIZATIONS below), the registry's own ids; and no API number outside the two detail files.
 
 A point is kept only if it lies in the state the registry gives for the well (checked against the committed outlines, `us-states.json`, with 0.1 degree
 of tolerance for the coast and for the old datum: NAD27 positions are not shifted, the difference is under 100 m). A well with no usable point still
@@ -70,6 +74,15 @@ MAX_MEMBER = 400 * 1024 * 1024  # a disclosure list is 61 MB today
 BLOCK = 1 << 20
 REQUIRED = ("DisclosureId", "JobStartDate", "APINumber", "StateName", "CountyName", "OperatorName", "Latitude", "Longitude", "Projection", "TVD", "TotalBaseWaterVolume", "FederalWell", "IndianWell")
 STATE_OF = {name: code for code, name in C.JURISDICTIONS if code not in ("FO", "BL")}
+# The first two digits of an API number are its state (read off the real registry on 2026-11-02 for the 27 states that have wells in it; Arizona, Florida,
+# Missouri, Oregon, South Dakota and Tennessee follow the same alphabetical numbering and have none yet). The registry's own state name disagrees with
+# its API number on a handful of rows (a Texas well with a California prefix), so the check that the detail file lines up with the points is a share, not every row.
+API_STATE = {"AL": "01", "AZ": "02", "AR": "03", "CA": "04", "CO": "05", "FL": "09", "ID": "11", "IL": "12", "IN": "13", "KS": "15", "KY": "16", "LA": "17", "MI": "21", "MS": "23", "MO": "24",
+             "MT": "25", "NE": "26", "NV": "27", "NM": "30", "NY": "31", "ND": "33", "OH": "34", "OK": "35", "OR": "36", "PA": "37", "SD": "40", "TN": "41", "TX": "42", "UT": "43", "VA": "45",
+             "WV": "47", "WY": "49", "AK": "50"}
+ALIGN_MIN = 0.99  # the share of detail rows whose API prefix is their point's state (real data: 99.99%); a file not aligned with its points scores about one in ten
+DATUMS = {"NAD27": 1, "NAD83": 2, "WGS84": 3}  # 0 is "not given"; the registry also writes "Nad27"
+MAX_JOB_DAYS = 365  # a job that ends before it starts, or more than a year later, is a typing error: its end is left out
 log = C.log
 
 # Operators FracFocus lists under a name the shared rule refuses because it has no "Inc" or "LLC" (the rule names an operator only when it ends like a
@@ -281,7 +294,7 @@ class Wells:
     def __init__(self, outlines, today=None):
         self.out = outlines
         self.today = today or date.today()
-        self.first = {}  # api10 -> (day, state, county, operator, (lat, lon) or None, tvd_ft, water_gal, land)
+        self.first = {}  # api10 -> (day, state, county, operator, (lat, lon) or None, tvd_ft, water_gal, land, api10, last job day or None, non-water gal or None, datum 0 to 3)
         self.read = 0
         self.skipped = collections.Counter()
 
@@ -312,8 +325,12 @@ class Wells:
         county = " ".join((row.get("CountyName") or "").replace("_", " ").split())
         county = C.place_title(county) if county and C.PLACE.match(county) and not re.search(r"\d{3,}", county) else ""
         land = (1 if (row.get("FederalWell") or "").strip().lower() == "true" else 0) + (2 if (row.get("IndianWell") or "").strip().lower() == "true" else 0)
+        end = C.parse_day(row.get("JobEndDate"), self.today)
+        end = end if end is not None and day <= end <= day + timedelta(days=MAX_JOB_DAYS) else None
+        nonwater = number(row.get("TotalBaseNonWaterVolume"))
+        datum = DATUMS.get((row.get("Projection") or "").strip().upper(), 0)
         self.first[api[:10]] = (day, state, county, " ".join((row.get("OperatorName") or "").split()), point, tvd if tvd and 500 <= tvd <= 30000 else None,
-                                water if water and 1000 <= water <= MAX_WATER else None, land)
+                                water if water and 1000 <= water <= MAX_WATER else None, land, api[:10], end, nonwater if nonwater is not None and 0 <= nonwater <= MAX_WATER else None, datum)
 
 
 def months_through(asof):
@@ -327,6 +344,16 @@ def months_through(asof):
 
 def median(values, n=5):
     return statistics.median(values) if len(values) >= n else None
+
+
+def points_rows(recs, t0):
+    """The located wells of the last 24 months in the order of points.json. The detail file is built from this same list, so its row i is the points file's row i."""
+    return sorted((r for r in recs if r[4] and r[0] >= t0), key=lambda r: (r[0], r[1], r[4]))
+
+
+def history_rows(recs, until):
+    """The located wells before `until` in the order of points-history.json (and detail-history.json)."""
+    return sorted((r for r in recs if r[4] and r[0] < until), key=lambda r: (r[0], r[1], r[4]))
 
 
 def build(wells, today=None):
@@ -382,7 +409,7 @@ def build(wells, today=None):
     first_pt = C.add_months(C.month_of(asof), -(POINT_MONTHS - 1)) + "-01"
     t0 = date.fromisoformat(first_pt)
     sids = [s["id"] for s in states]
-    points = encode_points(sorted((r for r in recs if r[4] and r[0] >= t0), key=lambda r: (r[0], r[1], r[4])), t0, sids, asof)
+    points = encode_points(points_rows(recs, t0), t0, sids, asof)
     summary = {
         "v": 1, "asOf": asof.isoformat(), "settled": C.month_end(settled).isoformat(), "lagDays": LAG_DAYS, "read": wells.read, "wells": len(recs),
         "source": {"name": "FracFocus Chemical Disclosure Registry", "url": PAGE}, "months": months, "states": states,
@@ -420,6 +447,37 @@ def encode_points(rows, t0, sids, asof):
     return {"v": 1, "t0": t0.isoformat(), "asOf": asof.isoformat(), "n": len(rows), "states": sids, "counties": ctable, "ops": otable, **cols}
 
 
+def encode_detail(rows, base):
+    """What the registry also says of the same wells, as columns of whole numbers in the same order as `base` (the points or history document made from these rows):
+    the API number of the well (a number: Alabama's starts with a zero), the job's last day as days after its first, the exact depth (feet), water and non-water base fluid
+    (gallons) and the datum. -1 is "not known" (a well really has no non-water fluid: that is 0)."""
+    out = {"v": 1, "t0": base["t0"], "n": len(rows)}
+    out["until" if "until" in base else "asOf"] = base["until"] if "until" in base else base["asOf"]
+    out["api"] = [int(r[8]) for r in rows]
+    out["end"] = [(r[9] - r[0]).days if r[9] else -1 for r in rows]
+    out["tvd"] = [round(r[5]) if r[5] else -1 for r in rows]
+    out["wg"] = [round(r[6]) if r[6] else -1 for r in rows]
+    out["nw"] = [round(r[10]) if r[10] is not None else -1 for r in rows]
+    out["dat"] = [r[11] for r in rows]
+    return out
+
+
+def build_detail(wells, points):
+    """The detail of points.json's wells."""
+    rows = points_rows(list(wells.first.values()), date.fromisoformat(points["t0"]))
+    if len(rows) != points["n"]:
+        raise ValueError("detail: %d wells against %d points" % (len(rows), points["n"]))
+    return encode_detail(rows, points)
+
+
+def build_history_detail(wells, history):
+    """The detail of points-history.json's wells."""
+    rows = history_rows(list(wells.first.values()), date.fromisoformat(history["until"]))
+    if len(rows) != history["n"]:
+        raise ValueError("detail-history: %d wells against %d points" % (len(rows), history["n"]))
+    return encode_detail(rows, history)
+
+
 def history_end(asof):
     """The history file holds the wells before January 1 of the year before the newest job's: it moves once a year, and it is never later than the points file's start (a gap would lose wells), only earlier (an overlap of up to 11 months, which the page drops)."""
     return date(asof.year - 1, 1, 1)
@@ -429,7 +487,7 @@ def build_history(wells, summary):
     """The wells with a usable point from the registry's start to history_end: the same columns and the same state order as the points file, with tables of their own. The page loads it only when asked."""
     asof = date.fromisoformat(summary["asOf"])
     until = history_end(asof)
-    rows = sorted((r for r in wells.first.values() if r[4] and r[0] < until), key=lambda r: (r[0], r[1], r[4]))
+    rows = history_rows(list(wells.first.values()), until)
     doc = encode_points(rows, REGISTRY_START, [s["id"] for s in summary["states"]], asof)
     doc["until"] = until.isoformat()
     del doc["asOf"]  # the history does not change with each week's read: its file changes only when an old well does, or once a year when its end moves
@@ -564,6 +622,49 @@ def validate_points(doc, summary=None, history=False):
 
 
 FILES = ("summary.json", "points.json", "points-history.json")
+DETAIL_FILES = ("detail.json", "detail-history.json")
+
+
+def validate_detail(doc, points, history=False):
+    """The detail file of `points` (or, with history=True, of the history document): the same wells in the same order. Every column holds n whole numbers in its range, and it
+    must line up with the points: the depth and the water agree with the points' rounded ones row by row, and the API number's state is the point's state for at least ALIGN_MIN of
+    the rows. API numbers are allowed here (CLAUDE.md, exception (d)); an e-mail address, a web address or a phone number never are."""
+    what = "detail-history" if history else "detail"
+    if not isinstance(doc, dict) or doc.get("v") != 1:
+        return [what + ": not a v1 document"]
+    n = points.get("n")
+    cols = ("api", "end", "tvd", "wg", "nw", "dat")
+    if doc.get("n") != n or not all(isinstance(doc.get(c), list) and len(doc[c]) == n for c in cols):
+        return [what + ": every column must hold the %s rows of its points file" % n]
+    key = "until" if history else "asOf"
+    if doc.get("t0") != points.get("t0") or doc.get(key) != points.get(key):
+        return [what + ": its t0 and %s must be its points file's" % key]
+    if set(doc) != {"v", "t0", key, "n", *cols}:
+        return [what + ": unexpected keys " + ", ".join(sorted(set(doc) ^ {"v", "t0", key, "n", *cols}))]
+    def ints(c, lo, hi, none=None):
+        return all(isinstance(x, int) and not isinstance(x, bool) and (lo <= x <= hi or x == none) for x in doc[c])
+    p = []
+    for c, lo, hi, none in (("api", 100_000_000, 9_999_999_999, None), ("end", 0, MAX_JOB_DAYS, -1), ("tvd", 500, 30000, -1), ("wg", 1000, int(MAX_WATER), -1), ("nw", 0, int(MAX_WATER), -1), ("dat", 0, 3, None)):
+        if not ints(c, lo, hi, none):
+            p.append("%s: column %s must be whole numbers from %d to %d%s" % (what, c, lo, hi, " (or -1)" if none is not None else ""))
+    if p:
+        return p
+    states = points["states"]
+    bad_tvd = bad_water = 0
+    for i in range(n):
+        pt, tvd, wg, h = points["tvd"][i], doc["tvd"][i], doc["wg"][i], points["h2o"][i]
+        if (pt == 0) != (tvd == -1) or (tvd != -1 and abs(pt * 100 - tvd) > 51):  # points keep depth in hundreds of feet, 0 meaning unknown
+            bad_tvd += 1
+        if (wg == -1 and h != 0) or (wg != -1 and abs(h * 100000 - wg) > 50001):  # and water in hundreds of thousands of gallons (a small job rounds to 0)
+            bad_water += 1
+    matches = sum(1 for a, st in zip(doc["api"], points["s"]) if API_STATE.get(states[st]) == ("%010d" % a)[:2])
+    if bad_tvd or bad_water:
+        p.append("%s: %d rows whose depth and %d whose water disagree with the points file's: the two files are not the same wells" % (what, bad_tvd, bad_water))
+    if n and matches < ALIGN_MIN * n:
+        p.append("%s: only %d of %d API numbers belong to their point's state: the file does not line up with its points" % (what, matches, n))
+    for hit in privacy_check.scan(json.dumps(doc, ensure_ascii=False), digits=False):
+        p.append(what + " holds " + hit)
+    return p
 
 
 def validate_pair(points, history):
@@ -573,18 +674,22 @@ def validate_pair(points, history):
     return []
 
 
-def write(summary, points, out_dir=OUT, history=None, arrivals=None):
+def write(summary, points, out_dir=OUT, history=None, arrivals=None, detail=None, detail_history=None):
     """Validates, then writes the files (compact, deterministic). Nothing is written when any is bad."""
     bad = validate_summary(summary) + validate_points(points, summary)
     if history is not None:
         bad += validate_points(history, summary, history=True) or validate_pair(points, history)
+    if detail is not None:
+        bad += validate_detail(detail, points)
+    if detail_history is not None:
+        bad += validate_detail(detail_history, history, history=True) if history is not None else ["detail-history: there is no history to line it up with"]
     if arrivals is not None:
         bad += ARR.validate(arrivals, states={s["id"] for s in summary["states"]})
     if bad:
         raise ValueError("; ".join(bad[:6]))
     os.makedirs(out_dir, exist_ok=True)
     paths = []
-    for name, doc in (("summary.json", summary), ("points.json", points), ("points-history.json", history), (ARR.NAME, arrivals)):
+    for name, doc in (("summary.json", summary), ("points.json", points), ("points-history.json", history), (DETAIL_FILES[0], detail), (DETAIL_FILES[1], detail_history), (ARR.NAME, arrivals)):
         if doc is None:
             continue
         path = os.path.join(out_dir, name)
@@ -618,6 +723,18 @@ def load_history(out_dir=OUT):
         return None
 
 
+def load_detail(out_dir=OUT):
+    """[detail, detail-history] as committed (None for one that is missing or unreadable)."""
+    out = []
+    for name in DETAIL_FILES:
+        try:
+            with open(os.path.join(out_dir, name), encoding="utf-8") as f:
+                out.append(json.load(f))
+        except (OSError, ValueError):
+            out.append(None)
+    return out
+
+
 def check(out_dir=OUT):
     summary, points = load_committed(out_dir)
     if summary is None or points is None:
@@ -626,6 +743,12 @@ def check(out_dir=OUT):
     if history is None:
         return validate_summary(summary) + validate_points(points, summary) + ["history: the file is missing or unreadable"]
     bad = validate_summary(summary) + validate_points(points, summary) + (validate_points(history, summary, history=True) or validate_pair(points, history))
+    detail, dhist = load_detail(out_dir)  # the detail files: optional for a folder made before they existed, validated against their points when there
+    for doc, base, name, hist in ((detail, points, DETAIL_FILES[0], False), (dhist, history, DETAIL_FILES[1], True)):
+        if doc is not None:
+            bad += validate_detail(doc, base, history=hist)
+        elif os.path.exists(os.path.join(out_dir, name)):
+            bad.append("%s: the file is unreadable" % name)
     arrivals = ARR.read(os.path.join(out_dir, ARR.NAME))  # the daily comparison's log: optional for a folder made before it existed, validated when there
     if arrivals is not None:
         bad += ARR.validate(arrivals, states={s["id"] for s in summary["states"]})
@@ -657,6 +780,7 @@ def run(rows, out_dir=OUT, today=None, floor=0.9, outlines=None, seen_path=None,
         wells.add(row)
     summary, points = build(wells)
     history = build_history(wells, summary)
+    detail, detail_history = build_detail(wells, points), build_history_detail(wells, history)
     bad = guard(summary, load_committed(out_dir)[0], floor)
     if bad:
         raise ValueError("refusing to write: " + "; ".join(bad))
@@ -669,7 +793,7 @@ def run(rows, out_dir=OUT, today=None, floor=0.9, outlines=None, seen_path=None,
         arrivals = ARR.update(ARR.read(os.path.join(out_dir, ARR.NAME)), entry, day, {"TX": {"wells": len(carried), "from": since}})
         log("arrivals: " + ("no list kept from the last download: this one is kept as the baseline" if entry is None else
             "%d new wells since the last download (%s), %d gone from it" % (entry["found"], ", ".join("%s %d" % (r[0], r[1]) for r in entry["states"][:6]) or "none", entry["removed"])))
-    done = write(summary, points, out_dir, history, arrivals)
+    done = write(summary, points, out_dir, history, arrivals, detail, detail_history)
     if seen_path:
         ARR.write_seen(seen_path, wells.first.keys())  # only after the files were written: a run that failed leaves the last list as it was
     log("read %d rows: %d wells (%d without a usable date, %d without an API number, %d outside the states), %d points and %d earlier ones; newest job %s, settled to %s" % (

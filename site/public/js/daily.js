@@ -3,8 +3,9 @@
 // January 2011 (the earlier wells, about 2 MB, are fetched the first time a day before the last two years is asked for); a strip of every month since 2011 above the chart marks those 150 days and opens any month with a click. Everything is drawn from data/newwells/ (FracFocus), the one source with the same facts for
 // every state that reports to it, so nothing here is a figure only some states have. A well is dated by the day of its first fracturing job; operators disclose weeks to months later, so
 // the newest days are still filling in and say so. The oil permits and spuds that the agencies publish with a location (Texas, Oklahoma, New Mexico and the federal offshore: the files the Map reads) ride on the
-// same map as hollow rings, so a filled dot is a fracked well and a ring is an oil permit; a switch shows both, the wells or the permits. Every other state's permits, by its own count, are the National page.
-import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, dayLabel, reduced, chartWidth } from './util.js';
+// same map as hollow rings, so a filled dot is a fracked well and a ring is an oil permit; a switch shows both, the wells or the permits. The table under the map lists every record of the day with its
+// API number, GPS position, job days, exact depth and water (newwells/detail*.json, row for row the points'), and the same records download as a CSV with every column. Every other state's permits, by its own count, are the National page.
+import { $, el, svg, load, loadOpt, fmt, stat, fmtDate, monthLabel, dayLabel, reduced, chartWidth, csvCell, downloadCsv } from './util.js';
 import { icon } from './icons.js';
 import { showTip, hideTip, tipRow } from './tip.js';
 import * as G from './usgeo.js';
@@ -31,9 +32,9 @@ export function createDailyView({ root }) {
 
   async function data() {
     if (dt) return dt;
-    const [doc, pts, out, nat, arrivals, tx, ok, nm, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), loadOpt('newwells/arrivals'), loadOpt('daily/index'), loadOpt('daily-ok/index'), loadOpt('daily-nm/index'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
+    const [doc, pts, out, nat, arrivals, tx, ok, nm, detail, ...pm] = await Promise.all([load('newwells/summary'), load('newwells/points'), load('us-states'), loadOpt('national'), loadOpt('newwells/arrivals'), loadOpt('daily/index'), loadOpt('daily-ok/index'), loadOpt('daily-nm/index'), loadOpt('newwells/detail'), ...D.PERMIT_SOURCES.map((x) => loadOpt(x.file))]);
     // the oil permit files are optional: a page without one still draws the wells
-    raw = { doc, pts, nat, arrivals, reports: { TX: tx, OK: ok, NM: nm }, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
+    raw = { doc, pts, nat, arrivals, detail: D.detailFits(detail, pts) ? detail : null, reports: { TX: tx, OK: ok, NM: nm }, outlines: G.buildOutlines(out), permits: D.PERMIT_SOURCES.map((x, k) => ({ id: x.id, pm: pm[k] })).filter((x) => x.pm && Array.isArray(x.pm.pts) && x.pm.pts.length) };
     // how many permits Texas, Oklahoma and New Mexico approved each day (the nightly captures' series; Oklahoma's from its permit points): optional, the page is whole without them
     raw.oil = null;
     try {
@@ -41,7 +42,8 @@ export function createDailyView({ root }) {
       const [txSeries, nmSeries] = await Promise.all([loadOpt('daily/permits-series'), loadOpt('daily-nm/permits-series')]);
       if (okQ && txSeries && nmSeries) raw.oil = Oil.counts({ tx: txSeries, nm: nmSeries, okPoints: okQ.pm });
     } catch (e) { raw.oil = null; }
-    dt = makeDt(D.decode(pts), false);
+    const P = D.decode(pts); if (raw.detail) P.det = D.decodeDetail(raw.detail); // the API numbers and the rest the registry says of the same wells
+    dt = makeDt(P, false);
     return dt;
   }
   // the days the report works on: the last two years (full false) or every day since 2011 (full true: the earlier wells merged in, day numbers counted from Jan 1, 2011)
@@ -51,7 +53,10 @@ export function createDailyView({ root }) {
   }
   async function loadFull() {
     if (dt.full) return;
-    dt = makeDt(D.decode(D.mergePoints(raw.pts, await load('newwells/points-history'))), true);
+    const hist = await load('newwells/points-history'); const P = D.decode(D.mergePoints(raw.pts, hist));
+    const hd = raw.detail ? await loadOpt('newwells/detail-history') : null; // a history detail from another read than its points is not used: the page says what it does not have
+    if (raw.detail && D.detailFits(hd, hist, true)) P.det = D.decodeDetail(D.mergeDetail(raw.detail, hd, D.historyCut(raw.pts, hist)));
+    dt = makeDt(P, true);
   }
   const firstMs = () => Date.parse(raw.doc.months[0] + '-01T00:00:00Z'); // the series' first day: the date box and the arrows go back this far
   const winMax = () => Math.max(0, dt.P.span - CHART_DAYS + 1);
@@ -365,32 +370,55 @@ export function createDailyView({ root }) {
     const xd = (L + slot * D.monthPos(doc, iso(day))).toFixed(1); S.yDay.setAttribute('x1', xd); S.yDay.setAttribute('x2', xd);
   }
 
-  /* ---------- the wells of the day, as a table (the map's twin) ---------- */
-  function drawTable() {
+  /* ---------- the wells of the day, as a table (the map's twin) and as a download ---------- */
+  const round4 = (v) => Math.round(v * 1e4) / 1e4;
+  // the CSV's columns: every record of the day with every fact the report has, a number where it is one (a longitude's minus sign is not a formula)
+  const CSV_HEAD = ['kind', 'date', 'state', 'county', 'operator', 'api_number', 'latitude', 'longitude', 'datum', 'job_start', 'job_end', 'depth_ft', 'base_water_gal', 'non_water_gal', 'land'];
+  // the table's own heading carries the year, so a job's days read "Oct 14 to Oct 18"; a job that crosses into another year says it
+  const shortDate = (d, yearOf) => (d.slice(0, 4) === yearOf ? fmtDate(d).replace(/, \d{4}$/, '') : fmtDate(d));
+  const jobText = (a, b) => (b && b !== a ? shortDate(a, a.slice(0, 4)) + ' to ' + shortDate(b, a.slice(0, 4)) : shortDate(a, a.slice(0, 4)));
+  const landWord = (code) => (code ? D.LAND[code].replace(/ land$/, '') : 'private or state');
+  // one record for each fractured well and each permit or spud of the chosen day (and state): what the table shows, and what the download holds
+  function records() {
     const { P, doc, Q } = dt; const f = flags();
-    const widx = f.wells ? wellsOf(day) : []; const pAvail = f.permits && permitsAvail(); const pidx = pAvail ? D.permitsOfDay(Q, day, sel) : [];
+    const widx = f.wells ? wellsOf(day) : []; const pidx = f.permits && permitsAvail() ? D.permitsOfDay(Q, day, sel) : [];
     const name = (id) => (D.byId(doc, id) || {}).name || D.permitStateName(id);
-    const dash = '—';
-    // one row per well and per permit; with the permit layer the first column says which is which
-    const rows = [
-      ...widx.map((i) => ({ st: name(D.stateOfPoint(P, i)), kind: 0, county: D.countyOf(P, i) || '',
-        cells: ['Fracked well', name(D.stateOfPoint(P, i)), D.countyOf(P, i) || dash, D.operatorOf(P, i) || 'Not named', D.feet(P.tvd[i]) || dash, D.gallons(P.h2o[i]) || dash, P.f[i] ? D.LAND[P.f[i]].replace(/ land$/, '') : dash] })),
-      ...pidx.map((j) => ({ st: name(D.permitState(Q, j)), kind: 1, county: '',
-        cells: [D.permitWord(Q, j), name(D.permitState(Q, j)), dash, D.permitOperator(Q, j) || 'Not named', D.feet(Q.tvd[j]) || dash, dash, dash] })),
-    ];
+    const dash = '—'; const pos = (lat, lon) => round4(lat).toFixed(4) + ', ' + round4(lon).toFixed(4);
+    const wells = widx.map((i) => {
+      const w = D.wellFacts(P, i); const st = name(w.state);
+      return { st, kind: 0, county: w.county || '', widx: i,
+        cells: ['Fracked well', w.state, w.county || dash, w.operator || 'Not named', w.api == null ? dash : D.apiText(w.api), pos(w.lat, w.lon), jobText(w.start, w.end), D.feetText(w.tvd) || dash, D.gallonsText(w.water) || dash, landWord(w.land).replace(/^private or state$/, dash)],
+        titles: { 1: st, 5: w.datum ? 'Datum ' + w.datum : null, 8: w.nonWater != null ? 'Other base fluid: ' + D.gallonsText(w.nonWater) : null },
+        csv: ['Fracked well', w.start, st, w.county || '', w.operator || '', w.api == null ? '' : D.apiText(w.api), round4(w.lat), round4(w.lon), w.datum || '', w.start, w.end || '', w.tvd == null ? '' : w.tvd, w.water == null ? '' : w.water, w.nonWater == null ? '' : w.nonWater, landWord(w.land)] };
+    });
+    const permits = pidx.map((j) => {
+      const st = name(D.permitState(Q, j)); const word = D.permitWord(Q, j); const op = D.permitOperator(Q, j); const ft = Q.tvd[j] ? Q.tvd[j] * 100 : null; const when = iso(day);
+      return { st, kind: 1, county: '',
+        cells: [word, D.permitState(Q, j), dash, op || 'Not named', dash, pos(Q.lat[j], Q.lon[j]), shortDate(when, when.slice(0, 4)), D.feetText(ft) || dash, dash, dash], titles: { 1: st },
+        csv: [word, when, st, '', op || '', '', round4(Q.lat[j]), round4(Q.lon[j]), '', '', '', ft == null ? '' : ft, '', '', ''] };
+    });
+    const rows = [...wells, ...permits];
     rows.sort((x, y) => x.st.localeCompare(y.st) || x.kind - y.kind || x.county.localeCompare(y.county));
+    return { rows, wells: widx.length, permits: pidx.length, f, name };
+  }
+  function drawTable() {
+    const { Q } = dt; const { rows, wells, permits, f, name } = records(); const pAvail = f.permits && permitsAvail();
+    S.records = rows;
     const shown = rows.slice(0, TABLE_ROWS); const first = Q ? 0 : 1; // without the permit layer the Kind column is left out
-    const body = shown.map((r) => el('tr', {}, r.cells.slice(first).map((c, k) => el('td', { class: k + first === 4 || k + first === 5 ? 'num' : null, text: c }))));
-    const w = f.wells ? fmt.format(widx.length) + (Q ? (widx.length === 1 ? ' fracked well' : ' fracked wells') : (widx.length === 1 ? ' well' : ' wells')) : null;
-    const q = pAvail ? fmt.format(pidx.length) + (pidx.length === 1 ? ' oil permit or spud' : ' oil permits and spuds') : null;
+    const cols = [['Kind', null, false, true], ['State'], ['County'], ['Operator'], ['API number', null, false, true], ['Position', 'latitude, longitude, to about 11 m', false, true], ['Job', 'the first fracturing job and its last day; for a permit, the day', false, true], ['Depth', null, true, true], ['Water', null, true, true], ['Land']].slice(first); // [heading, hint, right-aligned, one line]
+    const body = shown.map((r) => el('tr', {}, r.cells.slice(first).map((c, k) => el('td', { class: [cols[k][2] ? 'num' : '', cols[k][3] ? 'nw' : ''].join(' ').trim() || null, title: r.titles[k + first] || null, text: c }))));
+    const w = f.wells ? fmt.format(wells) + (Q ? (wells === 1 ? ' fracked well' : ' fracked wells') : (wells === 1 ? ' well' : ' wells')) : null;
+    const q = pAvail ? fmt.format(permits) + (permits === 1 ? ' oil permit or spud' : ' oil permits and spuds') : null;
     S.tableHead.textContent = ([w, q].filter(Boolean).join(' and ') || 'No oil permit locations') + ' on ' + fmtDate(iso(day)) + (sel ? ' in ' + name(sel) : '');
-    const heads = ['Kind', 'State', 'County', 'Operator', 'Depth', 'Water', 'Land'].slice(first);
     // replaceChildren writes the word "null" for a null child, so the empty ones are dropped first
-    S.table.replaceChildren(...[rows.length ? el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': 'The records of the chosen day' }, el('table', { class: 'grid' },
-      el('thead', {}, el('tr', {}, heads.map((h, k) => el('th', { scope: 'col', class: k + first === 4 || k + first === 5 ? 'num' : null, text: h })))), el('tbody', {}, body)))
+    S.table.replaceChildren(...[rows.length ? el('div', { class: 'table-wrap tall', tabindex: '0', role: 'region', 'aria-label': 'The records of the chosen day' }, el('table', { class: 'grid dd-grid' },
+      el('thead', {}, el('tr', {}, cols.map((h) => el('th', { scope: 'col', class: [h[2] ? 'num' : '', h[3] ? 'nw' : ''].join(' ').trim() || null, title: h[1] || null, text: h[0] })))), el('tbody', {}, body)))
       : el('p', { class: 'nd', text: !Q ? 'No well.' : !f.wells ? (pAvail ? 'No oil permit or spud with a location.' : 'No oil permit locations for this day or state.') : pAvail ? 'No fracked well or oil permit with a location.' : 'No fracked well.' }),
-    rows.length > TABLE_ROWS ? el('p', { class: 'fine', text: 'The first ' + TABLE_ROWS + ' of ' + fmt.format(rows.length) + ' are listed; choose a state to see its own.' }) : null,
-    el('p', { class: 'fine', text: 'Operators are named only when they are corporations, LLCs or partnerships. No API number, well name or lease is published.' })].filter(Boolean));
+    rows.length > TABLE_ROWS ? el('p', { class: 'fine', text: 'The first ' + TABLE_ROWS + ' of ' + fmt.format(rows.length) + ' are listed; the download has all of them, or choose a state to see its own.' }) : null,
+    rows.length ? el('div', { class: 'actions' }, S.csv) : null,
+    el('p', { class: 'fine', text: 'The API number is the well’s own, as FracFocus gives it (the first ten digits: state, county, well). A well is placed by its GPS point, county and state: no source the report reads has a well’s street address or a parcel number. Operators are named only when they are corporations, LLCs or partnerships. No well name or lease is published.' }),
+    dt.P.det ? null : el('p', { class: 'fine', text: 'The API numbers, the job’s last day and the exact depth and water are not loaded for these wells, so those columns show what the points file holds, or a dash.' })].filter(Boolean));
+    S.csv.textContent = 'Download this day (' + fmt.format(rows.length) + (rows.length === 1 ? ' row' : ' rows') + ', CSV)'; S.csv.disabled = !rows.length;
   }
 
   /* ---------- who reported lately ---------- */
@@ -438,6 +466,8 @@ export function createDailyView({ root }) {
   function render(winFrom = null) {
     S.win = winFrom == null ? winMax() : clampWin(winFrom);
     S.chart = el('div', { class: 'dd-chartbox' }); S.table = el('div', {}); S.tableHead = el('h2', { id: 'dd-table-h' });
+    S.csv = el('button', { type: 'button', class: 'btn', text: 'Download this day (CSV)' });
+    S.csv.addEventListener('click', () => downloadCsv('oil-tracker-' + iso(day) + (sel ? '-' + sel : '') + '.csv', [CSV_HEAD.join(',')].concat((S.records || []).map((r) => r.csv.map(csvCell).join(',')))));
     S.chartNote = el('p', { class: 'fine' });
     const dayCardEl = dayCard();
     S.earlier = el('button', { type: 'button', class: 'btn', onclick: () => page(-1) }, icon('arrow', 16, 'dd-back'), 'Earlier');

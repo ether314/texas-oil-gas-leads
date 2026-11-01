@@ -1,6 +1,6 @@
 // The Companies page's two tables: the operators (every state that names them) and the Texas company directory. Filterable, sortable tables with CSV export and
 // deep links (ported from v1, then extended). The page around them (the switch, the notes, the address) is companies.js.
-import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, queryText, monthLabel } from './util.js';
+import { $, el, fmt, fmtDate, halves, load, loadOpt, toObjects, once, parseHash, queryText, monthLabel, csvCell, downloadCsv } from './util.js';
 import { spark, delta } from './charts.js';
 import { getGeo, getZips, countyAt } from './geo.js';
 import { shareButton, absoluteLink } from './ui.js';
@@ -167,19 +167,7 @@ export function explorer(cfg, meta) {
   let timer = 0;
   search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { state.q = search.value; refresh(); }, 150); });
   more.addEventListener('click', () => { state.limit += 100; render(); });
-  // a name that starts with = + - or @ would run as a formula in a spreadsheet, so defuse it (a number cannot be a formula: a fall of -14.4 stays a number)
-  const csvCell = (v) => {
-    let s = v == null ? '' : String(v);
-    if (!(typeof v === 'number' && Number.isFinite(v)) && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
-    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  csvBtn.addEventListener('click', () => {
-    const lines = [cfg.csv.map((c) => c[0]).join(',')].concat(state.view.map((r) => cfg.csv.map((c) => csvCell(c[1](r))).join(',')));
-    const url = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' }));
-    const link = el('a', { href: url, download: cfg.csvName + '-' + meta.built + '.csv' });
-    document.body.append(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
+  csvBtn.addEventListener('click', () => downloadCsv(cfg.csvName + '-' + meta.built + '.csv', [cfg.csv.map((c) => c[0]).join(',')].concat(state.view.map((r) => cfg.csv.map((c) => csvCell(c[1](r))).join(',')))));
 
   // retitle a column (once its data window is known, or for the state in view)
   function relabel(key, text, hint) {

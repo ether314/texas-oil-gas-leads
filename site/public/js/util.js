@@ -76,6 +76,19 @@ export function load(name) {
 }
 // optional files: a missing one hides its feature instead of breaking the page
 export const loadOpt = (name) => load(name).catch(() => null);
+// a cell of a CSV the pages offer: a name that starts with = + - or @ would run as a formula in a spreadsheet, so defuse it (a number cannot be a formula: a fall of -14.4 stays a number)
+export const csvCell = (v) => {
+  let s = v == null ? '' : String(v);
+  if (!(typeof v === 'number' && Number.isFinite(v)) && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+// offer text as a file: a CSV with a byte-order mark so a spreadsheet reads its accents, lines ending the way spreadsheets expect
+export function downloadCsv(filename, lines) {
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' }));
+  const link = el('a', { href: url, download: filename });
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 export function toObjects(table) {
   return table.rows.map((row, i) => {
     const o = { _i: i };

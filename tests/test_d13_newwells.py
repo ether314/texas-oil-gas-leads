@@ -306,8 +306,8 @@ tmp = tempfile.mkdtemp()
 out = os.path.join(tmp, "out")
 rows = population()
 summary, points, done = W.run(rows, out_dir=out, today=TODAY, outlines=OUTLINES)
-check(all(ch for _, ch in done) and len(done) == 3 and W.check(out) == [] and sorted(os.listdir(out)) == sorted(W.FILES), "a first run writes the three files and they pass the check")
-before = {f: open(os.path.join(out, f), "rb").read() for f in W.FILES}
+check(all(ch for _, ch in done) and len(done) == 5 and W.check(out) == [] and sorted(os.listdir(out)) == sorted(W.FILES + W.DETAIL_FILES), "a first run writes the three files and the two detail files and they pass the check")
+before = {f: open(os.path.join(out, f), "rb").read() for f in W.FILES + W.DETAIL_FILES}
 summary2, points2, done2 = W.run(list(rows), out_dir=out, today=TODAY, outlines=OUTLINES)
 check(not any(ch for _, ch in done2) and before == {f: open(os.path.join(out, f), "rb").read() for f in before}, "the same registry again changes nothing (so a weekly run commits nothing)")
 shrunk = [r for r in rows if not r["JobStartDate"].startswith(("1/", "2/", "3/", "4/", "5/", "6/", "7/"))]
@@ -324,6 +324,119 @@ check(len(list(W.rows_of_file(zpath))) == len(rows) and len(list(W.rows_of_file(
 csvpath = os.path.join(tmp, "list.csv")
 open(csvpath, "w", encoding="utf-8-sig", newline="").write(zip_of(rows) and "")  # an empty file has no header: refused
 check(raises(lambda: list(W.rows_of_file(csvpath))), "an empty csv is refused")
+
+
+# ------------------------------------------------------------------------------------------------ the detail files: the same wells, and what else the registry says of them
+detail, dhist = W.load_detail(out)
+committed_points, history_doc = W.load_committed(out)[1], W.load_history(out)  # the folder holds the last of the runs above
+check(detail is not None and dhist is not None and detail["n"] == committed_points["n"] and dhist["n"] == history_doc["n"] and detail["asOf"] == committed_points["asOf"] and dhist["until"] == history_doc["until"],
+      "a run writes the detail of the points and of the history, the same number of rows as each")
+check(all(isinstance(x, int) and not isinstance(x, bool) for c in ("api", "end", "tvd", "wg", "nw", "dat") for x in detail[c]) and W.validate_detail(detail, committed_points) == [], "the detail holds whole numbers only (no name, no text) and passes its validator")
+
+
+def special(day, api, lat, lon, state="Texas", end="same", nonwater="", proj="NAD83", tvd="12345", water="21000000"):
+    r = row(day, state, op="Alpha Energy LLC", lat=lat, lon=lon, api=api, tvd=tvd, water=water, proj=proj)
+    r["JobEndDate"] = mdy(day + timedelta(days=end)) if isinstance(end, int) else ("" if end == "blank" else r["JobEndDate"])
+    r["TotalBaseNonWaterVolume"] = nonwater
+    return r
+
+
+random.seed(9)
+SP = [special(date(2026, 3, 3), "42317000010000", 31.9001, -102.0001, end=6, nonwater="250000", proj="Nad27"),
+      special(date(2026, 3, 4), "42317000020000", 31.9002, -102.0002, end=-2, nonwater="0", proj="WGS84"),
+      special(date(2026, 3, 5), "42317000030000", 31.9003, -102.0003, end=400, nonwater="", proj=""),
+      special(date(2026, 3, 6), "42317000040000", 31.9004, -102.0004, end="blank", nonwater="4000000000", proj="NAD27"),
+      special(date(2026, 3, 7), "05123000050000", 40.1005, -104.6005, "Colorado", end=0, nonwater="1500000", tvd="", water="600"),
+      special(date(2023, 6, 6), "42317000060000", 31.9006, -102.0006, end=3, nonwater="75000", proj="NAD83")]
+wd = W.Wells(OUTLINES, TODAY)
+for r in population() + SP:
+    wd.add(r)
+sm, pt = W.build(wd)
+hs = W.build_history(wd, sm)
+dt = W.build_detail(wd, pt)
+dh = W.build_history_detail(wd, hs)
+
+
+def of(doc, base, api):
+    i = doc["api"].index(int(api[:10]))
+    return i, {c: doc[c][i] for c in ("api", "end", "tvd", "wg", "nw", "dat")}
+
+
+i1, d1 = of(dt, pt, "42317000010000")
+check(d1 == {"api": 4231700001, "end": 6, "tvd": 12345, "wg": 21000000, "nw": 250000, "dat": 1}, "a well's detail: its API number (first ten digits), the job's last day 6 days after its first, the exact depth and water, the non-water fluid and the datum (Nad27 in the registry's own spelling): %s" % d1)
+i2, d2 = of(dt, pt, "42317000020000")
+check(d2["end"] == -1 and d2["nw"] == 0 and d2["dat"] == 3, "a job that ends before it starts has no end; no non-water fluid is a real 0, not unknown; WGS84 is 3: %s" % d2)
+i3, d3 = of(dt, pt, "42317000030000")
+check(d3["end"] == -1 and d3["nw"] == -1 and d3["dat"] == 0, "a job that ends 400 days after it starts has no end; a blank non-water volume is unknown, and a blank datum is 0: %s" % d3)
+i4, d4 = of(dt, pt, "42317000040000")
+check(d4["end"] == -1 and d4["nw"] == -1 and d4["dat"] == 1, "a blank end is unknown; four billion gallons of non-water fluid is a typing error and is left out: %s" % d4)
+i5, d5 = of(dt, pt, "05123000050000")
+check(d5["api"] == 512300005 and "%010d" % d5["api"] == "0512300005", "an API number that starts with zero (a state code below 10) is a number the page pads back to ten digits: %s" % d5["api"])
+check(d5["tvd"] == -1 and d5["wg"] == -1 and d5["nw"] == 1500000, "an unusable depth and water are unknown (-1), a usable non-water volume is kept: %s" % d5)
+# row i of the detail is row i of the points: the point of a well is the point it was given
+for api, la, lo in (("42317000010000", 31.9001, -102.0001), ("42317000040000", 31.9004, -102.0004), ("05123000050000", 40.1005, -104.6005)):
+    i, _ = of(dt, pt, api)
+    check(pt["lat"][i] == round(la * 1e4) and pt["lon"][i] == round(lo * 1e4), "row of API %s in the detail is the same well's row in the points (%.4f, %.4f)" % (api[:10], la, lo))
+j6, d6 = of(dh, hs, "42317000060000")
+check(hs["lat"][j6] == round(31.9006 * 1e4) and d6["end"] == 3 and d6["nw"] == 75000 and dh["until"] == hs["until"], "the history's detail lines up with the history's points the same way")
+check(W.validate_detail(dt, pt) == [] and W.validate_detail(dh, hs, history=True) == [], "the detail files of the invented registry pass their validator: %s" % (W.validate_detail(dt, pt) + W.validate_detail(dh, hs, history=True))[:2])
+
+bad_detail = {
+    "a column shorter than the points": lambda d: d["api"].pop(),
+    "a different number of rows": lambda d: d.__setitem__("n", d["n"] - 1),
+    "an API number that is too short to be one": lambda d: d["api"].__setitem__(0, 12345),
+    "an API number with more than ten digits": lambda d: d["api"].__setitem__(0, 12345678901),
+    "a job end over a year after its start": lambda d: d["end"].__setitem__(0, 400),
+    "a depth under 500 feet": lambda d: d["tvd"].__setitem__(0, 300),
+    "more than 150 million gallons of water": lambda d: d["wg"].__setitem__(0, 400_000_000),
+    "a datum that is not one of the four": lambda d: d["dat"].__setitem__(0, 4),
+    "an API number that is text": lambda d: d["api"].__setitem__(0, "4231700001"),
+    "a key it should not have": lambda d: d.__setitem__("well", ["x"] * d["n"]),
+    "a different first day than its points": lambda d: d.__setitem__("t0", "2020-01-01"),
+    "a different asOf than its points": lambda d: d.__setitem__("asOf", "2020-01-01"),
+    "rows in another order than the points": lambda d: [d.__setitem__(c, d[c][::-1]) for c in ("api", "end", "tvd", "wg", "nw", "dat")],
+}
+for name, fn in bad_detail.items():
+    d = copy.deepcopy(dt)
+    fn(d)
+    check(W.validate_detail(d, pt) != [], "the detail validator refuses " + name)
+d = copy.deepcopy(dt)
+d["api"] = [4231700001 + k for k in range(d["n"])]
+check(any("belong to their point's state" in x for x in W.validate_detail(d, pt)), "a detail whose API numbers do not belong to its points' states is refused for that reason, not only for its shape")
+d = copy.deepcopy(dt)
+d["tvd"][i1] = 20000  # a depth that is not the points' (12,300 ft) for that well
+check(any("depth" in x for x in W.validate_detail(d, pt)), "a depth that does not match the points' rounded one is refused (the two files must be the same wells)")
+d = copy.deepcopy(dt)
+d["wg"][i1] = 90_000_000
+check(any("water" in x for x in W.validate_detail(d, pt)), "a water volume that does not match the points' rounded one is refused (the two files must be the same wells)")
+nowhere = tempfile.mkdtemp()
+check(raises(lambda: W.write(sm, pt, nowhere, hs, None, {**dt, "n": dt["n"] - 1}, dh), ValueError) and os.listdir(nowhere) == [], "a run whose detail does not match its points writes nothing")
+
+
+def aligned(detail_doc, points_doc, wells):
+    """Row by row, against the wells themselves: the well whose API number the detail gives at row i has the point, the day and the state of the points' row i."""
+    t0 = date.fromisoformat(points_doc["t0"])
+    for i in range(points_doc["n"]):
+        r = wells.first.get("%010d" % detail_doc["api"][i])
+        if r is None or round(r[4][0] * 1e4) != points_doc["lat"][i] or round(r[4][1] * 1e4) != points_doc["lon"][i] or (r[0] - t0).days != points_doc["d"][i] or r[1] != points_doc["states"][points_doc["s"][i]]:
+            return False
+    return True
+
+
+check(aligned(dt, pt, wd) and aligned(dh, hs, wd), "every row of both detail files is the same well as the points' row (checked against the wells themselves, %d + %d rows)" % (dt["n"], dh["n"]))
+
+
+def other_order(wells, points_doc):
+    """A detail built by a different sort: the same wells, but wells of one day and state in another order."""
+    rows = sorted((r for r in wells.first.values() if r[4] and r[0] >= date.fromisoformat(points_doc["t0"])), key=lambda r: (r[0], r[1], r[4][1], r[4][0]))
+    return W.encode_detail(rows, points_doc)
+
+
+check(not aligned(other_order(wd, pt), pt, wd), "mutant (a detail built in another tie order) is noticed by the row-by-row check: this is why both files are built from one function, points_rows")
+# no API number, and no run of ten digits, anywhere but the two detail files
+loose = [f for f in W.FILES if re.search(r"\d{10,}", open(os.path.join(out, f), encoding="utf-8").read())]
+check(loose == [] and W.validate_points(points, summary) == [], "no file but the two detail files holds an API number or a run of ten digits (%s)" % loose)
+check(any("10 or more digits" in x for x in W.validate_points({**points, "ops": points["ops"] + ["Alpha Energy 4231700001 LLC"]}, summary)), "the points file still refuses a ten-digit run: the exception is for the two detail files alone")
 
 # ------------------------------------------------------------------------------------------------ the daily comparison: wells new since the last download, and what Texas's daily reports carried
 import d13_arrivals as ARR  # noqa: E402
