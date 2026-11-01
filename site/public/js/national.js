@@ -1,6 +1,6 @@
 // The National view: every state agency's drilling permits side by side. A tile map you click into, the months stacked by state, a ranking,
 // the kinds of permits where a state can tell them, and a table of who is covered and who is not yet. Data: national.json (d11_nat_build.py).
-import { $, el, svg, load, loadOpt, fmt, stat, monthLabel, fmtDate } from './util.js';
+import { $, el, svg, load, loadOpt, fmt, stat, monthLabel, fmtDate, chartWidth } from './util.js';
 import { icon } from './icons.js';
 import { segmented } from './ui.js';
 import { showTip, hideTip, tipRow } from './tip.js';
@@ -175,7 +175,7 @@ export function createNationalView({ root }) {
   /* ---------- the months, stacked by state ---------- */
   function monthsChart() {
     const st = N.stack(doc, measure);
-    const W = 720; const H = 260; const L = 42; const R = 6; const T = 10; const B = 24;
+    const W = chartWidth(slots.months, 1200); const H = W < 500 ? 220 : 260; const L = 42; const R = 6; const T = 10; const B = 24;
     const n = st.months.length; const slot = (W - L - R) / Math.max(1, n); const bw = Math.max(3, slot * 0.74);
     const { top, ticks } = N.niceMax(Math.max(...st.totals, 1));
     const y = (v) => T + (H - T - B) * (1 - v / top);
@@ -288,13 +288,21 @@ export function createNationalView({ root }) {
     drawMonths();
     return true;
   }
-  function drawMonths() { slots.months.replaceChildren(...monthsChart()); }
+  function drawMonths() { slots.months.replaceChildren(...monthsChart()); drawnAt = chartWidth(slots.months, 1200); }
+  // the chart is drawn at its container's width: a window that changes size draws it again (not on every pixel)
+  let drawnAt = 0; let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (started && slots.months && slots.months.isConnected && slots.months.clientWidth && Math.abs(chartWidth(slots.months, 1200) - drawnAt) > 24) drawMonths(); }, 150);
+  });
 
   return {
     async activate(params) {
       if (!started) { started = true; if (!(await build())) { started = false; return; } }
       const m = params && params.get('m'); const s = params && (params.get('s') || '').toUpperCase();
-      if (m === 'spuds' || m === 'permits') { if (m !== measure) { measure = m; root._seg.set(m, false); drawMonths(); } }
+      const want = m === 'spuds' ? 'spuds' : 'permits'; // the address decides: one without a count is the permits (it kept the last choice, so a link to a state drew spuds after a visit to Wells spudded)
+      if (want !== measure) { measure = want; root._seg.set(want, false); }
+      drawMonths(); // at the width the page has now (the view may have been hidden, or the window resized, since it was drawn)
       select(s || sel || (N.rankBy(doc, 'permits')[0] || {}).id || null, { fromHash: true });
     },
     deactivate() { hideTip(); },

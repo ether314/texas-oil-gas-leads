@@ -158,8 +158,9 @@ export const listAnd = (items) => (items.length < 2 ? items.join('') : items.sli
 export function niceMax(v) {
   if (!(v > 0)) return { top: 1, ticks: [0, 1] };
   const mag = Math.pow(10, Math.floor(Math.log10(v)));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((m) => v / m <= 4) || 10 * mag;
-  const top = Math.ceil(v / step) * step;
+  // the smallest step that needs at most 5 intervals, so the top is close to the data (1,150 tops at 1,250, not 2,000)
+  const step = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10].map((m) => m * mag).filter((m) => v < 1 || Number.isInteger(m)).find((m) => Math.ceil(v / m - 1e-9) <= 5) || 10 * mag; // whole steps for counts
+  const top = Math.ceil(v / step - 1e-9) * step;
   const ticks = []; for (let t = 0; t <= top + step / 2; t += step) ticks.push(t);
   return { top, ticks };
 }
