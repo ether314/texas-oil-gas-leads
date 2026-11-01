@@ -151,12 +151,21 @@ os.makedirs(os.path.join(mini, "daily"))
 json.dump({"v": 1, "state": "TX", "date": "2026-10-29", "kind": "live", "status": "ok", "permits": {"total": 2, "newDrill": 1, "rows": [["0919749", "301", "08", "020528", None, 12000, "H"], ["0919750", "301", "08", "1", "ACME LLC", 9000, "V", "4230100000", 31.0, -103.0, ["W1.pdf"]]]},
           "images": {"w1images": None, "dirsurveys": {"day": "2026-10-28", "bytes": 5, "modified": "2026-10-29T10:00:00", "empty": False, "docs": None}}}, open(os.path.join(mini, "daily", "2026-10-29.json"), "w"))
 json.dump({"months": ["2026-01", "2026-02", "2026-03"], "wti": [70.0, None, 72.5], "label": ["a", "b", "c"]}, open(os.path.join(mini, "series-markets.json"), "w"))
+os.makedirs(os.path.join(mini, "daily-cm"))
+json.dump({"v": 1, "day": "2026-10-29", "packDay": "2026-10-28", "repo": "o/r", "per": 2, "parts": 2, "kinds": ["W-2 form", "Well log"], "docs": 3, "previews": 2, "builtAt": "2026-10-30T03:30Z",
+           "packets": [["08", "111", [[0, 0, 1], [1, 1, 0]]], ["7C", "222", [[1, 0, 1]]]]}, open(os.path.join(mini, "daily-cm", "2026-10-29.json"), "w"))
+json.dump({"v": 1, "days": ["2026-10-29"]}, open(os.path.join(mini, "daily-cm", "index.json"), "w"))
 mdb = os.path.join(tmp, "mini.sqlite")
 B.build(mdb, mini)
 m = sqlite3.connect(mdb)
 check(m.execute("SELECT COUNT(*) FROM daily_permits").fetchone()[0] == 2 and m.execute("SELECT permit, documents FROM daily_permits WHERE operator IS NULL").fetchone()[1] is None, "a permit row shorter than the rest is loaded with blanks, not dropped")
 check(m.execute("SELECT COUNT(*) FROM tx_image_packs").fetchone()[0] == 1, "a pack with no entry for a day is skipped, one with no documents is kept")
 check(m.execute("SELECT COUNT(*) FROM series").fetchone()[0] == 2 and m.execute("SELECT COUNT(*) FROM jurisdictions").fetchone()[0] == 0, "a series with a gap loads only its real points; missing optional files load nothing")
+rows = m.execute("SELECT district, tracking, seq, kind, folder, has_preview, release_tag, file FROM tx_completion_docs ORDER BY district, tracking, seq").fetchall()
+check(rows == [("08", "111", 1, "W-2 form", "plain", 1, "daily-2026-10-29-cm1", "cm_08_111_1.jpg"), ("08", "111", 2, "Well log", "submitted", 0, None, None), ("7C", "222", 1, "Well log", "plain", 1, "daily-2026-10-29-cm2", "cm_7C_222_1.jpg")],
+      "every completion document is a row, with its release by its place in the day's list and no file name where it has no preview: %s" % rows)
+check(m.execute("SELECT COUNT(*) FROM documents WHERE path LIKE 'daily-cm/%'").fetchone()[0] == 2 and B.check(mdb) == [], "the completion files are documents too, and --check counts the Daily reports without them: %s" % B.check(mdb))
+check(one("SELECT COUNT(*) FROM tx_completion_docs") == sum(len(pk[2]) for f in glob.glob(os.path.join(DATA, "daily-cm", "????-??-??.json")) for pk in json.load(open(f))["packets"]), "every document of the committed completion files is a row (none until the first nightly step has run)")
 m.close()
 
 # ------------------------------------------------------------------------------------------------ mutants

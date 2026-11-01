@@ -23,7 +23,7 @@ address keep their first name, `texas-oil-gas-leads`.)
   approval dates, to D, nothing public or blocked, and how a monthly count could be built) or a metric. Researched by hand, one file per agency in `site/pipeline/fields/`, built by `d11_fields_build.py`; see `NOTES_D11.md`.
 - **Texas images**: what a Texas well leaves behind as scanned filings (`#images`), from the Railroad Commission's three packs a business day: a well's life in three stages (the permit letter and plat, the directional survey,
   the completion forms and logs) with each kind of document explained and counted, how much arrives each day over the 92-day archive (a day with no pack listed is a gap, never zero), and for any day what its packs hold
-  (size, size by RRC district, documents by kind for days captured live, the blurred contact sheets, and the permits whose filings are published, each linking to its drill page). It reads only the Daily archive's own files.
+  (size, size by RRC district, documents by kind for days captured live, the blurred contact sheets, and the permits whose filings are published, each linking to its drill page; and, for the newest 31 days, page one of every completion document, readable, by RRC district and kind of document, eight packets at a time). It reads the Daily archive's files and `data/daily-cm/`.
 - **Overview**: a permit map, a market ticker, price, activity, production, jobs and tax charts with the EIA outlook,
   top producers, basin cards and plain-English talking points. With Oklahoma in, the map, the headline figures, the hot counties, the top
   operators, the insights and the permit and crude charts cover it too, each state in its own color (Texas orange, Oklahoma purple, New Mexico green, the federal offshore rose).
@@ -72,13 +72,15 @@ individuals. Operators are named only when they are corporations, LLCs or limite
 **One deliberate exception (decided 2026-10-31).** The Daily report's drill pages link to the Railroad Commission's scanned
 W-1 permit letters, permit plats and directional surveys, published readable and unmodified as GitHub release files. They are
 public records, but they can carry the names, phone numbers and street addresses of individuals, and nothing is redacted. This
-repository and its site are public. Completion images stay blurred and unpublished. To go back, remove `--publish-docs` from
+repository and its site are public. To go back, remove `--publish-docs` from
 `.github/workflows/daily-rrc-report.yml` and delete the `daily-*` releases; details are in `site/pipeline/NOTES_D7.md`.
 
 **Widened on 2026-11-01 (the owner's decision): the same Texas documents are now shown, not only linked.** Page one of each W-1 permit letter, permit plat and directional survey is drawn to a readable JPEG
 (about 900 px wide, at most about 200 KB; `render_preview` in `site/pipeline/d7_packs.py`) and published beside the document as a file of the same release (`<document>.jpg`, for example `0919696_W1.pdf.jpg`). The Texas images view and each drill page
 show these previews inline, with a link to the original. A preview is page one of a document the Commission publishes, readable, and unmodified apart from being rendered to a JPEG: nothing is cropped, blurred or redacted, so it can carry the same names, phone numbers and street addresses
-as the document. Completion images and Oklahoma's documents stay unpublished, and there is no contact list. To go back, run the capture with `--no-previews` (the documents stay linked) or remove `--publish-docs`, and delete the release's `.jpg` files.
+as the document. Oklahoma's documents stay unpublished, and there is no contact list. To go back, run the capture with `--no-previews` (the documents stay linked) or remove `--publish-docs`, and delete the release's `.jpg` files.
+
+**Widened again on 2026-11-01 (the owner's decision): the completion images.** Page one of every document in the Commission's "Imaged Completion Files" pack (about 1,000 a day: the completion forms, plats, logs, cementing reports and whatever operators attached) is published the same way, readable, nothing cropped, blurred or redacted, and **only page one, as a picture**: the whole documents (560 MB a day) are not republished and stay at the Commission. They can carry names, phone numbers and addresses of individuals (the page says so; a well log's header can name the field hand, for example). A step of its own in the nightly workflow (`site/pipeline/d7_completions.py`, run after a good Texas capture) draws them under names made up from the packet (`cm_<district>_<tracking number>_<n>.jpg`, never a name from the pack, which operators type), uploads them to two GitHub releases a day (`daily-YYYY-MM-DD-cm1`, `-cm2`) and writes `site/public/data/daily-cm/<day>.json` (which previews exist, by kind); the Texas images view shows them by district and kind. They are kept for 31 days (a day's weigh about 100 MB), not the archive's 92. To go back, delete the step `Publish previews of the completion images` from `.github/workflows/daily-rrc-report.yml`, the `daily-*-cm*` releases and `site/public/data/daily-cm/`.
 
 **The Content-Security-Policy changed with it (2026-11-01).** `img-src` now also allows `https://github.com` and `https://*.githubusercontent.com` (a release download is a redirect to a githubusercontent host), so that those previews load inline. Only `img-src` changed: `default-src 'self'` stays, so
 scripts, styles, fonts and data still come from the site itself, and the policy still has no `unsafe-inline`. A visitor's browser asks GitHub for the previews on the page it is looking at (sent with no referrer), and for nothing else.
@@ -124,7 +126,7 @@ The Daily report is built by `site/pipeline/d7_daily.py` (Python 3, standard lib
 publishes the site. A second schedule an hour later is a backup for a run GitHub skips: it does nothing when the first one
 already captured the day. To repair a day that was missed or captured too early, run the workflow by hand (Actions, Daily
 reports, Run workflow) and give the day in the `date` box. The Texas workflow step runs with `--publish-docs`, which needs `contents: write` (it has it) for the release files; without that flag
-the job publishes only counts and blurred sheets. To fill the archive from the RRC's file history the first time:
+the job publishes only counts and blurred sheets (the completion previews are a step of their own, `d7_completions.py`, run by the workflow after the capture). To fill the archive from the RRC's file history the first time:
 `python3 -I site/pipeline/d7_daily.py --backfill 91`.
 
 New Mexico's drilling history (wells spudded by month, county counts, operators and spud points, in the same shapes) is built by

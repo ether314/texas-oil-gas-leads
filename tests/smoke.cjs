@@ -1086,6 +1086,97 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
     }
   }
 
+  // 19. the completion filings' previews (2026-11-01): a day the index lists shows a block of packets with page one of each document, eight packets at a time, a district and a kind to choose;
+  //     previews come from the day's -cm<N> releases (two, here), a document with no preview says so, one whose picture does not load says so, an enlarged page has no link to an
+  //     original (only page one is published), and a day the index does not list asks for no file and says previews are not published for it. GitHub is answered by the test.
+  {
+    for (const [label, size] of [['desktop', { width: 1280, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
+      const ctx = await browser.newContext({ viewport: size, reducedMotion: 'reduce' });
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+      page.on('console', (m) => { const u = m.location().url || ''; if (m.type() === 'error' && !u.endsWith('/' + previewStub.BAD) && !u.endsWith('/' + previewStub.CM_BAD)) errs.push('console: ' + m.text().slice(0, 160)); });
+      page.on('requestfailed', (r) => { if (!r.url().endsWith('/' + previewStub.BAD) && !r.url().endsWith('/' + previewStub.CM_BAD)) errs.push('request failed: ' + r.url()); });
+      try {
+        const st = await previewStub.install(page, ROOT, { cm: true });
+        await page.goto(base + '#images?d=' + st.day, { waitUntil: 'load' });
+        await page.waitForSelector('#images-root .cm-block .pv-tile', { timeout: 25000 });
+        const text = (sel) => page.evaluate((q) => (document.querySelector(q) || {}).textContent || '', sel);
+        check(/^Completion filings, page one of each document \(43 of 44 in 22 packets\)$/.test(await text('.cm-block h4')), label + ': the block says how many documents have a preview, of how many, in how many packets: ' + (await text('.cm-block h4')));
+        const counts = async () => ({ packets: await page.locator('.cm-block .cm-packet').count(), line: await page.evaluate(() => (document.querySelector('.cm-block .cm-list').previousElementSibling.textContent)), more: await page.evaluate(() => { const b = document.querySelector('.cm-block .cm-more'); return b.hidden ? null : b.textContent; }) });
+        let c = await counts();
+        check(c.packets === 8 && c.line === 'Showing 8 of 22 packets.' && c.more === 'Show 8 more packets', label + ': eight of 22 packets, and a button for eight more: ' + JSON.stringify(c));
+        await page.click('.cm-block .cm-more');
+        await page.click('.cm-block .cm-more');
+        c = await counts();
+        check(c.packets === 22 && c.line === 'Showing 22 of 22 packets.' && c.more === null, label + ': two clicks show all 22 and the button goes: ' + JSON.stringify(c));
+        // a district, then a kind
+        await page.selectOption('.cm-block select[aria-label="Choose a district"]', '7C');
+        c = await counts();
+        check(c.packets === 2 && c.line === 'Showing 2 of 2 packets.' && c.more === null, label + ': a district shows only its packets and starts again at the first page: ' + JSON.stringify(c));
+        await page.selectOption('.cm-block select[aria-label="Choose a district"]', '');
+        await page.selectOption('.cm-block select[aria-label="Choose a kind of document"]', 'Well log');
+        const kind = await page.evaluate(() => ({ heads: [...document.querySelectorAll('.cm-block .cm-packet h5')].slice(0, 2).map((h) => h.textContent), tiles: [...document.querySelectorAll('.cm-block .cm-packet:first-child .pv-label')].map((l) => l.textContent) }));
+        check(kind.heads[0] === 'Packet 1000 district 08 · 2 documents, 1 of this kind' && kind.tiles.join() === 'Well log', label + ': a kind keeps each packet\'s documents of that kind and says how many it has: ' + JSON.stringify(kind));
+        await page.selectOption('.cm-block select[aria-label="Choose a kind of document"]', '');
+        await page.click('.cm-block .cm-more'); // back to the second page of the whole list: packet 1004's first preview answers 404 and packet 1003's second has none
+        await page.waitForFunction(() => document.querySelectorAll('.cm-block .cm-packet').length === 16, null, { timeout: 5000 });
+        for (let i = 0, n = await page.locator('.cm-block .pv-thumb').count(); i < n; i++) await page.locator('.cm-block .pv-thumb').nth(i).scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+        await page.waitForFunction(() => [...document.querySelectorAll('.cm-block .pv-img')].every((i) => i.complete), null, { timeout: 15000 });
+        const shown = await page.evaluate(() => ({
+          thumbs: [...document.querySelectorAll('.cm-block .pv-img')].map((i) => ({ ok: i.naturalWidth > 0, src: i.currentSrc, lazy: i.getAttribute('loading') })),
+          misses: [...document.querySelectorAll('.cm-block .pv-miss')].map((m) => m.textContent.trim()),
+          bare: [...document.querySelectorAll('.cm-block .cm-packet > p.fine')].map((p) => p.textContent),
+          originals: document.querySelectorAll('.cm-block a.pv-orig').length,
+          inline: document.querySelectorAll('.cm-block [style]').length,
+          sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          small: [...document.querySelectorAll('.cm-block .pv-thumb, .cm-block select, .cm-block .cm-more')].filter((b) => !b.hidden && (b.getBoundingClientRect().width < 24 || b.getBoundingClientRect().height < 24)).length,
+        }));
+        check(shown.thumbs.length === 30 && shown.thumbs.every((t) => t.ok) && shown.thumbs.every((t) => t.lazy === 'lazy' && /^https:\/\/github\.com\/o\/r\/releases\/download\/daily-\d{4}-\d\d-\d\d-cm[12]\/cm_(08|7C)_\d+_\d+\.jpg$/.test(t.src)),
+          label + ': 16 packets hold 32 documents: 30 thumbnails (one document has no preview and one preview answers 404, so those two are not thumbnails), all lazy, from the day\'s -cm1 or -cm2 release, all loaded: ' + JSON.stringify({ n: shown.thumbs.length, ok: shown.thumbs.filter((t) => t.ok).length }));
+        check(shown.misses.length === 1 && shown.misses[0] === 'Preview unavailable' && shown.bare.length === 1 && shown.bare[0] === '1 document has no preview.', label + ': a picture that does not load says so, and so does a document with no preview: ' + JSON.stringify({ misses: shown.misses, bare: shown.bare }));
+        check(shown.originals === 0 && !shown.inline && !shown.sideways && !shown.small, label + ': no link to an original, no inline style, no sideways scroll, every control at least 24 px: ' + JSON.stringify({ o: shown.originals, i: shown.inline, s: shown.sideways, small: shown.small }));
+        const rel = st.asked.map((u) => /download\/(daily-[\d-]+-cm\d)\//.exec(u)).filter(Boolean).map((m) => m[1]);
+        check(new Set(rel).size === 2 && st.asked.every((u) => !u.includes('cm_08_1003_2.jpg')), label + ': previews were asked of both releases and never one the file marks as having none (' + [...new Set(rel)].join(', ') + ')');
+        // enlarge a preview: named for the packet and the kind, no link to an original
+        const first = page.locator('.cm-block .pv-thumb').first();
+        await first.scrollIntoViewIfNeeded();
+        await first.click();
+        await page.waitForSelector('dialog.pv-dialog[open]', { timeout: 5000 });
+        const dlg = await page.evaluate(() => ({ title: document.querySelector('dialog.pv-dialog .pv-title').textContent, link: !document.querySelector('dialog.pv-dialog a.pv-open').hidden }));
+        check(dlg.title === 'Completion packet 1000 · W-2 form' && dlg.link === false, label + ': an enlarged page is named for its packet and kind and has no "open the original" link: ' + JSON.stringify(dlg));
+        await page.keyboard.press('Escape');
+        await st.off();
+      } catch (e) {
+        check(false, label + ': the completion filings: ' + e.message.split('\n')[0].slice(0, 240));
+      }
+      check(!errs.length, label + ': the completion filings load clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+      await ctx.close();
+    }
+    // a day the index does not list: no file is asked for (a request for a missing one is a failed request), and the page says previews are not published for it
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+      const page = await ctx.newPage();
+      const asked = [];
+      const errs = [];
+      page.on('request', (r) => { if (/\/data\/daily-cm\//.test(r.url())) asked.push(r.url().split('/data/')[1]); });
+      page.on('requestfailed', (r) => errs.push('request failed: ' + r.url()));
+      page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+      try {
+        const live = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'daily', 'index.json'), 'utf8')).days.filter((r) => r.k === 'live').map((r) => r.d).sort();
+        await page.goto(base + '#images?d=' + live[live.length - 1], { waitUntil: 'load' });
+        await page.waitForSelector('#images-root .img-pack', { timeout: 25000 });
+        await page.waitForTimeout(500);
+        const note = await page.evaluate(() => [...document.querySelectorAll('#images-root p.fine')].map((p) => p.textContent).find((t) => /Readable previews of the completion documents/.test(t)) || '');
+        check(asked.join() === 'daily-cm/index.json' && (await page.locator('#images-root .cm-block').count()) === 0 && /newest 31 days, and not for this one/.test(note), 'a day the index does not list asks only for the index, shows no block and says so: ' + JSON.stringify({ asked, note }));
+        check(!errs.length, 'and loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+      } catch (e) {
+        check(false, 'a day with no completion previews: ' + e.message.split('\n')[0].slice(0, 200));
+      }
+      await ctx.close();
+    }
+  }
+
   await browser.close();
   server.close();
   console.log('\n' + (failures ? 'FAILED ' + failures : 'all passed'));

@@ -71,7 +71,7 @@ const SIZES = [[1280, 800], [390, 844]];
 async function prepare(page, opt) {
   if (!opt || !opt.stub) return null;
   await page.goto('about:blank'); // a new load of the page: the images view keeps the day files it has read, and the stubbed day must be read afresh
-  return previewStub.install(page, ROOT);
+  return previewStub.install(page, ROOT, { cm: true }); // with the completion filings, so their controls and previews are audited too
 }
 async function settle(page, opt) {
   if (!opt || !opt.stub) return;

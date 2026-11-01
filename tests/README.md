@@ -14,6 +14,7 @@ node tests/a11y.cjs                    # browser accessibility test: text contra
   a JPEG about 900 px wide, at most 200 KB, gray unless the page has color, page one only, readable and not blurred, a damaged PDF or a hung `pdftoppm` leaving no preview and no failure, staging with and without previews,
   the tools missing, a run of failures, a spent budget, `attach_documents` recording `previews` and `noPreview` only for what the release listing confirmed, the validator on those fields, and `d7_release.publish` uploading
   previews after the documents as optional files (a failed upload costs nothing but itself, the asset limit trims them).
+- `test_d7_completions.py`: the readable page-one previews of the completion images (2026-11-01; Pillow and `pdftoppm`; gh and the share faked): the packet layout and made-up names (nothing from the pack's file names reaches a name, the file or the log), every failure, the file's validator, which day is next, the releases (two a day) and their pruning, whole runs, six mutants.
 - `test_d8.py`, `test_d8_context.py`, `test_ok_xlsx.py`: the Oklahoma producer, its monthly series and its workbook reader: rules,
   Central-time days across both clock changes, validation of the committed archive (with deliberate faults), privacy checks.
 - `test_d7_nights.py`: whole nights of the Texas producer with every socket blocked and the RRC's shares faked (synthetic permit file, pending sets, completions zip, pack names): the map service
