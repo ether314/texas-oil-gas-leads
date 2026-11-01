@@ -14,6 +14,9 @@
 //    its dialog, in both themes and at both widths, for contrast, at 360 px for reflow and target size, and the view's Tab stops for names and focus rings.
 // 4. Target size: at the same width every button, field, tab and chip is at least 24 x 24 px (WCAG 2.2, 2.5.8; a checkbox counts with its label; links
 //    inside text and in table cells are left out: spacing exempts them).
+// 6. The Overview (2026-11-02: the old Overview, National report and Map in one page) is audited in its states: the country, Texas, every year since 2011, each layer alone, and the panels that say what a source does
+//    not have (Illinois: permits and no fractured well; the federal offshore and the BLM, which are not states; Missouri, which has neither source; California, a change from a base of 2). Its ranking has a button for
+//    each of 34 rows, so the keyboard walk follows its first 170 stops (the hero, the map's controls, the ranking and the coverage table).
 //
 // Run: node tests/a11y.cjs
 // Needs Playwright (preinstalled in the Claude sandbox; installed by .github/workflows/ci.yml).
@@ -50,26 +53,31 @@ function serve() {
 }
 
 // [name, hash, a selector that appears once the view has drawn]
+// the Overview (2026-11-02: the old Overview, National report and Map in one page) in its states: the country, one state zoomed to, every year since 2011, each layer alone, a state with permits and no wells (Illinois),
+// the two that are not states (the federal offshore, which is not on the outlines, and the BLM, which overlaps the states) and the one with neither source (Missouri)
+const OV = '.ov-row'; const OVP = '.nw-grid .nat-panel h3';
 const VIEWS = [
-  ['overview', '#overview', '#nw-slot .bar-row'],
-  ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
-  ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'],
-  ['overview, oil permits only', '#overview?k=permits', '#nw-slot .bar-row'],
-  ['map', '#map', '#map-root canvas'],
+  ['overview', '#overview', OV],
+  ['overview, Texas zoomed', '#overview?s=TX', OVP],
+  ['overview, since 2011', '#overview?y=all', OV],
+  ['overview, oil permits only', '#overview?k=permits', OV],
+  ['overview, fractured wells only', '#overview?k=wells', OV],
   ['companies, operators', '#companies', '#ops-root table.grid tbody tr'],
   ['companies, Texas', '#companies?s=TX', '#ops-root table.grid tbody tr'],
   ['companies, Texas directory', '#companies?kind=directory', '#co-root table.grid tbody tr'],
   ['daily', '#daily', '#daily-root .dd-nav'],
   ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
   ['daily, a day in 2014', '#daily?d=2014-03-12&s=TX', '#daily-root .dd-date:has-text("2014")'],
-  // the federal offshore last: the bar keeps its choice from one view to the next, and the views above are meant for the states they name
-  ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'],
-  ['map, federal offshore', '#map?st=fo', '#map-root canvas'],
+  // the panels that say what a source does not have, and the federal offshore last: each is meant for the state it names
+  ['overview, North Dakota zoomed', '#overview?s=ND', OVP],
+  ['overview, Illinois (permits, no fractured well)', '#overview?s=IL', OVP],
+  ['overview, federal offshore', '#overview?s=FO', OVP],
+  ['overview, federal onshore (BLM)', '#overview?s=BL', OVP],
+  ['overview, Missouri (neither source)', '#overview?s=MO', OVP],
+  ['overview, California (a change from a small base)', '#overview?s=CA', OVP],
   ['companies, North Dakota', '#companies?s=ND', '#ops-root table.grid tbody tr'],
   ['companies, federal offshore', '#companies?s=FO', '#ops-root table.grid tbody tr'],
   ['sources', '#about', '#view-about h1'],
-  ['national', '#national', '#national-root .nat-tile'],
-  ['national, Oklahoma panel', '#national?s=OK', '#national-root .nat-panel h3'],
   ['texas images', '#images', '#images-root .img-pack'],
   ['texas images, a county', '#images?c=283', '#images-root a.well-row'],
   ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
@@ -260,12 +268,13 @@ function targets() {
   // ---- reflow
   {
     const REFLOW = [
-      ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'], ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'], ['overview, oil permits only', '#overview?k=permits', '#nw-slot .bar-row'],
-      ['map', '#map', '#map-root canvas'], ['companies, operators', '#companies', '#ops-root table.grid tbody tr'], ['companies, New Mexico', '#companies?s=NM', '#ops-root table.grid tbody tr'],
+      ['overview', '#overview', OV], ['overview, Texas zoomed', '#overview?s=TX', OVP], ['overview, since 2011', '#overview?y=all', OV], ['overview, oil permits only', '#overview?k=permits', OV], ['overview, fractured wells only', '#overview?k=wells', OV],
+      ['companies, operators', '#companies', '#ops-root table.grid tbody tr'], ['companies, New Mexico', '#companies?s=NM', '#ops-root table.grid tbody tr'],
       ['companies, Texas directory', '#companies?kind=directory', '#co-root table.grid tbody tr'],
       ['daily', '#daily', '#daily-root .dd-nav'], ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'], ['daily, a day in 2014', '#daily?d=2014-03-12&s=TX', '#daily-root .dd-date:has-text("2014")'],
-      ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['companies, North Dakota', '#companies?s=ND', '#ops-root table.grid tbody tr'], ['companies, federal offshore', '#companies?s=FO', '#ops-root table.grid tbody tr'],
-      ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
+      ['overview, North Dakota zoomed', '#overview?s=ND', OVP], ['overview, Illinois', '#overview?s=IL', OVP], ['overview, federal offshore', '#overview?s=FO', OVP], ['overview, federal onshore (BLM)', '#overview?s=BL', OVP], ['overview, Missouri', '#overview?s=MO', OVP],
+      ['companies, North Dakota', '#companies?s=ND', '#ops-root table.grid tbody tr'], ['companies, federal offshore', '#companies?s=FO', '#ops-root table.grid tbody tr'],
+      ['sources', '#about', '#view-about h1'],
       ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],
       ['permit data', '#fields', '#fields-root button.fx-c'], ['permit data, an agency', '#fields?s=BL', '#fields-root .nat-panel h3'],
       ['texas images, previews', PV_HASH, '#images-root .pv-tile', { stub: true }], ['texas images, a preview enlarged', PV_HASH, '#images-root .pv-tile', { stub: true, open: true }],
@@ -313,7 +322,7 @@ function targets() {
     const cls = typeof e.className === 'string' && e.className.trim() ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
     return { id: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + cls, name: name.slice(0, 40), shown, times, same, parts };
   };
-  const KB_VIEWS = [VIEWS[0], VIEWS[2], VIEWS[3], VIEWS[5], VIEWS[6], VIEWS[10], VIEWS.find((v) => v[0] === 'texas images, previews')];
+  const KB_VIEWS = ['overview', 'overview, since 2011', 'overview, oil permits only', 'overview, Illinois (permits, no fractured well)', 'companies, operators', 'companies, Texas directory', 'daily, a day in 2014', 'texas images, previews'].map((n) => VIEWS.find((v) => v[0] === n));
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce', colorScheme: 'light', deviceScaleFactor: 1 });
     const page = await ctx.newPage();
@@ -327,7 +336,7 @@ function targets() {
         await settle(page, opt);
         await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); window.scrollTo(0, 0); window.__kbSeen = new WeakMap(); window.__kbPrev = null; });
         const stops = [];
-        for (let i = 0; i < 120; i++) {
+        for (let i = 0; i < 170; i++) { // the Overview has about 120 stops: the nav, the hero, the map's controls, a button for each of the ranking's 34 rows, the coverage table's 35 names
           await page.keyboard.press('Tab');
           const s2 = await page.evaluate(stopInfo);
           if (!s2) { if (stops.length > 3) break; continue; }
@@ -348,11 +357,11 @@ function targets() {
     }
     // the page itself
     await page.goto(base + '#overview', { waitUntil: 'load' });
-    await page.waitForSelector('#nw-slot .bar-row', { timeout: 25000 });
+    await page.waitForSelector(OV, { timeout: 25000 });
     const doc = await page.evaluate(() => ({ lang: document.documentElement.lang, mains: document.querySelectorAll('main').length, h1s: [...document.querySelectorAll('h1')].filter((h) => h.offsetParent !== null).length, title: document.title }));
     check(doc.lang === 'en' && doc.mains === 1 && doc.h1s === 1, 'the page has a language, one main landmark and one visible h1: ' + JSON.stringify(doc));
     const titles = [];
-    for (const hash of ['#map', '#companies', '#daily', '#about']) {
+    for (const hash of ['#fields', '#companies', '#daily', '#images', '#about']) {
       await page.evaluate((h) => { location.hash = h; }, hash);
       await page.waitForFunction((h) => document.title !== 'Oil tracker' || h === '#overview', hash, { timeout: 10000 }).catch(() => {});
       titles.push(await page.title());

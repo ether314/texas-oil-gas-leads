@@ -42,7 +42,7 @@ export function createCompaniesView({ meta }) {
     note.textContent = fmtN(c.states) + ' states' + (c.offshore ? ' and the federal offshore' : '') + '. Texas, Oklahoma, New Mexico and the federal offshore list every operator with a recent permit or spud; for the other ' + fmtN(c.listed)
       + ' states, the ' + info.listedMax + ' busiest each.';
     moreText.replaceChildren('A state counts permits approved or, where it publishes no approval dates by well, wells spudded or drilled (marked beside the number); the two are never added. ' + spudCaveat(STATES.map((x) => x.id)) + ' Only corporations, LLCs and limited partnerships are named, never a person trading under a name. '
-      + (info.without.length ? 'No operator list yet for ' + listAnd(info.without) + ': ' : ''), info.without.length ? el('a', { href: '#national', text: 'the National report’s coverage table' }) : '', info.without.length ? ' says why. ' : '',
+      + (info.without.length ? 'No operator list yet for ' + listAnd(info.without) + ': ' : ''), info.without.length ? el('a', { href: '#overview', text: 'the Overview’s coverage table' }) : '', info.without.length ? ' says why. ' : '',
     info.prodEnd ? 'Oil and gas columns are Texas’s, for the 12 months to ' + info.prodEnd + '.' : '');
   }
   const fmtN = (n) => new Intl.NumberFormat('en-US').format(n);

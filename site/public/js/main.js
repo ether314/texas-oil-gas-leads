@@ -1,24 +1,21 @@
 // Boot, hash routing and wiring. Every data-dependent block degrades on its own if its file is missing.
-import { $, $$, el, load, loadOpt, parseHash, replaceHash, queryText, fmt, fmtDate, monthLabel, reduced } from './util.js';
+import { $, $$, el, load, loadOpt, parseHash, queryText, fmt, fmtDate, monthLabel, reduced } from './util.js';
 import { initTheme } from './theme.js';
 import { hideTip } from './tip.js';
 import { fillMeta } from './overview.js';
 import { createOverview } from './overview-view.js';
-import { createMapView } from './map.js';
 import { createCompaniesView } from './companies.js';
 import { createDailyView } from './daily.js';
-import { createNationalView } from './national.js';
 import { sourceHref } from './national-data.js';
 import { createImagesView } from './images.js';
 import { createFieldsView } from './fields.js';
 import { icon } from './icons.js';
-import { initReveal, navIndicator, segmented } from './ui.js';
-import { STATES, activeStates, setStates, onStates, parseStates, stateParam, statesIn, shortName, placesOne, measureAnd, everyOf, ucFirst } from './states.js';
+import { initReveal, navIndicator } from './ui.js';
 import { fromOperators } from './companies-data.js';
 
-const VIEWS = { overview: 'Overview', national: 'National report', fields: 'Permit data', images: 'Texas images', map: 'Map', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
-// the views that follow the states bar; the others (Sources, Companies: it has a State filter of its own, for every state that names operators) hide it
-const STATE_VIEWS = new Set(['map']);
+const VIEWS = { overview: 'Overview', fields: 'Permit data', images: 'Texas images', companies: 'Companies', daily: 'Daily report', about: 'Sources & method' };
+// the Overview is the old Overview, National report and Map in one: a link to either of the other two opens it, on the state the link named (the Map's st=fo, one state; two states or none: the country)
+const OLD_VIEWS = { national: (p) => (p.get('s') || '').toUpperCase(), map: (p) => ((p.get('st') || '').split(',').length === 1 ? (p.get('st') || '').toUpperCase() : '') };
 
 /* sources note for the production file, filled from the file itself so it never claims more than was pulled */
 async function fillProdNote() {
@@ -57,7 +54,7 @@ async function fillFromFiles(meta) {
   fillMeta(meta, extra);
 }
 
-/* the Sources page's list of the state agencies behind the National report is made from national.json (each state's source, cadence and what it counts), so it cannot go stale;
+/* the Sources page's list of the state agencies behind the Overview’s oil permit counts is made from national.json (each state's source, cadence and what it counts), so it cannot go stale;
    the four jurisdictions that have their own entries above are left out, and a missing file leaves the one line of text that is already there */
 async function fillNational() {
   const [doc, fields] = await Promise.all([loadOpt('national'), loadOpt('permit-fields')]);
@@ -68,7 +65,7 @@ async function fillNational() {
     return el('li', {}, el('small', { class: 'fresh-cad src-cad', text: s.cadence ? s.cadence.charAt(0).toUpperCase() + s.cadence.slice(1) : 'Irregular' }), ' ',
       h ? el('a', { href: h.href, rel: 'noopener noreferrer', text: s.agency }) : el('span', { text: s.agency }), ': ' + s.source.name + '; counted by ' + s.basis + '.');
   });
-  const gaps = doc.gaps && doc.gaps.length ? [el('li', {}, 'Not read yet, with the reason for each in the report’s coverage table: ' + doc.gaps.map((g) => g.name).join(', ') + '.')] : [];
+  const gaps = doc.gaps && doc.gaps.length ? [el('li', {}, 'Not read yet, with the reason for each in the Overview’s coverage table: ' + doc.gaps.map((g) => g.name).join(', ') + '.')] : [];
   ul.append(...rows, ...gaps);
 }
 
@@ -107,49 +104,10 @@ async function boot() {
   fillNational().catch(() => {});
   const overview = createOverview(meta);
 
-  const map = createMapView({ root: $('#map-root'), meta });
   const daily = createDailyView({ root: $('#daily-root') });
-  const national = createNationalView({ root: $('#national-root') });
   const images = createImagesView({ root: $('#images-root') });
   const fields = createFieldsView({ root: $('#fields-root') });
   const companies = createCompaniesView({ meta });
-  // what the Map says about the states shown
-  const MAP_TX = 'County activity, permit locations and energy facilities across Texas. Shading and counts use every permit; dots show the ones with a recorded location.';
-  function pageTexts() {
-    const ids = activeStates();
-    const tx = ids.includes('TX');
-    // the dots are permits where a state counts permits and wells where it counts spuds, and a county is an area offshore
-    $('#map-lede').textContent = ids.length === 1 && tx ? MAP_TX
-      : ucFirst(placesOne(ids)) + ' activity and ' + measureAnd(ids) + ' locations across ' + statesIn(ids) + '. Shading and counts use ' + everyOf(ids)
-        + '; dots show the ones with a recorded location.' + (tx ? ' Plants, company ZIPs and basins are Texas only.' : '');
-  }
-
-  /* ---------- the states shown: one choice for every view that follows it, kept in the address as st=tx or st=ok ---------- */
-  // the bar offers All and each state; an address can also name two of three (st=tx,ok): then the bar has none chosen, and the note below says which are shown
-  const choice = () => (activeStates().length === STATES.length ? 'all' : activeStates().length === 1 ? activeStates()[0] : null);
-  const bar = segmented({
-    label: 'States shown', tabs: false, prefix: 'sb', value: choice(),
-    options: [{ id: 'all', label: 'All', dot: 'st-all' },
-      // the name a screen reader says holds the visible label ("Texas (TX)", "Federal offshore" for "Offshore"); a phone shows TX, OK, NM
-      ...STATES.map((x) => ({ id: x.id, label: shortName(x.id), abbr: x.short ? null : x.id, title: x.short ? x.name : x.name + ' (' + x.id + ')', dot: 'st-' + x.id.toLowerCase() }))],
-    onChange: (id) => setStates(id === 'all' ? STATES.map((x) => x.id) : [id]),
-  });
-  $('#statebar-seg').append(bar.el);
-  // keeps the address bar in step with the choice without firing hashchange: st is only in it when the choice is not both
-  function syncAddress() {
-    const { view, params } = parseHash();
-    const sp = stateParam(activeStates());
-    if (sp) params.set('st', sp); else params.delete('st');
-    replaceHash(view, params);
-  }
-
-  // what the bar says when the address names two states of the four: which are shown
-  const note = $('#statebar-note');
-  function setNote() {
-    let text = activeStates().length > 1 && activeStates().length < STATES.length ? 'Showing ' + statesIn(activeStates()) + '. Choose a state, or All, to change it.' : '';
-    note.textContent = text;
-  }
-
   let shown = '';
   function show(moveFocus) {
     let { view, params, hasQuery } = parseHash();
@@ -166,14 +124,13 @@ async function boot() {
       history.replaceState(null, '', '#companies' + (q ? '?' + q : ''));
       view = 'companies'; hasQuery = q !== '';
     }
+    // the National report and the Map are the Overview now: their old addresses open it (the state a link named stays chosen)
+    if (Object.prototype.hasOwnProperty.call(OLD_VIEWS, view)) {
+      const st = OLD_VIEWS[view](params); const q = new URLSearchParams(); if (st) q.set('s', st);
+      history.replaceState(null, '', '#overview' + (q.toString() ? '?' + q : ''));
+      view = 'overview'; params = q; hasQuery = !!st;
+    }
     const id = Object.prototype.hasOwnProperty.call(VIEWS, view) ? view : 'overview';
-    // an address that names the states sets the choice (quietly: this view is about to be drawn for it); one that does not keeps
-    // the choice, and says so in the address
-    if (params.has('st')) setStates(parseStates(params.get('st')), true); else if (STATE_VIEWS.has(id) && stateParam(activeStates())) syncAddress();
-    bar.set(choice(), false);
-    const rest = new URLSearchParams(params); rest.delete('st');
-    hasQuery = rest.toString() !== '';
-    $('#statebar').hidden = !STATE_VIEWS.has(id);
     hideTip();
     Object.keys(VIEWS).forEach((v) => { $('#view-' + v).hidden = v !== id; });
     $$('.nav a').forEach((a) => {
@@ -182,13 +139,10 @@ async function boot() {
     });
     placeNav();
     document.title = (id === 'overview' ? '' : VIEWS[id] + ' · ') + 'Oil tracker';
-    if (id === 'map') { if (hasQuery) map.apply(params); map.activate(); } else if (shown === 'map') map.deactivate();
-    pageTexts();
     // a link with a query restarts the Companies lists from their defaults plus the query; with none the page opens as it was left
     if (id === 'companies') companies.activate(params, hasQuery); else if (shown === 'companies') companies.deactivate();
     if (id === 'overview') overview.show(params); else if (shown === 'overview') overview.pause();
     if (id === 'daily') daily.activate(params); else if (shown === 'daily') daily.deactivate();
-    if (id === 'national') national.activate(params); else if (shown === 'national') national.deactivate();
     if (id === 'images') images.activate(params); else if (shown === 'images') images.deactivate();
     if (id === 'fields') fields.activate(params); else if (shown === 'fields') fields.deactivate();
     if (id === 'about') fillProdNote();
@@ -199,16 +153,7 @@ async function boot() {
       h.focus({ preventScroll: true });
     }
     shown = id;
-    setNote();
   }
-  // the choice changed on the page (the bar): the address follows, and the view on screen is drawn again
-  onStates((ids) => {
-    bar.set(choice(), false);
-    syncAddress();
-    pageTexts();
-    if (shown === 'map') map.setStates();
-    setNote();
-  });
   window.addEventListener('hashchange', () => show(true));
   show(false);
   document.documentElement.classList.add('ready');
