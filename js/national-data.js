@@ -53,6 +53,18 @@ export const SERIES_COLOR = {
   ND: 'var(--s1)', CO: 'var(--n-yellow)', WY: 'var(--n-magenta)', LA: 'var(--n-green)', CA: 'var(--n-red)',
 };
 
+// how a jurisdiction is named inside a sentence: the two that are not states read as common nouns there ("the federal offshore", "federal onshore (BLM)")
+export const inName = (id, name) => (id === 'FO' ? 'the federal offshore' : id === 'BL' ? 'federal onshore (BLM)' : name);
+export const upFirst = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+// "1 new-drill permit", not "1 new-drill permits": the first plural word of a unit loses its s when the count is one
+export const unitFor = (n, unit) => (n === 1 ? String(unit).replace(/(\w)s\b/, '$1') : unit);
+// the address a visitor should be sent to for a state's source: the file or service itself when it is a page, else the agency's own page (a raw .zip download or a map-service root is not somewhere to send anyone)
+export function sourceHref(s, fields) {
+  if (!s || !s.source || !s.source.url) return null;
+  const raw = /\.(zip|csv|xlsx?|pdf|mdb|dbf)(\?|#|$)/i.test(s.source.url) || /\/(FeatureServer|MapServer|rest\/services)\b/i.test(s.source.url);
+  const agency = fields && fields.states && fields.states[s.id] && fields.states[s.id].agency && fields.states[s.id].agency.url;
+  return raw && agency ? { href: agency, viaAgency: true } : { href: s.source.url, viaAgency: false };
+}
 export const byId = (doc, id) => doc.states.find((s) => s.id === id) || null;
 export const gapOf = (doc, id) => doc.gaps.find((g) => g.id === id) || null;
 export const nameOf = (doc, id) => (byId(doc, id) || gapOf(doc, id) || { name: QUIET_NAMES[id] || id }).name;
