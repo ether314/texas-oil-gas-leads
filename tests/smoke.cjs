@@ -1229,6 +1229,49 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(/Monday, Feb 2, 2026/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': an address with a day and a state opens on them');
       await page.click('#daily-root button:has-text("Newest day")');
       check(/Wednesday, Oct 14, 2026|Oct 14, 2026/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': "Newest day" opens the newest well\'s day: ' + (await page.locator('#daily-root .dd-date').innerText()));
+      // older days (2026-11-01): the chart and the slider hold 150 days and page back with Earlier and Later; a day before the last two years loads the earlier wells first
+      await page.goto(base + '?fresh=1#daily', { waitUntil: 'load' });
+      await page.waitForSelector('#daily-root .dd-nav', { timeout: 25000 });
+      await page.waitForTimeout(500);
+      const title = () => page.locator('#daily-root section.nat-card').filter({ hasText: 'Day by day' }).locator('h2').first().innerText();
+      const slider = () => page.evaluate(() => { const r = document.querySelector('#daily-root .tl-range'); return { min: +r.min, max: +r.max, value: +r.value }; });
+      const newestDay = await page.locator('#daily-root .dd-date').innerText();
+      check(/^The last 150 days/.test(await title()) && await page.locator('#daily-root button:has-text("Later")').isDisabled() && !(await page.locator('#daily-root button:has-text("Earlier")').isDisabled()) && (await page.locator('#daily-root input[type=date]').getAttribute('min')) === '2011-01-01', label + ': the chart opens on the last 150 days (Later is off, Earlier is on) and the date box reaches back to 2011-01-01');
+      check(!(await page.locator('#daily-root select.nw-pick option[value="AL"]').count()), label + ': before the earlier wells load, the state list holds the states with wells in the last year');
+      await page.locator('#daily-root button:has-text("Earlier")').click();
+      await page.waitForFunction((d) => document.querySelector('#daily-root .dd-date').textContent !== d, newestDay, { timeout: 10000 });
+      const sl = await slider();
+      check(/^The 150 days from /.test(await title()) && !(await page.locator('#daily-root button:has-text("Later")').isDisabled()) && sl.max - sl.min === 149 && sl.value >= sl.min && sl.value <= sl.max, label + ': Earlier pages the chart and the day back 150 days together, and the slider covers that page: ' + (await title()));
+      await page.locator('#daily-root button:has-text("Later")').click();
+      check(/^The last 150 days/.test(await title()) && (await page.locator('#daily-root .dd-date').innerText()) === newestDay, label + ': Later brings the chart and the day back to where they were');
+      // the earlier wells cannot be loaded: the day stays and the page says so
+      const errsBefore = errs.length;
+      await page.route('**/newwells/points-history.json', (r) => r.abort());
+      await page.fill('#daily-root input[type=date]', '2014-03-12'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
+      await page.waitForFunction(() => /Could not load the earlier wells/.test((document.querySelector('#daily-root .nw-status') || {}).textContent || ''), null, { timeout: 15000 });
+      check((await page.locator('#daily-root .dd-date').innerText()) === newestDay, label + ': when the earlier wells cannot be loaded the day stays and the page says so');
+      await page.unroute('**/newwells/points-history.json');
+      errs.splice(errsBefore); // the dropped requests above were the point of the check
+      const hist = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'newwells', 'points-history.json'), 'utf8'));
+      const dayNo = Math.round((Date.UTC(2014, 2, 12) - Date.UTC(2011, 0, 1)) / 864e5); const want = hist.d.filter((d) => d === dayNo).length;
+      await page.fill('#daily-root input[type=date]', '2014-03-12'); await page.locator('#daily-root input[type=date]').dispatchEvent('change');
+      await page.waitForFunction(() => /Mar 12, 2014/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 30000 });
+      await page.waitForTimeout(400);
+      const sl2 = await slider();
+      check(want > 20 && new RegExp('^' + want + ' wells on Mar 12, 2014').test(await tableHead()) && /Mar 12, 2014/.test(await head()) && /^Settled$/.test(await page.locator('#daily-root .nat-panel .badge').first().innerText()) && /d=2014-03-12/.test(await hash()),
+        label + ': a date in 2014 loads the earlier wells and opens that day with the same ' + want + ' wells the file holds: ' + (await tableHead()));
+      check(/A typical day in the 12 months Oct 2013 to Sep 2014 had about \d+\.\d/.test(await page.locator('#daily-root .nat-panel').innerText()) && /^The 150 days from /.test(await title()) && sl2.max - sl2.min === 149 && (await page.locator('#daily-root .dd-chart .dd-marker').evaluate((n) => n.style.display !== 'none')),
+        label + ': a day in 2014 is set against 2014, the chart and the slider hold the 150 days around it, and the day is marked');
+      check((await page.locator('#daily-root select.nw-pick option[value="AL"]').count()) === 1 && (await page.evaluate(() => document.activeElement && document.activeElement.type)) === 'date', label + ': the state list now holds every state that has had a well, and the keyboard stays on the date box');
+      await page.selectOption('#daily-root select.nw-pick', 'ND');
+      await page.waitForFunction(() => /in North Dakota$/.test(document.querySelector('#dd-table-h').textContent), null, { timeout: 5000 });
+      await page.locator('#daily-root button:has-text("Earlier")').click();
+      await page.waitForFunction(() => /2013/.test(document.querySelector('#daily-root .dd-date').textContent), null, { timeout: 5000 });
+      check(/s=ND/.test(await hash()) && /d=2013-/.test(await hash()) && /in North Dakota$/.test(await tableHead()), label + ': paging back keeps the chosen state');
+      await page.goto(base + '?fresh=2#daily?d=2011-01-01&s=ND', { waitUntil: 'load' });
+      await page.waitForFunction(() => /Jan 1, 2011/.test((document.querySelector('#daily-root .dd-date') || {}).textContent || ''), null, { timeout: 30000 });
+      check(await page.locator('button[aria-label="The day before"]').isDisabled() && /in North Dakota$/.test(await tableHead()) && /Saturday, Jan 1, 2011/.test(await page.locator('#daily-root .dd-date').innerText()), label + ': an address with a day in 2011 opens on it with the arrow back switched off at the first day');
+      check(!/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-daily').innerText()), label + ': no NaN, undefined, null or Infinity on a day in 2011');
     } catch (e) {
       check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
     }
