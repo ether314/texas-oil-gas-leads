@@ -327,7 +327,9 @@ def validate(doc, today=None):
     _fail(p, sid in NAME_OF and sid not in ("TX", "OK", "NM", "FO"), "state %r is not one this file type carries" % (sid,))
     _fail(p, doc.get("measure") in MEASURES, "measure must be one of %s" % (MEASURES,))
     for k in ("name", "agency", "basis", "cadence", "note"):
-        _fail(p, isinstance(doc.get(k), str), "%s must be text" % k)
+        if _fail(p, isinstance(doc.get(k), str), "%s must be text" % k):
+            # these words on a page read as a rendering bug (the smoke test looks for them): a note says "not available", never "(null)"
+            _fail(p, not re.search(r"\b(null|undefined|NaN|Infinity)\b", doc[k]), "%s uses a programmer's word (null, undefined, NaN or Infinity): say 'not available'" % k)
     src = doc.get("source") or {}
     _fail(p, isinstance(src.get("name"), str) and src["name"] and re.match(r"https://[\w.\-]+/", str(src.get("url", ""))), "source needs a name and an https address")
     months = doc.get("months")

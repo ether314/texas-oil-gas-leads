@@ -160,7 +160,7 @@ def build(get=C.polite_get, today=None, pause=PAUSE):
                           "date; the KGS does not say so). The layer has no work type: kinds come from the well type and the API number's suffix. New wells are oil, gas, coal bed methane, dry-hole and "
                           "lost-hole permits on a new API number (a dry hole is a new well found dry); injection is enhanced-recovery (waterflood), saltwater-disposal and other injection or storage wells; "
                           "re-entries are permits on an existing well's API number (a suffix such as -0001, which the KGS calls a workover code, also when the well is re-entered to inject); other filings are "
-                          "cathodic-protection boreholes (about 100 a year), water, stratigraphic and observation holes. Recompletions and amendments are not told (null). Permits whose API number was "
+                          "cathodic-protection boreholes (about 100 a year), water, stratigraphic and observation holes. Recompletions and amendments are not told. Permits whose API number was "
                           "cancelled are left out. A well keeps one permit date, so a permit renewed on the same API number replaces the earlier date. The fluid is the well type the KGS holds today (a "
                           "hole found dry reads unknown).")
     if sum(doc["bands"]["new"][-12:]) < MIN_NEW12:
