@@ -1075,10 +1075,10 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       await page.click('#national-root button.nat-tile[data-id="UT"]');
       const href = await page.locator('#national-root .nat-panel a[target="_blank"]').first().getAttribute('href');
       check(!!href && !/\.(zip|csv|xlsx?)(\?|$)/i.test(href) && !/FeatureServer|MapServer|rest\/services/i.test(href), 'a panel\'s source link is a page, not a raw download or a service root: ' + href);
-      await page.goto(base + '#fields?s=AK', { waitUntil: 'load' });
+      await page.goto(base + '#fields?s=MO', { waitUntil: 'load' });
       await page.waitForSelector('#fields-root .nat-panel', { timeout: 25000 });
       const fx = await page.locator('#fields-root .nat-panel').innerText();
-      check(!VOICE.test(fx) && !/How a monthly count could be built/.test(fx) && /Provisional/.test(fx), 'the matrix\'s panel for an agency that refused automated requests is in a visitor\'s words and shows no producer plan: ' + fx.replace(/\s+/g, ' ').slice(0, 220));
+      check(!VOICE.test(fx) && !/How a monthly count could be built/.test(fx) && /Updated 2026-11-01/.test(fx), 'the matrix\'s panel for the one state not read yet (Missouri) is in a visitor\'s words, shows no producer plan and says what changed since the first research: ' + fx.replace(/\s+/g, ' ').slice(0, 220));
       const ties = await page.locator('#fields-root .nat-kpis').innerText();
       check(!/\d\d?\s+of\s+\d+ agencies as data\s*$/.test('x') && /Published by the most agencies/.test(ties), 'the matrix\'s figures load: ' + ties.replace(/\s+/g, ' ').slice(0, 200));
       await page.goto(base + '#about', { waitUntil: 'load' });
@@ -1276,6 +1276,27 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       check(false, label + ': the national Daily report: ' + e.message.split('\n')[0].slice(0, 220));
     }
     check(!errs.length, label + ': the national Daily report loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  // 23. a change from a small base is not a percent (2026-11-01): California went from 2 permits to 372, which read "+18500%" in its panel; the panel says the base in words, and no tile or row shows the percent
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('page error: ' + e.message.slice(0, 160)));
+    page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    try {
+      await page.goto(base + '#national?s=CA', { waitUntil: 'load' });
+      await page.waitForSelector('#national-root .nat-panel .nat-big', { timeout: 25000 });
+      const big = await page.locator('#national-root .nat-panel .nat-big').innerText();
+      check(!/\+\s?\d{3,}\s?%/.test(big) && /\(\d[\d,]* the 12 months before\)/.test(big), 'California\'s panel gives its base in words and no percent from a base under 20: ' + big.replace(/\s+/g, ' ').slice(0, 120));
+      const rows = await page.evaluate(() => [...document.querySelectorAll('#national-root .nat-row')].map((r) => r.innerText).filter((t) => /\+\d{4,}%/.test(t)));
+      check(rows.length === 0, 'no ranking row shows a percent over a thousand: ' + rows.join(' | ').slice(0, 120));
+    } catch (e) {
+      check(false, 'a change from a small base: ' + e.message.split('\n')[0].slice(0, 220));
+    }
+    check(!errs.length, 'the California panel loads clean' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
 

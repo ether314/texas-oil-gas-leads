@@ -205,9 +205,9 @@
    "n": "'Date:' beside the operator block and the signature date; not published as data"
   },
   "date_approved": {
-   "s": "form",
-   "e": "form",
-   "n": "Office-use 'Approval Date'; approved PDFs are named by date (2026.02.04_...) on the well page"
+   "s": "query",
+   "e": "web",
+   "n": "Permit to Drill file name starts with the date (2026.02.04_...); 2 of 8 since 2019 are amended files dated later"
   },
   "date_expires": {
    "s": "unknown",
@@ -258,7 +258,7 @@
  "sources": [
   {
    "id": "id-well-file-pages",
-   "name": "OGCC Well & Facilities Files (index of wells and one HTML page per well)",
+   "name": "OGCC Well & Facilities Files (index of every well on file and one HTML page per well, with its signed Permit to Drill)",
    "url": "https://ogcc.idaho.gov/well-files/",
    "kind": "query",
    "format": "html",
@@ -287,7 +287,7 @@
     "well permit to drill, sundry notices; wells in Bonneville, Canyon and Payette counties"
    ],
    "reachable": "ok",
-   "tested": "GET of /well-files/: HTTP 200, 148 KB, lists 34 wells by county (3 Bonneville, 2 Canyon, 29 Payette) as USWN plus name, one Highway 30 processing facility, and a LAS zip. GET of one well page (James #1-10): HTTP 200, shows status, county, operator, proposed MD and TVD and three PDF links; the approval date appears only in the PDF's file name (2026.02.04) and inside the PDF (not opened)."
+   "tested": "Read 2026-11-01 with a plain automated agent, 3 s apart: the index (148 KB) lists 34 wells (3 Bonneville, 2 Canyon, 29 Payette) plus 2 gas facilities, 2007 to now, and links one WordPress page per well (about 140 KB each, 200 throughout). A page has 'Well Status:', 'County:', 'Operator:', depths and document links; the 'Permit to Drill' link is the signed permit PDF, whose file name starts with a date (2026.02.04_... or 20211002_...). The page's meta tags also carry the day WordPress made it (0 to 13 days after an approval). The producer reads the file-name date and never opens the PDFs. The file-name date is not always the approval date: for 2 of the 8 permits since 2019 the posted file is the permit as amended and its first page is the amendment's approval letter (3 and 1 months after the first approval, read from the signed letters). 35 requests, about 4.9 MB, 2 minutes 35 seconds."
   },
   {
    "id": "id-data-explorer",
@@ -314,7 +314,62 @@
     "unknown (layers named APD, well treatment, surface facility, UIC permit in the app's script)"
    ],
    "reachable": "ok",
-   "tested": "GET of the app shell: HTTP 200, 174 KB HTML (IIS, AngularJS and OpenLayers, 'CSV Export' buttons, a staff 'Log In' that is not required to view). Its data calls were not exercised, so the CSV columns, any API and approval dates are unverified. Page last updated Nov 28, 2025 (OGCC page footer)."
+   "tested": "The app answers without a login: a JSON search (api/Search/?t=Well&search=<API>) and the well detail pages (ED.aspx), read 2026-11-01. The detail's 'Date Issued' agrees with the signed permit for the two revised permits and for most others but is not reliable as an approval date: for one well it holds the application's intake day (9/13/2021 for a permit approved 10/2/2021) and the newest well (approved 5/22/2026) still shows 'Application Received' with its intake day. Not used. The CSV export was not tested (it exports production). Page last updated Nov 28, 2025 (OGCC page footer)."
+  },
+  {
+   "id": "id-geoserver-wells",
+   "name": "OGCC Data Explorer map layer ID_SHPS:wells (public GeoServer WFS behind the app; 43 features, no dates)",
+   "url": "https://welldata.ogcc.idaho.gov/geoserver/wfs",
+   "kind": "map",
+   "format": "other",
+   "grain": "well",
+   "cadence": "unknown",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Page says the Department makes no warranty; no license stated",
+   "columns": [],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells and their locations"
+   ],
+   "reachable": "ok",
+   "tested": "Read 2026-11-01: layer ID_SHPS:wells has 43 features and no dates. It differs from the well pages by 6 wells of the 1950s and 1960s (API numbers beginning 075-09) and 3 permits that expired unused (no page, no date)."
+  },
+  {
+   "id": "id-quarterly-reports",
+   "name": "OGCC 'Report to the Commission' (quarterly PDFs, 2020 Q1 to 2026 Q2) with a monthly 'Well & Permit Activity' table",
+   "url": "https://ogcc.idaho.gov/monthly-and-annual-reports/",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "aggregate",
+   "cadence": "quarterly",
+   "history_from": "2020",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "State web page",
+   "columns": [
+    "APDs Approved (monthly)",
+    "Active Permits",
+    "wells drilled and produced"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "APDs approved by month",
+    "active permits"
+   ],
+   "reachable": "ok",
+   "tested": "24 reports downloaded once, 3 s apart. 'APDs Approved' by month (2020 Q1 to 2025 Q2): 2020 Oct 1; 2021 Jun 1, Oct 1, Nov 1; 2022 Sep 2; 2023, 2024 and the first half of 2025 none; these match the well pages month by month from 2021 to mid-2025. The one difference is Oct 2020: a permit the Commission's own comment says was 'approved by OGCC October 26, waiting on Contested Case'; its signed permit is dated June 16, 2021. From Q3 2025 the table counts applications received, not approvals. 2019 has no quarterly report on the site."
   },
   {
    "id": "id-permit-applications-page",
@@ -376,22 +431,20 @@
    "tested": "Link read on the well files page only; not requested (size unknown)."
   }
  ],
- "grade": "C",
- "grade_reason": "Idaho has about 34 wells since 2007 (about one permit a year, none in some years). Permit facts are in a browser-based Data Explorer (CSV export promised, columns not verified) and HTML well pages with status, county, operator and proposed depths; the approval date is only in each permit PDF and its file name. No bulk permit file or API was found.",
- "producer_plan": "Too small for a monthly series, so treat it as a hand list. Read https://ogcc.idaho.gov/well-files/ for the wells (USWN, county, name); open each well page for status, operator, proposed MD and TVD and the 'Permit to Drill' PDF, whose file name starts with the approval date (YYYY.MM.DD). That gives approved drill permits by month, with zero for almost every month (34 wells listed, since 2007). Work type (drill, deepen, plug back) is on the form only; well treatment and seismic applications are posted separately on /well-permit-applications/. Re-check whether the Data Explorer CSV export (wells and production) works without a login before building anything; it was not tested. Rows lag: many wells are 'Drilled/Confidential' and details can be withheld.",
+ "grade": "B",
+ "grade_reason": "Idaho issues about one permit to drill a year (8 since 2019). Every well it has permitted has a free page with its status, county, operator, proposed depths and the signed Permit to Drill, whose file name starts with the date. Held to B, not A: there is no bulk file or API with the date, it comes from the file names of 34 pages (two amended permits needed their first approval read from the signed letters), and the Data Explorer's 'Date Issued' is not reliable. Updated 2026-11-01: a producer reads the pages each week (35 requests) and its permits match the Commission's own quarterly 'APDs Approved' counts month by month from 2021 to mid-2025; the Data Explorer does answer without a login (a JSON search and a public map layer), but neither holds a trustworthy approval date.",
+ "producer_plan": "Built: d11_nat_id.py. Reads the well index and each well's page (35 requests, 3 s apart, about 2.5 minutes, plain automated agent, no refusal) and counts one permit per well by the date at the start of its 'Permit to Drill' file name, from 2019 (only the new band; every other band and the fluid are null: the Commission posts no dated list of amendments, well treatments or injection permits). ORIGINAL_APPROVAL holds the two dates of permits whose posted file is the amended permit, keyed by the amended file's date and held to the page's creation date. A permit file that says revised or amended, or whose date is more than 5 days after or 60 days before its page was made, and is not in that table, fails the run with the date to look up: a new amended permit turns the weekly run red until a person reads it. Operator and county come from the page's own lines ('Snake River O&G' is mapped to the company's full name before the naming rule). The last 30 days are not shown. Fewer permits than the committed file refuses the run.",
  "activity_bands_possible": [
-  "new",
-  "amend",
-  "other"
+  "new"
  ],
- "privacy_notes": "Well pages show the operator company; permit PDFs and the form carry contact names, telephone numbers, e-mail addresses and surface-owner names (not copied). The OGCC page names a staff contact and a public commenter (not copied).",
+ "privacy_notes": "Well pages show the operator company; permit PDFs and the form carry contact names, telephone numbers, e-mail addresses and surface-owner names, which are never opened or copied. The OGCC page names a staff contact and a public commenter (not copied).",
  "unknowns": [
-  "columns and filters of the Data Explorer CSV export, and whether it needs no login",
-  "whether the Data Explorer has an approval date or permit type field",
-  "operator type, permit expiry, spud and completion dates",
-  "whether the LAS zip and PDFs are reachable (not requested)",
-  "mineral owner (the form asks only about state leases)",
-  "H2S and water plans (not on the form's checklist)"
+  "Operator type, permit expiry, spud and completion dates",
+  "Whether the LAS zip and PDFs can be fetched (not requested)",
+  "Mineral owner (the form asks only about state leases)",
+  "H2S and water plans (not on the form's checklist)",
+  "Whether the Data Explorer's CSV export works without a login and what it holds (it exports production)",
+  "Whether a permit that expired unused is ever posted (3 have no page, no date)"
  ],
  "researched": "2026-10-31"
 }

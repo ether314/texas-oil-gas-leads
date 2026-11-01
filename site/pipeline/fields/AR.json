@@ -17,17 +17,17 @@
   "api_number": {
    "s": "data",
    "e": "file",
-   "n": "GIS layer wellid, 9 digits (looks like API 03-... minus the leading 0); Form 2 has an API No. box"
+   "n": "API number on each permit in the weekly report; wellid in the GIS layer (9 digits); Form 2 has an API No. box"
   },
   "permit_number": {
    "s": "data",
    "e": "file",
-   "n": "permitnumberstring; also Permit No. box on Form 2"
+   "n": "Permit number in the weekly report (typed with mistakes: one number served three wells) and permitnumberstring"
   },
   "well_name": {
    "s": "data",
    "e": "file",
-   "n": "wellname and wellnumber"
+   "n": "Well name in the weekly report (not unique); wellname and wellnumber in the layer"
   },
   "lease_name": {
    "s": "form",
@@ -37,7 +37,7 @@
   "operator_name": {
    "s": "data",
    "e": "file",
-   "n": "operatorname"
+   "n": "Operator on each permit in the weekly report; operatorname in the layer"
   },
   "operator_id": {
    "s": "unknown",
@@ -57,7 +57,7 @@
   "county": {
    "s": "data",
    "e": "file",
-   "n": "countyname; Form 2 asks County"
+   "n": "County on each permit in the weekly report (the API number's county place is steadier); countyname in the layer"
   },
   "district": {
    "s": "none",
@@ -67,12 +67,12 @@
   "field_pool": {
    "s": "data",
    "e": "file",
-   "n": "fieldname and poolnamestring"
+   "n": "Field printed in the weekly report; fieldname and poolnamestring in the layer"
   },
   "surface_latlon": {
    "s": "data",
    "e": "file",
-   "n": "coordinates_latitude, coordinates_longitude; Form 2 asks Lat/Lon (dd.dddd)"
+   "n": "Latitude and longitude printed in the weekly report; coordinates_latitude/longitude in the layer"
   },
   "surface_plss": {
    "s": "data",
@@ -102,12 +102,12 @@
   "well_type": {
    "s": "data",
    "e": "file",
-   "n": "welltype, welltypedescription (OIL, GAS, SWD...); Form 2 type-of-well boxes"
+   "n": "welltype, welltypedescription in the GIS layer (stale since late 2025); the weekly report has no well type"
   },
   "work_type": {
-   "s": "form",
-   "e": "form",
-   "n": "Form 2 Purpose: Original, Amendment, Renewal, Re-entry; not in the GIS layer"
+   "s": "data",
+   "e": "file",
+   "n": "Weekly report prints the Form 2 Purpose (renewal, amend, re-entry) under the permit number; an original prints none"
   },
   "well_direction": {
    "s": "form",
@@ -115,9 +115,9 @@
    "n": "Form 2: proposed well Vertical, Directional or Horizontal"
   },
   "proposed_depth_md": {
-   "s": "form",
-   "e": "form",
-   "n": "Form 2 \"Depth to be drilled\" MD; layer depthbottom is not labeled proposed"
+   "s": "data",
+   "e": "file",
+   "n": "Proposed depth printed in the weekly report (MD or TVD not stated); Form 2 asks MD and TVD"
   },
   "proposed_depth_tvd": {
    "s": "form",
@@ -130,9 +130,9 @@
    "n": "Not asked; only derivable from SHL and PBHL footages"
   },
   "target_formation": {
-   "s": "form",
-   "e": "form",
-   "n": "Form 2: \"Formation you propose to complete in\""
+   "s": "data",
+   "e": "file",
+   "n": "Zone printed in the weekly report; Form 2: 'Formation you propose to complete in'"
   },
   "formation_tops": {
    "s": "none",
@@ -205,9 +205,9 @@
    "n": ""
   },
   "date_approved": {
-   "s": "form",
-   "e": "form",
-   "n": "Issue Date box (agency use) on Form 2; weekly PDF reports list permits by week, not opened"
+   "s": "data",
+   "e": "file",
+   "n": "Weekly report names the week of issue, not the day; Form 2 has an Issue Date box (agency use)"
   },
   "date_expires": {
    "s": "form",
@@ -217,7 +217,7 @@
   "spud_date": {
    "s": "unknown",
    "e": "none",
-   "n": "Form 2 asks only the planned start date; layer has no spud date"
+   "n": "Weekly report prints the planned start date, not a spud date; layer has no spud date"
   },
   "completion_date": {
    "s": "unknown",
@@ -325,35 +325,50 @@
     "well status only (Producing, Plugged and Abandoned, Permitted Well, Spudded, Expired Permit...)"
    ],
    "reachable": "ok",
-   "tested": "layer?f=json: HTTP 200, 14.8 KB, 49 fields, point geometry, max 500 records per query, formats JSON/geoJSON/PBF. One statistics query: 38,245 wells (16,570 PR, 16,061 PA, 3,385 A, 1,233 EX, 8 PW, 7 SP). One 8-row sample. wellstatusdate is a text field (m/d/yyyy) and there is no permit-issue or spud date, so permits cannot be counted by month from it. Source note says it is extracted from the AOGC online database."
+   "tested": "layer?f=json: 200, 14.8 KB, 49 fields, point geometry, max 500 records per query, formats JSON/geoJSON/PBF. One statistics query: 38,245 wells (16,570 PR, 16,061 PA, 3,385 A, 1,233 EX, 8 PW, 7 SP). wellstatusdate is a text field (m/d/yyyy) and there is no permit-issue or spud date, so permits cannot be counted by month from it. The layer is stale: its newest permit number is 48449, from late 2025. It checks the weekly lists (291 of its 294 permit numbers from 48136 to 48447 are on them) and cannot replace them."
   },
   {
    "id": "ar-weekly-permit-reports",
-   "name": "Permit and Completion Reports (weekly PDF: Form 2 permits, Form 3 completions, Form 11 and 12 plugging)",
+   "name": "Permit and Completion Reports (one report a Friday since 2019-01-04: Form 2 permits, Form 3 completions and recompletions, Form 11 and 12 plugging; workbooks from mid-2020, PDFs before)",
    "url": "https://dataexplorer.aogc.arkansas.gov/data/completion.aspx",
-   "kind": "report",
-   "format": "pdf",
+   "kind": "bulk",
+   "format": "xlsx",
    "grain": "permit",
    "cadence": "weekly",
-   "history_from": "2019",
+   "history_from": "2019-01",
    "size_mb": 0,
    "free": true,
    "login": false,
    "license": "none stated",
-   "columns": [],
-   "has_approval_date": false,
+   "columns": [
+    "permit number",
+    "purpose word under the number (renewal, amend, re-entry; none on an original)",
+    "operator",
+    "well name",
+    "county",
+    "field",
+    "latitude",
+    "longitude",
+    "proposed depth",
+    "zone",
+    "contractor",
+    "start date (planned)",
+    "API number",
+    "week ending date (in the section title)"
+   ],
+   "has_approval_date": true,
    "has_spud_date": false,
    "has_well_type": false,
-   "has_work_type": false,
-   "has_location": false,
+   "has_work_type": true,
+   "has_location": true,
    "activity_types": [
-    "drilling permit (Form 2)",
+    "drilling permit (Form 2): original, amendment, renewal, re-entry",
     "completion, recompletion, workover (Form 3)",
     "application to plug (Form 11)",
     "plugging report (Form 12)"
    ],
    "reachable": "ok",
-   "tested": "Page GET: HTTP 200, 49 KB. It offers year folders 2019 to 2026 (an ASP.NET postback tree: year, month folder, weekly PDF). No PDF was opened, so columns and per-row dates are unknown (the report is grouped by calendar week, so a week-level count is likely). Flags above are false because not verified. Newspaper reprints of these reports ran 2014-2021."
+   "tested": "Read in full 2026-11-01. The page is an ASP.NET form: choosing a year is a postback that returns the whole tree of months and files, and every report also has a plain static address (/Data/Wipe/<year>/<mm-Month>/<file>) that needs no cookie. 403 reports from 2019-01-04 to 2026-10-23 (340 Excel workbooks from mid-2020, 63 PDFs before), one a Friday; five Fridays have none (2019-11-29, 2024-01-19, 2024-10-04, 2026-01-30, 2026-05-08). Each has eight sections, North and South Arkansas each; the Form 2 permit lists carry the fields above. In the workbooks 274 permits print no purpose (originals), 33 renewals, 22 amendments, 22 re-entries. About 600 requests to the site with the plain automated agent and no refusal; the server drops about one connection in ten (cause not known: the server or the research proxy). The week is the only date: a report names the week, not the day."
   },
   {
    "id": "ar-well-lookup",
@@ -379,25 +394,24 @@
    "tested": "Page GET: HTTP 200, 56 KB (an ASP.NET form, no search run). Page says each well shows Location details, History, Perforations, Stimulations, Production, IMIT and Inspections tabs, and every report exports to Excel (.xls). The Build-a-Query page (data/querybuild.aspx, 200) filters production by year, company, county, field, section, well status, well type and zone. Date fields of the History tab not verified."
   }
  ],
- "grade": "C",
- "grade_reason": "No bulk file with an issue date was found. The GIS wells layer is reachable and rich but has only a status date (text), no permit or spud date. The dated permit record is a weekly PDF report (2019-2026) reached through an ASP.NET folder tree, and a per-well lookup with Excel export. Both are fragile to scrape.",
- "producer_plan": "Best fragment: the weekly Permit and Completion Reports. Drive the year/month tree (postbacks with the page viewstate, a few requests a week at most), download each weekly PDF, extract the Form 2 section with pdftotext and count permits by week, then sum by month; split by Purpose (Original, Amendment, Renewal, Re-entry) if the PDF shows it. Test one PDF first: its layout is not known. Cross-check with the GIS layer (permitnumberstring sequence, count of PW and SP statuses) and add well type, county, operator and coordinates by joining on permit number. Backfill is 2019 onward only. A cheaper start: poll the GIS layer weekly and diff permitnumberstring to date new permits by first sighting.",
+ "grade": "B",
+ "grade_reason": "The weekly Permit and Completion Reports are free workbooks (PDFs before mid-2020), one a Friday since January 2019, listing every Form 2 drilling permit with its operator, county, field, location, proposed depth, zone and a printed purpose (original, renewal, amendment, re-entry). Held to B, not A: the date is the week of issue, not the day; there is no well type, so disposal, brine and carbon-storage wells sit among the new permits; five weeks are missing; and the files are reached through an ASP.NET page. The GIS wells layer has well types but no permit date and has not been updated since late 2025. Updated 2026-11-01: a producer reads the reports each week; new plus re-entry permits account for 308 of the 312 permit numbers assigned from 2019 to 2025, and exactly for 2024 and 2025.",
+ "producer_plan": "Built: d11_nat_ar.py. Posts the year to the reports page (form state from the first GET, no cookie), reads the file names from the tree and GETs each report by its static address (xlsx since mid-2020; PDFs through pdftotext before), 3 s apart, up to four tries a file. Only the two Form 2 sections are read. A week counts in the month that holds its Wednesday. Bands: no purpose printed = new; renewal or amend = amend; re-entry = redrill; any other word = other; inj, rework and fluid are null (no well type on the list). The county comes from the API number's county place (the printed county cell moves); the API number is read only for that, never kept. A weekly run reads the last 14 months (62 requests, about 4 minutes) and takes older months from the committed file. Limits: seven repeated listings (new up to 2% high), five missing weeks (KNOWN_MISSING), permit numbers typed with mistakes (never a key). Checks are in NOTES_D11.md.",
  "activity_bands_possible": [
   "new",
   "reentry",
   "amend",
-  "injection",
   "other"
  ],
- "privacy_notes": "Form 2 asks the send-to street address, e-mail and phone; none of these are in the GIS layer. The layer lists operator names (companies expected); check for individuals before publishing.",
+ "privacy_notes": "Form 2 asks the send-to street address, e-mail and phone; none of these are in the weekly reports or the GIS layer. The reports and the layer list operators; seven listings since 2019 are a person's or a family firm's and are never named.",
  "unknowns": [
-  "Columns and layout of the weekly permit PDFs",
-  "Whether they carry per-permit issue dates and work type",
-  "Update cadence of the GIS layer",
+  "Whether the weekly reports have a completion date or a well direction per permit (only the Form 2 sections were read)",
+  "Update cadence of the GIS layer (its newest permit number is from late 2025)",
   "History tab and Well File Cabinet contents",
   "Form 1 Organization Report fields (operator ID, entity type)",
   "Permit fee amount",
-  "Bond requirements"
+  "Bond requirements",
+  "Why seven wells are listed twice, and whether the Commission's numbering mistakes are corrected later"
  ],
  "researched": "2026-10-31"
 }

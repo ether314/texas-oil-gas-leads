@@ -115,19 +115,19 @@ check(git("status", "--short") == "", "the clone starts clean, as an Actions che
 
 # a good week: a new state file and a rebuilt national.json
 os.makedirs(os.path.join(W, NAT), exist_ok=True)
-open(os.path.join(W, NAT, "AK.json"), "w").write("{}")
+open(os.path.join(W, NAT, "MO.json"), "w").write("{}")
 open(os.path.join(W, NATIONAL), "a").write(" ")
 check(len(git("status", "--short").splitlines()) == 2, "the clone now has a new state file and a changed national.json")
 code, out = sh(steps[DROP]["run"])
-check(code == 0 and git("status", "--short") == "" and not os.path.exists(os.path.join(W, NAT, "AK.json")) and "::warning title=National files::" in out, "the drop step puts national.json back, removes the new state file, and says so as a warning (exit %d)" % code)
+check(code == 0 and git("status", "--short") == "" and not os.path.exists(os.path.join(W, NAT, "MO.json")) and "::warning title=National files::" in out, "the drop step puts national.json back, removes the new state file, and says so as a warning (exit %d)" % code)
 
 os.makedirs(os.path.join(W, NAT), exist_ok=True)  # the drop step's git clean took the empty folder with it
-open(os.path.join(W, NAT, "AK.json"), "w").write("{}")
+open(os.path.join(W, NAT, "MO.json"), "w").write("{}")
 open(os.path.join(W, NATIONAL), "a").write(" ")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 msg = git("log", "-1", "--format=%s")
 files = sorted(l.split("|")[0].strip() for l in git("show", "--stat", "--format=", "HEAD").splitlines() if "|" in l)
-check(code == 0 and re.fullmatch(r"National permit files \d{4}-\d\d-\d\d", msg) and files == sorted([NAT + "/AK.json", NATIONAL]), "a good week commits the new state file and national.json: %r %s" % (msg, files))
+check(code == 0 and re.fullmatch(r"National permit files \d{4}-\d\d-\d\d", msg) and files == sorted([NAT + "/MO.json", NATIONAL]), "a good week commits the new state file and national.json: %r %s" % (msg, files))
 check(git("rev-parse", "main", cwd=ORIGIN) == git("rev-parse", "HEAD"), "and pushes them to origin")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 check(code == 0 and "nothing changed" in out, "with nothing to commit the step says so and succeeds")

@@ -74,6 +74,8 @@ export const jurisdictions = (doc) => doc.states.length + doc.gaps.length;
 // a state whose last 24 months hold nothing: the source dates no record in them, which is not the same as none happening (it is shown as "None recorded", never as a 0 that reads as a count)
 export const noneRecorded = (s) => s.p12 === 0 && s.prev12 === 0;
 export const change = (s) => (s.prev12 > 0 ? (s.p12 - s.prev12) / s.prev12 : null);
+export const MIN_BASE = 20; // the Overview's rule: a change is shown only from a base of 20 (California's 2 permits to 372 would read +18,500%)
+export const shownChange = (s) => (s.prev12 >= MIN_BASE ? change(s) : null);
 // the states that count this measure and may be added: not the overlapping ones
 export const summable = (doc, measure) => (measureOf(measure).sum ? doc.states.filter((s) => s.measure === measure && !OVERLAP.has(s.id)) : []); // a count of another kind is in no sum
 export const total = (doc, measure) => summable(doc, measure).reduce((n, s) => n + s.p12, 0);

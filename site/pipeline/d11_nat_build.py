@@ -59,17 +59,7 @@ def load(name, default=None):
 
 # Why a producing state is not read yet, in a visitor's words (the researched reason, with the researchers' own account of what they tried, is in the permit-fields matrix).
 GAP_WHY = {
-    "AK": "Alaska's commission publishes bulk and query data (a daily Access extract and the Data Miner), but its sites refused automated requests when this was researched, so no file or approval date was seen.",
-    "AR": "Arkansas publishes a wells map layer with a status date only (no permit or spud date), and no bulk file with an issue date was found, so permits cannot be counted by month.",
-    "CA": "California's permit layer is read, but it is too new: the report shows a state once it has 24 complete months, and California appears then.",
-    "CO": "Colorado's commission lists free permit downloads, but its site refused automated requests when this was researched, so no file could be read.",
-    "ID": "Idaho has about 34 wells since 2007 (about one permit a year, none in some years), too few for a monthly count.",
-    "MS": "Mississippi's board publishes a daily wells file with permit dates, but its counts run well below the board's own yearly totals (29 against 37 for 2025), so it is held back until a complete source is found.",
-    "MO": "Missouri's wells layer is frozen: its newest permit is dated August 2019 and confidential wells are left out, so it gives history, not current counts.",
-    "MT": "Montana publishes approval dates only in weekly PDF letters and in a query tool whose export could not be read automatically.",
-    "NE": "Nebraska's commission site refused every connection when this was researched, so its permit files could not be seen. It is a small producer (17 development and exploratory permits in 2025).",
-    "OH": "Ohio publishes a permit list with issue dates, free and with no login, but as a query page rather than a bulk file, and a reader for it has not been built yet.",
-    "TN": "Tennessee's environment department refused automated requests for its data viewer, map layer and permit form, and no bulk file was found; it publishes a searchable permit database.",
+    "MO": "Missouri publishes no current permit list: its wells map layer has no permit dated after August 2019, and the Geological Survey's wells list (updated August 2024) gives spud dates only, the newest in August 2023. It is a very small producer (41 wells spudded since 2019, 39 of them in Cass County).",
 }
 
 

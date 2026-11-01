@@ -22,7 +22,7 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,12 +41,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends poppler-utils
 
-      # every producer, one at a time, each under its own limit and a budget of 40 minutes in all; the runner restores a failed producer's file and rebuilds national.json
+      # every producer, one at a time, each under its own limit and a budget of 50 minutes in all; the runner restores a failed producer's file and rebuilds national.json
       - name: Read every state agency's permits
         id: nat_run
         continue-on-error: true
-        timeout-minutes: 45
-        run: python3 -I site/pipeline/d11_nat_run.py --budget 2400
+        timeout-minutes: 55
+        run: python3 -I site/pipeline/d11_nat_run.py --budget 3000
 
       # if the step above was cut off at its limit, national.json may lag the files that were written: rebuild it from what is there
       - name: Rebuild the national report's file

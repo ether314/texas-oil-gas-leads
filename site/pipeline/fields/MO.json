@@ -4,14 +4,14 @@
  "agency": {
   "name": "Missouri Department of Natural Resources, Missouri Geological Survey (staff to the State Oil and Gas Council), Rolla",
   "short": "MoDNR MGS",
-  "url": "https://dnr.mo.gov/geology/geosrv/oilandgas.htm"
+  "url": "https://dnr.mo.gov/land-geology/geology/oil-gas-resources"
  },
  "form": {
   "name": "Oil and Gas Permit to Drill or Modify Well Application",
   "number": "MO 780-0211",
-  "url": "https://dnr.mo.gov/land-geology/oil-gas-permit-drill-or-modify-well-permit",
+  "url": "https://dnr.mo.gov/document-search/oil-gas-permit-drill-or-modify-well-application-mo-780-0211",
   "read": false,
-  "notes": "NOT READ. dnr.mo.gov answered HTTP 403 to the one request made to the permit page (not retried), and www.sos.mo.gov answered 403 for the rule 10 CSR 50-2. A third-party copy (templateroller) shows only title, release date 2018-03-01 and no fields. Every cell that depends on the form is therefore unknown; cells marked data come from the DNR's map layer and its metadata."
+  "notes": "NOT READ. The DNR's Oil and Gas Permits page and the form's own document page answer 200; the 403 the first research met was a retired address (it now redirects to a page that returns the CMS's own 403, while every other dnr.mo.gov page answered the same agent). The form's PDF was not read, so every form-only cell stays unknown. The permits page lists the fees ($100 for the Application for Permit to Drill, Deepen, Plug-back or Recomplete, $100 for the Permit to Inject) and links the forms: MO 780-0211 (drill or modify), 780-0212 (inject), 780-0215 (completion and log), 780-2227 (cancel), 780-2634 (transfer). The Secretary of State's rule page (10 CSR 50-2) answered 403 on one request."
  },
  "cells": {
   "api_number": {
@@ -52,7 +52,7 @@
   "bond": {
    "s": "unknown",
    "e": "none",
-   "n": "Form MO 780-0211 could not be read (dnr.mo.gov answered 403)"
+   "n": "Not verified: the permit form (MO 780-0211) was not read"
   },
   "county": {
    "s": "data",
@@ -190,9 +190,9 @@
    "n": ""
   },
   "fee": {
-   "s": "unknown",
-   "e": "none",
-   "n": "A search snippet of a 2019 IOGCC summary says $100; not verified from the agency"
+   "s": "form",
+   "e": "web",
+   "n": "$100 to drill, deepen, plug back or recomplete; $100 to inject (DNR permits page); form not read"
   },
   "notice_hearing": {
    "s": "unknown",
@@ -207,17 +207,17 @@
   "date_approved": {
    "s": "data",
    "e": "file",
-   "n": "PERMIT_DAT: date permit to drill, deepen or recomplete was issued; layer ends 2019-08-15"
+   "n": "PERMIT_DAT in the layer ends 2019-08-15; the DNR's Aug 2024 wells list has no permit date"
   },
   "date_expires": {
    "s": "unknown",
    "e": "none",
-   "n": "Search snippet of DNR page says valid one calendar year; page itself blocked (403)"
+   "n": "Validity not confirmed (a search snippet said one calendar year); the permit form was not read"
   },
   "spud_date": {
    "s": "data",
    "e": "file",
-   "n": "SPUD_DATE in layer (3,940 rows; newest 2021-06-04)"
+   "n": "SPUD_DATE in the layer (newest 2021-06-04) and 'Spud Date' in the Aug 2024 wells list (newest 2023-08-06)"
   },
   "completion_date": {
    "s": "unknown",
@@ -320,12 +320,84 @@
     "dry hole"
    ],
    "reachable": "ok",
-   "tested": "gis.dnr.mo.gov: layer ?f=pjson 200, 9 KB schema (Map, Query, Data; maxRecordCount 2000); statistics query 200: 10,369 wells, 5,307 with PERMIT_DAT (1966-05-22 to 2019-08-15), 3,940 with SPUD_DATE (newest 2021-06-04), newest STATUSDATE 2021-08-03; counts of permits dated 2015 or later: 58, dated 2019 or later: 2; distinct WELL_TYPE (16) and STATUS (15) values 200. Metadata XML (info.mo.gov, 200) says data current to 2021-08-25, update 'as needed', excludes wells under confidentiality. The layer is frozen: no permit after 2019-08."
+   "tested": "Read 2026-11-01: layer ?f=pjson 200, schema (Map, Query, Data; maxRecordCount 2000); the service has exactly one layer (id 0), no FeatureServer, and the old /arcgis/ path answers 404. Statistics: 10,369 wells; PERMIT_DAT newest 2019-08-15 (permits by year: 2014 353, a stratigraphic-test program, 2015 43, 2016 1, 2017 0, 2018 12, 2019 2; 411 wells with a permit date from 2014 on); SPUD_DATE newest 2021-06-04; STATUSDATE newest 2021-08-03; TYPE_DATE 2021-08-03; CONFIDDATE 2019-05-10. From the metadata record (not re-read): 5,307 of 10,369 wells have a permit date, confidential wells are left out, and the data is current to 2021-08-25, updated 'as needed'. The layer is frozen."
+  },
+  {
+   "id": "mo-wells-list-2024",
+   "name": "DNR 'Oil and Gas Wells List, Aug. 30, 2024' (xlsx, 10,420 wells; the file the permits page still links)",
+   "url": "https://dnr.mo.gov/media/file/oil-gas-well-list-aug-30-2024",
+   "kind": "bulk",
+   "format": "xlsx",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 1.6,
+   "free": true,
+   "login": false,
+   "license": "no restriction listed",
+   "columns": [
+    "operator",
+    "lease",
+    "well id",
+    "API number",
+    "well type",
+    "well type date",
+    "status",
+    "status date",
+    "status comments",
+    "Spud Date",
+    "depth",
+    "plug-back depth",
+    "oil gravity",
+    "log flag (SPL)",
+    "location"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells with spud date, well type and status (oil, gas, injection, observation, dry hole...)"
+   ],
+   "reachable": "ok",
+   "tested": "Read whole 2026-11-01: 200, 1.6 MB, 10,420 wells. No permit or approval date and no permit number. Spud Date is filled on 3,758 wells (the rest blank or a placeholder before 1954) and is at most 2023-08-06; Well Type Date at most 2024-07-15; Well Status Date at most 2024-08-20. Spuds by year since 2019: 3, 1, 4, 32 (2022), 1, 0 (2024), 41 in all (28 Class II enhanced-recovery injection wells, 11 oil, 1 private-use gas, 1 water well), 39 of them in Cass County. Four wells are 'Proposed Well (associated with permit application only)' and three 'Under Construction': permits in process then, undated. The list is 26 months old and ends earlier than that."
+  },
+  {
+   "id": "mo-socrata-oil-gas-permits",
+   "name": "data.mo.gov (Socrata) 'Oil and Gas Permits' (lease name, status, township, county, API web address)",
+   "url": "https://data.mo.gov/d/y64b-aec2",
+   "kind": "api",
+   "format": "other",
+   "grain": "well",
+   "cadence": "irregular",
+   "history_from": "unknown",
+   "size_mb": 0,
+   "free": true,
+   "login": false,
+   "license": "Missouri open data portal",
+   "columns": [
+    "lease name",
+    "status",
+    "township",
+    "county",
+    "API web address"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permitted wells"
+   ],
+   "reachable": "not-tested",
+   "tested": "Described by the portal's catalog record (answered 200 on 2026-11-01); the rows were not requested. The record lists no date column at all; data last updated 2019-02-11."
   },
   {
    "id": "mo-dnr-permit-page",
-   "name": "DNR page: Oil and Gas Permit to Drill or Modify Well (form, instructions)",
-   "url": "https://dnr.mo.gov/land-geology/oil-gas-permit-drill-or-modify-well-permit",
+   "name": "DNR page: Oil and Gas Permits (forms, fees, the wells list)",
+   "url": "https://dnr.mo.gov/land-geology/businesses-landowners-permittees/permits/oil-gas",
    "kind": "query",
    "format": "html",
    "grain": "aggregate",
@@ -342,8 +414,8 @@
    "has_work_type": false,
    "has_location": false,
    "activity_types": [],
-   "reachable": "blocked-403",
-   "tested": "One GET: HTTP 403 (a 'Forbidden' page). Not retried and no other route tried to the same pages."
+   "reachable": "ok",
+   "tested": "200 on 2026-11-01. Lists the forms (MO 780-0211 drill or modify, 780-0212 inject, 780-0215 completion and log, 780-2227 cancel permit, 780-2634 transfer) and the fees ($100 for each permit application, $250 operator license, $50 non-commercial gas, $25 shut-in extension, $50 plugging record; late fees $100 a month, capped at $1,200 per violation per well), says the DNR holds 'records for approximately 10,400 wells' and links the Aug 30, 2024 wells list. It links no permit list and no permit statistics. The first research's 403 came from a retired path (.../oil-gas-permit-drill-or-modify-well-permit), which now redirects to a page that returns the CMS's own 403."
   },
   {
    "id": "mo-sos-rule-10csr50-2",
@@ -370,8 +442,8 @@
   },
   {
    "id": "mo-geostrat",
-   "name": "GeoSTRAT (MGS web map used to locate permitted oil and gas wells)",
-   "url": "https://dnr.mo.gov/geology/geosrv/oilandgas.htm",
+   "name": "GeoSTRAT and the DNR's Oil and Gas Resources page (the old address, geology/geosrv/oilandgas.htm, redirects to it)",
+   "url": "https://dnr.mo.gov/land-geology/geology/oil-gas-resources",
    "kind": "map",
    "format": "html",
    "grain": "well",
@@ -388,24 +460,24 @@
    "has_work_type": false,
    "has_location": true,
    "activity_types": [],
-   "reachable": "not-tested",
-   "tested": "Named in a search summary of the DNR oil and gas pages only; the URL is the agency oil and gas page that surfaced, not the viewer; not opened, so whether it is fresher than the layer is unknown."
+   "reachable": "ok",
+   "tested": "The Oil and Gas Resources page answers 200 and links the wells list, production files, the operators list and the State Oil and Gas Council. GeoSTRAT's oil and gas content is about 4,100 stratigraphic and geophysical logs (history to 1939), not permits; the WISDIM page is about domestic water-well drilling areas. No fresher permit list is behind either."
   }
  ],
  "grade": "B",
- "grade_reason": "The wells layer is shaped like an A (free ArcGIS API, API number, PERMIT_DAT issue date, SPUD_DATE, well type, status, location) but it is frozen: the newest permit is 2019-08-15 and the newest spud 2021-06-04, and confidential wells are left out, so it gives history, not current monthly counts. No current bulk source or permit list was found, the permit form could not be read, and the DNR and Secretary of State pages answered 403 from here. History only: about 13 permits a year since 2015, 2 in 2019.",
- "producer_plan": "Missouri is tiny and not worth a monthly producer on the present data. A history-only file could be built from the layer (query PERMIT_DAT, SPUD_DATE, WELL_TYPE, STATUS, COUNTY; 10,369 rows fit in 6 pages of 2,000) giving permits and spuds by month through Aug 2019 / Jun 2021, and shown as 'not updated since 2021'. For current activity the owner would need a public-records request to the Geological Survey in Rolla, or to find whether GeoSTRAT or the DNR permit page publishes a fresher list (not checked: pages blocked or not opened). PERMIT_DAT covers drill, deepen and recomplete permits together, so work types cannot be separated.",
+ "grade_reason": "The wells layer is shaped like an A (free ArcGIS API, API number, PERMIT_DAT issue date, SPUD_DATE, well type, status, location) but it is frozen: the newest permit is dated 2019-08-15 and the newest spud 2021-06-04, and confidential wells are left out. The DNR's own wells list (xlsx, updated 2024-08-30) has spud dates only, the newest 2023-08-06, and no permit date; the Socrata permits file has no date at all. Graded B for what exists, none of it current: Missouri publishes no current permit list (permits by year in the layer: 2015 43, 2016 1, 2017 0, 2018 12, 2019 2). Updated 2026-11-01: the DNR's permits page and form page answer (the first research's 403 was a retired address) and list the fees; no producer was built because neither source is current.",
+ "producer_plan": "No producer: Missouri publishes no current permit list (checked 2026-11-01 with about 64 requests to dnr.mo.gov, gis.dnr.mo.gov, data.mo.gov and the DNR's ArcGIS Online items; nothing refused). The layer ends 2019-08 (permits) and 2021-06 (spuds); the Aug 2024 wells list has spud dates to 2023-08 and no permit date. A spud producer was considered and not built: it would sit 27 months behind the other states, and the national builder would add its last 12 months into the spud total. If the DNR posts a newer wells list or a permit list with approval dates (read the wells list's label date on the permits page: one request), a spud or permit producer follows the Arizona or New Mexico pattern. The REGROW grant funds an online application with a tracking dashboard (the e_permitting service answers 'Token Required' today); a public-records request to the Geological Survey in Rolla is the owner's call.",
  "activity_bands_possible": [
   "injection",
   "other"
  ],
  "privacy_notes": "The layer's OPERATOR and LEASE columns may name individuals or landowners; the linked permit files and the metadata hold staff contact details (not copied). Publish only corporate, LLC or LP operator names and county-level counts.",
  "unknowns": [
-  "Contents of Form MO 780-0211 (every form-only cell)",
-  "Whether any source newer than the 2021 layer exists (GeoSTRAT, DNR permit page, ePermitting)",
-  "Permit counts per year today and whether many wells are hidden by confidentiality",
+  "Contents of Form MO 780-0211 (every form-only cell: the PDF was not read)",
+  "Permit counts per year today, and whether the DNR holds permits it does not publish (confidential wells are excluded from the layer)",
   "What the PERMIT_LINK, DOWN_LINK and STRAT_LINK documents contain (not opened)",
-  "Permit number, bond, fee and notice requirements (snippets only)",
+  "Permit number, bond, validity period and notice requirements",
+  "Whether a new wells list or permit list is coming (no Council packet says; the Oct 2026 meeting was cancelled)",
   "Why the layer stopped in 2021"
  ],
  "researched": "2026-10-31"

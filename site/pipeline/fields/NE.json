@@ -2,7 +2,7 @@
  "state": "NE",
  "name": "Nebraska",
  "agency": {
-  "name": "Nebraska Oil and Gas Conservation Commission (NOGCC); the brief calls it the Energy and Carbon Management Commission, a rename no source I saw confirms",
+  "name": "Nebraska Oil and Gas Conservation Commission (NOGCC)",
   "short": "NOGCC",
   "url": "https://nogcc.ne.gov"
  },
@@ -12,13 +12,13 @@
   "url": "https://nogcc.ne.gov/Forms/NE_Form2_IntentToDrill.pdf",
   "read_urls": [],
   "read": false,
-  "notes": "NOT read from the agency: the commission's site reset every connection from this machine, so the blank Form 2 and the rules were not fetched. Cells marked form come from search-index snippets of the official form and Title 267 rule text (evidence doc) or from one third-party copy of the form (evidence web), which disagrees with the snippets on bond amounts, so no amounts are given. The form's address is as listed by a search index and was not requested."
+  "notes": "NOT read from the agency: the blank Form 2 and the rules were not requested. The Commission's site answers only over plain http (the secure address resets automated connections from some networks), so an earlier note that it refused every connection was true of the secure address only. Cells marked form come from search-index snippets of the official form and Title 267 rule text (evidence doc) or from one third-party copy of the form (evidence web), which disagrees with the snippets on bond amounts, so no amounts are given. The Commission's own pages are headed 'Nebraska Oil and Gas Conservation Commission'; no rename to an energy and carbon commission appears on them."
  },
  "cells": {
   "api_number": {
    "s": "data",
    "e": "file",
-   "n": "API_WellNo in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "API in the NE_WELLS shapefile; each entry of the yearly permit lists prints an API number"
   },
   "permit_number": {
    "s": "unknown",
@@ -28,17 +28,17 @@
   "well_name": {
    "s": "data",
    "e": "file",
-   "n": "Well_Name in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "Well name in the NE_WELLS shapefile and on each entry of the yearly permit lists"
   },
   "lease_name": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Form 2 asks lease acreage; whether it asks a lease name was not seen"
+   "s": "data",
+   "e": "file",
+   "n": "A lease column in the Access well database (NebraskaWellData.zip); the permit lists print none"
   },
   "operator_name": {
    "s": "data",
    "e": "file",
-   "n": "Co_Name in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "Operator (company) in the NE_WELLS shapefile; operator and driller on each permit list entry"
   },
   "operator_id": {
    "s": "unknown",
@@ -58,7 +58,7 @@
   "county": {
    "s": "data",
    "e": "file",
-   "n": "County in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "County in the NE_WELLS shapefile and on each permit list entry"
   },
   "district": {
    "s": "unknown",
@@ -68,17 +68,17 @@
   "field_pool": {
    "s": "data",
    "e": "file",
-   "n": "Field in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "Field in the NE_WELLS shapefile and on each permit list entry"
   },
   "surface_latlon": {
    "s": "data",
    "e": "file",
-   "n": "Lat and Long in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "Lat and Long in the NE_WELLS shapefile (same as FracTracker's copy); the permit lists print footages and a quarter"
   },
   "surface_plss": {
    "s": "data",
    "e": "file",
-   "n": "Sec, Twp, Rng, quarter and footages in the mirror; plat is required with Form 2"
+   "n": "Section, township, range, quarter and footages in the shapefile; the permit lists print footage and quarter-section"
   },
   "bottom_hole_loc": {
    "s": "form",
@@ -93,7 +93,7 @@
   "elevation": {
    "s": "data",
    "e": "file",
-   "n": "Elev_Gr and Elev_KB in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "Elevation fields (ground, KB) in the NE_WELLS shapefile; the Access well database has an elevation column"
   },
   "surface_owner": {
    "s": "unknown",
@@ -103,12 +103,12 @@
   "well_type": {
    "s": "data",
    "e": "file",
-   "n": "Well_Type in the mirror: dry hole, oil/gas, injection, disposal, storage..."
+   "n": "Well type in the NE_WELLS shapefile (dry hole, oil/gas, injection, disposal, storage...); the permit lists print none"
   },
   "work_type": {
    "s": "form",
    "e": "doc",
-   "n": "Form 2 is 'drill or re-enter'; deepening and recompletion have separate rules and forms"
+   "n": "Form 2 is 'drill or re-enter'; the lists print no work type (a re-entry shows in the API's last digits or 'OWWO')"
   },
   "well_direction": {
    "s": "form",
@@ -116,9 +116,9 @@
    "n": "Third-party copy of Form 2 mentions horizontal or directional wells; agency PDF not read"
   },
   "proposed_depth_md": {
-   "s": "form",
-   "e": "doc",
-   "n": "Rule 267-3-003: the notice states the depth; third-party copy says measured depth"
+   "s": "query",
+   "e": "web",
+   "n": "Proposed depth on each permit list entry (MD or TVD not stated); rule 267-3-003 says the notice states the depth"
   },
   "proposed_depth_tvd": {
    "s": "form",
@@ -131,9 +131,9 @@
    "n": ""
   },
   "target_formation": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Third-party copy lists formations to be penetrated; a target formation was not seen"
+   "s": "query",
+   "e": "web",
+   "n": "A formation is printed on each permit list entry (target not stated); a third-party copy of Form 2 lists formations"
   },
   "formation_tops": {
    "s": "unknown",
@@ -206,9 +206,9 @@
    "n": ""
   },
   "date_approved": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Approval needed before work (rule); no date column verified in any file"
+   "s": "query",
+   "e": "web",
+   "n": "Permit date on each entry of the yearly permit list (read as the issue date: API order, Commission counts agree)"
   },
   "date_expires": {
    "s": "unknown",
@@ -216,19 +216,19 @@
    "n": "Rule says approval lapses if work does not start in a set period; no date field seen"
   },
   "spud_date": {
-   "s": "unknown",
-   "e": "none",
-   "n": "Not in the mirror; the agency's Access well database was not opened"
+   "s": "data",
+   "e": "file",
+   "n": "Dt_Spud in the Access well database (NebraskaWellData.zip, 28 columns); no date in the shapefile"
   },
   "completion_date": {
-   "s": "unknown",
-   "e": "none",
-   "n": ""
+   "s": "data",
+   "e": "file",
+   "n": "Dt_Comp and Dt_Prod (first production) in the Access well database; Dt_PA is the plugging date"
   },
   "status": {
    "s": "data",
    "e": "file",
-   "n": "Well_Statu in FracTracker copy of NOGCC wells; agency file not reachable"
+   "n": "Well status in the NE_WELLS shapefile and the Access well database"
   },
   "plat_image": {
    "s": "unknown",
@@ -258,77 +258,161 @@
  },
  "sources": [
   {
+   "id": "ne-nogcc-permits-by-year",
+   "name": "Drilling Permits lists, one PDF a year, 2005 to 2025 ('Nebraska Permitted Wells'), on the commission's Data and Publications page",
+   "url": "https://nogcc.ne.gov/?p=460",
+   "kind": "report",
+   "format": "pdf",
+   "grain": "permit",
+   "cadence": "annual",
+   "history_from": "2005",
+   "size_mb": 0.1,
+   "free": true,
+   "login": false,
+   "license": "Public; no license text seen",
+   "columns": [
+    "operator and driller",
+    "well name",
+    "footage",
+    "quarter-section location",
+    "county",
+    "field",
+    "proposed depth",
+    "formation",
+    "API number",
+    "permit date"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "permits to drill (development and exploratory wells, oil and gas together)"
+   ],
+   "reachable": "ok",
+   "tested": "Read 2026-11-01 over plain http (http://nogcc.ne.gov/Publications/<year>WellPermits.pdf, the address the Commission links by): 2019 to 2025 each answered 200, 15 to 110 KB; 2005 to 2025 are linked (2005 to 2011 as zip or pdf). 2026WellPermits.pdf answers 404: a year's list is posted only after the year closes (2021's in Feb 2022, 2022's in Jan 2023, 2023's in Apr 2024, 2024's in Feb 2025, 2025's in Mar 2026). Text read with pdftotext -layout: a date, then three lines per permit; 2019 and 2020 use one layout and 2021 on another. The list's date is the permit date as listed: it is read as the issue date (API numbers, assigned at issue, run in date order every year; the list is titled 'Permitted Wells'), which the Commission does not state. Three wells whose permit lapsed and was issued again appear on two lists."
+  },
+  {
    "id": "ne-nogcc-wells-shapefile",
-   "name": "Nebraska Wells GIS Shape File (listed as updated daily) on the commission's Data and Publications page",
+   "name": "NE_WELLS wells shapefile (zip, 22,612 wells, 22 fields; listed as updated daily) on the commission's Data and Publications page",
    "url": "https://nogcc.ne.gov/?p=460",
    "kind": "bulk",
    "format": "shp",
    "grain": "well",
    "cadence": "daily",
    "history_from": "unknown",
-   "size_mb": 0,
+   "size_mb": 1.6,
    "free": true,
    "login": false,
    "license": "Public; no license text seen",
-   "columns": [],
-   "has_approval_date": null,
-   "has_spud_date": null,
-   "has_well_type": null,
-   "has_work_type": null,
+   "columns": [
+    "API_WellNo",
+    "Well_Name",
+    "Co_Name",
+    "Well_Type",
+    "Well_Statu",
+    "Sec",
+    "Twp_No",
+    "Twp_Dir",
+    "Rng_No",
+    "Rng_Dir",
+    "Ft_NS",
+    "Ft_NS_Dir",
+    "Ft_EW",
+    "Ft_EW_Dir",
+    "Elev_Gr",
+    "Elev_KB",
+    "Long",
+    "Lat",
+    "Well_Qtr",
+    "County",
+    "Field",
+    "GISSymbol"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": true,
+   "has_work_type": false,
    "has_location": true,
-   "activity_types": [],
-   "reachable": "blocked-proxy",
-   "tested": "Two GETs on the commission's site (home page and this data page), sent together by mistake, both ended with 'connection reset by peer' after about 2 seconds with 39 bytes received. Not retried. The listing itself is known only from search-index summaries of the page. Column names were not seen from the agency; see the FracTracker copy below."
+   "activity_types": [
+    "wells by type and status (dry hole, oil, gas, injection, disposal, storage, stratigraphic, water)"
+   ],
+   "reachable": "ok",
+   "tested": "Read 2026-11-01 over plain http (http://nogcc.ne.gov/Publications/NE_WELLS.zip): 200, 1.6 MB, last modified 2026-10-31, 22,612 wells, 22 fields, the same fields as FracTracker's copy below. No date of any kind, so it cannot give a count by month. The secure address of the same page resets automated connections (39 bytes received after about 2 seconds) from the research network."
   },
   {
    "id": "ne-nogcc-well-database",
-   "name": "Well data download in Access 2003 format (with and without formation tops), same page",
+   "name": "Well data download in Access 2003 format (NebraskaWellData.zip; with and without formation tops), same page",
    "url": "https://nogcc.ne.gov/?p=460",
    "kind": "bulk",
    "format": "other",
    "grain": "well",
    "cadence": "irregular",
    "history_from": "unknown",
-   "size_mb": 0,
+   "size_mb": 1.6,
    "free": true,
    "login": false,
    "license": "Public; no license text seen",
-   "columns": [],
-   "has_approval_date": null,
-   "has_spud_date": null,
-   "has_well_type": null,
-   "has_work_type": null,
-   "has_location": null,
-   "activity_types": [],
-   "reachable": "blocked-proxy",
-   "tested": "Not requested separately (same host reset the connection). A search-index summary dates the current file 12/4/2025; an older mirror of the page dated it 2/17/2022. Table and column names unknown."
+   "columns": [
+    "API",
+    "county",
+    "company",
+    "well name",
+    "well type",
+    "status",
+    "Dt_Spud",
+    "Dt_Comp",
+    "Dt_Prod",
+    "Dt_PA",
+    "location",
+    "elevation",
+    "DTD",
+    "lease",
+    "field"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": false,
+   "has_location": true,
+   "activity_types": [
+    "wells with spud, completion, first production and plugging dates"
+   ],
+   "reachable": "ok",
+   "tested": "Read 2026-11-01 over plain http (http://nogcc.ne.gov/Publications/NebraskaWellData.zip, dated 6/4/2026 on the page): 200, 1.6 MB, one table 'Data' of 28 columns (the names above are 15 of them). Only the column names were read: the standard library has no Access reader. It has no permit date. A spud count from it would be a different measure from the permits and is not added to them."
   },
   {
-   "id": "ne-nogcc-permits-by-year",
-   "name": "Drilling permit files by year, 2005 to 2023, same page (format and columns not seen)",
+   "id": "ne-nogcc-oil-activity-summary",
+   "name": "Nebraska Oil Activity Summary (the Commission's yearly PDF ANNSUM<year>.pdf; table 'Permitted Wells for <year>' by county)",
    "url": "https://nogcc.ne.gov/?p=460",
    "kind": "report",
-   "format": "other",
-   "grain": "permit",
+   "format": "pdf",
+   "grain": "aggregate",
    "cadence": "annual",
-   "history_from": "2005",
-   "size_mb": 0,
+   "history_from": "2019",
+   "size_mb": 0.33,
    "free": true,
    "login": false,
    "license": "Public; no license text seen",
-   "columns": [],
-   "has_approval_date": null,
-   "has_spud_date": null,
-   "has_well_type": null,
-   "has_work_type": null,
-   "has_location": null,
-   "activity_types": [],
-   "reachable": "blocked-proxy",
-   "tested": "Known only from a search-index summary of the data page; never opened. This is the likeliest source of approval dates, so it is the first thing to test from a GitHub runner."
+   "columns": [
+    "county",
+    "wells permitted (development, wildcat)"
+   ],
+   "has_approval_date": false,
+   "has_spud_date": false,
+   "has_well_type": false,
+   "has_work_type": false,
+   "has_location": false,
+   "activity_types": [
+    "permitted wells by county and year"
+   ],
+   "reachable": "ok",
+   "tested": "2019 to 2025 each answered 200 over plain http (about 330 KB). Used as the independent check: permits listed against the Commission's table, 2019 44 against 44, 2020 29 against 29, 2021 54 against 53 (one permit issued again in 2022 under one API number), 2022 59 against 58, 2024 28 against 28, 2025 17 against 17 (every county equal; 9 wildcat and 8 development). The 2023 summary has no permitted-wells table."
   },
   {
    "id": "ne-nogcc-data-mining",
-   "name": "NOGCC GIS Data Mining area: per-well detail, scanned permits, scout tickets, well logs",
+   "name": "NOGCC GIS Data Mining (an interactive ASP.NET page at onlinegis.nogcc.ne.gov: per-well detail, scanned permits, scout tickets, well logs)",
    "url": "https://nogcc.ne.gov",
    "kind": "query",
    "format": "html",
@@ -346,8 +430,8 @@
    "has_work_type": null,
    "has_location": null,
    "activity_types": [],
-   "reachable": "blocked-proxy",
-   "tested": "The home page reset the connection; the Data Mining address was not known and not requested. Search-index summaries say scanned permits and location data can be viewed there."
+   "reachable": "ok",
+   "tested": "http://onlinegis.nogcc.ne.gov/ answers 200 over plain http: an interactive ASP.NET page, not a bulk or REST source, so it was not used. Search-index summaries say scanned permits and location data can be viewed there; not opened. The Commission's home page (http://nogcc.ne.gov/) answers 200, 7.5 KB, a classic ASP.NET site on IIS."
   },
   {
    "id": "ne-dwee-permit-counts",
@@ -388,7 +472,7 @@
     "exploratory (wildcat) well permit"
    ],
    "reachable": "ok",
-   "tested": "Page 200 (updated May 7, 2026; 'typically one year between updates'). Development PDF 200, 75 KB: an annual table 2010 to 2029 (2020: 8, 2021: 26, 2022: 46, 2023: NA, 2024: 15, 2025: 8; later years NA) and monthly counts by year for 1977 to 2014 only (2014 has only January and February). The page text gives exploratory permits as 13 in 2024 and 9 in 2025. Counts mix crude oil and natural gas wells. Peak 1981: 374 development and 354 exploratory."
+   "tested": "Page 200 (updated May 7, 2026; 'typically one year between updates'). Development PDF 200, 75 KB: an annual table 2010 to 2029 (2020: 8, 2021: 26, 2022: 46, 2023: NA, 2024: 15, 2025: 8; later years NA) and monthly counts by year for 1977 to 2014 only. The page text gives exploratory permits as 13 in 2024 and 9 in 2025. Counts mix crude oil and natural gas wells. Used as a second independent check: development plus exploratory 43 (list 44), 29 (29), 53 (54), 57 (59), NA, 28 (28), 17 (17) for 2019 to 2025."
   },
   {
    "id": "ne-fractracker-wells-mirror",
@@ -435,23 +519,25 @@
    "has_location": true,
    "activity_types": [],
    "reachable": "ok",
-   "tested": "Layer ?f=json 200 (query only, maxRecordCount 1000, no last-edit date). Statistics query: 16,084 wells, of which 13,119 dry holes, 1,834 oil/gas, 475 enhanced-recovery injection, 321 natural gas, 140 water injection/disposal, 109 gas storage, 39 stratigraphic, 38 water source, and a few geothermal, storage and class I wells. No date fields at all, so it cannot give permit counts. A static snapshot of unknown age; not the agency's file."
+   "tested": "Layer ?f=json 200 (query only, maxRecordCount 1000, no last-edit date). Statistics query: 16,084 wells, of which 13,119 dry holes, 1,834 oil/gas, 475 enhanced-recovery injection, 321 natural gas, 140 water injection/disposal, 109 gas storage, 39 stratigraphic, 38 water source, and a few geothermal, storage and class I wells. No date fields at all. A static snapshot of unknown age and not the agency's file: the Commission's own NE_WELLS shapefile has the same fields (and 22,612 wells), so this copy is not used."
   }
  ],
- "grade": "C",
- "grade_reason": "The commission's host reset every connection from here, so its permit-by-year files, wells shapefile and Access database could not be seen (they are reported to exist and be free). The reachable fragments are annual and monthly permit counts from the state energy office (monthly only to 2014, 2023 missing) and a third-party well layer with no dates. Nebraska issued only 17 development and exploratory permits in 2025 (28 in 2024), so it is a very small state. Could rise to A or B if the yearly permit files carry approval dates and a GitHub runner can reach them.",
- "producer_plan": "Today: use the state energy office's two PDFs, which give permits issued per year (development plus exploratory, oil and gas together) for 1975 to 2025, and per month through 2014; they are refreshed about once a year in May, and 2023 is NA. That supports an annual 'new wells permitted' line only. Next step before building anything: from a GitHub Actions runner, make one request each for the commission's Data and Publications page, the drilling permit file for the latest year, and the wells shapefile; a refusal from there is an answer and the state stays a statistics line. If the yearly permit files open and carry an approval date, count rows per month (Form 2 is 'drill or re-enter', so a work-type column may split new from re-entry); if they do not, the Access well database may hold permit and spud dates. The FracTracker copy has no dates and should not be a source. Caveats: tiny counts (about 8 to 46 a year), a long lag in the annual figures, and no injection or amendment bands known.",
+ "grade": "B",
+ "grade_reason": "The Commission's yearly Drilling Permits lists (PDF, 2005 to 2025) give every permit's date, operator, county, depth, formation and API number, and its wells shapefile and Access database are free bulk files (the Access database has spud and completion dates). Held to B, not A: a list is one PDF a year, posted only after the year closes (2025's in March 2026), so the figures end in December 2025; the list's date is read as the issue date (inferred, not stated); and the lists carry no well type or work type. Nebraska issued 17 permits in 2025. Updated 2026-11-01: the Commission's site answers over plain http (its secure address resets the connection, which the first research took for a refusal of everything); a producer reads the lists, and they match the Commission's own yearly summary for 2019, 2020, 2024 and 2025 and are one permit over in 2021 and 2022.",
+ "producer_plan": "Built: d11_nat_ne.py. Reads the Drilling Permits PDF of each year over plain http (found on the Data and Publications page) with pdftotext -layout: three lines per permit (operator and driller; well name, footage, location, county; field, proposed depth, formation, API number); a page break can fall inside a permit, so page numbers, headers and footers are dropped first, and an unknown line fails the run. Each permit is one in the month of its listed date. Bands: new by default; inj when the well's name has SWD, WIW, INJ, INJECTION or DISPOSAL (a lower bound); redrill when the API's last four digits are not 0000 or the name says OWWO; rework, amend, other and fluid are null. The API number is read only for those digits. Each run also reads the Commission's yearly Oil Activity Summary and refuses to write if its Permitted Wells table differs from the list by more than 2 permits in total or 4 over the counties. A year counts as closed only when the summary has the table and the year has ended, so the series ends at the newest closed year (December 2025 now); the weekly run reads the newest two years (5 requests, 13 s; a full read 15 requests, 44 s) and picks 2026 up when it appears.",
  "activity_bands_possible": [
-  "new"
+  "new",
+  "reentry",
+  "injection"
  ],
- "privacy_notes": "Not checked: no agency rows were seen. The mirror's Co_Name column names companies; whether any are individuals was not inspected. Form 2 asks for operator contact details and a signature, and a plat, which would show private land; publish company names and counts only.",
+ "privacy_notes": "The lists and files name companies and drillers; the producer reads the permit date, operator, county and the last four digits of the API number only, and names an operator only if it is a corporation, LLC or partnership. Form 2 asks for operator contact details and a signature, and a plat, which would show private land; publish company names and counts only.",
  "unknowns": [
-  "Whether the commission's site answers from a GitHub runner (it reset the connection from here).",
-  "Columns, format and approval dates in the yearly drilling permit files (2005 to 2023) and in the Access well database.",
-  "The blank Form 2 itself, its revision date and the current Title 267 text (bond amounts disagree between sources).",
-  "Whether the agency was renamed the Energy and Carbon Management Commission; sources seen still say Oil and Gas Conservation Commission.",
-  "Address of the GIS Data Mining area and what it shows publicly.",
-  "Missing 2023 permit count, and monthly counts after 2014."
+  "Whether the list's date is the approval date rather than the filing date (inferred from API order, the title and agreement with the Commission's counts)",
+  "The blank Form 2 itself, its revision date and the current Title 267 text (bond amounts disagree between sources)",
+  "Whether the HTTPS address works in a visitor's browser (the source links use the https addresses)",
+  "Whether the Commission's site answers GitHub's servers (the producer reads plain http; a reset exits with an error and keeps the file)",
+  "The 2022 Richardson difference of one permit, and the 2023 year (no summary table to check against)",
+  "What GIS Data Mining shows publicly (not opened)"
  ],
  "researched": "2026-10-31"
 }

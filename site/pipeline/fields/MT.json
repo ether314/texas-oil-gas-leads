@@ -55,9 +55,9 @@
    "n": "No bond box on Form 22; bonding is handled apart from the APD (ARM 36.22.1308, Bond Overview PDF not read)"
   },
   "county": {
-   "s": "query",
-   "e": "web",
-   "n": "Weekly letters and Dataminer County column; not a field of the ArcGIS layer (API digits 3-5 encode it)"
+   "s": "data",
+   "e": "file",
+   "n": "County in the Well History export and the weekly letters; not a field of the ArcGIS layer (API digits 3-5 encode it)"
   },
   "district": {
    "s": "query",
@@ -105,9 +105,9 @@
    "n": "Type column (Oil, Gas, Injection, Coal Bed Methane...) is the current type; Form 22 Oil/Gas/Other boxes"
   },
   "work_type": {
-   "s": "query",
-   "e": "web",
-   "n": "Letters split New, Horizontal and Re-Issued Locations; Form 22 has Drill/Deepen/Re-enter; no work-type column"
+   "s": "data",
+   "e": "file",
+   "n": "Typ_Work in the Well History export: Permit to Drill (Horizontal), Re-enter, Redrill or Deepen, Re-permit, Modification"
   },
   "well_direction": {
    "s": "query",
@@ -205,19 +205,19 @@
    "n": "No received-date box on Form 22; none seen in the letters or Dataminer headers"
   },
   "date_approved": {
-   "s": "query",
-   "e": "web",
-   "n": "Letters print Approved: mm/dd/yyyy; Dataminer Dt Effect column; Form 22 Approved (date); not in the layer"
+   "s": "data",
+   "e": "file",
+   "n": "Dt_Effect ('Date Approved') in the Well History export, from the start of the file; weekly letters print it too"
   },
   "date_expires": {
-   "s": "query",
-   "e": "web",
-   "n": "Letters list Expired Permits with Expired: mm/dd/yyyy; Form 22 board-use box Permit Expires"
+   "s": "data",
+   "e": "file",
+   "n": "'Date Well Permit Expires' and 'Expired Permit' events in the Well History export; Form 22 box Permit Expires"
   },
   "spud_date": {
-   "s": "form",
-   "e": "form",
-   "n": "Form 22 asks Anticipated Spud Date and requires the actual spud reported within 72 hours; no spud column seen"
+   "s": "data",
+   "e": "file",
+   "n": "Spud events in the Well History export (the producer does not count them); Form 22 asks the anticipated date"
   },
   "completion_date": {
    "s": "data",
@@ -264,7 +264,7 @@
    "format": "pdf",
    "grain": "permit",
    "cadence": "weekly",
-   "history_from": "2016",
+   "history_from": "2026-01",
    "size_mb": 0.11,
    "free": true,
    "login": false,
@@ -295,11 +295,11 @@
     "abandoned well (plugging approval)"
    ],
    "reachable": "ok",
-   "tested": "Folder listing GET 200 (bogwebfiles.dnrc.mt.gov, 5 KB) and 2026 folder GET 200 (43 weekly PDFs, Week 4 of 09-25-26 to 10-23-26 at the end; 2016 letters appear in search results). Newest letter (10-23-26, 3 pages, 109 KB) fetched through WebFetch, not curl, and read with pdftotext: 6 permit actions that week (1 vertical, 4 horizontal, 1 re-issued). The letters are on bogfiles.dnrc.mt.gov, which answered 403 to curl HEAD for two zip files, so a runner may need a test."
+   "tested": "Folder listing 200 and 2026 folder 200: 42 weekly letters from 2026-01-09 (the 2025 and 2024 folders answer 200 with no files, so a 'since 2016' archive is not there). Each letter has the sections New Locations, New Locations - Horizontal Wells, Re-Issued Locations, Completions, Expired Permits and Abandoned Wells. The 403s the first research met on the bogfiles.dnrc.mt.gov host came from the backslashes in the listing's links (//WeeklyActivityLetter\\20261023.pdf, sent as %5C): with a slash every file answers 200 and supports range requests. The 42 letters read with pdftotext hold 225 permit entries (219 unique); 218 of the 225 match an event of the Well History exactly, and the history has 14 approvals no letter lists. Used only as a check."
   },
   {
    "id": "mt-dataminer-permits",
-   "name": "MBOGC Dataminer: Wells > Permits (default Last 24 Months; filter by Dt Effect, API, operator, county, field, formation; Csv and Text export links)",
+   "name": "MBOGC Dataminer: Wells > Permits (last 24 months only; Csv and Text export links)",
    "url": "https://bogapps.dnrc.mt.gov/dataminer/Wells/WellPermits.aspx",
    "kind": "query",
    "format": "html",
@@ -336,7 +336,7 @@
     "horizontal permits have their own page WellHorzPermits.aspx"
    ],
    "reachable": "ok",
-   "tested": "GET 200 (44 KB ASP.NET page; headers read from the filter list and grid). No data rows came back from a plain GET or from one plain form POST (the grid needs the browser's partial postback), and Export.aspx?type=csv answered 'Content must be selected to export data' (200, 61 bytes). Dt Effect is assumed to be the permit's effective/approval date: not verified against rows. Sibling pages seen in the menu: Horizontal Permits, Completions, Abandonments, Permit Count (5 Year Permit Count by Year and Quarter), Horizontal Well Permit Count."
+   "tested": "Page answers 200. It shows only the last 24 months (a 'Prior To' filter does not lift it) and misses some approvals (5 events that the Well History and the letters list). Its CSV export works with the plain postback and the same session. Not used: the Well History page is complete from the start of the file."
   },
   {
    "id": "mt-bog-wells-featureserver",
@@ -384,7 +384,7 @@
   },
   {
    "id": "mt-bog-reporting-zips",
-   "name": "MBOGC Reporting downloads: MT_CompleteWellList.zip, MT_MonthlyUpdate.zip and production zips",
+   "name": "MBOGC Reporting downloads: MT_CompleteWellList.zip (tab-separated, 42,051 wells), MT_MonthlyUpdate.zip and production zips",
    "url": "https://bogwebfiles.dnrc.mt.gov/Reporting/",
    "kind": "bulk",
    "format": "zip",
@@ -396,18 +396,19 @@
    "login": false,
    "license": "No license stated",
    "columns": [
-    "not read: the two zips answered 403"
+    "MT_CompleteWellList.zip: one row per well, with a 'Permitted' date",
+    "MT_MonthlyUpdate.zip: production and injection updates"
    ],
-   "has_approval_date": false,
+   "has_approval_date": true,
    "has_spud_date": false,
    "has_well_type": false,
    "has_work_type": false,
    "has_location": false,
    "activity_types": [
-    "unknown"
+    "wells that still exist, with their permit date"
    ],
-   "reachable": "blocked-403",
-   "tested": "Listing GET 200 (7 KB) shows the files. HEAD on MT_CompleteWellList.zip and MT_MonthlyUpdate.zip (bogfiles.dnrc.mt.gov, backslash path sent as %5C) returned 403 Forbidden; not retried. The 403 may come from the HEAD method or the path encoding; contents and columns unknown. 'Monthly' is taken from the folder name MonthlyUpdates."
+   "reachable": "ok",
+   "tested": "Both zips read 2026-11-01 (1.8 MB for the well list). The well list holds only wells that still exist: its 'Permitted' years 2019 to 2025 give 49, 27, 34, 45, 45, 62, 59 against the Board's 79, 37, 41, 54, 58, 66, 62 (62% in 2019 up to 95% in 2025: expired and never-drilled permits are gone), which would draw a false rise; not used for permits. It is a good, cheap source for the wells themselves. The 403s of the first research came from backslash paths on the bogfiles host (with a slash the files answer 200)."
   },
   {
    "id": "mt-main-host",
@@ -431,24 +432,64 @@
    "activity_types": [],
    "reachable": "blocked-proxy",
    "tested": "One HEAD: curl 56, CONNECT tunnel failed, response 502. Not retried or worked around. The agency's pages on dnrc.mt.gov, bogapps.dnrc.mt.gov, bogwebfiles.dnrc.mt.gov and the Esri-hosted layer did answer."
+  },
+  {
+   "id": "mt-dataminer-wellhistory",
+   "name": "MBOGC Dataminer: Wells > Well History (every event on every well: permits, notices, completions, spuds, plugging; filter by Date Approved; CSV export)",
+   "url": "https://bogapps.dnrc.mt.gov/dataminer/Wells/WellHistory.aspx",
+   "kind": "query",
+   "format": "csv",
+   "grain": "permit",
+   "cadence": "irregular",
+   "history_from": "unknown (every event from the start of the file; read from 2019)",
+   "size_mb": 4.4,
+   "free": true,
+   "login": false,
+   "license": "No license stated",
+   "columns": [
+    "Dt_Effect ('Date Approved')",
+    "Typ_Work (type of work)",
+    "API number",
+    "Operator",
+    "County",
+    "Well name",
+    "Field",
+    "Location",
+    "Status",
+    "Well type",
+    "Comment (free text, never read)"
+   ],
+   "has_approval_date": true,
+   "has_spud_date": true,
+   "has_well_type": true,
+   "has_work_type": true,
+   "has_location": true,
+   "activity_types": [
+    "permit to drill, re-enter, redrill or deepen, re-permit, modification",
+    "notices of intent and subsequent reports",
+    "completions, spuds, plugging, expiry dates"
+   ],
+   "reachable": "ok",
+   "tested": "Driven and read 2026-11-01 the way the page does, four requests 3 s apart: GET the page; POST the choice of the date field (the page posts back to offer 'Prior To / Equal To / After'); POST the search 'Date Approved After 12/31/2018' with the Search button; GET Export.aspx?type=csv, which works only in the session that searched (the session cookie is held in memory). About 4.4 MB, 19,800 events, 1,089 of them permits, 16 seconds; two real runs gave byte-identical output. The Dataminer sits behind an F5 BIG-IP application firewall: it answered the research proxy with no challenge or refusal, and a datacenter address might get one."
   }
  ],
- "grade": "C",
- "grade_reason": "No bulk file or API with an approval date was verified. Approval dates are published only in weekly PDF letters (reachable, text-extractable, about 6 actions a week) and in the Dataminer Permits query, whose CSV export could not be driven here. The one machine-readable layer has status but no permit date. Could become A or B if the Dataminer export or the MT_MonthlyUpdate.zip proves to carry Dt Effect.",
- "producer_plan": "Best fragment today: the Weekly Activity Letters. Read the folder listing (one request), fetch each weekly PDF once (about 110 KB), extract text with pdftotext -layout, and walk the section headings. 'New Locations' and 'New Locations - Horizontal Wells' entries are new permits, 'Re-Issued Locations' are reissues, 'Expired Permits' carry Expired: dates, 'Abandoned Wells' entries also print Approved: but are plugging approvals and must not be counted as permits. An entry starts with county, field and API number (county-sequence, with a 5-digit number beside the well name) and ends with 'Approved: mm/dd/yyyy'; month = that date, not the letter's week. Counts are by date approved; no well class on new locations (horizontal vs other is the only split). Back-fill from 2016 by walking the folders. Better option to test first, in a browser or by a person: Dataminer Wells > Permits with the Csv export (one row per permit with Dt Effect, API, county, formation, slant, type, status), and the 5 Year Permit Count and Horizontal Permit Count pages for cross-checks; and the monthly zips. Caveats: the weekly letters are a layout-fragile PDF; the bogfiles host refused curl HEADs (403); the main host is blocked here; the Dataminer is an ASP.NET postback app, so a scripted run would need session and view-state handling and care not to hammer it.",
+ "grade": "B",
+ "grade_reason": "The Board's Dataminer Well History page lists every event on every well (permits, notices of intent, completions, spuds, plugging, expiry dates) with a Date Approved and a type of work, and offers the whole result as a CSV export: free, no login, with county, well type and operator. Held to B, not A: the export is a form-driven download inside a session behind a firewall (four requests, no documented interface), and the well type and the operator are the well's today. The weekly letters cover only 2026. Updated 2026-11-01: a producer reads the export each week; its permits to drill, re-entries and horizontals match the Board's annual reviews exactly for 2019 to 2023 (79, 37, 41, 54, 58) and are one short in 2024 (66 against 67), and its re-issued permits match in all six years.",
+ "producer_plan": "Built: d11_nat_mt.py. Drives the Dataminer Well History form as the page does, four requests 3 s apart (GET the page; POST the choice of the date field; POST the search 'Date Approved After 12/31/2018' with the Search button; GET Export.aspx?type=csv in the same session, cookie held in memory), about 4.4 MB and 19,800 events each run, 16 s; nothing is kept from the committed file, so a corrected date is picked up the next week. Counts every permit event by month of Dt_Effect. Bands from Typ_Work: 'Permit to Drill' and 'Permit to Drill, Horizontal' = new, unless the well's type is a service well (inj); re-enter, redrill or deepen, horizontal re-drill and new laterals = redrill; re-permit, permit modification and correction = amend (a re-issue is the same well again); rework and other are null (recompletions and plug-backs are sundry notices, not permits). A permit type it does not know fails the run. Only date, work type, well type, county and operator are read from a row; API number, well name, field, location, status and the free-text comment never are, and the export is never written. A lag of 7 days. A 403 exits 2 and keeps last week's file.",
  "activity_bands_possible": [
   "new",
-  "other"
+  "reentry",
+  "injection",
+  "amend"
  ],
- "privacy_notes": "The letters and the layer name operators (companies in the pages read) and carry no phone numbers except the Board's own office. Form 22 collects an operator address and phone and a signing agent; the surface owner is not named on the form. Nothing copied.",
+ "privacy_notes": "The letters, the export and the layer name operators (companies in the files read); the export's free-text comment can hold names and phone numbers and is never read. Form 22 collects an operator address and phone and a signing agent; the surface owner is not named on the form. Nothing copied.",
  "unknowns": [
-  "What Dt Effect means and whether the Dataminer CSV export returns rows (needs a browser-like session)",
-  "Contents and columns of MT_CompleteWellList.zip and MT_MonthlyUpdate.zip (403 on HEAD, not retried)",
   "Whether the 5-digit number beside the well name in the letters is the permit number",
   "Whether Form 22 has a newer revision than R 10/09 (the PDF was last modified April 2016); the APD checklist and eForm status were not read",
   "Fee amount, bond rules, and ARM 36.22.601 notice details (rule pages not opened)",
   "Whether scanned forms, plats and logs are online per well",
-  "Weekly letters before 2026 were not opened (2016 to 2025 folders seen only in search results)"
+  "Whether the Dataminer's firewall lets GitHub's servers through (a refusal exits 2 and keeps the file)",
+  "The meaning of the production zips' columns (not opened)"
  ],
  "researched": "2026-10-31"
 }

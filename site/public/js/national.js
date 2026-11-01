@@ -84,7 +84,7 @@ export function createNationalView({ root }) {
   }
   function tipFor(id, k) {
     if (k.kind === 'data') {
-      const s = k.s; const f = N.change(s);
+      const s = k.s; const f = N.shownChange(s);
       if (N.noneRecorded(s)) return [el('div', { class: 'tip-head', text: s.name }), tipRow('None recorded', 'in the last 24 months'), tipRow(fmtDate(s.through), 'data through')];
       return [el('div', { class: 'tip-head', text: s.name }), tipRow(fmt.format(s.p12), unitOf(s) + ', last 12 months'),
         f != null ? tipRow((f > 0 ? '+' : f < 0 ? '−' : '') + Math.round(Math.abs(f) * 100) + '%', 'on the 12 months before') : null,
@@ -138,7 +138,7 @@ export function createNationalView({ root }) {
       if (links.childNodes.length) put(box, links);
       return box;
     }
-    const s = k.s; const c = N.change(s);
+    const s = k.s; const c = N.shownChange(s);
     const first = s.bands.new.findIndex((v) => v != null);
     const vals = s.bands.new.slice(Math.max(first, s.bands.new.length - 36)).filter((v) => v != null);
     put(box, 
@@ -146,7 +146,7 @@ export function createNationalView({ root }) {
       el('p', { class: 'nat-agency', text: s.agency + ' · counted by ' + s.basis }),
       N.noneRecorded(s)
         ? el('div', { class: 'nat-big' }, el('strong', { text: 'None recorded' }), el('span', { text: ' in the 24 months to ' + monthLabel(s.through.slice(0, 7)) + ': the source has no ' + N.measureOf(s.measure).one.replace(/^new-drill /, '') + ' dated in them, which is not the same as none happening' }))
-        : el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' ' + unitOf(s) + ' in the 12 months to ' + monthLabel(s.through.slice(0, 7)) }), c != null ? delta(c) : null),
+        : el('div', { class: 'nat-big' }, el('strong', { text: fmt.format(s.p12) }), el('span', { text: ' ' + unitOf(s) + ' in the 12 months to ' + monthLabel(s.through.slice(0, 7)) }), c != null ? delta(c) : (s.prev12 !== s.p12 ? el('span', { class: 'nat-base', text: '(' + fmt.format(s.prev12) + ' the 12 months before)' }) : null)),
       vals.length > 3 ? el('div', { class: 'nat-spark' }, spark(vals, { w: 280, h: 44, color: N.SERIES_COLOR[id] || 'var(--s1)', label: s.name + ', ' + unitOf(s) + ' by month, last ' + vals.length + ' months' })) : null);
     const m = N.mix(s);
     if (m) put(box, el('div', { class: 'nat-sub' }, el('h4', { text: (N.measureOf(s.measure).family === 'permits' ? 'Kinds of permits' : 'Kinds of wells') + ', last 12 months' }), bandBar(m), el('ul', { class: 'nat-mixkeys' }, m.map((b) => { const sw = el('i', { class: 'nat-sw' }); sw.style.setProperty('--c', b.color); return el('li', {}, sw, b.label + ' ' + fmt.format(b.n)); }))));
@@ -222,7 +222,7 @@ export function createNationalView({ root }) {
           const bar = el('i', { class: 'nat-rb' }); bar.style.setProperty('--p', String(s.p12 / top)); bar.style.setProperty('--c', N.SERIES_COLOR[s.id] || 'var(--n-other)');
           const b = el('button', { type: 'button', class: 'nat-row', 'aria-current': 'false', 'aria-label': s.name + ', ' + (N.noneRecorded(s) ? 'none recorded in the last 24 months' : fmt.format(s.p12) + ' in the last 12 months') + '. Open its panel.' },
             el('span', { class: 'nat-rn' }, el('span', { class: 'nat-rc', text: s.id === 'FO' ? 'Gulf' : s.id === 'BL' ? 'BLM' : s.id }), s.name), el('span', { class: 'nat-rt' }, bar),
-            el('span', { class: 'nat-rv', text: N.noneRecorded(s) ? '–' : fmt.format(s.p12) }), el('span', { class: 'nat-rd' }, N.change(s) != null ? delta(N.change(s)) : el('span', { class: 'nd', text: 'n/a' })),
+            el('span', { class: 'nat-rv', text: N.noneRecorded(s) ? '–' : fmt.format(s.p12) }), el('span', { class: 'nat-rd' }, N.shownChange(s) != null ? delta(N.shownChange(s)) : el('span', { class: 'nd', text: 'n/a' })),
             el('span', { class: 'nat-rw', text: 'to ' + monthLabel(s.through.slice(0, 7)) }));
           b.addEventListener('click', () => { select(s.id); slots.map.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
           rows.set(s.id, b);

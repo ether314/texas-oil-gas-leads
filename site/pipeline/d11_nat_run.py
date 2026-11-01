@@ -13,7 +13,7 @@ Exit code: 0 when every producer that ran either wrote a good file, changed noth
 
   python3 -I site/pipeline/d11_nat_run.py                     every producer
   python3 -I site/pipeline/d11_nat_run.py --only ND KS        some
-  python3 -I site/pipeline/d11_nat_run.py --budget 2400       seconds in all (default 2400)
+  python3 -I site/pipeline/d11_nat_run.py --budget 3000       seconds in all (default 3000)
 """
 import argparse
 import json
@@ -32,7 +32,7 @@ PRODUCER = re.compile(r"d11_nat_([a-z]{2})\.py")
 DEFAULT_TIMEOUT = 600  # seconds one producer may take; a big download gets more in TIMEOUTS
 # Kentucky, Indiana and West Virginia read one file per week: the first read of their history (17, 9 and 30 minutes) was done by hand and is committed, so a weekly run
 # reads only the newest weeks (about 3, 2 and 3 minutes). Their limit leaves room for a slow server and no more: without the committed file they fail here, by design.
-TIMEOUTS = {"KY": 900, "IN": 900, "WV": 900}
+TIMEOUTS = {"KY": 900, "IN": 900, "WV": 900, "OH": 900, "AR": 900}
 log = C.log
 
 
@@ -121,7 +121,7 @@ def rebuild(nat_dir, out):
 def main(argv=None, folder=HERE, nat_dir=C.OUT, out=B.OUT):
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="*")
-    ap.add_argument("--budget", type=int, default=2400)
+    ap.add_argument("--budget", type=int, default=3000)
     a = ap.parse_args(argv)
     found = producers(folder)
     if a.only:
