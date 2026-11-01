@@ -18,6 +18,8 @@ Two layers, so nothing is lost and common questions are easy:
     county_permits, county_permit_months      per state and county: last 12 months, the 12 before, mean depth, and the 36 monthly counts
     operators               every state's published operator table (Texas's joined with its extras); the full row of each in `extra`
     permit_points           one row per permit with a published location (latitude, longitude, day, depth)
+    new_wells_months, new_wells, new_wells_operators     the national new-wells map (d13_newwells.py, from FracFocus): new wells by state and month, one row per well of the last 24 months with its
+                            published GPS point (latitude, longitude, day, county, operator when it may be named, depth, water, land), and each state's top operators
     companies               the Texas Comptroller's company pool as published here
     daily_reports, daily_permits      the Daily reports by state and day, and each Texas permit row of those days
     tx_image_packs          the three Texas image packs by day: size, documents and kinds
@@ -59,6 +61,9 @@ CREATE TABLE county_permit_months(state TEXT, county TEXT, month TEXT, n INTEGER
 CREATE TABLE operators(state TEXT, num TEXT, name TEXT, band TEXT, type TEXT, city TEXT, addr_state TEXT, new12 INTEGER, prev12 INTEGER, all12 INTEGER, all24 INTEGER,
   last_permit TEXT, extra TEXT, PRIMARY KEY(state, num));
 CREATE TABLE permit_points(state TEXT, day TEXT, lat REAL, lon REAL, operator TEXT, operator_num TEXT, depth_ft INTEGER, county_code INTEGER);
+CREATE TABLE new_wells_months(state TEXT, month TEXT, wells INTEGER, PRIMARY KEY(state, month));
+CREATE TABLE new_wells(state TEXT, day TEXT, lat REAL, lon REAL, county TEXT, operator TEXT, depth_ft INTEGER, water_gal INTEGER, land TEXT);
+CREATE TABLE new_wells_operators(state TEXT, rank INTEGER, operator TEXT, wells12 INTEGER, PRIMARY KEY(state, rank));
 CREATE TABLE companies(fit TEXT, band TEXT, segment TEXT, name TEXT, city TEXT, state TEXT, zip TEXT, naics TEXT, word TEXT, is_new INTEGER, years TEXT, new12 INTEGER,
   all12 INTEGER, match TEXT, rrc_num TEXT, reason TEXT);
 CREATE TABLE daily_reports(state TEXT, day TEXT, kind TEXT, status TEXT, permits_total INTEGER, permits_new_drill INTEGER, completions_filed INTEGER, transfers_wells INTEGER,
@@ -203,6 +208,26 @@ def load_points(db, data):
         db.executemany("INSERT INTO permit_points VALUES (?,?,?,?,?,?,?,?)", rows)
 
 
+LAND = {0: "private or state", 1: "federal", 2: "tribal", 3: "federal and tribal"}
+
+
+def load_newwells(db, data):
+    ps, pp = os.path.join(data, "newwells", "summary.json"), os.path.join(data, "newwells", "points.json")
+    if not (os.path.exists(ps) and os.path.exists(pp)):
+        return 0
+    sm, pt = jload(ps), jload(pp)
+    for s in sm["states"]:
+        db.executemany("INSERT INTO new_wells_months VALUES (?,?,?)", [(s["id"], m, v) for m, v in zip(sm["months"], s["new"])])
+        db.executemany("INSERT INTO new_wells_operators VALUES (?,?,?,?)", [(s["id"], i + 1, name, n) for i, (name, n) in enumerate(s["operators"])])
+    rows = []
+    for i in range(pt["n"]):
+        c, o = pt["c"][i], pt["o"][i]
+        rows.append((pt["states"][pt["s"][i]], decode_day(pt["t0"], pt["d"][i]), pt["lat"][i] / 1e4, pt["lon"][i] / 1e4, pt["counties"][c][1] if c >= 0 else None,
+                     pt["ops"][o] if o >= 0 else None, pt["tvd"][i] * 100 or None, pt["h2o"][i] * 100000 or None, LAND[pt["f"][i]]))
+    db.executemany("INSERT INTO new_wells VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    return len(rows)
+
+
 def load_companies(db, data):
     p = os.path.join(data, "companies.json")
     if os.path.exists(p):
@@ -294,13 +319,14 @@ def build(out=DEFAULT_OUT, data=DATA, now=None):
         load_counties(db, data)
         load_operators(db, data)
         load_points(db, data)
+        nnew = load_newwells(db, data)
         load_companies(db, data)
         nrep, nrows = load_daily(db, data)
         nwells, nwdocs = load_wells(db, data)
         nfields = load_fields(db, data)
         stamp = (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
         db.executemany("INSERT INTO meta VALUES (?,?)", [("built", stamp), ("source", "site/public/data (committed files)"), ("documents", str(ndocs)), ("series_rows", str(nseries)),
-                                                          ("daily_reports", str(nrep)), ("daily_permit_rows", str(nrows)), ("wells", str(nwells)), ("well_documents", str(nwdocs)), ("field_states", str(nfields)),
+                                                          ("new_wells", str(nnew)), ("daily_reports", str(nrep)), ("daily_permit_rows", str(nrows)), ("wells", str(nwells)), ("well_documents", str(nwdocs)), ("field_states", str(nfields)),
                                                           ("note", "Counts of different measures (permits approved, wells spudded) are never added: see jurisdictions.measure.")])
         db.commit()
         ok = db.execute("PRAGMA integrity_check").fetchone()[0]
@@ -343,6 +369,9 @@ def check(out):
             want = sum(1 for s in d["states"] for v in s["bands"].values() if v is not None for x in v if x is not None)
             if db.execute("SELECT COUNT(*) FROM national_months").fetchone()[0] != want:
                 p.append("national_months does not match national.json")
+        nw = db.execute("SELECT json FROM documents WHERE path = 'newwells/points.json'").fetchone()
+        if nw and db.execute("SELECT COUNT(*) FROM new_wells").fetchone()[0] != json.loads(nw[0])["n"]:
+            p.append("new_wells does not match newwells/points.json")
         wdocs = sum(sum(len(w["docs"]) for w in json.loads(t)["wells"]) for (t,) in db.execute("SELECT json FROM documents WHERE path GLOB 'wells/county/*.json'"))
         if db.execute("SELECT COUNT(*) FROM well_documents").fetchone()[0] != wdocs:
             p.append("well_documents does not match the county files")

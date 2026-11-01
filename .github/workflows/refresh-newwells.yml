@@ -1,0 +1,79 @@
+# The national new-wells map (site/public/data/newwells/summary.json and points.json): every well the FracFocus registry lists as hydraulically fractured, with its GPS
+# point, state, county, day and size. Once a week, site/pipeline/d13_newwells.py reads FracFocus's disclosure list (16 MB of a 443 MB zip, by HTTP range requests: the zip is
+# never downloaded whole), writes the two files after validating them, and this workflow commits what changed and publishes the site. FracFocus refreshes five days a week
+# and a disclosure is filed weeks after the job, so a weekly visit is plenty and kind to a free public service. A server that refuses the runner is an answer, not an error
+# (exit 2: the committed files stay); a failed or invalid run leaves them exactly as committed. It shares the nightly capture's concurrency group, so the two never push at once.
+name: New wells map (FracFocus)
+
+on:
+  schedule:
+    # Tuesdays 07:35 UTC: a day after the Monday chain (monthly 05:40, national 06:20 and up to an hour of producers), three hours from the nightly capture
+    - cron: "35 7 * * 2"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-rrc-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    # a manual run from another branch would commit to that branch and publish its site
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # exit 0: written (or unchanged); 2: the server refused (an answer); anything else failed. The producer validates before it writes, so a bad read leaves the files alone.
+      - name: Read the new wells from FracFocus
+        id: read
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          set +e
+          python3 -I site/pipeline/d13_newwells.py
+          code=$?
+          if [ "$code" = "2" ]; then echo "::warning title=New wells::FracFocus refused the runner; the committed files stay."; exit 0; fi
+          exit $code
+
+      - name: Check the new wells files
+        id: check
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: python3 -I site/pipeline/d13_newwells.py --check
+
+      # a failed check must not put data on main: put both files back as they were committed
+      - name: Drop the new wells files if their check failed
+        if: ${{ steps.check.outcome == 'failure' }}
+        run: |
+          echo "::warning title=New wells::the check failed; the files are left as committed."
+          git checkout -- site/public/data/newwells
+
+      - name: Commit the new files
+        run: |
+          git config user.name "refresh-newwells"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/data/newwells/summary.json site/public/data/newwells/points.json
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "New wells map $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # a commit made with the workflow's own token starts neither CI nor the publish after a merge, so this publishes itself
+      - name: Publish the site to GitHub Pages
+        run: bash .github/scripts/publish_pages.sh
+
+      - name: Fail the run if the read or the check failed
+        if: ${{ !cancelled() && (steps.read.outcome == 'failure' || steps.check.outcome == 'failure') }}
+        run: |
+          echo "::error title=New wells::read ${{ steps.read.outcome }}, check ${{ steps.check.outcome }}. The committed files are unchanged (the run's log says why)."
+          exit 1

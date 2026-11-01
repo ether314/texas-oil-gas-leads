@@ -66,6 +66,11 @@ Oklahoma Corporation Commission (intents to drill, completions and well transfer
 Census outlines of Oklahoma's 77 counties and, for its monthly card, EIA's Oklahoma crude oil production beside the oil and gas
 prices above; see `site/pipeline/NOTES_D8.md`.
 
+The national new-wells map reads the FracFocus registry (the national hydraulic-fracturing disclosure list, public, refreshed five days a week): one disclosure per fractured well, with its wellhead's latitude and longitude, state, county, the day the job started, depth, water
+and operator. It is the one public place with a GPS point for every new (fractured) well in every state that reports to it, 17 of them in the last two years. `site/pipeline/d13_newwells.py` fetches only the registry's disclosure list (16 MB of a 443 MB zip, by range requests) once a week
+(`.github/workflows/refresh-newwells.yml`) and writes `site/public/data/newwells/`; a well counts once, on the day of its first job, and a month counts as settled only 120 days after the newest job because disclosures arrive late. The outlines of the states
+(`site/public/data/us-states.json`) are the Census Bureau's 1:10m cartographic boundary files (public domain). See `site/pipeline/NOTES_D13.md`.
+
 ## Privacy
 Only business-, place- and market-level data. No officer names, phone numbers, street addresses or anything about
 individuals. Operators are named only when they are corporations, LLCs or limited partnerships.
@@ -96,6 +101,10 @@ no API numbers), and every operator name it publishes must pass the state's rule
 **What the gate cannot undo.** Before the dba rule existed (fixed 2026-10-31, PR #18) two Oklahoma day files named two sole proprietors ("... DBA ..."). The current files are clean, but the two earlier versions are still readable in the git history of `main` and of `gh-pages`
 (`site/public/data/daily-ok/2026-08-26.json` and `2026-10-27.json` as first committed). Removing them needs a rewrite of history, which the rules for this repository forbid without the owner's decision, and a request to GitHub Support to purge cached views and pull-request refs.
 
+**The new-wells map's points (2026-11-01).** `newwells/points.json` publishes the position of every well fractured in the last 24 months, to 11 m (four decimals), with its state, county, day, depth, water, whether it is on federal or tribal land and, only when it is a corporation, LLC or partnership
+(or on a short reviewed list of companies whose registered names carry no "Inc"), its operator. It never holds an API number, a well name, a lease or a person's name. A well's surface position is a place, and the Map tab already publishes permit dots at the same precision; a person who is the operator of record
+("Clay Hamilton") is in the registry and is never named here. To go back, delete `site/public/data/newwells/` and disable `refresh-newwells.yml`.
+
 ## Run it
 ```
 python3 -m http.server 8000 --directory site/public
@@ -121,7 +130,7 @@ The national report's files are `site/public/data/nat/<ST>.json` (one per state,
 Everything the site publishes can be loaded into one SQLite file you keep on your own machine (standard library only, a few seconds, built from the committed files and never fetched):
 `python3 -I site/pipeline/build_db.py` writes `db/oil-tracker.sqlite` (about 13 MB; `db/` and `*.sqlite` are kept out of git), `--check` verifies an existing file. Every data file is stored verbatim in
 `documents`, and the main entities are tables you can query and join: jurisdictions, national_months (permits or spuds by state, month and kind of permit), series (prices, crude production, rigs, jobs,
-tax), county_permits, operators, permit_points, companies, daily_reports and daily_permits, tx_image_packs, wells, well_documents (every scanned document tied to its well, with the address of the file and of its picture) and well_packs and, once the matrix exists, metrics, field_states, field_cells and field_sources. Permits approved
+tax), county_permits, operators, permit_points, companies, daily_reports and daily_permits, tx_image_packs, wells, well_documents (every scanned document tied to its well, with the address of the file and of its picture) well_packs, new_wells (one row per well of the last 24 months with its published GPS point, from FracFocus), new_wells_months and new_wells_operators and, once the matrix exists, metrics, field_states, field_cells and field_sources. Permits approved
 and wells spudded are different measures (`jurisdictions.measure` says which) and nothing in the database adds them. See the top of `site/pipeline/build_db.py`.
 
 ## Rebuild the data
