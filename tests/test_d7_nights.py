@@ -531,6 +531,103 @@ def s_links(check):
           "a repair run whose document upload failed does not replace the report that has the links (%d links, release block %s)" % (links(r2), bool(r2.get("release"))))
 
 
+def hand_pdf(n):
+    """a one-page PDF written by hand (poppler draws it; no imaging library is needed to build the test)"""
+    body = b"0 0 0 rg 72 600 400 %d re f" % (20 + n)
+    objs = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << >> >>",
+            b"<< /Length %d >>\nstream\n" % len(body) + body + b"\nendstream"]
+    out, offs = b"%PDF-1.4\n", []
+    for i, o in enumerate(objs, 1):
+        offs.append(len(out))
+        out += b"%d 0 obj\n" % i + o + b"\nendobj\n"
+    x = len(out)
+    out += b"xref\n0 %d\n" % (len(objs) + 1) + b"0000000000 65535 f \n" + b"".join(b"%010d 00000 n \n" % o for o in offs)
+    return out + b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objs) + 1, x)
+
+
+def s_previews(check):
+    """The readable page-one previews that ride the document release (2026-11-01): <document>.jpg beside each document, uploaded after
+    the documents, counted in the release block only when the same listing confirmed them, and never able to cost a document its link."""
+    import subprocess
+    permits = [p for p in month_perms(D(2026, 10, 1), D(2026, 10, 29)) if p["issued"] == "20261029"][:12]
+    bio = io.BytesIO()
+    with zipfile.ZipFile(bio, "w", zipfile.ZIP_DEFLATED) as z:
+        for i, p in enumerate(permits):
+            z.writestr("%07d_W1_letter.pdf" % p["n"], hand_pdf(i))
+            z.writestr("%07d_Plat_1.pdf" % p["n"], hand_pdf(i + 30) if i < 11 else b"%PDF-1.4\nthis page cannot be drawn")
+    bad_doc = "%07d_Plat.pdf" % permits[11]["n"]  # the one document whose page cannot be drawn
+    state = {"batches": [], "have": set(), "jpeg": []}
+    real_run = subprocess.run  # subprocess.run is one function for the whole process: only gh is faked, pdftoppm really runs
+
+    def make_gh(jpg_ok):
+        def fake_run(cmd, *args, **kw):
+            if cmd[0] != "gh":
+                return real_run(cmd, *args, **kw)
+            sub = " ".join(cmd[1:3])
+            if sub == "release view" and "tagName" in cmd:
+                return subprocess.CompletedProcess(cmd, 0 if state["have"] else 1, "{}", "")
+            if sub == "release create":
+                return subprocess.CompletedProcess(cmd, 0, "", "")
+            if sub == "release upload":
+                paths = cmd[7:]
+                names = [os.path.basename(a) for a in paths]
+                state["batches"].append(names)
+                if not jpg_ok and any(n.endswith(".jpg") for n in names):
+                    return subprocess.CompletedProcess(cmd, 1, "", "HTTP 502: Bad Gateway")
+                for a in paths:
+                    if a.endswith(".jpg"):
+                        with open(a, "rb") as f:
+                            state["jpeg"].append(f.read(3) == b"\xff\xd8\xff")
+                state["have"].update(names)
+                return subprocess.CompletedProcess(cmd, 0, "", "")
+            if sub == "release view":
+                return subprocess.CompletedProcess(cmd, 0, json.dumps({"assets": [{"name": n} for n in sorted(state["have"])]}), "")
+            return subprocess.CompletedProcess(cmd, 0, "[]", "")
+        return fake_run
+
+    def night(name, argv=(), jpg_ok=True, no_tool=False):
+        state.update({"batches": [], "have": set(), "jpeg": []})
+        W = healthy_world()
+        for r_ in W.shares[G["w1images"]]:
+            if r_["modified"][:10] == "2026-10-31":
+                r_["content"] = bio.getvalue()
+        saved = (d7_release.subprocess.run, d7_release.ready, d7_release.time.sleep, d7_packs.shutil.which)
+
+        def patch():
+            d7_release.subprocess.run = make_gh(jpg_ok)
+            d7_release.ready = lambda: None
+            if no_tool:
+                d7_packs.shutil.which = lambda n: None
+        out = fresh(name)
+        try:
+            code, text, _ = run_night(W, out, ["--backfill", "0", "--packs", "--publish-docs", "--repo", "o/r", *argv], patch=patch)
+        finally:
+            d7_release.subprocess.run, d7_release.ready, d7_release.time.sleep, d7_packs.shutil.which = saved
+        return code, text, report(out, "2026-10-31") or {}, out
+
+    links = lambda r: sum(1 for x in (r.get("permits") or {}).get("rows", []) if len(x) > 10)  # noqa: E731
+    if d7_packs.preview_tools():
+        print("note: previews are not drawn here (%s), so only the night without them is checked" % d7_packs.preview_tools())
+    else:
+        code, text, r1, out = night("previews-ok")
+        rel = r1.get("release") or {}
+        docs_first = state["batches"] and all(n.endswith(".pdf") for b in state["batches"][:1] for n in b) and any(n.endswith(".jpg") for n in state["batches"][-1])
+        check(code == 0 and links(r1) == 12 and rel.get("files") == 24 and rel.get("previews") == 23 and rel.get("noPreview") == [bad_doc],
+              "a night with previews: 12 permits link their 24 documents, 23 previews are confirmed and the document whose page cannot be drawn is named (exit %s, %s)" % (code, {k: rel.get(k) for k in ("files", "previews", "noPreview")}))
+        check(docs_first and len(state["jpeg"]) == 23 and all(state["jpeg"]) and "previews: 23 of 24 documents drawn, 1 failed" in text,
+              "the documents go up first and the previews after, each a real JPEG, and the log says 23 of 24 were drawn")
+        code, text, r2, _ = night("previews-502", jpg_ok=False)
+        check(code == 0 and links(r2) == 12 and (r2.get("release") or {}).get("files") == 24 and "previews" not in (r2.get("release") or {}) and "noPreview" not in (r2.get("release") or {}) and "a batch of previews was not uploaded" in text,
+              "previews that cannot be uploaded (HTTP 502) cost nothing but themselves: the 12 permits still link their documents and the release block has no previews (exit %s)" % code)
+        code, text, r3, _ = night("previews-off", ["--no-previews"])
+        check(code == 0 and links(r3) == 12 and "previews" not in (r3.get("release") or {}) and not any(n.endswith(".jpg") for b in state["batches"] for n in b) and "previews:" not in text,
+              "--no-previews: the documents are published as before and no preview is drawn or uploaded (exit %s)" % code)
+    code, text, r4, _ = night("previews-notool", no_tool=True)
+    check(code == 0 and links(r4) == 12 and (r4.get("release") or {}).get("files") == 24 and "previews" not in (r4.get("release") or {}) and not any(n.endswith(".jpg") for b in state["batches"] for n in b),
+          "without poppler the night still publishes its 24 documents and links them, with no preview (exit %s)" % code)
+
+
 def s_rebuilt(check):
     out = fresh("rebuilt")
     W = healthy_world()
@@ -835,7 +932,7 @@ def s_budget(check):
         rrc_share.DEADLINE, d7_release.DEADLINE = saved
 
 
-SCENARIOS = {"healthy": s_healthy, "locator": s_locator, "sameday": s_sameday, "links": s_links, "rebuilt": s_rebuilt, "damaged": s_damaged, "errors": s_errors,
+SCENARIOS = {"healthy": s_healthy, "locator": s_locator, "sameday": s_sameday, "links": s_links, "previews": s_previews, "rebuilt": s_rebuilt, "damaged": s_damaged, "errors": s_errors,
              "names": s_names, "unusable": s_unusable, "listing": s_listing, "repair": s_repair, "budget": s_budget}
 
 
@@ -908,6 +1005,9 @@ def mutants():
     mutant("a rebuilt day written partial is never built again", "rebuilt", daily=[('if old["kind"] == "reconstructed" and old.get("status") != "ok":', "if False:")])
     mutant("a capture that read less replaces the report", "sameday", daily=[("if usable_day(old) and worth(reports[d]) < worth(old):", "if False:")])
     mutant("a capture that lost the document links replaces the report", "links", daily=[("return (sum(1 for d in rep.get(\"datasets\", []) if not d.get(\"error\")), 1 if rep.get(\"release\") else 0)", "return (sum(1 for d in rep.get(\"datasets\", []) if not d.get(\"error\")), 0)")])
+    mutant("a preview that cannot be uploaded fails the documents too", "previews", release=[("        except ReleaseError as e:  # a preview is a bonus", "        except RuntimeWarning as e:  # a preview is a bonus")])
+    mutant("a preview the listing did not confirm is counted", "previews", release=[("    there = [n for n in optional if n in have]", "    there = list(optional)")])
+    mutant("a preview that failed to draw takes its document down", "previews", daily=[("        bare = [n for n in names if n + \".jpg\" not in have]", "        bare = []")])
     mutant("a damaged day file is trusted", "damaged", daily=[("        if not usable_day(old):\n            log(", "        if False:\n            log(")])
     mutant("a series file of another shape is trusted", "damaged", daily=[("    if not (isinstance(old, dict) and all(isinstance(old.get(k), list)", "    if False and not (isinstance(old, dict) and all(isinstance(old.get(k), list)")])
     mutant("the previous report is trusted when it has no dataset list", "damaged", daily=[("if usable_day(prev) and prev.get(\"kind\") == \"live\" else None", "if prev and prev.get(\"kind\") == \"live\" else None")])

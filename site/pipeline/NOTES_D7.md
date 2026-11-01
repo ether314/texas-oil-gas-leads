@@ -126,8 +126,8 @@ service does not answer; a failed lookup is logged and costs nothing but points.
 **Where the files live.** One GitHub release a day, tag `daily-YYYY-MM-DD` of the report day, marked pre-release (`d7_release.py`,
 through the gh CLI): `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>`. Chosen over committing because the W-1
 pack is about 31 MB a day and the survey pack 28 MB; the day of 2026-10-29 published 139 files, 47 MB (36 W-1 letters, 46 plats,
-57 surveys), about 4.3 GB over 92 days, none of it in git history or on Pages. Release files are served as downloads, so pages
-link to them and cannot show them inline. The nightly capture uploads in batches of 40, then lists the release and requires every
+57 surveys), about 4.3 GB over 92 days, none of it in git history or on Pages. Release files are served as downloads, so the PDFs are
+linked; the readable previews (below) are what the pages show inline. The nightly capture uploads in batches of 40, then lists the release and requires every
 file to be there before the report gets any link, so a failed upload gives a report with no links, never dead ones. The release
 of a day that leaves the 92-day archive is deleted with its tag (`prune`: only tags that are exactly `daily-YYYY-MM-DD` and older
 than the oldest kept day).
@@ -150,6 +150,27 @@ all select in place (`replaceState`, no history entries). The map is inline SVG 
 do the same; point radius and county labels keep their screen size at every zoom; an unzoomed map lets a finger scroll the page
 and a zoomed one takes the drag. Checked in a browser: 36 dots and 57 diamonds, layer toggles, picking, close, deep links
 (good, unknown, with `v=full`), 375 px width without horizontal scroll, light and dark, no console errors.
+
+## Readable previews (added 2026-11-01)
+
+**Decision.** The owner widened the privacy exception on 2026-11-01 (README, Privacy; CLAUDE.md, Guardrails): the Texas W-1 letters, plats and directional surveys that are already published readable are also *shown*, as a readable JPEG of page one.
+The page's Content-Security-Policy allows `https://github.com` and `https://*.githubusercontent.com` in `img-src` for it (and nothing else changed). Completion images are not part of this and stay blurred and unpublished; Oklahoma's documents are never published.
+
+**Drawing (`d7_packs.py`).** `render_preview(src, dest)` draws page one of a staged document: `pdftoppm -f 1 -l 1 -scale-to-x 900` (a TIFF through Pillow), grayscale unless the page has color in it (more than 0.1% of its pixels with channels over 24 apart: a red stamp keeps its color),
+progressive JPEG at quality 60 with no metadata, recompressed (quality 52, 44, 36, then widths 750 and 600) until it is at most 200 KB, and refused with no half-written file when nothing fits. The safe machinery is the contact sheet's: the document was already copied
+under a name this code made up, capped at 40 MB and checked for its signature, `pdftoppm` runs under a 25 s timeout with the repository tokens scrubbed from its environment, Pillow refuses an image past 120 million pixels, a page taller than 3000 px after scaling is cut off at the bottom, and only page one is read.
+It is the page as the Commission published it: no blur, no crop, no redaction. `Previewer` calls it after each copy in `stage_w1` and `stage_surveys` (so `0919696_W1.pdf` has `0919696_W1.pdf.jpg` beside it in the staging folder) and **never raises**: a preview that fails is counted and
+skipped, the document is published all the same, and one log line says how many were drawn, how many failed (by kind of error, never a file name) and how many were left out because the 300-second budget, the capture's deadline or a run of 8 failures in a row stopped the drawing. Without Pillow or `pdftoppm` the documents are staged and there are no previews.
+`stage_pack(..., previews=True, deadline=...)` returns `'previews': [names]` beside `permits` or `surveys`. `--no-previews` turns it off (the default with `--publish-docs`; the workflow already installs poppler-utils and Pillow). Cost: about a second a page, so one night draws 100 to 270 pages in a minute or two, in the two pack threads.
+
+**Publishing (`d7_release.py`, `attach_documents` in `d7_daily.py`).** The previews of the documents the report links go up as files of the same release, after the documents, in batches of 40; they are optional for `publish()`: a batch that cannot be uploaded is logged and skipped, and the documents are still confirmed by the one
+listing that checks them (previews are cut back to what GitHub's 1000 files a release leave after the documents). The day file's `release` object says what the listing confirmed: `previews` (the count; absent when none) and, when some linked documents have none, `noPreview` (their file names). The page links a preview
+only for a document that has one (`images-data.js`: `previewUrl`), so an older day, or a night without the tools, shows no previews and nothing breaks; `d7_daily.py --check` holds `previews` + `noPreview` to the release's file count. A day rebuilt or repaired without the tools does not replace one that has them only through the existing rule (more datasets read wins; then the later run), so a
+by-hand repair on a machine without poppler can drop a day's previews: run it where `pdftoppm` is.
+
+**Pages.** The Texas images view (`images.js`) shows, for the first 12 permits of a day with published filings and the first 12 surveys, a thumbnail of each page; a click opens the page larger in a native `<dialog>` (`previews.js`: Esc and the Close button close it, focus returns to the thumbnail, a click on the backdrop closes it)
+with an "Open the original" link to the PDF; a drill page in the Daily report shows the same thumbnails above its file buttons. A picture that does not load shows "Preview unavailable" and keeps the link. GitHub serves a release asset through a redirect to `release-assets.githubusercontent.com` with `Content-Type: application/octet-stream` and `Content-Disposition: attachment`
+(read from a real asset on 2026-11-01); an `<img>` ignores both, and Chromium shows such an image inline (checked against a local server that sends the same headers).
 
 ## Known limits of the drill pages
 
