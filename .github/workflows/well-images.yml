@@ -1,0 +1,114 @@
+# Ties the Railroad Commission's scanned filings to wells. Once a day, after the last of the day's three image packs (the W-1 images, about 10:20 AM Central the morning
+# after) has landed, site/pipeline/d12_wells.py downloads the newest filing days' packs, finds the well (API number) each document is about, and publishes every document
+# as it was filed, with a picture of its first page, as files of GitHub releases (tags wells-<day>-<pack>-<nn>). It commits site/public/data/wells/ (the index and one
+# file per county) and publishes the site. See site/pipeline/NOTES_D12.md and the README (Privacy: the documents are public records, published unmodified).
+#
+# It is separate from the nightly capture on purpose: the packs are 0.7 GB a day and the uploads take minutes, and no night's report may wait for them. It shares the
+# nightly's concurrency group so the two never push at the same time. A run that fails keeps what the earlier packs recorded, and the next run picks up what is not done
+# (the newest two filing days with a pack not done yet); by hand, "days" and "window" reach further back.
+name: Well images (scanned filings tied to wells)
+
+on:
+  schedule:
+    # 18:07 UTC = 1:07 PM CDT / 12:07 PM CST: the W-1 images land at about 10:20 AM Central and a pack is left alone for 90 minutes after it is listed
+    - cron: "7 18 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "How many filing days to do, newest first, among those with a pack not done yet (the schedule uses 2; each day is about 0.9 GB)"
+        default: "2"
+      window:
+        description: "How many days back to look for packs that are not done (the schedule uses 14)"
+        default: "14"
+      day:
+        description: "Do only this filing day, YYYY-MM-DD (the day the packs are named for); empty means the newest days"
+        default: ""
+
+concurrency:
+  group: daily-rrc-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  wells:
+    # a manual run from another branch would publish releases and commit to that branch
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # poppler draws page one of the PDFs and Pillow the TIFFs'. Without them the run has nothing to publish, so a failure here fails the run.
+      - name: Install the tools that draw page previews
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+          python3 -m pip install --quiet pillow
+
+      # GH_TOKEN is what lets the gh CLI create releases and upload their files (contents: write, above). The producer ends with its own limit (--budget): no new pack or request
+      # is started after 40 minutes, and the step is cut off at 55. continue-on-error: what it published and recorded is committed below even when a later pack failed.
+      - name: Read the packs, tie the documents to wells, publish them
+        id: wells_run
+        continue-on-error: true
+        timeout-minutes: 55
+        env:
+          DAYS: ${{ github.event.inputs.days || '2' }}
+          WINDOW: ${{ github.event.inputs.window || '14' }}
+          FILING_DAY: ${{ github.event.inputs.day }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$DAYS" in ''|*[!0-9]*) echo "days must be a whole number"; exit 1;; esac
+          case "$WINDOW" in ''|*[!0-9]*) echo "window must be a whole number"; exit 1;; esac
+          args=(--days "$DAYS" --window "$WINDOW" --budget 40)
+          if [ -n "$FILING_DAY" ]; then
+            case "$FILING_DAY" in
+              [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) args+=(--day "$FILING_DAY") ;;
+              *) echo "day must look like 2026-10-30"; exit 1 ;;
+            esac
+          fi
+          python3 -I site/pipeline/d12_wells.py "${args[@]}"
+
+      - name: Check the well-image files
+        id: wells_check
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: python3 -I site/pipeline/d12_wells.py --check
+
+      # a failed check must not put files on main: put the folder back as it was committed (a release uploaded for them is overwritten by the next run)
+      - name: Drop the well-image files if their check failed
+        if: ${{ steps.wells_check.outcome == 'failure' }}
+        run: |
+          echo "::warning title=Well images::the check failed; the well-image files are left as committed."
+          git checkout -- site/public/data/wells 2>/dev/null || true
+          git clean -fdq -- site/public/data/wells
+
+      - name: Commit the new files
+        if: ${{ !cancelled() }}
+        run: |
+          git config user.name "well-images"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/data/wells
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "Well images $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # a commit made with the workflow's own token starts neither CI nor the publish after a merge, so this publishes itself
+      - name: Publish the site to GitHub Pages
+        if: ${{ !cancelled() }}
+        run: bash .github/scripts/publish_pages.sh
+
+      - name: Fail the run if a pack or the check failed
+        if: ${{ !cancelled() && (steps.wells_run.outcome == 'failure' || steps.wells_check.outcome == 'failure') }}
+        run: |
+          echo "::error title=Well images::run ${{ steps.wells_run.outcome }}, check ${{ steps.wells_check.outcome }}. What was published and recorded was committed; the log says which pack failed, and the next run does it again."
+          exit 1
