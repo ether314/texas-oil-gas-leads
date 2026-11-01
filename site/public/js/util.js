@@ -1,5 +1,4 @@
 // Shared helpers: DOM building (text only, never innerHTML), formatting, data loading, small utilities.
-import { activeStates, stateParam } from './states.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -28,7 +27,6 @@ export const svg = (tag, attrs, ...kids) => build(document.createElementNS(SVG_N
 export const fmt = new Intl.NumberFormat('en-US');
 export const compactFmt = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 export const stat = (n) => (Math.abs(n) >= 10000 ? compactFmt.format(n) : fmt.format(n));
-export const pct = (n, d) => (d ? Math.round((n / d) * 100) + '%' : '0%');
 export const share = (n, d) => (d ? ((n / d) * 100).toFixed(1) + '%' : '0%');
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const fmtDate = (iso) => (iso
@@ -96,7 +94,6 @@ export function once(key, fn) {
 }
 
 /* time series: monthly points sit on the first of the month (UTC), weekly ones on their publish date */
-export const monthMs = (ym) => Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1);
 export const dayMs = (iso) => Date.parse(iso + 'T00:00:00Z');
 export function lastIdx(v) { for (let i = v.length - 1; i >= 0; i--) if (v[i] != null) return i; return -1; }
 // index of the sample nearest to time t (arrays sorted by time); -1 when the series is empty
@@ -106,21 +103,9 @@ export function nearest(ts, t, end = ts.length - 1) {
   while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ts[mid] <= t) lo = mid; else hi = mid; }
   return Math.abs(ts[lo] - t) <= Math.abs(ts[hi] - t) ? lo : hi;
 }
-// change against the same time a year earlier (monthly or weekly alike); null when there is no comparable sample
-export function yoy(ts, vs, i) {
-  if (i < 1 || vs[i] == null) return null;
-  const want = ts[i] - 365 * 864e5; const j = nearest(ts, want, i - 1);
-  if (j < 0 || vs[j] == null || vs[j] === 0 || Math.abs(ts[j] - want) > 20 * 864e5) return null;
-  return vs[i] / vs[j] - 1;
-}
 
 /* misc */
 export const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
-export const lerp = (a, b, t) => a + (b - a) * t;
-export function debounce(fn, ms) {
-  let t = 0;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-}
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 // ?still (QA only) behaves like reduced motion so screenshots are deterministic
 export const STILL = /[?&]still\b/.test(location.search);
@@ -169,14 +154,6 @@ export function parseHash() {
 }
 // a query as it reads in an address: commas (st=tx,nm) and the colon of a county key (county=OK:129) are left as they are
 export const queryText = (params) => params.toString().replace(/%2C/gi, ',').replace(/%3A/gi, ':');
-// keeps the address bar in step with the map without firing hashchange. The states shown (st=tx or st=ok, none for both) stay in it.
-export function replaceHash(view, params) {
-  const sp = stateParam(activeStates());
-  if (sp && !params.has('st')) { params = new URLSearchParams(params); params.set('st', sp); }
-  const q = queryText(params);
-  const next = '#' + view + (q ? '?' + q : '');
-  if (location.hash !== next) history.replaceState(null, '', next);
-}
 
 // the width (in px) an SVG chart is drawn at: its container's, between min and max, so a phone's chart is drawn at its own size and its text is not shrunk to a third (a fixed 720 wide viewBox
 // scaled to 330 px made 11 px axis labels 4.5 px). A container that is hidden or not on the page yet has no width: the chart is drawn at max and drawn again when it is shown.
