@@ -988,11 +988,60 @@ const SIZES = [['desktop', 1280, 800], ['phone', 390, 844]];
       // the replay: with reduced motion only the scrubber, which moves the clock; the count only grows
       await page.click('#go-explore'); // the hero's button opens the replay under the map
       await page.waitForSelector('.tl-range', { state: 'visible', timeout: 5000 });
-      check((await page.locator('.nw-explore button[aria-pressed="true"]').innerText()).includes('Close the replay') && (await page.locator('#explore').boundingBox()).y < 400, label + ': "Watch the wells" in the hero scrolls to the explorer and opens the replay');
+      check((await page.locator('.nw-explore .btn[aria-pressed="true"]').innerText()).includes('Close the replay') && (await page.locator('#explore').boundingBox()).y < 400, label + ': "Watch the wells" in the hero scrolls to the explorer and opens the replay');
       const total = await page.evaluate(() => window.__nw.map.tlCount(window.__nw.map.tlRange[1]));
       await page.locator('.tl-range').fill(String(Math.round(await page.evaluate(() => window.__nw.map.tlRange[1] / 2))));
       const half = await page.evaluate(() => window.__nw.map.tlCount(window.__nw.map.tlRange[1] / 2));
       check(half > 0 && half < total && /wells so far/.test(await page.locator('.tl-count').innerText()) && !(await page.locator('.tl-play').count()), label + ': the replay (scrubber only with reduced motion) shows ' + half + ' of ' + total + ' wells at the halfway day');
+      // every year since 2011 (2026-11-01): the earlier wells are fetched when asked for; a failed request leaves the two years as they were; then the same explorer draws, replays and answers over all of them
+      const nRecent = await page.evaluate(() => window.__nw.P.n);
+      check((await page.locator('#nwy-recent').getAttribute('aria-pressed')) === 'true' && (await page.locator('#nwy-all').innerText()) === 'Since 2011', label + ': the explorer offers "Last 2 years" (chosen) and "Since 2011"');
+      const errsBefore = errs.length;
+      await page.route('**/newwells/points-history.json', (r) => r.abort());
+      await page.locator('#nwy-all').click();
+      await page.waitForFunction(() => /Could not load the earlier wells/.test((document.querySelector('.nw-status') || {}).textContent || ''), null, { timeout: 15000 });
+      check((await page.evaluate(() => window.__nw.P.n)) === nRecent && (await page.locator('#nwy-recent').getAttribute('aria-pressed')) === 'true' && !(await page.locator('#nwy-recent').isDisabled()) && !(await page.locator('#nwy-all').isDisabled()), label + ': when the earlier wells cannot be loaded the map keeps the last two years, says so, and the choice stays open');
+      await page.unroute('**/newwells/points-history.json');
+      errs.splice(errsBefore); // the dropped requests above were the point of the check
+      await page.locator('#nwy-all').click();
+      await page.waitForFunction(() => window.__nw.P.n > 200000 && window.__nw.map.ready, null, { timeout: 30000 });
+      await page.waitForTimeout(500);
+      const nAll = await page.evaluate(() => window.__nw.P.n);
+      const sub = await page.locator('.nw-explore .sub').innerText();
+      check(nAll > nRecent * 8 && /first fracturing jobs from Jan 2011 to /.test(sub) && (await page.locator('#nwy-all').getAttribute('aria-pressed')) === 'true' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'nwy-all',
+        label + ': "Since 2011" draws every well with a point (' + nAll + ' against ' + nRecent + '), says so under the heading, and keeps the keyboard on the control: ' + sub.slice(0, 90));
+      check((await pixels('.nw-canvas')) > 300 && /^Watch 1[5-9] years$/.test((await page.locator('.nw-explore .btn').innerText()).trim()) && !/\b(NaN|undefined|null|Infinity)\b/.test(await page.locator('#view-overview').innerText()), label + ': the map is drawn over all of them, the replay button names its length, and no NaN anywhere');
+      await page.selectOption('.nw-pick', 'TX');
+      await page.waitForFunction(() => /^Texas$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 5000 });
+      check(/since Jan 2011/.test(await page.locator('.nw-grid .nat-panel svg.spark').getAttribute('aria-label')) && /Martin|Midland/.test(await page.locator('.nw-grid .nat-panel').innerText()), label + ': a state\'s panel draws its months since 2011 and still lists the year\'s counties and operators');
+      const ptA = await page.evaluate(() => { const { map, P } = window.__nw; for (let i = 0; i < P.n; i++) if (P.states[P.s[i]] === 'TX' && P.day[i] < 400) { const [x, y] = map.screenOf(i); return { x, y }; } return null; });
+      await page.locator('.nw-stage').scrollIntoViewIfNeeded(); await page.waitForTimeout(400);
+      const boxA = await page.locator('.nw-canvas').boundingBox();
+      await page.mouse.move(boxA.x + ptA.x - 15, boxA.y + ptA.y - 15); await page.mouse.move(boxA.x + ptA.x, boxA.y + ptA.y);
+      await page.waitForSelector('.tip', { state: 'visible', timeout: 5000 });
+      const tipA = await page.locator('.tip').innerText();
+      check(/20(11|12)/.test(tipA) && /first fracturing job/.test(tipA) && !/\d{10}/.test(tipA), label + ': hovering a well from 2011 or 2012 answers like any other, with no API number: ' + tipA.replace(/\s+/g, ' ').slice(0, 100));
+      await page.selectOption('.nw-pick', '');
+      await page.locator('.nw-explore .btn').click();
+      await page.waitForSelector('.tl-range', { state: 'visible', timeout: 5000 });
+      const ends = await page.locator('.tl-ends').innerText();
+      check(/Jan 1, 2011/.test(ends) && (await page.evaluate(() => window.__nw.map.tlRange[1] > 5000 && window.__nw.map.tlCount(window.__nw.map.tlRange[1]) === window.__nw.P.n)), label + ': the replay runs from Jan 1, 2011 and ends with every well: ' + ends.replace(/\s+/g, ' '));
+      const bars = await page.evaluate(() => ({ hits: document.querySelectorAll('.nat-chart .nat-hit').length, months: window.__nw.doc.months.length, late: (() => { const t = document.querySelector('.nw-late-t'); const bb = t.getBBox(); const vb = t.ownerSVGElement.viewBox.baseVal; return bb.x >= 0 && bb.x + bb.width <= vb.width; })() }));
+      check(bars.hits === bars.months && bars.months > 180 && bars.late, label + ': the monthly chart has a bar for every month since 2011 (' + bars.months + ') and its "still filling in" label is inside the drawing');
+      await page.locator('#nwy-recent').scrollIntoViewIfNeeded();
+      await page.locator('#nwy-recent').click();
+      await page.waitForFunction((n) => window.__nw.P.n === n && window.__nw.map.ready, nRecent, { timeout: 10000 });
+      check((await page.locator('.nw-explore .btn').innerText()).trim() === 'Watch 24 months' && (await page.locator('#nwy-recent').getAttribute('aria-pressed')) === 'true' && /last 24 months/.test(await page.locator('.nw-explore .sub').innerText()), label + ': "Last 2 years" puts the two years back, with the 24-month replay');
+      // the address carries the choice: #overview?s=TX&y=all opens every year, zoomed to Texas, and choosing the two years takes y out of the address
+      await page.goto(base + '?debug#overview?s=TX&y=all', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForFunction(() => window.__nw && window.__nw.P.n > 200000 && window.__nw.map.ready, null, { timeout: 30000 });
+      await page.waitForFunction(() => /^Texas$/.test(document.querySelector('.nw-grid .nat-panel h3').textContent), null, { timeout: 8000 });
+      check((await page.locator('#nwy-all').getAttribute('aria-pressed')) === 'true' && /y=all/.test(await page.evaluate(() => location.hash)) && /s=TX/.test(await page.evaluate(() => location.hash)), label + ': an address with y=all opens every year, zoomed to the state it names');
+      await page.locator('#nwy-recent').scrollIntoViewIfNeeded();
+      await page.locator('#nwy-recent').click();
+      await page.waitForFunction(() => window.__nw.P.n < 30000, null, { timeout: 10000 });
+      check(!/y=all/.test(await page.evaluate(() => location.hash)) && /s=TX/.test(await page.evaluate(() => location.hash)), label + ': choosing the last two years takes y out of the address and keeps the state');
     } catch (e) {
       check(false, label + ': the national Overview: ' + e.message.split('\n')[0].slice(0, 200));
     }

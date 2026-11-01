@@ -1,5 +1,5 @@
-// The new-wells data code: pure functions over data/newwells/summary.json (new wells by state and month) and points.json (one row per well of the last 24
-// months with its GPS point), so Node can test them. Nothing here touches the page.
+// The new-wells data code: pure functions over data/newwells/summary.json (new wells by state and month, from 2011), points.json (one row per well of the last 24
+// months with its GPS point) and points-history.json (every earlier well with a point, loaded only when asked), so Node can test them. Nothing here touches the page.
 //
 // Honesty rules (the repo's CLAUDE.md): a well counts once, on the day of its first fracturing job (FracFocus), so these are wells with a disclosure and not permits;
 // a month counts as settled only 120 days after the newest job, because disclosures arrive weeks to months late, and every figure that says "last 12 months" uses settled
@@ -55,6 +55,24 @@ export function stack(doc, n = 36, top = 8) {
 }
 
 // ------------------------------------------------------------------------------------------------ the points
+// mergePoints(recent, hist): the history (points-history.json: every well with a point from 2011 up to `until`, with county and operator tables of its own) joined to the points file
+// as one document for decode(). The history may reach up to 11 months into the points file's days: its rows from the points' first day on are dropped, the points file's own are kept.
+// Throws when the two are not from one read (a different set of states).
+export function mergePoints(recent, hist) {
+  if (hist.states.length !== recent.states.length || hist.states.some((id, i) => id !== recent.states[i])) throw new Error('the history is not from the same read as the points');
+  const off = Math.round((isoMs(recent.t0) - isoMs(hist.t0)) / DAY); // days from the history's first day to the points file's
+  let k = 0; while (k < hist.n && hist.d[k] < off) k++;
+  const counties = recent.counties.slice(); const cix = new Map(counties.map((c, i) => [c[0] + '|' + c[1], i]));
+  const cmap = hist.counties.map((c) => { const key = c[0] + '|' + c[1]; if (!cix.has(key)) { cix.set(key, counties.length); counties.push(c); } return cix.get(key); });
+  const ops = recent.ops.slice(); const oix = new Map(ops.map((o, i) => [o, i]));
+  const omap = hist.ops.map((o) => { if (!oix.has(o)) { oix.set(o, ops.length); ops.push(o); } return oix.get(o); });
+  const out = { v: 1, t0: hist.t0, asOf: recent.asOf, n: k + recent.n, states: recent.states, counties, ops };
+  for (const col of ['lat', 'lon', 's', 'tvd', 'h2o', 'f']) out[col] = hist[col].slice(0, k).concat(recent[col]);
+  out.d = hist.d.slice(0, k).concat(recent.d.map((d) => d + off));
+  out.c = hist.c.slice(0, k).map((c) => (c < 0 ? -1 : cmap[c])).concat(recent.c);
+  out.o = hist.o.slice(0, k).map((o) => (o < 0 ? -1 : omap[o])).concat(recent.o);
+  return out;
+}
 // decode(points): typed columns, and what the other functions need. day[i] is days since t0 (sorted); lat and lon are degrees.
 export function decode(points) {
   const n = points.n;
@@ -70,6 +88,8 @@ export function decode(points) {
   return P;
 }
 export const dayMs = (P, d) => P.t0 + d * DAY;
+// whole years the points cover (about 16 from 2011)
+export const yearsOf = (P) => Math.round(P.span / 365.25);
 export const dayOfIso = (P, iso) => Math.round((isoMs(iso) - P.t0) / DAY);
 export const stateOfPoint = (P, i) => P.states[P.s[i]];
 export const countyOf = (P, i) => (P.c[i] >= 0 ? P.counties[P.c[i]][1] : null);

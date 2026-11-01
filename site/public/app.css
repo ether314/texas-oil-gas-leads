@@ -725,6 +725,8 @@ button.nat-tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); 
 .nw-chip:hover { border-color: var(--border-2); }
 .nw-chip[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
 .nw-other { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 4px; }
+.nw-status { margin: 0 0 var(--sp-3); color: var(--ink-2); }
+.nw-status:empty { display: none; }
 .nw-pick { min-height: 36px; max-width: 100%; padding: 0 var(--sp-3); border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-md); }
 .nw-late { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
 .nw-late-t { fill: var(--ink-2); }

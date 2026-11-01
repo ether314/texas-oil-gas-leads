@@ -4,10 +4,10 @@
 import { el, fmt, dayLabel, reduced } from './util.js';
 import { icon } from './icons.js';
 
-// label is the replay's name ("Watch Texas drill"), thing what is counted ({ one, many }), lead and note the sentence under the bar
-export function createTimelapse({ engine, t0, label, thing, lead, note }) {
+// label is the replay's name ("Watch Texas drill"), thing what is counted ({ one, many }), lead and note the sentence under the bar, seconds how long the replay takes
+export function createTimelapse({ engine, t0, label, thing, lead, note, seconds = 12 }) {
   const [tMin, tMax] = engine.tlRange;
-  const DUR = 12000; const calm = reduced();
+  const DUR = seconds * 1000; const calm = reduced();
   let cur = tMax; let playing = false; let raf = 0; let last = 0; let open = false;
   const playBtn = calm ? null : el('button', { type: 'button', class: 'ibtn tl-play', 'aria-label': 'Play' }, icon('play', 18));
   const range = el('input', { type: 'range', class: 'tl-range', min: tMin, max: tMax, step: 1, value: tMax, 'aria-label': 'Replay date' });

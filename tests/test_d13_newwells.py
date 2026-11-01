@@ -166,7 +166,7 @@ rows = population()
 w, s, p = build(rows)
 S = by_state(s)
 check(s["asOf"] == "2026-10-20" and s["settled"] == "2026-05-31" and s["lagDays"] == 120, "the newest job is the as-of day and the last settled month ended 120 or more days before it: %s %s" % (s["asOf"], s["settled"]))
-check(s["months"][0] == "2019-01" and s["months"][-1] == "2026-10" and s["months"] == C.month_list("2019-01", "2026-10"), "the months run from 2019-01 to the newest job's month, no gap")
+check(s["months"][0] == "2011-01" and s["months"][-1] == "2026-10" and s["months"] == C.month_list("2011-01", "2026-10"), "the months run from the registry's first month, 2011-01, to the newest job's month, no gap")
 i = s["months"].index("2026-05")
 check(S["TX"]["p12"] == sum(S["TX"]["new"][i - 11:i + 1]) == 150 * 12 and S["TX"]["prev12"] == 150 * 12, "the last 12 months are the 12 settled months to May 2026 (not the newer ones still filling in): %d %d" % (S["TX"]["p12"], S["TX"]["prev12"]))
 check(S["TX"]["new"][-1] > 0 and S["TX"]["new"][-2] > 0, "the newest months are in the series (published, to be drawn as filling in)")
@@ -197,6 +197,36 @@ text = json.dumps(s) + json.dumps(p)
 check(not re.search(r"\d{10,}", text) and "LEASE ALPHA" not in text and "id-" not in text, "no API number, well name, lease or registry id is in either file")
 check(all(k in p for k in ("lat", "lon", "d", "s", "c", "o", "tvd", "h2o", "f")) and "v" in p and p["v"] == 1, "the columns are all there, and the document's version is not a column")
 check(W.validate_summary(s, TODAY) == [] and W.validate_points(p, s) == [], "the document and its points pass their validators: %s" % (W.validate_summary(s, TODAY) + W.validate_points(p, s))[:3])
+
+# ------------------------------------------------------------------------------------------------ the history: every located well from the registry's start
+hist = W.build_history(w, s)
+d0h = date.fromisoformat(hist["t0"])
+located_before = [r for r in w.first.values() if r[4] and r[0] < date(2025, 1, 1)]
+check(hist["t0"] == "2011-01-01" and hist["until"] == "2025-01-01" and "asOf" not in hist and hist["n"] == len(located_before) > 1000, "the history runs from 2011-01-01 to the January 1 before the newest job's year, and holds every located well in it: %d" % hist["n"])
+check(hist["states"] == p["states"] and hist["d"] == sorted(hist["d"]) and max(hist["d"]) < (date(2025, 1, 1) - d0h).days and all(k in hist for k in W.COLS) and hist["v"] == 1,
+      "it uses the points file's columns and state order, in day order, and nothing on or after its end")
+check(hist["until"] >= p["t0"] and hist["until"] > p["t0"] and (date.fromisoformat(hist["until"]) - date.fromisoformat(p["t0"])).days < 366, "it reaches the points file's first day, overlapping it by under a year (the page drops the overlap): %s over %s" % (hist["until"], p["t0"]))
+check(all(OUTLINES.contains(hist["states"][st], lo / 1e4, la / 1e4) for la, lo, st in zip(hist["lat"][:400], hist["lon"][:400], hist["s"][:400])) and all(hist["counties"][c][0] == hist["states"][st] for c, st in zip(hist["c"], hist["s"]) if c >= 0),
+      "its points lie in their states and its counties belong to them")
+check(W.validate_points(hist, s, history=True) == [] and W.validate_pair(p, hist) == [], "it passes its validator, and the pair passes: %s" % (W.validate_points(hist, s, history=True) + W.validate_pair(p, hist))[:3])
+check(not re.search(r"\d{10,}", json.dumps(hist)) and "LEASE ALPHA" not in json.dumps(hist) and "John Q Smith" not in json.dumps(hist) and "Hargrove" not in json.dumps(hist), "no API number, well name, lease or person is in it either")
+check(W.history_end(date(2026, 10, 20)) == date(2025, 1, 1) and W.history_end(date(2027, 1, 3)) == date(2026, 1, 1) and W.history_end(date(2026, 12, 31)) == date(2025, 1, 1), "the end moves once a year, on January 1")
+for asof in (date(2026, 1, 2), date(2026, 6, 30), date(2026, 12, 31), date(2027, 1, 1)):  # the history always reaches the points' first day: no gap, in any month
+    first_pt = date.fromisoformat(C.add_months(C.month_of(asof), -(W.POINT_MONTHS - 1)) + "-01")
+    check(W.history_end(asof) >= first_pt, "no gap between the history and the points for a newest job on %s (%s, %s)" % (asof, W.history_end(asof), first_pt))
+gh = copy.deepcopy(hist)
+faults_h = {
+    "an end that is not the year's start": lambda d: d.update(until="2024-12-31"), "a start that is not the registry's": lambda d: d.update(t0="2012-01-01"), "a day past its end": lambda d: d["d"].__setitem__(len(d["d"]) - 1, 99999),
+    "states unlike the summary's": lambda d: d["states"].reverse(), "a column too short": lambda d: d["lat"].pop(), "a well of a person": lambda d: d["ops"].append("Clay Hamilton"),
+    "most wells missing": lambda d: [d.update(n=len(d["lat"]) // 2)] and [d[k].__delitem__(slice(len(d[k]) // 2, None)) for k in W.COLS],
+}
+for name, fn in faults_h.items():
+    d = copy.deepcopy(gh)
+    fn(d)
+    check(W.validate_points(d, s, history=True) != [], "history fault refused: " + name)
+gap = copy.deepcopy(gh)
+gap["until"] = "2024-01-01"
+check(W.validate_pair(p, gap) != [], "a history that ends before the points start is refused: wells in between would be lost")
 
 # ------------------------------------------------------------------------------------------------ the list of companies the shared rule cannot read
 check(all(C.D8.nameable(n) is False for n in ("Pioneer Natural Resources", "Occidental Oil and Gas", "XTO Energy/ExxonMobil")), "setup: the shared rule alone would leave the three biggest drillers unnamed")
@@ -276,8 +306,8 @@ tmp = tempfile.mkdtemp()
 out = os.path.join(tmp, "out")
 rows = population()
 summary, points, done = W.run(rows, out_dir=out, today=TODAY, outlines=OUTLINES)
-check(all(ch for _, ch in done) and W.check(out) == [], "a first run writes both files and they pass the check")
-before = {f: open(os.path.join(out, f), "rb").read() for f in ("summary.json", "points.json")}
+check(all(ch for _, ch in done) and len(done) == 3 and W.check(out) == [] and sorted(os.listdir(out)) == sorted(W.FILES), "a first run writes the three files and they pass the check")
+before = {f: open(os.path.join(out, f), "rb").read() for f in W.FILES}
 summary2, points2, done2 = W.run(list(rows), out_dir=out, today=TODAY, outlines=OUTLINES)
 check(not any(ch for _, ch in done2) and before == {f: open(os.path.join(out, f), "rb").read() for f in before}, "the same registry again changes nothing (so a weekly run commits nothing)")
 shrunk = [r for r in rows if not r["JobStartDate"].startswith(("1/", "2/", "3/", "4/", "5/", "6/", "7/"))]
@@ -285,6 +315,7 @@ check(raises(lambda: W.run(shrunk, out_dir=out, today=TODAY, outlines=OUTLINES),
 more = rows + [row(date(2026, 10, 25), "Texas") for _ in range(5)]
 summary3, points3, done3 = W.run(more, out_dir=out, today=TODAY, outlines=OUTLINES)
 check(summary3["asOf"] == "2026-10-25" and points3["n"] == points["n"] + 5 and any(ch for _, ch in done3), "a registry with five newer wells is written and its as-of day moves")
+check(open(os.path.join(out, "points-history.json"), "rb").read() == before["points-history.json"], "five newer wells change the summary and the points, not the history (it moves once a year)")
 check(raises(lambda: W.run([], out_dir=out, today=TODAY, outlines=OUTLINES), ValueError), "an empty registry is refused")
 zpath = os.path.join(tmp, "FracFocusCSV.zip")
 open(zpath, "wb").write(zip_of(rows))
@@ -376,12 +407,14 @@ check(sl["settled"] != s["settled"], "mutant (no lag) settles the newest months:
 if os.environ.get("D13_DIR"):
     del os.environ["D13_DIR"]
 cs, cp = W.load_committed(W.OUT)
-check(cs is not None and cp is not None and W.check(W.OUT) == [], "the committed summary.json and points.json pass the validator: %s" % W.check(W.OUT)[:2])
+ch = W.load_history(W.OUT)
+check(cs is not None and cp is not None and ch is not None and W.check(W.OUT) == [], "the committed summary.json, points.json and points-history.json pass the validator: %s" % W.check(W.OUT)[:2])
 if cs:
     check(cs["states"][0]["id"] == "TX" and sum(x["p12"] for x in cs["states"]) > 8000 and len(cs["states"]) >= 15, "the committed file is the real registry: Texas first, over 8,000 wells in a year, 15 or more states: %d" % sum(x["p12"] for x in cs["states"]))
     check(cp["n"] > 15000 and cp["n"] <= sum(sum(x["new"][cs["months"].index(cp["t0"][:7]):]) for x in cs["states"]), "the committed points are fewer than the wells in the same months and more than 15,000: %d" % cp["n"])
     check(set(x["id"] for x in cs["states"]) <= set(c for c, _ in C.JURISDICTIONS), "every state in it is a jurisdiction the national report knows")
     check(os.path.getsize(os.path.join(W.OUT, "points.json")) < 1_500_000, "the points file stays under 1.5 MB (it is the one the map's first paint waits for)")
+    check(cs["months"][0] == "2011-01" and ch and ch["n"] > 150000 and os.path.getsize(os.path.join(W.OUT, "points-history.json")) < 14_000_000, "the committed history holds the registry's earlier wells (over 150,000) and stays under 14 MB; the page loads it only when asked: %d" % (ch or {}).get("n", 0))
 od = json.load(open(W.OUTLINES))
 check(O.check_doc(od) == [] and set(od["states"]) == set(O.FIPS.values()), "the committed outlines hold the 49 states, closed rings, in range")
 check(OUTLINES.contains("TX", -97.74, 30.27) and OUTLINES.contains("ND", -103.5, 47.9) and OUTLINES.contains("AK", -149.0, 70.2) and not OUTLINES.contains("TX", -105.0, 40.0), "Austin is in Texas, the Bakken in North Dakota, Prudhoe Bay in Alaska; Denver is not in Texas")
