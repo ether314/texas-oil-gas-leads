@@ -66,9 +66,9 @@ check(names.index(READ) < names.index(CHECK) < names.index(DROP) < names.index(C
 runs = {k: steps[k]["run"] for k in steps if "run" in steps[k]}
 check("d13_newwells.py" in runs[READ] and "d13_newwells.py --check" in runs[CHECK] and all("python3 -I " in runs[k] for k in (READ, CHECK)), "each step runs the producer isolated (python3 -I)")
 adds = re.findall(r"git add (.+)", runs[COMMIT])
-check(adds == [DIR + "/summary.json " + DIR + "/points.json"], "the commit adds the two files and nothing else: %s" % adds)
+check(adds == [DIR + "/summary.json " + DIR + "/points.json " + DIR + "/points-history.json"], "the commit adds the three files and nothing else: %s" % adds)
 check(not re.search(r"git add (-A|\.|--all)", runs[COMMIT]), "it never adds everything")
-check(all(os.path.exists(os.path.join(REPO, DIR, f)) for f in ("summary.json", "points.json")), "the files it commits are the ones the site reads")
+check(all(os.path.exists(os.path.join(REPO, DIR, f)) for f in ("summary.json", "points.json", "points-history.json")), "the files it commits are the ones the site reads")
 check("secrets." not in open(os.path.join(WF, "refresh-newwells.yml")).read() and "GITHUB_TOKEN" not in open(os.path.join(WF, "refresh-newwells.yml")).read(), "it names no secret: the producer needs none (FracFocus is public)")
 
 
@@ -108,7 +108,7 @@ for f in tracked:
         os.makedirs(os.path.dirname(os.path.join(W, f)) or W, exist_ok=True)
         shutil.copy2(os.path.join(REPO, f), os.path.join(W, f))
 # files this branch added and has not committed yet are part of "as they are now"
-for f in (DIR + "/summary.json", DIR + "/points.json"):
+for f in (DIR + "/summary.json", DIR + "/points.json", DIR + "/points-history.json"):
     os.makedirs(os.path.dirname(os.path.join(W, f)), exist_ok=True)
     shutil.copy2(os.path.join(REPO, f), os.path.join(W, f))
 git("init", "-q", "-b", "main")
@@ -131,19 +131,19 @@ for exit_code, expect_code, expect_text in ((0, 0, ""), (2, 0, "::warning title=
     check(code == expect_code and expect_text in out, "the read step with the producer exiting %d: exit %d%s (got %d)" % (exit_code, expect_code, ", and a warning that says the files stay" if expect_text else "", code))
 check(git("status", "--short") == "", "the stand-in left the clone as it was")
 
-# a good week: both files changed
-for f in ("summary.json", "points.json"):
+# a good week: the three files changed
+for f in ("summary.json", "points.json", "points-history.json"):
     open(os.path.join(W, DIR, f), "a").write(" ")
-check(len(git("status", "--short").splitlines()) == 2, "the clone now has both files changed")
+check(len(git("status", "--short").splitlines()) == 3, "the clone now has the three files changed")
 code, out = sh(steps[DROP]["run"])
-check(code == 0 and git("status", "--short") == "" and "::warning title=New wells::" in out, "the drop step puts both files back, and says so as a warning (exit %d)" % code)
+check(code == 0 and git("status", "--short") == "" and "::warning title=New wells::" in out, "the drop step puts all three files back, and says so as a warning (exit %d)" % code)
 
-for f in ("summary.json", "points.json"):
+for f in ("summary.json", "points.json", "points-history.json"):
     open(os.path.join(W, DIR, f), "a").write(" ")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 msg = git("log", "-1", "--format=%s")
 files = sorted(l.split("|")[0].strip() for l in git("show", "--stat", "--format=", "HEAD").splitlines() if "|" in l)
-check(code == 0 and re.fullmatch(r"New wells map \d{4}-\d\d-\d\d", msg) and files == sorted([DIR + "/summary.json", DIR + "/points.json"]), "a good week commits the two files: %r %s" % (msg, files))
+check(code == 0 and re.fullmatch(r"New wells map \d{4}-\d\d-\d\d", msg) and files == sorted([DIR + "/summary.json", DIR + "/points.json", DIR + "/points-history.json"]), "a good week commits the three files: %r %s" % (msg, files))
 check(git("rev-parse", "main", cwd=ORIGIN) == git("rev-parse", "HEAD"), "and pushes them to origin")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 check(code == 0 and "nothing changed" in out, "with nothing to commit the step says so and succeeds")
@@ -153,7 +153,7 @@ open(os.path.join(W, "site", "public", "data", "stray.json"), "w").write("{}")
 open(os.path.join(W, DIR, "points.json"), "a").write(" ")
 code, out = sh(steps[COMMIT]["run"], env={"GITHUB_REF_NAME": "main"})
 files = sorted(l.split("|")[0].strip() for l in git("show", "--stat", "--format=", "HEAD").splitlines() if "|" in l)
-check(code == 0 and files == [DIR + "/points.json"] and "stray.json" in git("status", "--short"), "it commits only its two files, whatever else is lying about: %s" % files)
+check(code == 0 and files == [DIR + "/points.json"] and "stray.json" in git("status", "--short"), "it commits only its own files, whatever else is lying about: %s" % files)
 
 # the last step, rendered as GitHub renders it
 outs = {"read": "failure", "check": "success"}

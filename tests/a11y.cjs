@@ -53,12 +53,14 @@ function serve() {
 const VIEWS = [
   ['overview', '#overview', '#nw-slot .bar-row'],
   ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
+  ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'],
   ['map', '#map', '#map-root canvas'],
   ['operators', '#operators', '#ops-root table.grid tbody tr'],
   ['operators, three states', '#operators?st=tx,ok,nm', '#ops-root table.grid tbody tr'],
   ['companies', '#companies', '#co-root table.grid tbody tr'],
   ['daily', '#daily', '#daily-root .dd-nav'],
   ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
+  ['daily, a day in 2014', '#daily?d=2014-03-12&s=TX', '#daily-root .dd-date:has-text("2014")'],
   // the federal offshore last: the bar keeps its choice from one view to the next, and the views above are meant for the states they name
   ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'],
   ['map, federal offshore', '#map?st=fo', '#map-root canvas'],
@@ -256,10 +258,10 @@ function targets() {
   // ---- reflow
   {
     const REFLOW = [
-      ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'],
+      ['overview', '#overview', '#nw-slot .bar-row'], ['overview, Texas zoomed', '#overview?s=TX', '.nw-grid .nat-panel h3'], ['overview, since 2011', '#overview?y=all', '#nw-slot .bar-row'],
       ['map', '#map', '#map-root canvas'], ['operators', '#operators', '#ops-root table.grid tbody tr'], ['operators, New Mexico', '#operators?st=nm', '#ops-root table.grid tbody tr'],
       ['companies', '#companies?st=tx', '#co-root table.grid tbody tr'],
-      ['daily', '#daily', '#daily-root .dd-nav'], ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'],
+      ['daily', '#daily', '#daily-root .dd-nav'], ['daily, a state on a day', '#daily?d=2026-02-02&s=TX', '#dd-table-h'], ['daily, a day in 2014', '#daily?d=2014-03-12&s=TX', '#daily-root .dd-date:has-text("2014")'],
       ['overview, North Dakota zoomed', '#overview?s=ND', '.nw-grid .nat-panel h3'], ['map, federal offshore', '#map?st=fo', '#map-root canvas'], ['operators, federal offshore', '#operators?st=fo', '#ops-root table.grid tbody tr'],
       ['sources', '#about', '#view-about h1'], ['national', '#national', '#national-root .nat-tile'], ['national, New Mexico panel', '#national?s=NM&m=spuds', '#national-root .nat-panel h3'],
       ['texas images', '#images', '#images-root .img-pack'], ['texas images, a county', '#images?c=283', '#images-root a.well-row'], ['texas images, a well', '#images?well=28337830', '#images-root .well-doc'],

@@ -6,6 +6,8 @@ file alone, a file that is not SQLite is never overwritten, `--check` notices a 
 pack, a permit row shorter than the rest, a series with gaps, an optional file that does not exist yet).
 
 Run: python3 -I tests/test_build_db.py"""
+import bisect
+import datetime
 import glob
 import hashlib
 import importlib.util
@@ -84,10 +86,13 @@ check(one("SELECT COUNT(*) FROM operators WHERE state = 'TX' AND name IS NULL") 
 npts = sum(len(J(f)["pts"]) for f in ("permits", "permits-ok", "permits-nm", "permits-fo"))
 check(one("SELECT COUNT(*) FROM permit_points") == npts, "every permit point is loaded (%d)" % npts)
 check(one("SELECT COUNT(*) FROM permit_points WHERE lat NOT BETWEEN 24 AND 50 OR lon NOT BETWEEN -110 AND -80 OR day IS NULL") == 0, "points decode to places between New Mexico and the Gulf, and to real days")
-nws, nwp = J("newwells/summary"), J("newwells/points")
-check(one("SELECT COUNT(*) FROM new_wells") == nwp["n"] and one("SELECT COUNT(*) FROM new_wells_months") == len(nws["states"]) * len(nws["months"]), "the national new-wells map is loaded: every point, and a count for every state and month (a month with none is a real zero here: the registry lists the state)")
-check(one("SELECT COUNT(*) FROM new_wells WHERE lat NOT BETWEEN 15 AND 75 OR lon NOT BETWEEN -180 AND -60 OR day IS NULL OR day < ?", nwp["t0"]) == 0, "new wells decode to places in the country and to real days from t0")
-check(one("SELECT SUM(wells) FROM new_wells_months WHERE state = ?", nws["states"][0]["id"]) == sum(nws["states"][0]["new"]) and one("SELECT COUNT(*) FROM new_wells WHERE operator IS NOT NULL") == sum(1 for o in nwp["o"] if o >= 0), "a state's months add up to the file's, and an operator is only on the wells whose operator may be named")
+nws, nwp, nwh = J("newwells/summary"), J("newwells/points"), J("newwells/points-history")
+hist_rows = bisect.bisect_left(nwh["d"], (datetime.date.fromisoformat(nwp["t0"]) - datetime.date.fromisoformat(nwh["t0"])).days)
+check(hist_rows > 100000 and 0 < nwh["n"] - hist_rows < 0.1 * nwh["n"], "setup: the history holds the wells before the points file starts, and its overlap with it is dropped (%d kept of %d)" % (hist_rows, nwh["n"]))
+check(one("SELECT COUNT(*) FROM new_wells") == nwp["n"] + hist_rows and one("SELECT MIN(day) FROM new_wells") < "2012-01-01" and one("SELECT COUNT(*) FROM new_wells WHERE day >= ?", nwp["t0"]) == nwp["n"], "every well with a point since 2011 is a row once: the history's overlap with the last 24 months is not counted twice")
+check( one("SELECT COUNT(*) FROM new_wells_months") == len(nws["states"]) * len(nws["months"]), "the national new-wells map is loaded: every point, and a count for every state and month (a month with none is a real zero here: the registry lists the state)")
+check(one("SELECT COUNT(*) FROM new_wells WHERE lat NOT BETWEEN 15 AND 75 OR lon NOT BETWEEN -180 AND -60 OR day IS NULL OR day < ?", nwh["t0"]) == 0, "new wells decode to places in the country and to real days from 2011")
+check(one("SELECT SUM(wells) FROM new_wells_months WHERE state = ?", nws["states"][0]["id"]) == sum(nws["states"][0]["new"]) and one("SELECT COUNT(*) FROM new_wells WHERE operator IS NOT NULL") == sum(1 for o in nwp["o"] if o >= 0) + sum(1 for o in nwh["o"][:hist_rows] if o >= 0), "a state's months add up to the file's, and an operator is only on the wells whose operator may be named")
 check(sorted(r[0] for r in q("SELECT DISTINCT land FROM new_wells")) == ["federal", "federal and tribal", "private or state", "tribal"], "land is a word, not a bit: federal, tribal, both or neither")
 check(one("SELECT COUNT(*) FROM companies") == len(J("companies")["rows"]), "the company pool is loaded")
 

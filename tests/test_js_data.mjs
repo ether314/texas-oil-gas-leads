@@ -412,6 +412,38 @@ const ok = { months: ['2025-01', '2025-02'], permits: [10, 11], asOf: '2026-10-3
   check(q.length === 2 && q[0].id === 'AL' && q[0].latest === NW.byId(doc, 'AL').latest && q[1].latest === null, 'newwells: a producing state with no well in the last 12 months is "quiet" (with its last job, or none ever), a state with wells is not');
   check(NW.listAnd(['a']) === 'a' && NW.listAnd(['a', 'b']) === 'a and b' && NW.listAnd(['a', 'b', 'c']) === 'a, b and c' && NW.feet(95) === '9,500 ft' && NW.feet(0) === null && NW.gallons(210) === '21.0 million gal' && NW.gallons(0) === null, 'newwells: the wording helpers (a list, feet in hundreds, gallons in hundreds of thousands, nothing for zero)');
   check(NW.colorOf('TX') === 'var(--st-tx)' && NW.colorOf('NM') === 'var(--st-nm)' && NW.colorOf('OK') === 'var(--st-ok)' && NW.colorOf('WY') === NW.OTHER_COLOR, 'newwells: Texas, New Mexico and Oklahoma keep the colors the rest of the site gives them; every other state is slate');
+  // typicalDay: a day is set against the twelve months it sits in
+  const tdNew = NW.typicalDay(doc, doc.asOf); const tdSettled = NW.typicalDay(doc, '2026-03-10'); const td14 = NW.typicalDay(doc, '2014-03-12'); const td11 = NW.typicalDay(doc, '2011-01-05'); const tdTx = NW.typicalDay(doc, '2014-03-12', 'TX');
+  check(tdNew.latest && tdNew.to === doc.settled.slice(0, 7) && Math.abs(tdNew.perDay - NW.totals(doc).p12 / 365) < 0.01 && tdSettled.latest, 'newwells: the newest days are set against the last 12 settled months (the figure the page always had: p12 over 365)');
+  check(!td14.latest && td14.from === '2013-10' && td14.to === '2014-09' && td14.perDay > 50 && td14.perDay < 120 && !td11.latest && td11.from === '2011-01' && td11.to === '2011-12' && tdTx.perDay > 0 && tdTx.perDay < td14.perDay,
+    'newwells: a day in 2014 is set against Oct 2013 to Sep 2014 (' + td14.perDay.toFixed(1) + ' a day, not last year\'s ' + tdNew.perDay.toFixed(1) + '), the first days against the first twelve months, one state against its own');
+  check(NW.typicalDay(doc, '2030-01-01').latest && NW.typicalDay(doc, '2001-01-01').from === '2011-01' && NW.drilled(NW.byId(doc, 'AL')) && !NW.drilled({ new: [0, 0] }), 'newwells: a day outside the series gets the nearest twelve months, and a state with a well only years ago counts as drilled');
+  // the history: every well with a point since 2011, joined to the last two years' points
+  const hist = read('newwells/points-history');
+  const mp = NW.mergePoints(pts, hist); const PH = NW.decode(mp);
+  const shift = Math.round((Date.parse(pts.t0 + 'T00:00:00Z') - Date.parse(hist.t0 + 'T00:00:00Z')) / 864e5);
+  const kept = hist.d.filter((d) => d < shift).length;
+  check(doc.months[0] === '2011-01' && NW.stack(doc, doc.months.length).months.length === doc.months.length && NW.stack(doc, doc.months.length).totals.reduce((a, b) => a + b, 0) === doc.states.reduce((t, x) => t + x.new.reduce((a, b) => a + b, 0), 0), 'newwells: the months run from 2011-01 and the all-years stack loses no well');
+  check(PH.n === kept + pts.n && kept < hist.n && kept > 100000 && PH.n > 200000 && NW.dayIso(PH.t0) === '2011-01-01' && NW.dayIso(NW.dayMs(PH, PH.span)) === pts.asOf && NW.yearsOf(PH) >= 15, 'newwells: the history and the points make one set (' + PH.n + ' wells, ' + NW.yearsOf(PH) + ' years); the history\'s overlap with the points is dropped, not counted twice');
+  let sorted = true; for (let i = 1; i < PH.n; i++) if (PH.day[i] < PH.day[i - 1]) { sorted = false; break; }
+  check(sorted && PH.day[0] >= 0 && NW.firstAtOrAfter(PH, shift) === kept, 'newwells: the merged days are in order, and the points file\'s own wells start where the history\'s kept ones end');
+  let same = true; // a sample of both halves keeps its place, day, state, county and operator through the merge
+  for (const [src, base, idx] of [[hist, 0, [0, 1, 777, 5000, 90000, kept - 1]], [pts, kept, [0, 1, 500, 9000, pts.n - 1]]]) {
+    for (const k of idx) {
+      const i = base + k; const c = src.c[k]; const o = src.o[k];
+      const day = (src === hist ? Date.parse(hist.t0 + 'T00:00:00Z') : Date.parse(pts.t0 + 'T00:00:00Z')) + src.d[k] * 864e5;
+      if (Math.abs(PH.lat[i] - src.lat[k] / 1e4) > 1e-3 || Math.abs(PH.lon[i] - src.lon[k] / 1e4) > 1e-3 || NW.dayMs(PH, PH.day[i]) !== day || PH.states[PH.s[i]] !== src.states[src.s[k]]
+        || NW.countyOf(PH, i) !== (c >= 0 ? src.counties[c][1] : null) || NW.operatorOf(PH, i) !== (o >= 0 ? src.ops[o] : null) || PH.tvd[i] !== src.tvd[k] || PH.h2o[i] !== src.h2o[k] || PH.f[i] !== src.f[k]) same = false;
+    }
+  }
+  check(same, 'newwells: a sample of wells from the history and from the points keeps its place, day, state, county, operator, depth, water and land through the merge');
+  check(PH.counties.every((c) => PH.states.includes(c[0])) && new Set(PH.counties.map((c) => c.join('|'))).size === PH.counties.length && new Set(PH.ops).size === PH.ops.length && PH.counties.length >= pts.counties.length && PH.ops.length >= pts.ops.length, 'newwells: the merged county and operator tables hold each name once, the points file\'s first');
+  const perStateAll = NW.perState(PH, 0, PH.span); const wellsByState = new Map(doc.states.map((x) => [x.id, x.new.reduce((a, b) => a + b, 0)]));
+  check(perStateAll.length > 20 && perStateAll.every((x) => x.n <= wellsByState.get(x.id) && x.n >= 0.97 * wellsByState.get(x.id)), 'newwells: every state\'s points since 2011 are its wells in the summary or just under (' + perStateAll.length + ' states)');
+  const [h0, h1] = NW.settledRange(PH, doc);
+  check(h1 - h0 > 300 && NW.dayMs(PH, h1) === NW.dayMs(P, d1) && NW.landShare(PH, h0, h1).of === land.of && NW.leaders(PH, h0, h1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join() === NW.leaders(P, d0, d1, { by: 'c', limit: 3 }).rows.map((r) => r.label + r.n).join(),
+    'newwells: the settled year over the merged points is the same year as over the points alone (the panel and the lists read the same wells either way)');
+  check((() => { try { NW.mergePoints(pts, { ...hist, states: hist.states.slice().reverse() }); return false; } catch (e) { return /same read/.test(e.message); } })(), 'newwells: a history from another read than the points (other states) is refused');
 }
 
 console.log('\n' + (fails ? 'FAILED ' + fails : 'all passed'));
