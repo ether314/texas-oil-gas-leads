@@ -922,6 +922,23 @@ table.fx thead tr.fx-score td { position: sticky; top: 31px; z-index: 3; }
 .fx-chips .link { display: inline-flex; align-items: center; min-height: 24px; }
 .fx-panel-slot .nat-panel { background: var(--surface-2); }
 @media (max-width: 640px) { .fx-corner, .fx-rh { min-width: 144px; max-width: 150px; } .fx-m { font-size: var(--fs-xs); } }
+/* the registry's column (FracFocus: first, a disclosure and not an agency) and the card that lists every field it holds */
+.fx-col.is-reg { width: 76px; min-width: 76px; }
+.fx-col.is-reg .fx-h { font-size: var(--fs-xs); }
+table.fx th.is-reg, table.fx td.is-reg { border-right: 2px solid var(--border-2); }
+table.fx td.is-reg { background: color-mix(in srgb, var(--s1) 7%, var(--surface)); }
+.fx-rg { margin-top: var(--sp-5); }
+.fx-rg h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-xs); font-weight: 680; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-2); }
+.fx-rfs { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border); }
+.fx-rf { display: grid; grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1.6fr) minmax(170px, 1fr); gap: var(--sp-1) var(--sp-5); align-items: baseline; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
+.fx-rf-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); min-width: 0; }
+.fx-rf-name strong { font-size: var(--fs-sm); }
+.fx-rf-name code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--fs-xs); color: var(--ink-2); overflow-wrap: anywhere; }
+.fx-rf-what { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+.fx-rf-link { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); min-width: 0; font-size: var(--fs-sm); }
+.fx-rf-link small { color: var(--ink-2); font-size: var(--fs-xs); }
+.fx-rf-link .link { min-height: 24px; text-align: left; }
+@media (max-width: 720px) { .fx-rf { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 /* readable previews of the scanned filings (js/previews.js): a grid of small pages, and one native dialog that opens a page larger */
 .img-files.pv { grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: var(--sp-4) var(--sp-5); }

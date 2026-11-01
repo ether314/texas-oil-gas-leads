@@ -29,7 +29,8 @@ Two layers, so nothing is lost and common questions are easy:
     tx_image_packs          the three Texas image packs by day: size, documents and kinds
     wells, well_documents, well_packs     the Texas well-image archive (d12_wells.py): each well (API number) with its county, district, field and operator, every scanned document tied to a
                             well (stage, kind, pages, bytes, the GitHub release it is a file of, and the address of the document and of its page-one picture), and the packs read (documents held, tied, not tied)
-    metrics, field_states, field_cells, field_sources     the matrix of what each agency's permit captures (when permit-fields.json exists)
+    metrics, field_states, field_cells, field_sources     the matrix of what each agency's permit captures (when permit-fields.json exists); FracFocus is a row of it like an agency
+    field_registry_fields   every field of a registry's download (FracFocus): its column, a plain label and description, its group and the permit metric it matches
   views                     v_permits_by_month (permits and spuds kept apart), v_latest_12_months
 
 The FracFocus tables are optional: they hold what the registry publishes and the site does not (API numbers, well names, operators that are people), so the loader only writes them to a file git
@@ -91,6 +92,7 @@ CREATE TABLE field_states(state TEXT PRIMARY KEY, name TEXT, agency TEXT, agency
 CREATE TABLE field_cells(state TEXT, metric TEXT, status TEXT, evidence TEXT, note TEXT, PRIMARY KEY(state, metric));
 CREATE TABLE field_sources(state TEXT, id TEXT, name TEXT, url TEXT, kind TEXT, format TEXT, grain TEXT, cadence TEXT, history_from TEXT, reachable TEXT, has_approval_date INTEGER,
   has_spud_date INTEGER, columns TEXT);
+CREATE TABLE field_registry_fields(state TEXT, column_name TEXT, label TEXT, grp TEXT, plain TEXT, metric TEXT, PRIMARY KEY(state, column_name));
 CREATE INDEX i_nm ON national_months(month);
 CREATE INDEX i_series ON series(file, key);
 CREATE INDEX i_dp ON daily_permits(state, day);
@@ -327,6 +329,7 @@ def load_fields(db, data):
         db.executemany("INSERT INTO field_sources VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [(sid, x.get("id"), x.get("name"), x.get("url"), x.get("kind"), x.get("format"), x.get("grain"), x.get("cadence"), x.get("history_from"),
                                                                                          x.get("reachable"), None if x.get("has_approval_date") is None else int(bool(x["has_approval_date"])),
                                                                                          None if x.get("has_spud_date") is None else int(bool(x["has_spud_date"])), json.dumps(x.get("columns") or [])) for x in s["sources"]])
+        db.executemany("INSERT INTO field_registry_fields VALUES (?,?,?,?,?,?)", [(sid, x["column"], x["label"], x["group"], x["plain"], x.get("metric") or None) for x in s.get("fields") or []])
     return len(d["states"])
 
 

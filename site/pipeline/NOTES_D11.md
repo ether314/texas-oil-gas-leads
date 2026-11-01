@@ -124,6 +124,19 @@ Oregon counts **applications filed** (`applications`: DOGAMI's file has no appro
 On the page a tile of another kind is dotted, shaded against the biggest state counting something like it (permits for applications, spuds for wells drilled) so it is never the "largest" of its own group of one, and the top figures name them under "Counted another way". A state whose last **24 months** hold nothing (Arizona, Florida, Oregon, South Dakota) is shown as "None recorded", with a dash on its tile, never as a 0: the source dating nothing in two years is not the same as nothing happening.
 A read zero (a year after a year with some) is outlined, apart from a state not read yet (dashed).
 
+## FracFocus in the matrix (`#fields`)
+
+`fields/FF.json` is a research file like a state's, for the one source that is not an agency's permit: FracFocus, the registry the operators file their fracturing jobs to (read on 2026-11-01 from the data dictionary inside `FracFocusCSV.zip`, `readme csv.txt`, last updated Nov 2023, and the real header lines of
+the three kinds of file in it, by range requests: `DisclosureList_N.csv` 17 columns, `FracFocusRegistry_N.csv` 31, `WaterSource_N.csv` 9, 34 different columns in all; the download page for the cadence (5 days a week), the formats (1.0 to May 2013 has header data only, 2.0 to 4.0 add the chemicals, 4.0 adds
+optional water sources from Dec 2023) and the terms of use (data may be combined, not altered)). The same 48 questions are answered about what a disclosure captures: 9 `data` (API number, well name, operator, county, latitude and longitude with the datum, true vertical depth, water, the chemical disclosure, and only a federal and
+a tribal yes/no for ownership), 1 `query` (the disclosure PDF in Find a Well, named on the download page, not opened) and 38 `none`. Judgments worth knowing: the job's start and end are **not** a spud or completion date (said in those cells); TVD is "usually the current or final depth", not a planned one; the
+chemical disclosure is the job as done, not "a plan at permit time" (the cell says so); the operator is the organization that filed, which can be an agent or a person.
+
+It is built into `permit-fields.json` beside the agencies, never among them: `registries: ["FF"]` (`d11_fields_build.py` `REGISTRIES`), `order` holds only the 35 agencies, so every count of agencies ("31 of 35", the headline, the metric panel's lists) stays over agencies, and the state carries `kind: "registry"` and
+`fields`, the plain-words list of its 34 columns (`registry_fields` in the research file: a label, what it holds, one of five groups, the permit metric it matches or none). `registry_problems()` refuses a field that is a column of none of the sources, a column of a source missing from the list, a repeated field, an unknown group
+and a metric that does not exist, so the list cannot drift from the evidence. The page (`fields.js`, `fields-data.js` `registries`, `columns`, `registryGroups`, `registryAdds`) draws FracFocus as the first column (tinted, with a rule after it), a panel that speaks of a disclosure, a registry line in each metric's panel, a figure
+"What FracFocus adds" (its data metrics that fewest agencies publish: the chemicals 0 of 35, water 1, true vertical depth 4) and a card of the 34 fields. A new registry is a research file, an entry in `REGISTRIES`, and a `fields` list.
+
 ## The pages' words
 
 The research files (`fields/<ST>.json`) are written in the researchers' own voice ("blocked from this machine", "I read", "the tracker"), and stay as researched. What reaches a page goes through `d11_fields_build.py`: `VOICE` is a list of the phrases to rewrite (each is one phrase the research uses; `tests/test_d11_fields.py` fails if a marker of the researchers' voice is left in the published

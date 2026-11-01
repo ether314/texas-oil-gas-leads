@@ -103,6 +103,10 @@ if os.path.exists(os.path.join(DATA, "permit-fields.json")):
     check(one("SELECT COUNT(*) FROM field_cells WHERE status NOT IN ('data','query','form','none','unknown')") == 0 and one("SELECT COUNT(*) FROM field_cells WHERE status = 'data' AND evidence NOT IN ('file','doc')") == 0,
           "every cell has one of the five statuses, and 'data' always has a file or the documentation behind it")
     check(one("SELECT COUNT(*) FROM field_sources") == sum(len(s["sources"]) for s in pf["states"].values()), "every researched source is a row")
+    regs = pf.get("registries") or []
+    check(one("SELECT COUNT(*) FROM field_registry_fields") == sum(len(pf["states"][r]["fields"]) for r in regs) and all(one("SELECT COUNT(*) FROM field_states WHERE state = ?", r) == 1 for r in regs),
+          "a registry (FracFocus) is a row of the matrix and each field of its download a row of field_registry_fields (%d)" % one("SELECT COUNT(*) FROM field_registry_fields"))
+    check(one("SELECT COUNT(*) FROM field_registry_fields WHERE metric IS NOT NULL AND metric NOT IN (SELECT key FROM metrics)") == 0, "a registry field names only a permit metric that exists")
 days = sum(len(glob.glob(os.path.join(DATA, d, "????-??-??.json"))) for d in ("daily", "daily-ok", "daily-nm"))
 check(one("SELECT COUNT(*) FROM daily_reports") == days, "every Daily report is a row (%d)" % days)
 rows = 0

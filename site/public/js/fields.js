@@ -1,5 +1,6 @@
 // The permit-data view: what each agency's permit captures. A matrix of agencies by metric, each cell saying whether the metric is published as data, only in a
 // one-well lookup, only on the form, not captured, or not verified; click a cell, an agency or a metric to see why. Data: permit-fields.json (d11_fields_build.py).
+// FracFocus, the registry of fracturing jobs, is the first column (a disclosure, not a permit, and not counted as an agency); a card below lists every field it holds.
 import { el, load } from './util.js';
 import { icon } from './icons.js';
 import { segmented } from './ui.js';
@@ -18,6 +19,8 @@ export function createFieldsView({ root }) {
   const slots = {};
   let grid = []; // the matrix's cell buttons by row then column: one of them is a tab stop, the arrow keys move between them (1,680 buttons were 1,680 tab stops)
   const cellBtns = new Map(); const colHeads = new Map(); const rowHeads = new Map();
+  const isReg = (id) => F.registries(doc).includes(id);
+  const toRegistry = () => { if (slots.registry) slots.registry.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
   function writeHash() {
     const p = new URLSearchParams();
@@ -31,12 +34,15 @@ export function createFieldsView({ root }) {
   /* ---------- the top ---------- */
   function figures() {
     const h = F.headline(doc);
+    const regs = F.registries(doc);
+    const adds = regs.length ? F.registryAdds(doc, regs[0]) : [];
     return el('dl', { class: 'dr-tiles nat-kpis' }, [
-      { label: 'Agencies compared', value: String(h.agencies), note: 'every producing state, the BLM and the offshore, as researched' },
+      { label: 'Agencies compared', value: String(h.agencies), note: 'every producing state, the BLM and the offshore, as researched' + (regs.length ? '; FracFocus is shown beside them' : '') },
       { label: 'Metrics compared', value: String(h.metrics), note: 'seven groups, from the operator to the well logs' },
       h.best ? { label: 'Most published as data', value: doc.states[h.best.id].name, note: h.best.n + ' of ' + h.metrics + ' metrics in downloadable data' } : null,
       h.topMetric && h.topMetric.tied.length > 1 ? { label: 'Published by the most agencies', value: h.topMetric.tied.length + ' metrics tie', note: h.topMetric.tied.map((m) => m.label).join(', ') + ': each as data by ' + h.topMetric.n + ' of ' + h.agencies + ' agencies' }
         : h.topMetric ? { label: 'Published by the most agencies', value: h.topMetric.m.label, note: h.topMetric.n + ' of ' + h.agencies + ' agencies as data' } : null,
+      adds.length ? { label: 'What FracFocus adds', value: adds.length + ' metrics', note: 'that few agencies publish as data: ' + adds.map((a) => a.m.label + ' ' + a.n + ' of ' + a.total).join('; ') } : null,
       { label: 'Not verified', value: F.percent(h.unknownShare, 1) + '%', note: 'of cells: marked so, never guessed' },
     ].filter(Boolean).map((x) => el('div', { class: 'dr-tile' }, el('dt', { text: x.label }), el('dd', { text: x.value }), el('small', { text: x.note }))));
   }
@@ -50,11 +56,12 @@ export function createFieldsView({ root }) {
     const cols = F.columns(doc, sort);
     const metrics = F.metricsIn(doc, group);
     const head = el('tr', {}, el('th', { scope: 'col', class: 'fx-corner', text: 'Metric' }), cols.map((id) => {
-      const b = el('button', { type: 'button', class: 'fx-h', 'aria-label': doc.states[id].name + ': what its permit captures', 'aria-pressed': 'false', title: doc.states[id].name, text: F.shortCode(id) });
+      const reg = isReg(id);
+      const b = el('button', { type: 'button', class: 'fx-h', 'aria-label': doc.states[id].name + (reg ? ': what a disclosure captures' : ': what its permit captures'), 'aria-pressed': 'false', title: doc.states[id].name, text: reg ? doc.states[id].name : F.shortCode(id) });
       b.addEventListener('click', () => choose({ s: id, m: null })); colHeads.set(id, b);
-      return el('th', { scope: 'col', class: 'fx-col' }, b);
+      return el('th', { scope: 'col', class: 'fx-col' + (reg ? ' is-reg' : '') }, b);
     }), el('th', { scope: 'col', class: 'fx-tot', text: 'Agencies as data' }));
-    const score = el('tr', { class: 'fx-score' }, el('th', { scope: 'row', class: 'fx-corner', text: 'Metrics as data' }), cols.map((id) => el('td', { class: 'fx-n', title: doc.states[id].name + ': ' + F.stateScore(doc, id).data + ' of ' + doc.metrics.length + ' metrics are published as data', text: String(F.stateScore(doc, id).data) })), el('td', { class: 'fx-n' }));
+    const score = el('tr', { class: 'fx-score' }, el('th', { scope: 'row', class: 'fx-corner', text: 'Metrics as data' }), cols.map((id) => el('td', { class: 'fx-n' + (isReg(id) ? ' is-reg' : ''), title: doc.states[id].name + ': ' + F.stateScore(doc, id).data + ' of ' + doc.metrics.length + ' metrics are published as data', text: String(F.stateScore(doc, id).data) })), el('td', { class: 'fx-n' }));
     const body = [];
     let lastGroup = null;
     metrics.forEach((m) => {
@@ -75,12 +82,12 @@ export function createFieldsView({ root }) {
         const tip = (e) => { const r = b.getBoundingClientRect(); showTip([el('div', { class: 'tip-head', text: doc.states[id].name }), tipRow(m.label, ''), tipRow(code(c.s).label, c.n ? '· ' + c.n : '')], e.clientX || r.left, e.clientY || r.top); };
         b.addEventListener('pointermove', tip); b.addEventListener('pointerleave', hideTip); b.addEventListener('focus', tip); b.addEventListener('blur', hideTip);
         cellBtns.set(id + '|' + m.key, b);
-        return el('td', { class: 'fx-cell' }, b);
+        return el('td', { class: 'fx-cell' + (isReg(id) ? ' is-reg' : '') }, b);
       }), el('td', { class: 'fx-n', text: ms.data + ' of ' + ms.total })));
       grid.push(rowBtns);
     });
     if (grid[0] && grid[0][0]) grid[0][0].tabIndex = 0;
-    return el('div', { class: 'table-wrap tall fx-wrap', role: 'region', tabindex: '0', 'aria-label': 'Matrix of what each permit captures, agencies across and metrics down' },
+    return el('div', { class: 'table-wrap tall fx-wrap', role: 'region', tabindex: '0', 'aria-label': 'Matrix of what each permit captures, FracFocus and then the agencies across, metrics down' },
       el('table', { class: 'fx' }, el('thead', {}, head, score), el('tbody', {}, body)));
   }
   // one tab stop in the grid, wherever the last focus or selection was, and the arrow keys for the rest
@@ -126,18 +133,22 @@ export function createFieldsView({ root }) {
   }
   function statePanel(sid) {
     const s = doc.states[sid]; const sc = F.stateScore(doc, sid);
+    const reg = isReg(sid);
     const srcs = s.sources.length ? el('ul', { class: 'fx-sources' }, s.sources.map((x) => el('li', {},
-      el('strong', { text: x.name }), el('small', { text: [x.format, x.grain === 'aggregate' ? 'totals only' : x.grain === 'well' ? 'one row a well' : x.grain === 'permit' ? 'one row a permit' : '', x.cadence, x.history_from && x.history_from !== 'unknown' ? 'from ' + x.history_from : '', F.REACH[x.reachable]].filter(Boolean).join(' · ') }),
+      el('strong', { text: x.name }), el('small', { text: [x.format, x.kind === 'query' ? 'one well at a time' : F.GRAIN[x.grain] || '', x.cadence, x.history_from && x.history_from !== 'unknown' ? 'from ' + x.history_from : '', F.REACH[x.reachable]].filter(Boolean).join(' · ') }),
       x.url ? ext(x.url, 'Open') : null))) : el('p', { class: 'nd', text: 'No open data source found.' });
     return el('div', { class: 'nat-panel' },
       el('div', { class: 'nat-ph' }, el('h3', { text: s.name }), el('span', { class: 'badge', text: 'Grade ' + s.grade })),
       el('p', { class: 'nat-agency', text: s.agency.name }),
       el('p', { text: F.GRADES[s.grade] + '. ' + s.grade_reason }),
-      el('div', { class: 'nat-sub' }, el('h4', { text: 'What its permit captures' }), statusBar(sc, sc.total)),
-      el('div', { class: 'nat-sub' }, el('h4', { text: 'The permit form' }), el('p', { text: s.form.name + (s.form.number ? ' (' + s.form.number + ')' : '') + (s.form.read ? '' : '. Not read: the cells are unverified.') }), s.form.url ? ext(s.form.url, 'Open the form') : null),
+      el('div', { class: 'nat-sub' }, el('h4', { text: reg ? 'What a disclosure captures' : 'What its permit captures' }), statusBar(sc, sc.total)),
+      el('div', { class: 'nat-sub' }, el('h4', { text: reg ? 'The disclosure' : 'The permit form' }), el('p', { text: s.form.name + (s.form.number ? ' (' + s.form.number + ')' : '') + (s.form.read ? '' : '. Not read: the cells are unverified.') }), s.form.url ? ext(s.form.url, 'Open the form') : null),
       el('div', { class: 'nat-sub' }, el('h4', { text: 'What it publishes' }), srcs),
       s.unknowns.length ? el('div', { class: 'nat-sub' }, el('h4', { text: 'Not determined' }), el('ul', { class: 'fx-unk' }, s.unknowns.map((u) => el('li', { text: u })))) : null,
-      el('p', { class: 'nat-links' }, el('a', { class: 'more-link', href: '#national?s=' + sid }, 'See its permits in the national report', icon('arrow', 16)), s.agency.url ? ext(s.agency.url, 'The agency') : null));
+      el('p', { class: 'nat-links' },
+        reg ? el('a', { class: 'more-link', href: '#overview' }, 'See its wells on the map', icon('arrow', 16)) : el('a', { class: 'more-link', href: '#national?s=' + sid }, 'See its permits in the national report', icon('arrow', 16)),
+        reg && s.fields && s.fields.length ? el('button', { type: 'button', class: 'link', text: 'Every field in its download', onclick: toRegistry }) : null,
+        s.agency.url ? ext(s.agency.url, reg ? 'The registry' : 'The agency') : null));
   }
   function metricPanel(key) {
     const m = doc.metrics.find((x) => x.key === key); const ms = F.metricScore(doc, key); const by = F.byStatus(doc, key);
@@ -146,7 +157,25 @@ export function createFieldsView({ root }) {
       el('p', { class: 'nat-agency', text: m.help }),
       statusBar(ms, ms.total),
       F.CODES.filter((c) => by[c.id].length).map((c) => el('div', { class: 'nat-sub', key: c.id }, el('h4', { text: c.label + ' (' + by[c.id].length + ')' }),
-        el('ul', { class: 'fx-chips' }, by[c.id].map((id) => el('li', {}, el('button', { type: 'button', class: 'link', text: doc.states[id].name, onclick: () => choose({ s: id, m: key }) })))))));
+        el('ul', { class: 'fx-chips' }, by[c.id].map((id) => el('li', {}, el('button', { type: 'button', class: 'link', text: doc.states[id].name, onclick: () => choose({ s: id, m: key }) })))))),
+      F.registries(doc).map((rid) => { const c = F.cellOf(doc, rid, key); return el('div', { class: 'nat-sub fx-reg-line', key: rid }, el('h4', { text: doc.states[rid].name + ', a registry counted apart: ' + code(c.s).label.toLowerCase() }),
+        c.n ? el('p', { text: c.n }) : null, el('button', { type: 'button', class: 'link', text: 'FracFocus on “' + m.label + '”', onclick: () => choose({ s: rid, m: key }) })); }));
+  }
+  /* ---------- what a registry holds ---------- */
+  function registryCard(rid) {
+    const s = doc.states[rid];
+    const groups = F.registryGroups(doc, rid);
+    const total = groups.reduce((n, g) => n + g.fields.length, 0);
+    const matched = groups.reduce((n, g) => n + g.fields.filter((f) => f.matches).length, 0);
+    const row = (f) => el('li', { class: 'fx-rf' },
+      el('div', { class: 'fx-rf-name' }, el('strong', { text: f.label }), el('code', { text: f.column })),
+      el('p', { class: 'fx-rf-what', text: f.plain }),
+      f.matches ? el('div', { class: 'fx-rf-link' }, el('button', { type: 'button', class: 'link', text: f.matches.label, onclick: () => choose({ s: null, m: f.matches.key }) }), el('small', { text: f.matches.data + ' of ' + f.matches.total + ' agencies publish it as data' }))
+        : el('div', { class: 'fx-rf-link' }, el('small', { class: 'nd', text: 'Not one of the permit metrics' })));
+    return el('section', { class: 'card nat-card reveal is-in', id: 'fx-registry' },
+      hdr(s.name, 'drop', 'What a ' + s.name + ' disclosure holds', total + ' fields in the registry’s download, in plain words. ' + matched + ' of them match a permit metric above; the rest, such as the job’s dates, the water’s sources and every chemical, are what a disclosure adds. It is filed after the job, so it records what was done and is not a permit.'),
+      groups.map((g) => el('div', { class: 'fx-rg', key: g.id }, el('h3', { text: g.label }), el('ul', { class: 'fx-rfs' }, g.fields.map(row)))),
+      el('p', { class: 'fine', text: 'From the data dictionary inside the registry’s download and the real column names of its three kinds of file. The site publishes none of the API numbers, well names or chemical lists in it (README, Privacy).' }));
   }
   function showPanel() {
     slots.panel.replaceChildren(sel.s && sel.m ? cellPanel(sel.s, sel.m) : sel.s ? statePanel(sel.s) : sel.m ? metricPanel(sel.m)
@@ -169,9 +198,12 @@ export function createFieldsView({ root }) {
     const gseg = segmented({ label: 'Group of metrics', tabs: false, wrap: true, prefix: 'fxg', value: group, options: [{ id: 'all', label: 'All' }, ...doc.groups.map((g) => ({ id: g.id, label: g.label }))], onChange: (id) => { group = id; redraw(); writeHash(); } });
     const sseg = segmented({ label: 'Order of agencies', tabs: false, prefix: 'fxs', value: sort, options: [{ id: 'coverage', label: 'Most published first' }, { id: 'name', label: 'A to Z' }], onChange: (id) => { sort = id; redraw(); } });
     root._g = gseg;
-    const card = el('section', { class: 'card nat-card reveal is-in' }, hdr('The matrix', 'layers', 'Agency by metric', 'Every cell says which permit form or data file it was checked against, or that it could not be verified. “Not verified” is an honest answer, not a gap in the page.', el('div', { class: 'card-tools' }, sseg.el)),
+    const regs = F.registries(doc);
+    slots.registry = regs.length ? registryCard(regs[0]) : null;
+    const card = el('section', { class: 'card nat-card reveal is-in' }, hdr('The matrix', 'layers', 'Agency by metric', 'Every cell says which permit form or data file it was checked against, or that it could not be verified. “Not verified” is an honest answer, not a gap in the page.' + (regs.length ? ' FracFocus, the national record of fracturing jobs, is the first column: it is filed after the job, so it is not a permit.' : ''), el('div', { class: 'card-tools' }, sseg.el)),
       el('div', { class: 'fx-tools' }, gseg.el), legend(), el('p', { class: 'fine fx-hint', text: 'With the keyboard: Tab reaches the matrix once, the arrow keys move between cells, Home and End go to the ends of a row, and Enter opens a cell.' }), slots.matrix);
     root.replaceChildren(el('div', { class: 'stack' }, figures(), card, el('section', { class: 'card nat-card reveal is-in' }, hdr('Detail', 'pin', 'Why a cell says what it says', null), slots.panel),
+      slots.registry,
       el('p', { class: 'fine', text: 'Researched from each agency’s permit application and its published data, with the evidence named on every cell. An agency whose form or data could not be read says so; those cells read “not verified”.' })));
     redraw();
     return true;
