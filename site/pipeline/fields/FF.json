@@ -170,9 +170,29 @@
    "n": "Gallons of water and of other base fluid; each water source and its share (optional since Dec 2023)"
   },
   "fracture_plan": {
+   "s": "none",
+   "e": "file",
+   "n": "A disclosure records the job as done, never a plan; the four fracturing rows below say what it holds"
+  },
+  "frac_dates": {
    "s": "data",
    "e": "file",
-   "n": "The job as done, not a plan: each additive's purpose, supplier, ingredients, CAS number, share and mass"
+   "n": "JobStartDate and JobEndDate: the fracturing job's own start and end days"
+  },
+  "frac_chemicals": {
+   "s": "data",
+   "e": "file",
+   "n": "CASNumber, IngredientName and IngredientCommonName for every ingredient of every additive"
+  },
+  "frac_additives": {
+   "s": "data",
+   "e": "file",
+   "n": "TradeName, Supplier and Purpose of every additive"
+  },
+  "frac_amounts": {
+   "s": "data",
+   "e": "file",
+   "n": "PercentHFJob and PercentHighAdditive (percent) and MassIngredient (pounds) for each ingredient"
   },
   "spacing_unit": {
    "s": "none",
@@ -398,7 +418,7 @@
   }
  ],
  "grade": "B",
- "grade_reason": "Its dates are those of the fracturing job, filed after it, not of a permit, so it cannot count permits. It is bulk, free and open, and holds every fractured well in the country with its point, county, depth, water and every chemical. The download page says the data are as the operator filed them and that corrections are approved by the state agencies that require a disclosure.",
+ "grade_reason": "Bulk, free and open, with every fractured well in the country in one download: its point, county, the job's start and end days, depth, water and every chemical. It holds no permit and no approval date, so it cannot count permits: it records the fracturing job, filed after it, not the permit. The download page says the data are as the operator filed them and that corrections are approved by the state agencies that require a disclosure.",
  "producer_plan": "Already built. The Overview's map and the Daily report read the disclosure list by range requests (d13_newwells.py, data/newwells/), and build_db.py --fracfocus loads the whole registry with its water sources into the local database; the ingredients are only in the local database (about 2.5 GB). A disclosure comes weeks to months after the permit, so it is shown beside the permit counts and never added into them.",
  "activity_bands_possible": [],
  "privacy_notes": "The registry names API numbers and well names, and some operators are people. The site publishes none of those from it: the map holds a well's point, county, day, depth and water, and an operator only when it is a corporation, LLC or limited partnership. The local database snapshot holds the registry as filed (README, Privacy).",
@@ -499,14 +519,14 @@
    "label": "Job start",
    "group": "job",
    "plain": "The day the fracturing job started, not counting site preparation. It is not the spud date.",
-   "metric": ""
+   "metric": "frac_dates"
   },
   {
    "column": "JobEndDate",
    "label": "Job end",
    "group": "job",
    "plain": "The day the fracturing job was completed, not counting teardown. It is not the well's completion date.",
-   "metric": ""
+   "metric": "frac_dates"
   },
   {
    "column": "TVD",
@@ -562,21 +582,21 @@
    "label": "Trade name",
    "group": "chem",
    "plain": "The name of the product, as its supplier gives it.",
-   "metric": ""
+   "metric": "frac_additives"
   },
   {
    "column": "Supplier",
    "label": "Supplier",
    "group": "chem",
    "plain": "The company that supplied the product, usually the service company.",
-   "metric": ""
+   "metric": "frac_additives"
   },
   {
    "column": "Purpose",
    "label": "Purpose",
    "group": "chem",
    "plain": "Why the product was used: a surfactant, a biocide, a proppant and so on.",
-   "metric": "fracture_plan"
+   "metric": "frac_additives"
   },
   {
    "column": "IngredientsId",
@@ -590,35 +610,35 @@
    "label": "CAS number",
    "group": "chem",
    "plain": "The Chemical Abstracts Service number that identifies the chemical.",
-   "metric": "fracture_plan"
+   "metric": "frac_chemicals"
   },
   {
    "column": "IngredientName",
    "label": "Chemical name",
    "group": "chem",
    "plain": "The name of the chemical or, for a trade secret, its chemical family.",
-   "metric": ""
+   "metric": "frac_chemicals"
   },
   {
    "column": "IngredientCommonName",
    "label": "Common name",
    "group": "chem",
    "plain": "A common name for the chemical, chosen by how often it is filed.",
-   "metric": ""
+   "metric": "frac_chemicals"
   },
   {
    "column": "PercentHighAdditive",
    "label": "Share of the product",
    "group": "chem",
    "plain": "The most of the ingredient in the product, in percent, from the product's safety data sheet.",
-   "metric": ""
+   "metric": "frac_amounts"
   },
   {
    "column": "PercentHFJob",
    "label": "Share of the job",
    "group": "chem",
    "plain": "The ingredient's share of the whole fracturing fluid, in percent by mass.",
-   "metric": "fracture_plan"
+   "metric": "frac_amounts"
   },
   {
    "column": "IngredientComment",
@@ -639,7 +659,7 @@
    "label": "Mass used",
    "group": "chem",
    "plain": "Pounds of the ingredient used on the job.",
-   "metric": "fracture_plan"
+   "metric": "frac_amounts"
   },
   {
    "column": "ClaimantCompany",

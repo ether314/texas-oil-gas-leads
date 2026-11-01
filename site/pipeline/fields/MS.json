@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Not asked on Form 2 (a link to a chemical disclosure registry is on the home page)"
   },
+  "frac_dates": {
+   "s": "none",
+   "e": "web",
+   "n": "Rule 1.26 and Form 3 ask for no fracture dates; only a 48-hour notice goes to the field inspector"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Form 3 must list chemicals with CAS numbers, or state they went to FracFocus; no published list seen"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Form 3 asks each additive's type, trade name and supplier (Rule 1.26); no published list seen"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Form 3 asks volumes in gallons or pounds and maximum percent by mass; no published figures seen"
+  },
   "spacing_unit": {
    "s": "query",
    "e": "web",
@@ -510,7 +530,9 @@
   "Whether permits can be filed online",
   "Meaning of the future-dated Permit Activity file names",
   "Whether the Permit Search is entered late (the producer waits 14 days before a month counts)",
-  "Whether the Board's site answers GitHub's servers (it answered the research machine)"
+  "Whether the Board's site answers GitHub's servers (it answered the research machine)",
+  "Whether the Board's Scout Card, Well Data Browser or log search show Form 3 images or any fracturing data; the menus have no direct addresses",
+  "Whether the posted blank Form 3 is the current layout; it has no chemical or additive table although Rule 1.26 asks for one"
  ],
  "researched": "2026-10-31"
 }

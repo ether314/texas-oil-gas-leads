@@ -174,6 +174,26 @@
    "e": "form",
    "n": "WW-6B item 20 methods, max pressure and rate; frac additive list with CAS numbers (H6A checklist)"
   },
+  "frac_dates": {
+   "s": "form",
+   "e": "form",
+   "n": "WR-35 asks dates frac activities began and ceased, and a date per stage; the data layer holds only compdate"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "form",
+   "n": "Copy of the FracFocus disclosure must be attached to the WR-35 (35 CSR 8, 10.1.a); no chemical data published"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "List of additives actually used is required with the completion report (22-6A-7(e)(5)); none published as data"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "form",
+   "n": "WR-35 gives proppant, water and nitrogen per stage; ingredient amounts only in the attached FracFocus copy"
+  },
   "spacing_unit": {
    "s": "none",
    "e": "form",
@@ -423,7 +443,9 @@
   "Coordinate datum and units of WellX and WellY; accuracy of the simplified laterals layer",
   "Weekly reports before 2019 (older PDFs on another path, not tested) and the layer's refresh schedule",
   "Contents of the Well Search page and of Application Enhancer (login-gated, not opened); online availability of plats, filed forms, completion reports and logs",
-  "Operator business type (Operator Registration form OP-1 not read)"
+  "Operator business type (Operator Registration form OP-1 not read)",
+  "Whether the Well Search detail page or its document system shows the WR-35 or the attached FracFocus copy to the public; no well page was opened.",
+  "The exact fields of Title 35, Series 8, section 10.1.a; the rule text was not found, so trade name, supplier and purpose are not confirmed as required."
  ],
  "researched": "2026-10-31"
 }

@@ -174,6 +174,26 @@
    "e": "form",
    "n": "'Well Treatment' box; a separate well-treatment application is posted for comment"
   },
+  "frac_dates": {
+   "s": "none",
+   "e": "form",
+   "n": "Rule and Well Treatment form ask for no job date; the report is due within 30 days after the job"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "form",
+   "n": "Application lists compound names and CAS (rule 211); report must show a FracFocus filing; no posted disclosure seen"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "form",
+   "n": "Form OGR-004 asks trade name, supplier, purpose and SDS per additive; the one posted treatment lists none"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "form",
+   "n": "Form asks percent by volume and total volume of each additive and proppant, before and after the job"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -444,7 +464,9 @@
   "Mineral owner (the form asks only about state leases)",
   "H2S and water plans (not on the form's checklist)",
   "Whether the Data Explorer's CSV export works without a login and what it holds (it exports production)",
-  "Whether a permit that expired unused is ever posted (3 have no page, no date)"
+  "Whether a permit that expired unused is ever posted (3 have no page, no date)",
+  "Whether any well page or posted report carries a treatment report or additive list: the only posted treatment was a gas injection.",
+  "Whether job logs attached to a treatment report show job dates (the rule lets a job log stand in for pressure data)."
  ],
  "researched": "2026-10-31"
 }

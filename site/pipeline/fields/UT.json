@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Not on Form 3 or the APD checklist"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Completion report in the agency's well file shows fracture start and end dates; the bulk files hold none"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule R649-3-39 requires reporting to FracFocus within 60 days; the agency's own data holds no chemical list"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus; the rule names type and amount of chemicals, and agency data lists no products"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus; the agency's well file shows only total water and proppant for the job"
+  },
   "spacing_unit": {
    "s": "data",
    "e": "file",
@@ -688,7 +708,9 @@
   "Form 9 Sundry Notice contents (not read), so the fracture plan and pit cells are only checked against Form 3 and the checklist",
   "APD fee amount and notice/hearing rules for exception locations (not on the form; rules not read)",
   "Production-by-well zips and operator/bond tables (listed on the data page, one marked 'being rebuilt'; not opened)",
-  "Why WCRCompletionDate has no value after 2023-11-15 in WellHistory.csv"
+  "Why WCRCompletionDate has no value after 2023-11-15 in WellHistory.csv",
+  "Only one recent well file was opened; whether every post-2020 completion report shows fracture start and end dates, and older paper-era files do not, was not checked.",
+  "Whether the Division's well file ever holds a FracFocus copy or sundry notices with chemicals: none in the one file read."
  ],
  "researched": "2026-10-31"
 }

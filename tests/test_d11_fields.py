@@ -1,6 +1,6 @@
 """Tests for the permit-data matrix: site/pipeline/d11_fields_build.py (fields/<ST>.json, researched by hand -> permit-fields.json).
 
-The research answers 48 questions for every agency; this checks the rules that keep the answers honest: every metric answered, a cell is one of five statuses with evidence that
+The research answers the same 52 questions for every agency; this checks the rules that keep the answers honest: every metric answered, a cell is one of five statuses with evidence that
 fits it (`data` only from a real file or the agency's documentation, `unknown` has none), a source is reachable or says why not, grade A needs a reachable per-well source with an
 approval date, no e-mail, phone or API-like number, and no state this site does not carry. The validator is run on deliberate faults, the builder on a temporary folder, and mutants put
 one rule back each; the committed fields/ and permit-fields.json are checked too.
@@ -32,7 +32,8 @@ def check(cond, msg):
 
 
 keys, docs = F.load_sources()
-check(len(keys) == 48 and len(set(keys)) == 48, "the catalog holds 48 distinct metrics")
+check(len(keys) == 52 and len(set(keys)) == 52, "the catalog holds 52 distinct metrics")
+check(len(json.load(open(os.path.join(F.SRC, "metrics.json"), encoding="utf-8"))["groups"]) == 8 and keys[keys.index("fracture_plan") + 1:keys.index("fracture_plan") + 5] == ["frac_dates", "frac_chemicals", "frac_additives", "frac_amounts"], "the catalog has eight groups, and the four fracturing questions follow the fracturing plan")
 cat = json.load(open(os.path.join(F.SRC, "metrics.json"), encoding="utf-8"))
 check({m["group"] for m in cat["metrics"]} <= {g["id"] for g in cat["groups"]}, "every metric is in a group")
 check(all(m["label"] and m["help"] for m in cat["metrics"]), "every metric has a label and a help line")
@@ -88,7 +89,7 @@ with tempfile.TemporaryDirectory() as tmp:
         json.dump(d, open(os.path.join(tmp, sid + ".json"), "w"))
     out = F.build(tmp, date(2026, 10, 31))
     check(F.validate(out) == [] and out["order"] == ["BL", "KS", "ND"], "the builder orders jurisdictions as the site lists them (the BLM before the states): %s" % out["order"])
-    check(set(out["states"]) == {"KS", "ND", "BL"} and all(len(s["cells"]) == 48 for s in out["states"].values()), "every state carries all 48 cells")
+    check(set(out["states"]) == {"KS", "ND", "BL"} and all(len(s["cells"]) == len(keys) for s in out["states"].values()), "every state carries all %d cells" % len(keys))
     check(out["states"]["KS"]["cells"][k0] == ["data", "file", "a column of the bulk file"], "a cell is [status, evidence, note]")
     check(all(len(s["producer_plan"]) <= 1200 and len(s["grade_reason"]) <= 900 for s in out["states"].values()), "long text is clipped")
     os.remove(os.path.join(tmp, "ND.json"))
@@ -171,7 +172,7 @@ nat = json.load(open(os.path.join(DATA, "national.json"), encoding="utf-8"))
 check(nat["hasFields"] is True, "national.json knows the matrix file exists (so the national panels link to it)")
 check(all(sid in F.C.NAME_OF for sid in committed["order"]), "every researched jurisdiction is one the national report carries")
 
-# the registry (FracFocus): the same 48 questions about what a disclosure captures, kept apart from the agencies, with the list of every field in its download
+# the registry (FracFocus): the same questions about what a disclosure captures, kept apart from the agencies, with the list of every field in its download
 ff = docs["FF"]
 check(F.problems_in("FF", ff, keys) == [], "FracFocus's research passes the rules: %s" % F.problems_in("FF", ff, keys)[:2])
 check(committed["registries"] == ["FF"] and "FF" not in committed["order"] and "FF" in committed["states"] and committed["states"]["FF"]["kind"] == "registry", "FracFocus is a registry in the file: not one of the agencies in `order`, and its state says what it is")
@@ -182,6 +183,8 @@ check(set(real_cols) >= {"APINumber", "TVD", "TotalBaseWaterVolume", "CASNumber"
 ffc = committed["states"]["FF"]["cells"]
 check(all(ffc[k][0] == "data" for k in ("api_number", "surface_latlon", "proposed_depth_tvd", "water", "county", "operator_name", "well_name")) and ffc["spud_date"][0] == "none" and ffc["completion_date"][0] == "none" and ffc["date_approved"][0] == "none" and ffc["permit_number"][0] == "none",
       "FracFocus: the job's dates are not a spud or completion date and a disclosure has no permit number or approval date, so those cells say not captured")
+check(all(ffc[k][0] == "data" and ffc[k][1] == "file" for k in ("frac_dates", "frac_chemicals", "frac_additives", "frac_amounts")) and ffc["fracture_plan"][0] == "none", "FracFocus publishes the four fracturing rows as data (seen in its files) and, being a record of the job as done, captures no plan")
+check({f["metric"] for f in committed["states"]["FF"]["fields"]} >= {"frac_dates", "frac_chemicals", "frac_additives", "frac_amounts"}, "the registry's fields are tied to the four fracturing rows")
 check(all(f["metric"] == "" or f["metric"] in keys for f in committed["states"]["FF"]["fields"]) and all(ffc[f["metric"]][0] == "data" for f in committed["states"]["FF"]["fields"] if f["metric"]), "a field matches a permit metric only where FracFocus's own cell for that metric says data")
 check(ff["grade"] in ("A", "B", "C", "D") and ff["researched"] == "2026-11-01" and not ff["form"]["url"].startswith("http:"), "FracFocus carries a grade, the day it was researched and an https form address")
 

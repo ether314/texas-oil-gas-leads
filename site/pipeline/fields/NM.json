@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Not on the C-101 or in the APD guidance"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Agency's own disclosure page shows the last fracture date only, no start date; not in its bulk files"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Agency's own disclosure page lists each ingredient with its CAS number, one well at a time; no bulk file found"
+  },
+  "frac_additives": {
+   "s": "query",
+   "e": "web",
+   "n": "Agency's disclosure page shows each product's trade name, supplier and purpose, one well at a time"
+  },
+  "frac_amounts": {
+   "s": "query",
+   "e": "web",
+   "n": "Disclosure page gives each ingredient's maximum percent by mass, in the additive and in the fluid; no pounds"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "doc",
@@ -442,7 +462,9 @@
   "The live ePermitting APD screens and any application or permit number, received date or fee (behind a person-check)",
   "Completion reports (C-105), logs and production by well (C-115): not read",
   "How far back the layer's records and the MapServer's effective_date reach",
-  "Whether the C-101 revision of 2013 is what the online form still asks (the guidance is newer)"
+  "Whether the C-101 revision of 2013 is what the online form still asks (the guidance is newer)",
+  "Whether the disclosure pages cover recent wells: both records opened date from 2014. How a visitor reaches a well's page was not seen.",
+  "Whether the Division posts its quarterly FracFocus archive (required by rule) as a download; none was found in the FTP descriptions or dictionary."
  ],
  "researched": "2026-10-31"
 }

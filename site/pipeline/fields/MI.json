@@ -174,6 +174,26 @@
    "e": "doc",
    "n": "R 324.201(2)(c): chemical list and CAS numbers if high-volume frac planned"
   },
+  "frac_dates": {
+   "s": "unknown",
+   "e": "none",
+   "n": "Rule asks for fracturing data within 60 days; the completion form was unreadable, so job dates are unverified"
+  },
+  "frac_chemicals": {
+   "s": "form",
+   "e": "web",
+   "n": "Required through FracFocus for high-volume jobs only; the two open well layers hold no frac fields"
+  },
+  "frac_additives": {
+   "s": "form",
+   "e": "web",
+   "n": "Rule 1406 requires trade name, supplier and additive type, filed through FracFocus; open layers hold none"
+  },
+  "frac_amounts": {
+   "s": "form",
+   "e": "web",
+   "n": "Maximum percent by mass of each ingredient, filed through FracFocus for high-volume jobs; open layers hold none"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "doc",
@@ -440,7 +460,9 @@
   "layer 11 fields",
   "terms of use",
   "spud and completion dates anywhere in the open data",
-  "MiSTAR public lookup"
+  "MiSTAR public lookup",
+  "The agency's site refused automated requests, so form EQP 7130 and its pages on hydraulic fracturing could not be read.",
+  "Whether the completion record asks for a fracturing date, and whether the agency's own lookup (MiSTAR) shows anything about the job."
  ],
  "researched": "2026-10-31"
 }

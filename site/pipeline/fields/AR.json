@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Form 2: will completion be fractured, max surface treating pressure; Form 3A report later"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Form 3A asks work start and end dates; the agency's B-19 document cabinet holds these frac reports"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Form 3A lists each chemical and CAS (or family if trade secret); scans in the agency's B-19 document cabinet"
+  },
+  "frac_additives": {
+   "s": "query",
+   "e": "web",
+   "n": "Form 3A lists additive type and company additive name, no supplier; scans in the B-19 document cabinet"
+  },
+  "frac_amounts": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3A gives each additive's rate and share of volume, but no amount for any chemical"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -411,7 +431,9 @@
   "Form 1 Organization Report fields (operator ID, entity type)",
   "Permit fee amount",
   "Bond requirements",
-  "Why seven wells are listed twice, and whether the Commission's numbering mistakes are corrected later"
+  "Why seven wells are listed twice, and whether the Commission's numbering mistakes are corrected later",
+  "What the well lookup's Stimulations tab shows; no well page could be reached through the lookup's step-by-step form",
+  "Whether the B-19 document cabinet holds Form 3A scans for recent wells and shows them without a login (its search was not run)"
  ],
  "researched": "2026-10-31"
 }

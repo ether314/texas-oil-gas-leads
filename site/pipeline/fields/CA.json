@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Only a checkbox that the NOI accompanies a well stimulation permit request; the plan is on the WST form"
   },
+  "frac_dates": {
+   "s": "query",
+   "e": "web",
+   "n": "Disclosure form asks each stage's start and end; state law makes the public registry searchable by time period"
+  },
+  "frac_chemicals": {
+   "s": "query",
+   "e": "web",
+   "n": "Form asks chemical name and CAS; state law makes the public registry searchable by both; open map layers hold none"
+  },
+  "frac_additives": {
+   "s": "query",
+   "e": "web",
+   "n": "Form asks trade name, supplier and purpose; registry searchable by additive; open map layers hold none"
+  },
+  "frac_amounts": {
+   "s": "query",
+   "e": "web",
+   "n": "Form asks percent by mass per chemical; state law puts it in the public registry; open map layers hold none"
+  },
   "spacing_unit": {
    "s": "none",
    "e": "form",
@@ -596,7 +616,9 @@
   "Operator business type, fee, permit expiration date, completion date, form images, logs and completion reports in public records",
   "Columns of the Drill Tracker, SB 237 report and the well stimulation layers (not opened)",
   "License terms of the data (only a disclaimer was seen)",
-  "Whether the live online NOI has fields beyond the 2020 EDD list and the user guide"
+  "Whether the live online NOI has fields beyond the 2020 EDD list and the user guide",
+  "The public WellSTAR record pages were not opened (they need a click-through), so which disclosure fields they display is taken from the statute and CalGEM's pages",
+  "Whether the WellSTAR public site offers a bulk download of disclosure chemicals; the open map layers and the open data listing show none"
  ],
  "researched": "2026-10-31"
 }

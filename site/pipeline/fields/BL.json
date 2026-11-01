@@ -174,6 +174,26 @@
    "e": "form",
    "n": "Item 1c 'Hydraulic Fracturing' box; item 24 cites 43 CFR 3162.3-3 'as applicable'"
   },
+  "frac_dates": {
+   "s": "none",
+   "e": "form",
+   "n": "Forms 3160-4 and -5 have no job start or end date; a notice of intent takes a free-text estimated start only"
+  },
+  "frac_chemicals": {
+   "s": "none",
+   "e": "form",
+   "n": "No federal disclosure rule since 2017; Form 3160-4 item 27 asks only the date of a FracFocus upload, where required"
+  },
+  "frac_additives": {
+   "s": "none",
+   "e": "form",
+   "n": "Forms 3160-4 and -5 ask no trade name, supplier or purpose of any fracturing product"
+  },
+  "frac_amounts": {
+   "s": "none",
+   "e": "form",
+   "n": "Form 3160-4 item 27 gives one amount and type of material per interval, not per chemical"
+  },
   "spacing_unit": {
    "s": "form",
    "e": "form",
@@ -467,7 +487,9 @@
   "Exactly which states each BLM state office covers (inferred only from Table 7 against Table 16 for FY2025)",
   "Whether the monthly PDFs are revised after release (they say changes may result from data quality reviews)",
   "Several Table 7 cells look odd and were not checked (for example Oklahoma FY2021 = 0, Texas FY2024 = 3, FY2005 zeros for ND, MT, TX, OK)",
-  "Whether state agencies' permit files can isolate federal-mineral wells (not examined)"
+  "Whether state agencies' permit files can isolate federal-mineral wells (not examined)",
+  "Whether the login-only drilling permit system (AFMSS) records fracturing dates or fluids beyond what the forms ask; it was not opened.",
+  "Whether a BLM field office requires more through conditions of approval on a specific permit; none were read."
  ],
  "researched": "2026-10-31"
 }
